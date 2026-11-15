@@ -24,7 +24,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 Cualquier otro texto: Hugo responde que no reconoce la orden y apunta a `ayuda`. Lo recibe cualquiera que lo mencione, y no ejecuta nada.
 
 ### Confirmación
-Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el hilo y solo se hace con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado`, `ayuda` y `restart` no piden confirmación.
+Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el hilo y solo se hace con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora, con una excepción: la confirmación de `registra` también acepta el 👍 del asistente (`HUGO_DELEGADO`), por decisión del usuario. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado`, `ayuda` y `restart` no piden confirmación.
 
 ## Consola de la Debian (no son órdenes de Slack)
 - Estado: `systemctl --user status hugo.service`
@@ -43,7 +43,7 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Al iniciar publica la fecha y hora del arranque (UTC-4, `Sat Nov 14 - 10:20 PM`) en el canal `HUGO_AVISO_CANAL`.
 
 ## Registro de velas
-- Orden: `registra ACTIVO` (la pide el usuario o el asistente; el 👍 que la ejecuta es siempre del usuario). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
+- Orden: `registra ACTIVO` (la pide el usuario o el asistente; la confirma un 👍 del usuario o del asistente). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
 - Fuente: la API de Binance, velas `1d` con el corte predeterminado UTC (de medianoche a medianoche UTC).
 - Correspondencia: el código que escribes es el nombre visible del registro (comandos, reportes, carpetas y archivos) y su instrumento de Binance está en una tabla escrita y verificada del módulo `velas` (hoy: `SPCX` → SPCXBUSDT, SpaceX bStocks). No es una regla de memoria ni de sufijos: un código sin entrada en esa tabla falla con aviso claro y no se guarda nada; agregar un activo es un cambio del código (ver «Cómo modificar Hugo»). Antes de consultar, Hugo valida contra Binance que el instrumento existe y está activo.
 - Se guarda la vela completa, tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos. El cierre es el precio de referencia del registro.

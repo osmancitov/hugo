@@ -1,5 +1,6 @@
 // Modulo velas: registro de velas diarias (1d, corte UTC) de un activo, mes por mes hacia atras.
-// Orden: "@hugo registra ACTIVO" (solo el usuario). Pide 👍 y registra UN mes por orden: el mas
+// Orden: "@hugo registra ACTIVO" (la piden el usuario o el asistente; la confirma un 👍 de cualquiera de los dos).
+// Pide 👍 y registra UN mes por orden: el mas
 // reciente pendiente antes de la fecha cero (2026-11-01 00:00 UTC), yendo hacia atras.
 // Fuente: API de Binance, velas 1d con el corte predeterminado UTC. Se guarda la vela completa,
 // tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos; el cierre es
@@ -95,7 +96,7 @@ export function registrar(ctx) {
     if (inicio === null) return decir(event, `No encuentro ningun mes pendiente de ${activo} antes de la fecha cero (noviembre 2026); no hago nada.`);
     const destino = path.join(dir, `${yymm(inicio)}_${activo}`);
     await ctx.confirmar({
-      que: 'registrar velas', channel: event.channel, thread_ts: hilo, user: ctx.usuario,
+      que: 'registrar velas', channel: event.channel, thread_ts: hilo, user: ctx.usuario, tambien: ctx.delegado,
       texto: `Solicitud.\n\u00bfRegistro las velas diarias de ${activo} (Binance, corte UTC) de ${nombreMes(inicio)}? Se guardan completas, tal como las entrega la API, en ${destino}.`,
       alSi: async () => {
         enCurso = true;
@@ -127,5 +128,5 @@ export function registrar(ctx) {
       },
       alNo: async () => { await decir(event, 'Sin respuesta: no registr\u00e9 nada.'); },
     });
-  }, { nombre: 'registrar velas', delegable: true }); // delegable: la puede pedir el asistente; el 👍 que la ejecuta sigue siendo solo del usuario
+  }, { nombre: 'registrar velas', delegable: true }); // delegable: la puede pedir el asistente; la confirma un 👍 del usuario o del asistente (decision del usuario, 15-nov-2026)
 }
