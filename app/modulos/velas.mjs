@@ -1,6 +1,6 @@
 // Modulo velas: registro de velas diarias (1d, corte UTC) de un activo, mes por mes hacia atras.
-// Orden: "@hugo registra stock ACTIVO" o "@hugo registra cripto ACTIVO" (la clase la dice la orden; la piden el usuario o el asistente; la confirma un 👍 de cualquiera de los dos).
-// Pide 👍 y registra UN mes por orden: el mas
+// Orden: "@hugo registra stock ACTIVO" o "@hugo registra cripto ACTIVO" (la clase la dice la orden; la piden el usuario o el asistente; se ejecuta directamente, sin confirmacion).
+// Registra UN mes por orden, sin pedir 👍: el mas
 // reciente pendiente antes de la fecha cero (2026-11-01 00:00 UTC), yendo hacia atras.
 // Fuente: API de Binance, velas 1d con el corte predeterminado UTC. Se guarda la vela completa,
 // tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos; el cierre es
@@ -70,52 +70,46 @@ export function registrar(ctx) {
 
   const PATRON = /^\s*registr\w*\s+(?:(stock|cripto)\s+)?([A-Za-z0-9]{2,15})\s*[.!?]*\s*$/i;
   ctx.comando(PATRON, async (event, texto) => {
-    const hilo = event.thread_ts || event.ts;
     const m = texto.match(PATRON) || [];
     const clase = (m[1] || '').toLowerCase();
     const activo = (m[2] || '').toUpperCase();
     if (enCurso) return decir(event, 'Ya estoy registrando velas; espera a que termine.');
     if (!ACTIVO_OK.test(activo)) return decir(event, `\u00ab${activo}\u00bb no parece un codigo de activo.`);
     if (!clase) return decir(event, `Dime qu\u00e9 clase es: \`registra stock ${activo}\` (acci\u00f3n tokenizada de la bolsa de valores) o \`registra cripto ${activo}\`. No busco hasta que lo digas.`);
-    let res;
-    try { res = await resolverActivo(clase, activo); } catch (e) { return decir(event, `No pude comprobar ${activo} (${clase}) en Binance: ${e.message}. No guard\u00e9 nada.`); }
-    if (!res.ok) return decir(event, `${res.motivo} No guard\u00e9 nada.`);
-    const simbolo = res.simbolo;
-    const dir = path.join(dirBase(), clase, activo);
-    const inicio = mesPendiente(dir, activo);
-    if (inicio === null) return decir(event, `No encuentro ningun mes pendiente de ${activo} (${clase}) antes de la fecha cero (noviembre 2026); no hago nada.`);
-    const destino = path.join(dir, `${yymm(inicio)}_${activo}`);
-    await ctx.confirmar({
-      que: 'registrar velas', channel: event.channel, thread_ts: hilo, user: ctx.usuario, tambien: ctx.delegado,
-      texto: `Solicitud.\n\u00bfRegistro las velas diarias de ${activo} (${clase}${res.nombre ? `, ${res.nombre}` : ''}; Binance, corte UTC) de ${nombreMes(inicio)}? Se guardan completas, tal como las entrega la API, en ${destino}.`,
-      alSi: async () => {
-        enCurso = true;
-        try {
-          await decir(event, `Empiezo: consulto a Binance las velas diarias de ${activo} (${clase}) de ${nombreMes(inicio)}.`);
-          const { datos, cuerpo, consultaMs } = await velasDelMes(simbolo, inicio);
-          if (!datos.length) {
-            return decir(event, `Binance no tiene velas de ${activo} (${clase}) en ${nombreMes(inicio)} (consulta ${seg(consultaMs)}). No guard\u00e9 nada; si el instrumento empieza despu\u00e9s de ese mes, no hay historia anterior que registrar. Me detengo aqu\u00ed.`);
-          }
-          const t0 = Date.now();
-          fs.mkdirSync(dir, { recursive: true });
-          const tmp = `${destino}.tmp-${process.pid}`;
-          fs.writeFileSync(tmp, cuerpo);
-          fs.linkSync(tmp, destino); // falla si el archivo ya existe: nunca pisa un mes registrado
-          fs.rmSync(tmp, { force: true });
-          const guardadoMs = Date.now() - t0;
-          const { diasEnMes, faltan } = diasFaltantes(datos, inicio);
-          const cobertura = faltan.length
-            ? `Atenci\u00f3n: faltan los d\u00edas ${faltan.join(', ')} de ${diasEnMes}; no doy el mes por completo.`
-            : `Mes completo: ${diasEnMes}/${diasEnMes} d\u00edas.`;
-          const siguiente = mesPendiente(dir, activo);
-          await decir(event, `${nombreMes(inicio)}: ${datos.length} velas guardadas en ${destino} (consulta ${seg(consultaMs)}, guardado ${seg(guardadoMs)}). ${cobertura}${siguiente !== null ? ` El mes anterior pendiente es ${nombreMes(siguiente)}.` : ''}`);
-        } catch (e) {
-          await decir(event, `El registro de ${activo} (${clase}) se detuvo en ${nombreMes(inicio)}: ${e.message}. No guard\u00e9 ese mes; lo ya registrado no se toc\u00f3.`);
-        } finally {
-          enCurso = false;
+    enCurso = true; // incluye la validacion: dos ordenes simultaneas no eligen el mismo mes
+    try {
+      let res;
+      try { res = await resolverActivo(clase, activo); } catch (e) { return decir(event, `No pude comprobar ${activo} (${clase}) en Binance: ${e.message}. No guard\u00e9 nada.`); }
+      if (!res.ok) return decir(event, `${res.motivo} No guard\u00e9 nada.`);
+      const simbolo = res.simbolo;
+      const dir = path.join(dirBase(), clase, activo);
+      const inicio = mesPendiente(dir, activo);
+      if (inicio === null) return decir(event, `No encuentro ningun mes pendiente de ${activo} (${clase}) antes de la fecha cero (noviembre 2026); no hago nada.`);
+      const destino = path.join(dir, `${yymm(inicio)}_${activo}`);
+      try {
+        await decir(event, `Empiezo: consulto a Binance las velas diarias de ${activo} (${clase}${res.nombre ? `, ${res.nombre}` : ''}; corte UTC) de ${nombreMes(inicio)}. Destino: ${destino}.`);
+        const { datos, cuerpo, consultaMs } = await velasDelMes(simbolo, inicio);
+        if (!datos.length) {
+          return decir(event, `Binance no tiene velas de ${activo} (${clase}) en ${nombreMes(inicio)} (consulta ${seg(consultaMs)}). No guard\u00e9 nada; si el instrumento empieza despu\u00e9s de ese mes, no hay historia anterior que registrar. Me detengo aqu\u00ed.`);
         }
-      },
-      alNo: async () => { await decir(event, 'Sin respuesta: no registr\u00e9 nada.'); },
-    });
-  }, { nombre: 'registrar velas', delegable: true }); // delegable: la puede pedir el asistente; la confirma un 👍 del usuario o del asistente (decision del usuario, 15-nov-2026)
+        const t0 = Date.now();
+        fs.mkdirSync(dir, { recursive: true });
+        const tmp = `${destino}.tmp-${process.pid}`;
+        fs.writeFileSync(tmp, cuerpo);
+        fs.linkSync(tmp, destino); // falla si el archivo ya existe: nunca pisa un mes registrado
+        fs.rmSync(tmp, { force: true });
+        const guardadoMs = Date.now() - t0;
+        const { diasEnMes, faltan } = diasFaltantes(datos, inicio);
+        const cobertura = faltan.length
+          ? `Atenci\u00f3n: faltan los d\u00edas ${faltan.join(', ')} de ${diasEnMes}; no doy el mes por completo.`
+          : `Mes completo: ${diasEnMes}/${diasEnMes} d\u00edas.`;
+        const siguiente = mesPendiente(dir, activo);
+        await decir(event, `${nombreMes(inicio)}: ${datos.length} velas guardadas en ${destino} (consulta ${seg(consultaMs)}, guardado ${seg(guardadoMs)}). ${cobertura}${siguiente !== null ? ` El mes anterior pendiente es ${nombreMes(siguiente)}.` : ''}`);
+      } catch (e) {
+        await decir(event, `El registro de ${activo} (${clase}) se detuvo en ${nombreMes(inicio)}: ${e.message}. No guard\u00e9 ese mes; lo ya registrado no se toc\u00f3.`);
+      }
+    } finally {
+      enCurso = false;
+    }
+  }, { nombre: 'registrar velas', delegable: true }); // orden directa del usuario o del asistente (decision del usuario, 15-nov-2026)
 }

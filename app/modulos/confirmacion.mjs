@@ -1,7 +1,7 @@
 // Modulo confirmacion: UNO solo, lo usan todos los demas modulos (ctx.confirmar).
 // Regla: pulgar arriba = si. 10 minutos sin respuesta = no.
-// Confirma quien dio la orden; otras reacciones se ignoran. Excepcion solo para el registro
-// de velas: tambien confirma el asistente (opcion `tambien`), por decision del usuario (15-nov-2026).
+// Confirma la persona autorizada para la orden; otras reacciones se ignoran.
+// El registro de velas ya no usa este modulo: se ejecuta directamente.
 const pendientes = new Map(); // "canal:ts" -> { user, alSi, alNo, timer, que, desde }
 
 const esPulgar = (r) => r === '+1' || r === 'thumbsup' || r.startsWith('+1::') || r.startsWith('thumbsup::');
@@ -10,7 +10,7 @@ export function registrar(ctx) {
   const { app, botToken } = ctx;
 
   // confirmar({ channel, thread_ts, user, texto, alSi, alNo, minutos, tambien })
-  // `tambien`: id de Slack opcional que tambien confirma con su pulgar (hoy solo lo usa el registro de velas).
+  // `tambien`: id de Slack opcional que tambien confirma con su pulgar (sin usos actuales).
   ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '' }) => {
     const r = await app.client.chat.postMessage({
       token: botToken, channel, thread_ts,

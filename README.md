@@ -1,6 +1,6 @@
 # Hugo
 
-Bot pequeño de Slack (Socket Mode, Node.js) que corre en una Debian como servicio de usuario. Sirve de puente entre Slack y esa máquina: recibir y enviar archivos, borrar hilos, registrar velas, sincronizar los registros con este repositorio y actualizarse. Todo lo que modifica algo pide antes un 👍 del usuario (el registro de velas también lo confirma el asistente), salvo la sincronización de los registros con GitHub, que es automática por decisión del usuario.
+Bot pequeño de Slack (Socket Mode, Node.js) que corre en una Debian como servicio de usuario. Sirve de puente entre Slack y esa máquina: recibir y enviar archivos, borrar hilos, registrar velas, sincronizar los registros con este repositorio y actualizarse. Los registros de velas se ejecutan directamente por orden del usuario o del asistente, sin pedir 👍. La sincronización de los registros con GitHub es automática. Los demás cambios conservan su confirmación del usuario, incluidas las actualizaciones del programa.
 
 Este repositorio es la fuente del código y del manual. La Debian descarga de aquí; nunca sube.
 

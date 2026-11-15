@@ -13,7 +13,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 | `borrar hilo` | Dentro de un hilo. Pregunta y borra lo que Slack permita. |
 | archivos adjuntos | Pregunta y los guarda en Descargas, sin pisar uno existente. |
 | `envia RUTA` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
-| `registra stock ACTIVO`, `registra cripto ACTIVO` | Pregunta y registra un mes de las velas diarias del activo (ver «Registro de velas»). La clase la dices tú; sin ella (`registra ACTIVO`) Hugo solo pide que la indiques. También `registrar`. |
+| `registra stock ACTIVO`, `registra cripto ACTIVO` | Registra directamente, sin 👍, un mes de las velas diarias del activo (ver «Registro de velas»). La clase la dices tú; sin ella (`registra ACTIVO`) Hugo solo pide que la indiques. También `registrar`. |
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
@@ -25,7 +25,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 Cualquier otro texto: Hugo responde que no reconoce la orden y apunta a `ayuda`. Lo recibe cualquiera que lo mencione, y no ejecuta nada.
 
 ### Confirmación
-Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el hilo y solo se hace con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora, con una excepción: la confirmación de `registra` también acepta el 👍 del asistente (`HUGO_DELEGADO`), por decisión del usuario. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado`, `ayuda` y `restart` no piden confirmación.
+Borrar, guardar archivos recibidos, enviar y actualizar se preguntan en el hilo y solo se hacen con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Excepción del registro de velas, por decisión del usuario (15-nov-2026): `registra stock` y `registra cripto` se ejecutan directamente al recibir la orden del usuario o del asistente autorizado, sin pedir 👍. No cambia la confirmación de las actualizaciones del programa. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado`, `ayuda` y `restart` no piden confirmación.
 
 ## Consola de la Debian (no son órdenes de Slack)
 - Estado: `systemctl --user status hugo.service`
@@ -44,7 +44,7 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Al iniciar publica la fecha y hora del arranque (UTC-4, `Sat Nov 14 - 10:20 PM`) en el canal `HUGO_AVISO_CANAL`.
 
 ## Registro de velas
-- Orden: `registra stock ACTIVO` o `registra cripto ACTIVO` (la pide el usuario o el asistente; la confirma un 👍 del usuario o del asistente). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
+- Orden: `registra stock ACTIVO` o `registra cripto ACTIVO` (la pide el usuario o el asistente autorizado; se ejecuta directamente, sin pedir 👍). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
 - Fuente: la API de Binance, velas `1d` con el corte predeterminado UTC (de medianoche a medianoche UTC).
 - Clase y correspondencia: la clase la dice la orden y Hugo no busca ni adivina entre clases. El código que escribes es el nombre visible del registro (comandos, reportes, carpetas y archivos): el de la bolsa de valores o del cripto, sin `B` ni `USDT`. El instrumento de Binance solo se usa al consultar y lo resuelve el módulo común `activos`, sin tabla ni lista por activo: todo se comprueba en vivo en cada orden. Un par vale si existe en Binance, está activo (TRADING), cotiza en USDT y su activo base es exactamente el esperado.
   - `stock` (acción tokenizada): par `CODIGO` + `B` + `USDT` (`NVDA` → `NVDABUSDT`), y solo si Binance lo etiqueta `bStocks` en su lista pública de productos. La confirmación muestra el nombre oficial («NVIDIA»).
@@ -55,7 +55,8 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Se guarda la vela completa, tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos. El cierre es el precio de referencia del registro.
 - Destino: `~/Documents/hugo/registros/velas-24h/<clase>/ACTIVO/yymm_ACTIVO` (por ejemplo `stock/SPCX/2610_SPCX` para octubre de 2026; clase `stock` o `cripto`, así `STX` acción y `STX` cripto no se mezclan). Una carpeta por código de activo, sin el par, y un archivo por mes. `HUGO_VELAS_DIR` en `config.env` cambia la carpeta base.
 - Un mes ya registrado no se pisa ni se repite: la siguiente orden toma el mes anterior pendiente. Si Binance no tiene velas de ese mes, no guarda nada y lo dice.
-- Visibilidad: avisa al empezar la consulta y al terminar el mes: velas guardadas, los días que faltan si los hay (sin dar el mes por completo) y lo que tardaron la consulta y el guardado por separado. Si algo falla, dice en qué mes y paso se detuvo; lo ya registrado no se toca.
+- No recorre automáticamente otros meses ni empresas: sigue siendo UN mes por orden. Mientras valida el instrumento o registra el mes, otra orden de registro recibe un aviso de trabajo en curso.
+- Visibilidad: avisa al empezar la consulta (activo, nombre, mes, corte UTC y destino) y al terminar el mes: velas guardadas, los días que faltan si los hay (sin dar el mes por completo) y lo que tardaron la consulta y el guardado por separado. Si algo falla, dice en qué mes y paso se detuvo; lo ya registrado no se toca.
 - Meses parciales (por ejemplo, el primer mes del activo) se guardan con sus días y se reportan como incompletos.
 
 ## Sincronización de registros

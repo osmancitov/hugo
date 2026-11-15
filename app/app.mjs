@@ -30,7 +30,7 @@ try {
 } catch {}
 const CANAL = process.env.HUGO_AVISO_CANAL || conf.HUGO_AVISO_CANAL;
 const USUARIO = process.env.HUGO_USUARIO || conf.HUGO_USUARIO || ''; // unica persona que puede dar ordenes (id de Slack)
-const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente: solo puede pedir los comandos marcados delegables; la confirmacion sigue siendo de USUARIO (salvo el pulgar del asistente en registra)
+const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente: solo puede pedir los comandos marcados delegables; registra y sincroniza son directos, las actualizaciones las confirma USUARIO
 const botToken = leerClave('.bot-token');
 const appToken = leerClave('.app-token');
 if (!botToken || !appToken || !CANAL) {
@@ -68,7 +68,7 @@ app.event('app_mention', async ({ event }) => {
     const c = comandos.find((x) => (typeof x.patron === 'function' ? x.patron(texto, event) : x.patron.test(texto)));
     if (c) {
       // Ordenes (borrar, guardar, servir, actualizar): solo la persona definida en HUGO_USUARIO. Sin definir, nadie.
-      // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; quien confirma sigue siendo HUGO_USUARIO (en registra tambien vale su pulgar).
+      // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; registra y sincroniza son directos, actualizar conserva el pulgar de HUGO_USUARIO.
       const delegado = !!USUARIO && !!DELEGADO && event.user === DELEGADO && c.delegable;
       if (!USUARIO || (event.user !== USUARIO && !delegado)) { console.error(`Orden ignorada: usuario ${event.user || '?'} no autorizado`); return; }
       const idAct = `${Date.now()}-${Math.random()}`;
