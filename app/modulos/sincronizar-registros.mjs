@@ -12,7 +12,7 @@
 // Antes de cambiar nada muestra el plan (que sube, que baja, que conflictos hay) y solo actua con
 // el pulgar del usuario. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
-// Mudanza unica de lo heredado (autorizada por el usuario el 15-nov-2026): los registros de la ruta anterior
+// Mudanza unica de lo heredado (mudanza acotada, una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
 // contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
 import fs from 'node:fs';
@@ -84,7 +84,8 @@ export function registrar(ctx) {
   const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
   // Mudanza local de lo heredado: velas-24h/<ACTIVO>/yymm_ACTIVO -> velas-24h/stock/<ACTIVO>/yymm_ACTIVO.
-  // Copia a un temporal, comprueba por sha256 que es identica, la enlaza sin pisar y solo entonces quita el original.
+  // Solo COPIA: a un temporal, comprueba por sha256 que es identica y la enlaza sin pisar. El original NO se quita aqui:
+  // lo quita retirarLocalHeredado() despues de releer GitHub y ver la ruta nueva identica y la vieja ya ausente.
   // Si el destino ya existe con otro contenido, no toca ninguno de los dos y lo reporta.
   function mudarLocalHeredado() {
     const movidos = [], conflictos = [], fallos = [];
@@ -106,7 +107,7 @@ export function registrar(ctx) {
           if (!sv.isFile() || sv.size === 0 || sv.size > MAX_BYTES) continue;
           const buf = fs.readFileSync(viejo);
           if (fs.existsSync(destino)) {
-            if (sha256(fs.readFileSync(destino)) === sha256(buf)) { fs.rmSync(viejo); movidos.push(rel); } else conflictos.push(rel);
+            if (sha256(fs.readFileSync(destino)) === sha256(buf)) movidos.push(rel); else conflictos.push(rel);
             continue;
           }
           fs.mkdirSync(path.dirname(destino), { recursive: true });
@@ -116,13 +117,37 @@ export function registrar(ctx) {
           fs.linkSync(tmp, destino); // falla si ya existe: nunca pisa
           fs.rmSync(tmp, { force: true });
           if (sha256(fs.readFileSync(destino)) !== sha256(buf)) throw new Error('el destino no coincide; dejo el original');
-          fs.rmSync(viejo);
           movidos.push(rel);
         } catch (e) { fallos.push(`${rel}: ${e.message}`.slice(0, 160)); }
       }
-      try { fs.rmdirSync(dirViejo); } catch { /* sigue con archivos: no se borra */ }
     }
     return { movidos, conflictos, fallos };
+  }
+
+  // Quita los originales locales heredados SOLO si, con una lectura de GitHub posterior a todo cambio remoto, la ruta nueva
+  // existe con la misma huella que la copia local, la ruta vieja ya no esta en GitHub y la copia local sigue identica al original.
+  // Cualquier duda (sin lectura, sin copia remota, vieja aun en GitHub) conserva el original.
+  function retirarLocalHeredado(visto, heredadosRemotos) {
+    const retirados = [], conservados = [];
+    let activos = []; try { activos = fs.readdirSync(dirBase()); } catch { return { retirados, conservados }; }
+    for (const a of activos) {
+      if (!ACTIVO_OK.test(a)) continue;
+      const dirViejo = path.join(dirBase(), a);
+      let nombres = []; try { if (!fs.lstatSync(dirViejo).isDirectory()) continue; nombres = fs.readdirSync(dirViejo); } catch { continue; }
+      for (const n of nombres) {
+        if (!ARCHIVO_OK.test(n)) continue;
+        const rel = `${a}/${n}`, viejo = path.join(dirViejo, n), destino = path.join(dirBase(), CLASE_HEREDADA, a, n);
+        try {
+          const bv = fs.readFileSync(viejo), bd = fs.readFileSync(destino);
+          const relNuevo = `${PREFIJO}/${CLASE_HEREDADA}/${a}/${n}`;
+          const ok = sha256(bv) === sha256(bd) && visto && visto.get(relNuevo) === shaBlob(bd)
+            && !heredadosRemotos.includes(`${PREFIJO}/${rel}`);
+          if (ok) { fs.rmSync(viejo); retirados.push(rel); } else conservados.push(rel);
+        } catch { conservados.push(rel); }
+      }
+      try { fs.rmdirSync(dirViejo); } catch { /* aun con archivos: no se borra */ }
+    }
+    return { retirados, conservados };
   }
 
   // Arbol del repo (ruta -> sha de blob), solo rutas del registro con forma valida.
@@ -187,6 +212,7 @@ export function registrar(ctx) {
   async function planear(repo, token) {
     const { mapa, heredados } = await remotos(repo, token);
     const subir = [], bajar = [], conflictos = [];
+    const visto = new Map(mapa);
     let iguales = 0;
     for (const f of locales()) {
       const shaRemota = mapa.get(f.rel);
@@ -198,7 +224,7 @@ export function registrar(ctx) {
     subir.sort((a, b) => a.rel.localeCompare(b.rel));
     bajar.sort((a, b) => a.rel.localeCompare(b.rel));
     conflictos.sort();
-    return { subir, bajar, iguales, conflictos, heredados };
+    return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
   const cortas = (l) => l.map((x) => (typeof x === 'string' ? x : x.rel).replace(`${PREFIJO}/`, ''));
@@ -268,7 +294,7 @@ export function registrar(ctx) {
     const previo = [];
     let mudo = false;
     const mud = mudarLocalHeredado();
-    if (mud.movidos.length) { mudo = true; previo.push(`mud\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido`); }
+    if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
     if (mud.conflictos.length) previo.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
     if (mud.fallos.length) previo.push(`no pude mudar: ${mud.fallos.join('; ')}`);
     let plan;
@@ -282,6 +308,9 @@ export function registrar(ctx) {
           plan = await planear(repo, token);
         } else previo.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key o escritura en el repo`);
       }
+      const ret = retirarLocalHeredado(plan.visto, plan.heredados);
+      if (ret.retirados.length) { mudo = true; previo.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
+      if (ret.conservados.length) previo.push(`originales conservados (GitHub aun no confirma la ruta nueva): ${ret.conservados.join(', ')}`);
     } catch (e) { return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo }; }
     const { subir, bajar, iguales, conflictos } = plan;
     const aviso = previo.length ? ` ${previo.join('. ')}.` : '';
