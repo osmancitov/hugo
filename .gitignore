@@ -1,0 +1,5 @@
+app/config.env
+keys/
+img/
+node_modules/
+*.log
