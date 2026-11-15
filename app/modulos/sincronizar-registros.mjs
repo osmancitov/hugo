@@ -157,60 +157,86 @@ export function registrar(ctx) {
     return { commit: commit.sha, subidos: items.map((i) => i.path), omitidos };
   }
 
+  // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
+  // pasada: el usuario autorizo la sincronizacion automatica de este alcance (15-nov-2026). Nada se
+  // pisa nunca; los conflictos se reportan y no se tocan.
+  async function pasada() {
+    const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
+    const token = ctx.leerClave('.github-key');
+    let plan;
+    try { plan = await planear(repo, token); }
+    catch (e) { return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada.` }; }
+    const { subir, bajar, iguales, conflictos } = plan;
+    const notaConflicto = conflictos.length ? ` Conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}.` : '';
+    const clave = conflictos.join(',');
+    if (!subir.length && !bajar.length) return { cambios: false, conflictos: clave, texto: `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}` };
+    const subidaLista = subir.length > 0 && (await puedeSubir(repo, token));
+    const t0 = Date.now();
+    const res = [], extra = [];
+    let hizoAlgo = false;
+    try {
+      if (bajar.length) {
+        const baj = await bajarArchivos(repo, token, bajar);
+        if (baj.hechos.length) hizoAlgo = true;
+        res.push(`baj\u00e9 ${baj.hechos.length} (${lista(baj.hechos)})`);
+        if (baj.fallos.length) extra.push(`no pude bajar: ${baj.fallos.join('; ')}`);
+      }
+      if (subir.length && subidaLista) {
+        const sub = await subirArchivos(repo, token, subir);
+        if (sub.commit) hizoAlgo = true;
+        res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
+        if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
+      } else if (subir.length) {
+        extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): falta keys/.github-key o el token no tiene escritura en este repo`);
+      }
+    } catch (e) {
+      return { error: `La sincronizaci\u00f3n se detuvo: ${e.message} Lo ya copiado queda; nada se pis\u00f3 en ning\u00fan lado.`, hizoAlgo };
+    }
+    if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
+    const segundos = ((Date.now() - t0) / 1000).toFixed(1);
+    res.push(`iguales: ${iguales}`);
+    return { cambios: hizoAlgo, conflictos: clave, hayPendiente: extra.length > 0, texto: `Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${extra.length ? ` ${extra.join('. ')}.` : ''}` };
+  }
+
+  // Orden manual: corre una pasada ya, sin 👍, y contesta en el hilo.
   ctx.comando(/^\s*sincroniz\w*\s+registros?\s*[.!?]*\s*$/i, async (event) => {
     if (enCurso) return decir(event, 'Ya estoy sincronizando registros; espera a que termine.');
-    const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
-    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return decir(event, 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.');
     enCurso = true;
     try {
-      const token = ctx.leerClave('.github-key');
-      let plan;
-      try { plan = await planear(repo, token); }
-      catch (e) { enCurso = false; return decir(event, `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada.`); }
-      const { subir, bajar, iguales, conflictos } = plan;
-      const subidaLista = subir.length > 0 && (await puedeSubir(repo, token));
-      const notaConflicto = conflictos.length ? ` Conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}.` : '';
-      if (!subir.length && !bajar.length) {
-        enCurso = false;
-        return decir(event, `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}`);
-      }
-      const partes = [];
-      if (subir.length) partes.push(subidaLista ? `Subo ${subir.length}: ${lista(subir)}` : `Pendientes de subir ${subir.length}: ${lista(subir)}`);
-      if (bajar.length) partes.push(`Bajo ${bajar.length}: ${lista(bajar)}`);
-      partes.push(`Iguales: ${iguales}`);
-      if (subir.length && !subidaLista) partes.push('no puedo subir: falta keys/.github-key o el token no tiene escritura en este repo (la bajada no la necesita)');
-      const ejecutable = bajar.length > 0 || (subir.length > 0 && subidaLista);
-      if (!ejecutable) {
-        enCurso = false;
-        return decir(event, `${partes.join('. ')}.${notaConflicto}`);
-      }
-      await ctx.confirmar({
-        que: 'sincronizar registros', channel: event.channel, thread_ts: event.thread_ts || event.ts, user: ctx.usuario,
-        texto: `Solicitud.\n\u00bfSincronizo los registros de velas con GitHub (${repo})? ${partes.join('. ')}.${notaConflicto}`,
-        alSi: async () => {
-          const t0 = Date.now();
-          try {
-            const baj = bajar.length ? await bajarArchivos(repo, token, bajar) : { hechos: [], fallos: [] };
-            const sub = subir.length && subidaLista ? await subirArchivos(repo, token, subir) : { commit: null, subidos: [], omitidos: [] };
-            const segundos = ((Date.now() - t0) / 1000).toFixed(1);
-            const res = [];
-            if (bajar.length) res.push(`baj\u00e9 ${baj.hechos.length} (${lista(baj.hechos)})`);
-            if (subir.length && subidaLista) res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
-            res.push(`iguales: ${iguales}`);
-            const extra = [];
-            if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
-            if (baj.fallos.length) extra.push(`no pude bajar: ${baj.fallos.join('; ')}`);
-            if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
-            await decir(event, `Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${extra.length ? ` ${extra.join('. ')}.` : ''}`);
-          } catch (e) {
-            await decir(event, `La sincronizaci\u00f3n se detuvo: ${e.message} Lo ya bajado qued\u00f3 copiado; nada se pis\u00f3 en ning\u00fan lado.`);
-          } finally { enCurso = false; }
-        },
-        alNo: async () => { enCurso = false; await decir(event, 'Sin respuesta: no sincronic\u00e9 nada.'); },
-      });
+      const r = await pasada();
+      await decir(event, r.error || r.texto);
     } catch (e) {
-      enCurso = false;
-      await decir(event, `No pude preparar la sincronizaci\u00f3n (${e.message}). No cambi\u00e9 nada.`);
-    }
-  }, { nombre: 'sincronizar registros', delegable: true }); // delegable: la puede pedir el asistente; el 👍 que la ejecuta sigue siendo solo del usuario
+      await decir(event, `No pude sincronizar (${e.message}). No cambi\u00e9 nada.`);
+    } finally { enCurso = false; }
+  }, { nombre: 'sincronizar registros', delegable: true });
+
+  // Automatica: una pasada poco despues de arrancar y luego cada HUGO_SYNC_MINUTOS (60 por defecto;
+  // 0 la apaga). Solo avisa en el canal de avisos cuando algo cambio, hay un conflicto nuevo o un
+  // error nuevo; si todo sigue igual, calla. Un error repetido se avisa una vez hasta que se arregle.
+  let ultimoAviso = '';
+  async function automatica() {
+    if (enCurso) return;
+    enCurso = true;
+    try {
+      const r = await pasada();
+      let aviso = '';
+      if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
+      else if (r.cambios || r.hayPendiente || r.conflictos) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros. ${r.texto}`;
+      const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
+      const repetido = !r.cambios && firma === ultimoAviso;
+      if (aviso && !repetido && ctx.canal) await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: aviso });
+      ultimoAviso = r.cambios ? '' : firma;
+    } catch (e) {
+      console.error('Sincronizacion automatica:', e.message);
+    } finally { enCurso = false; }
+  }
+  const minutos = Number(process.env.HUGO_SYNC_MINUTOS ?? ctx.conf.HUGO_SYNC_MINUTOS ?? 60);
+  if (Number.isFinite(minutos) && minutos >= 5) {
+    ctx.alIniciar(() => {
+      setTimeout(automatica, 90 * 1000).unref?.();
+      setInterval(automatica, minutos * 60 * 1000).unref?.();
+    });
+  }
+  ctx.pasadaSincronizacion = pasada; ctx.automaticaSincronizacion = automatica; // para pruebas
 }

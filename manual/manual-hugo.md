@@ -17,7 +17,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
-| `sincroniza registros` | Pregunta y copia los registros de velas entre la Debian y GitHub, en ambos sentidos y sin pisar contenido distinto (ver «Sincronización de registros»). También `sincronizar`. |
+| `sincroniza registros` | Copia ya (sin 👍) los registros de velas entre la Debian y GitHub, en ambos sentidos y sin pisar contenido distinto (ver «Sincronización de registros»). También `sincronizar`. |
 | `estado` | Dice qué hace, qué 👍 espera o que está libre, y cuánto lleva activo. |
 | `restart` o `reiniciar` | Reinicia a Hugo. No lo hace si hay una actualización en curso o está ocupado. |
 | `ayuda` o `comandos` | Muestra la lista de órdenes. |
@@ -54,10 +54,10 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Meses parciales (por ejemplo, el primer mes del activo) se guardan con sus días y se reportan como incompletos.
 
 ## Sincronización de registros
-- Orden: `sincroniza registros` (la pide el usuario o el asistente; el 👍 que la ejecuta es siempre del usuario). Copia el registro de velas entre la Debian y el repositorio público de `HUGO_GITHUB`, en los dos sentidos. Los registros son públicos por decisión del usuario.
-- Antes de cambiar nada muestra el plan: qué meses sube, cuáles baja, cuántos ya son iguales y qué conflictos hay. Solo actúa con el 👍.
+- Es automática por decisión del usuario (15-nov-2026), sin 👍 en cada pasada: Hugo sincroniza solo, poco después de arrancar y luego cada `HUGO_SYNC_MINUTOS` minutos (60 por defecto; 0 la apaga). La orden `sincroniza registros` (la pide el usuario o el asistente) fuerza una pasada ya. Copia el registro de velas entre la Debian y el repositorio público de `HUGO_GITHUB`, en los dos sentidos. Los registros son públicos por decisión del usuario.
+- Cada pasada compara primero y luego actúa. En el canal de avisos solo habla cuando algo cambió, hay un conflicto o un error nuevo; si todo sigue igual, calla (un error repetido se avisa una vez). La orden manual siempre contesta en su hilo. Actualizar el programa sigue pidiendo el 👍 del usuario; esto solo cubre los registros.
 - Lo que solo está en la Debian se sube en un solo commit (el título lista los meses; autor y committer con el correo del usuario). Lo que solo está en GitHub se baja sin pisar, con el mismo criterio que el registro.
-- La comparación es por contenido, no por nombre ni por fecha: el mismo mes con contenido distinto en los dos lados es un conflicto; Hugo lo reporta y no lo toca en ningún lado. Si el repo cambia entre el plan y la ejecución, lo nuevo con contenido distinto se omite y se reporta; nada se pisa.
+- La comparación es por contenido, no por nombre ni por fecha: el mismo mes con contenido distinto en los dos lados es un conflicto; Hugo lo reporta y no lo toca en ningún lado. Si el repo cambia entre la comparación y la ejecución, lo nuevo con contenido distinto se omite y se reporta; nada se pisa.
 - Solo toca `registros/velas-24h/<ACTIVO>/yymm_ACTIVO`, con la misma estructura en los dos lados. Ninguna otra carpeta, en ningún sentido. Archivos vacíos o de más de 5 MB no entran.
 - Credencial: `keys/.github-key` (token de GitHub). Hugo lo lee solo aquí, nunca lo imprime ni lo envía, y antes de ofrecer subida comprueba contra la API que tiene escritura en el repo. Sin el archivo o sin ese permiso, la bajada funciona igual (el repo es público) y la subida queda pendiente, avisando.
 
