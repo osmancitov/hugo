@@ -13,7 +13,8 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 | `borrar hilo` | Dentro de un hilo. Pregunta y borra lo que Slack permita. |
 | archivos adjuntos | Pregunta y los guarda en Descargas, sin pisar uno existente. |
 | `envia RUTA` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
-| `registra stock ACTIVO`, `registra cripto ACTIVO` | Registra directamente, sin 👍, un mes de las velas diarias del activo (ver «Registro de velas»). La clase la dices tú; sin ella (`registra ACTIVO`) Hugo solo pide que la indiques. También `registrar`. |
+| `registra CLASE CODIGO [CODIGO ...]` | Recorre los historiales completos de uno o varios activos en ese orden, sin 👍. La clase (`stock` o `cripto`) aplica a toda la lista; sin clase o códigos pide esos datos. También `registrar`. |
+| `registra continuar` | Retoma un recorrido pausado tras corregir la causa; no pide 👍 ni reemplaza su lista. |
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
@@ -44,20 +45,23 @@ Borrar, guardar archivos recibidos, enviar y actualizar se preguntan en el hilo 
 - Al iniciar publica la fecha y hora del arranque (UTC-4, `Sat Nov 14 - 10:20 PM`) en el canal `HUGO_AVISO_CANAL`.
 
 ## Registro de velas
-- Orden: `registra stock ACTIVO` o `registra cripto ACTIVO` (la pide el usuario o el asistente autorizado; se ejecuta directamente, sin pedir 👍). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
-- Fuente: la API de Binance, velas `1d` con el corte predeterminado UTC (de medianoche a medianoche UTC).
-- Clase y correspondencia: la clase la dice la orden y Hugo no busca ni adivina entre clases. El código que escribes es el nombre visible del registro (comandos, reportes, carpetas y archivos): el de la bolsa de valores o del cripto, sin `B` ni `USDT`. El instrumento de Binance solo se usa al consultar y lo resuelve el módulo común `activos`, sin tabla ni lista por activo: todo se comprueba en vivo en cada orden. Un par vale si existe en Binance, está activo (TRADING), cotiza en USDT y su activo base es exactamente el esperado.
-  - `stock` (acción tokenizada): par `CODIGO` + `B` + `USDT` (`NVDA` → `NVDABUSDT`), y solo si Binance lo etiqueta `bStocks` en su lista pública de productos. El aviso de inicio muestra el nombre oficial («NVIDIA»).
-  - `cripto`: par `CODIGO` + `USDT` (`BTC` → `BTCUSDT`), y solo si Binance NO lo etiqueta `bStocks`: `registra cripto NVDAB` se rechaza porque es una acción tokenizada, no un cripto, y Hugo dice qué orden usar.
-  - Hugo rechaza sin guardar nada: código inexistente o inactivo en esa clase, o par con la etiqueta de la otra clase. Si no puede leer la clasificación de Binance (red o respuesta ajena) detiene la orden en vez de adivinar.
-  - Límite: esa lista de productos es la API pública interna de la web de Binance, no la documentada ni estable; no hay clasificación documentada. Si la cambian o retiran, las órdenes se detienen con aviso claro.
-  - No hace falta tocar el código para registrar otro activo. Futuros (`registra futuros`) no están: quedan para más adelante con su propia fuente.
-- Se guarda la vela completa, tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos. El cierre es el precio de referencia del registro.
-- Destino: `~/Documents/hugo/registros/velas-24h/<clase>/ACTIVO/yymm_ACTIVO` (por ejemplo `stock/SPCX/2610_SPCX` para octubre de 2026; clase `stock` o `cripto`, así `STX` acción y `STX` cripto no se mezclan). Una carpeta por código de activo, sin el par, y un archivo por mes. `HUGO_VELAS_DIR` en `config.env` cambia la carpeta base.
-- Un mes ya registrado no se pisa ni se repite: la siguiente orden toma el mes anterior pendiente. Si Binance no tiene velas de ese mes, no guarda nada y lo dice.
-- No recorre automáticamente otros meses ni empresas: sigue siendo UN mes por orden. Mientras valida el instrumento o registra el mes, otra orden de registro recibe un aviso de trabajo en curso.
-- Visibilidad: avisa al empezar la consulta (activo, nombre, mes, corte UTC y destino) y al terminar el mes: velas guardadas, los días que faltan si los hay (sin dar el mes por completo) y lo que tardaron la consulta y el guardado por separado. Si algo falla, dice en qué mes y paso se detuvo; lo ya registrado no se toca.
-- Meses parciales (por ejemplo, el primer mes del activo) se guardan con sus días y se reportan como incompletos.
+- Regla única: `registra` ejecuta directamente la orden del usuario o del asistente autorizado, sin pedir 👍, con independencia de la clase. Los demás comandos conservan sus controles.
+- Orden: `registra stock NVDA SPCX` o `registra cripto BTC ETH`. Admite un código o una lista (hasta 500), separados por espacios, comas o punto y coma; rechaza códigos repetidos y conserva el orden. La clase aplica a toda la lista. Los ejemplos son de sintaxis, no una lista fija de activos.
+- Recorre TODO el historial del primer activo, mes por mes hacia atrás desde octubre de 2026 (fecha cero: 1 de noviembre de 2026, 00:00 UTC). Al encontrar un mes sin velas, pasa al siguiente activo. Ya no hace falta una orden por mes. Tope de seguridad: 240 meses por activo; alcanzar el tope pausa el trabajo, no lo declara completo.
+- Fuente: Binance, velas `1d`, corte UTC (medianoche a medianoche). Guarda la respuesta cruda completa, sin filtrar sus 12 campos; el cierre es el precio de referencia.
+- Resolución común de la clase: biblioteca `activos`, sin tabla por empresa. Comprueba en vivo que el par está TRADING, cotiza en USDT y tiene la base exacta.
+  - `stock`: `CODIGO` + `B` + `USDT`; exige además etiqueta `bStocks` y nombre de bStocks en la lista pública de productos de Binance.
+  - `cripto`: `CODIGO` + `USDT`; rechaza los pares etiquetados bStocks. No adivina entre clases ni cambia de clase.
+  - Un código inexistente/inactivo, etiqueta de otra clase o fallo de clasificación pausa sin guardar ese mes ni pasar al siguiente activo. La lista pública de productos es una API interna de Binance, no documentada ni estable; si deja de servir, no adivina.
+- Destino: `~/Documents/hugo/registros/velas-24h/<clase>/CODIGO/yymm_CODIGO`. `HUGO_VELAS_DIR` cambia la carpeta base. No mezcla clases ni usa el par como nombre del registro.
+- Un archivo existente se relee y se compara con las velas de ese mes en Binance antes de saltarlo. Si es ilegible, está truncado, vacío o difiere, pausa y conserva el archivo sin pisarlo. También protege ante una creación concurrente de la sincronización. Un mes parcial válido se guarda con sus días y se avisa cuáles faltan, sin darlo por completo.
+- Un error HTTP/red, JSON inválido o respuesta distinta de una lista de velas válida NO es un mes vacío: pausa en ese activo/mes y conserva el resto de la cola. No da por terminada la lista por un fallo.
+- Progreso visible en el hilo que recibió la orden: inicio/reanudación, activo y posición en la lista, mes consultado, velas guardadas o existentes comprobadas, cobertura y duración, fin de cada activo y resumen final. No necesita respuestas para continuar. Los avisos se esperan en orden; un fallo al publicarlos pausa el trabajo, con el avance ya guardado. Un corte justo tras enviar un aviso puede repetir ese aviso al volver.
+- Avance privado fuera del repositorio: `~/.local/share/hugo-registro/estado.json`, configurable con `HUGO_REGISTRO_ESTADO`. Guarda clase, lista ordenada, posición, próximo mes, conteos y conversación de origen. Nunca se sincroniza con GitHub. El archivo definitivo del mes y el avance se escriben con temporal, sincronización a disco y publicación sin pisar el mes existente. El avance se reemplaza por renombrado atómico. Esto reduce el riesgo del corte, no certifica la durabilidad del hardware.
+- Al arrancar Hugo, un trabajo que quedó en curso se reanuda automáticamente en su hilo. Un mes guardado antes del corte pero aún no marcado en el avance se comprueba contra Binance y no se sobrescribe. Un temporal sin definitivo no cuenta como mes guardado. Si el archivo de avance no se puede leer, lo conserva y avisa; no inventa otra cola.
+- Los errores dejan el recorrido pausado, sin reintentos automáticos indefinidos. Tras corregir la causa, `registra continuar` (usuario o asistente autorizado) lo retoma en el hilo original. Repetir exactamente su clase/lista también lo retoma; otra lista no desplaza un trabajo pendiente. No se aceptan dos recorridos simultáneos, ni durante la validación.
+- Los conteos separan meses nuevos, existentes comprobados y activos terminados. Un archivo que quedó guardado justo antes de un corte puede contarse como existente al reanudar. El resumen final confirma el recorrido local, NO la subida: sigue rigiendo la sincronización habitual de registros.
+- El registro solo consulta datos públicos, no opera activos ni mueve fondos. Futuros no están soportados.
 
 ## Sincronización de registros
 - Es automática por decisión del usuario (15-nov-2026), sin 👍 en cada pasada: Hugo sincroniza solo, poco después de arrancar y luego cada `HUGO_SYNC_MINUTOS` minutos (60 por defecto; 0 la apaga). La orden `sincroniza registros` (la pide el usuario o el asistente) fuerza una pasada ya. Copia el registro de velas entre la Debian y el repositorio público de `HUGO_GITHUB`, en los dos sentidos. Los registros son públicos por decisión del usuario.
@@ -72,9 +76,10 @@ Borrar, guardar archivos recibidos, enviar y actualizar se preguntan en el hilo 
 - `app/`: `app.mjs`, `modulos/`, `config.env` (valores no secretos), `package.json`, `node_modules/`.
 - `keys/`: `.bot-token` y `.app-token` (al arrancar), `.user-token` (solo para borrar hilos) y `.github-key` (solo para subir registros a GitHub).
 - `manual/`: este manual y el historial.
+- Avance privado del registro: `~/.local/share/hugo-registro/estado.json`, fuera del repositorio y de la sincronización.
 - Servicio: `~/.config/systemd/user/hugo.service` (arranca al encender la Debian con `linger`; aún no se ha comprobado reiniciando la Debian).
 - Respaldos y estado de actualizaciones: `~/.local/share/hugo-respaldo/`, fuera de `hugo/`.
-- Configuración (`app/config.env`, plantilla en `app/config.ejemplo.env`): `HUGO_AVISO_CANAL`, `HUGO_USUARIO`, `HUGO_DELEGADO`, `HUGO_GITHUB`; `HUGO_RECIBIDOS` solo para recibir en otra carpeta que Descargas. Tras cambiarla, reiniciar.
+- Configuración (`app/config.env`, plantilla en `app/config.ejemplo.env`): `HUGO_AVISO_CANAL`, `HUGO_USUARIO`, `HUGO_DELEGADO`, `HUGO_GITHUB`; `HUGO_RECIBIDOS` solo para recibir en otra carpeta que Descargas; `HUGO_REGISTRO_ESTADO` permite cambiar la ruta local del avance. Tras cambiarla, reiniciar.
 
 ## Límites y alcance real
 - Enviar archivos: no sirve `~/Documents/hugo/keys/`, `~/.ssh`, `~/.gnupg` ni archivos cuyo nombre indica clave, token o contraseña. El filtro mira la ruta y el nombre, no el contenido: un archivo con otro nombre se enviaría si el usuario confirma.

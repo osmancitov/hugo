@@ -1,90 +1,113 @@
-// Ejecutar: node --test pruebas/registra-directo.mjs. Solo datos simulados y directorios temporales.
+// node --test pruebas/registra-directo.mjs. Sin red ni cuentas: Binance y Slack simulados.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
-const event = { channel: 'canal-prueba', ts: '1', thread_ts: 'hilo-prueba' };
-const vela = [Date.UTC(2026, 9, 1), '1', '2', '1', '2', '100', Date.UTC(2026, 9, 2)-1, '100', 5, '1', '2', '0'];
-async function escenario(fn, opts = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-prueba-'));
-  const original = globalThis.fetch;
-  const msgs = [], urls = [];
-  let handler, llamadasConfirmar = 0;
-  globalThis.fetch = async (url) => {
-    urls.push(url);
-    if (opts.fetch) await opts.fetch(url);
-    let data;
-    if (url.includes('exchangeInfo')) {
-      const symbol = new URL(url).searchParams.get('symbol');
-      data = opts.invalido ? { code: -1121 } : { symbols: [{ symbol, status: 'TRADING', quoteAsset: 'USDT', baseAsset: symbol.slice(0,-4) }] };
-    } else if (url.includes('get-products')) {
-      data = { data: [ {s:'NVDABUSDT', tags: opts.sinEtiqueta ? [] : ['bStocks'], an: 'NVIDIA (bStocks)'}, {s:'BTCUSDT', tags:[], an:'Bitcoin'}, ...Array.from({length:100}, (_,i)=>({s:`PRUEBA${i}`})) ] };
-    } else {
-      if (opts.errorVelas) throw new Error('fallo simulado');
-      data = opts.vacio ? [] : [vela];
-    }
-    return { status: 200, text: async () => JSON.stringify(data) };
-  };
-  const modules = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-modulos-'));
-  for (const f of ['velas.mjs','activos.mjs']) fs.copyFileSync(new URL('../app/modulos/'+f,import.meta.url),path.join(modules,f));
-  const { registrar } = await import('file://'+path.join(modules,'velas.mjs'));
-  const ctx = {
-    app: { client: { chat: { postMessage: async (m) => { msgs.push(m); return {ts:'2'}; } } } },
-    botToken: 'simulado', conf: { HUGO_VELAS_DIR: root },
-    confirmar: async () => { llamadasConfirmar++; throw new Error('No debe pedir confirmacion'); },
-    comando: (p, f, o) => { handler = f; assert.equal(o.delegable, true); },
-  };
-  registrar(ctx);
-  const run = (text) => handler(event, text);
-  try { await fn({root,msgs,urls,run,ctx}); assert.equal(llamadasConfirmar,0); }
-  finally { globalThis.fetch = original; fs.rmSync(root,{recursive:true,force:true}); fs.rmSync(modules,{recursive:true,force:true}); }
+import { spawnSync } from 'node:child_process';
+import { crearMotor, leerEstado, guardarEstado, CERO } from '../app/modulos/registro-motor.mjs';
+const event={channel:'canal-prueba',ts:'raiz-prueba'};
+const octubre=Date.UTC(2026,9,1), septiembre=Date.UTC(2026,8,1);
+const vela=t=>[t,'1','2','1','2','10',t+86400000-1,'10',3,'1','2','0'];
+function setup(opts={}) {
+ const root=opts.root||fs.mkdtempSync(path.join(os.tmpdir(),'hugo-registra-'));
+ const msgs=[],consultas=[],resoluciones=[],activas=new Map();
+ const base=path.join(root,'velas'),estado=path.join(root,'privado/estado.json');
+ const m=crearMotor({base:()=>base,archivoEstado:()=>estado,activas,
+  resolver:async(clase,codigo)=>{resoluciones.push([clase,codigo]);return opts.resolver?opts.resolver(clase,codigo):{ok:true,simbolo:codigo+'USDT',nombre:codigo};},
+  fetchImpl:async u=>{const q=new URL(u).searchParams;const t=Number(q.get('startTime')),codigo=q.get('symbol');consultas.push([codigo,t]);const d=opts.datos?await opts.datos(codigo,t):t===octubre?[vela(t)]:[];return {ok:true,status:200,text:async()=>typeof d==='string'?d:JSON.stringify(d)};},
+  avisar:async(j,t)=>{msgs.push({j:structuredClone(j),text:t});if(opts.aviso)await opts.aviso(j,t);},
+ });
+ return {root,base,estado,msgs,consultas,resoluciones,activas,m,run:(codigos=['AA'],clase='stock')=>m.iniciar({codigos,clase,event}),close:()=>fs.rmSync(root,{recursive:true,force:true})};
 }
-
-test('stock directo: un mes, cuerpo crudo, nombre y destino, sin confirmacion', async () => escenario(async ({root,msgs,run}) => {
-  await run('registra stock NVDA');
-  assert.equal(fs.readFileSync(path.join(root,'stock/NVDA/2610_NVDA'),'utf8'),JSON.stringify([vela]));
-  assert.equal(msgs.length,2); assert.match(msgs[0].text,/NVIDIA/); assert.match(msgs[0].text,/corte UTC/); assert.match(msgs[0].text,/2610_NVDA/);
-  assert.match(msgs[1].text,/faltan los/);
+async function caso(fn,opts){const s=setup(opts);try{await fn(s);}finally{s.close();}}
+test('uno o varios activos: recorre meses y cola en orden, sin confirmacion',async()=>caso(async s=>{
+ await s.run(['AA','BB']);assert.deepEqual(s.consultas,[['AAUSDT',octubre],['AAUSDT',septiembre],['BBUSDT',octubre],['BBUSDT',septiembre]]);
+ const j=leerEstado(s.estado);assert.equal(j.estado,'terminado');assert.deepEqual(j.conteo,{guardados:2,existentes:0,activos:2});assert.equal(j.notificado,true);assert.equal(s.activas.size,0);
+ assert.equal(fs.readFileSync(path.join(s.base,'stock/AA/2610_AA'),'utf8'),JSON.stringify([vela(octubre)]));
+ assert.ok(s.msgs.some(m=>m.text.includes('Activo 2/2')));assert.ok(s.msgs.some(m=>m.text.includes('Mes parcial')));assert.ok(s.msgs.at(-1).text.includes('Registro terminado'));
 }));
-test('cripto directo conserva carpeta propia', async () => escenario(async ({root,run}) => {
-  await run('registra cripto BTC'); assert.ok(fs.existsSync(path.join(root,'cripto/BTC/2610_BTC')));
+test('misma regla para cripto, conserva su carpeta',async()=>caso(async s=>{await s.run(['BTC'],'cripto');assert.ok(fs.existsSync(path.join(s.base,'cripto/BTC/2610_BTC')));}));
+test('existente igual se comprueba y no se reescribe',async()=>caso(async s=>{
+ const p=path.join(s.base,'stock/AA/2610_AA');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,JSON.stringify([vela(octubre)]));const ino=fs.statSync(p).ino;
+ await s.run();assert.equal(fs.statSync(p).ino,ino);assert.equal(leerEstado(s.estado).conteo.existentes,1);
 }));
-test('clase faltante pregunta datos, no consulta ni registra', async () => escenario(async ({urls,msgs,run}) => {
-  await run('registra NVDA');assert.equal(urls.length,0);assert.match(msgs[0].text,/clase/);
+test('archivo truncado pausa sin pisar ni avanzar activo',async()=>caso(async s=>{
+ const p=path.join(s.base,'stock/AA/2610_AA');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,'[[');
+ await s.run(['AA','BB']);assert.equal(fs.readFileSync(p,'utf8'),'[[');assert.equal(leerEstado(s.estado).estado,'pausado');assert.equal(s.consultas.length,1);assert.equal(leerEstado(s.estado).indice,0);
 }));
-test('activo inexistente no guarda', async () => escenario(async ({root,msgs,run}) => {
-  await run('registra stock NVDA');assert.deepEqual(fs.readdirSync(root),[]);assert.match(msgs[0].text,/No guard/);
-},{invalido:true}));
-test('stock sin etiqueta se rechaza', async () => escenario(async ({root,msgs,run}) => {
-  await run('registra stock NVDA');assert.deepEqual(fs.readdirSync(root),[]);assert.match(msgs[0].text,/no lo etiqueta/);
-},{sinEtiqueta:true}));
-test('clase incorrecta de bStock se rechaza como cripto', async () => escenario(async ({root,msgs,run}) => {
-  await run('registra cripto NVDAB');assert.deepEqual(fs.readdirSync(root),[]);assert.match(msgs[0].text,/no un cripto/);
+test('JSON valido pero diferente tambien es conflicto',async()=>caso(async s=>{
+ const p=path.join(s.base,'stock/AA/2610_AA');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,'[]');await s.run();assert.equal(leerEstado(s.estado).estado,'pausado');assert.equal(fs.readFileSync(p,'utf8'),'[]');
 }));
-test('mes existente no se pisa, siguiente orden toma septiembre', async () => escenario(async ({root,urls,run}) => {
-  await run('registra stock NVDA');const p=path.join(root,'stock/NVDA/2610_NVDA');const previo=fs.readFileSync(p,'utf8');
-  await run('registra stock NVDA');assert.equal(fs.readFileSync(p,'utf8'),previo);assert.ok(fs.existsSync(path.join(root,'stock/NVDA/2609_NVDA')));
-  assert.match(urls.filter(u=>u.includes('/klines'))[1],/startTime=1788220800000/);
-}));
-test('mes vacio no guarda ni recorre mas meses', async () => escenario(async ({root,urls,msgs,run}) => {
-  await run('registra stock NVDA');assert.deepEqual(fs.readdirSync(root),[]);assert.equal(urls.filter(u=>u.includes('/klines')).length,1);assert.match(msgs.at(-1).text,/Me detengo/);
-},{vacio:true}));
-test('error de velas libera bloqueo para reintento', async () => escenario(async ({msgs,run}) => {
-  await run('registra stock NVDA');await run('registra stock NVDA');assert.equal(msgs.filter(m=>m.text.includes('se detuvo')).length,2);
-},{errorVelas:true}));
-test('dos ordenes concurrentes: bloqueo desde validacion, un mes', async () => {
-  let release; const gate = new Promise(r=>release=r); let first=true;
-  await escenario(async ({root,msgs,run}) => {
-    const a=run('registra stock NVDA');await new Promise(r=>setImmediate(r));await run('registra stock NVDA');release();await a;
-    assert.ok(msgs.some(m=>m.text.includes('Ya estoy')));assert.deepEqual(fs.readdirSync(path.join(root,'stock/NVDA')),['2610_NVDA']);
-  },{fetch: async u=>{if(first && u.includes('exchangeInfo')) {first=false;await gate;} }});
+test('error de red no equivale a mes vacio ni pasa al siguiente activo; continuar reintenta',async()=>{
+ let falla=true;await caso(async s=>{await s.run(['AA','BB']);let j=leerEstado(s.estado);assert.equal(j.estado,'pausado');assert.equal(j.indice,0);assert.equal(j.mes,octubre);
+ falla=false;await s.m.iniciar({continuar:true,event});j=leerEstado(s.estado);assert.equal(j.estado,'terminado');assert.equal(j.conteo.activos,2);
+ },{datos:(_,t)=>{if(falla)throw Error('red simulada');return t===octubre?[vela(t)]:[];}});
 });
-test('seguridad del despachador y confirmaciones ajenas sin cambios funcionales', () => {
-  const app=fs.readFileSync(new URL('../app/app.mjs',import.meta.url),'utf8');
-  assert.match(app,/event.user !== USUARIO && !delegado/);
-  for(const f of ['github.mjs','actualizar.mjs','archivos.mjs','borrar-hilo.mjs']) {
-    assert.match(fs.readFileSync(new URL('../app/modulos/'+f,import.meta.url),'utf8'),/ctx.confirmar/);
-  }
+test('respuesta objeto, no JSON o velas invalidas se pausa',async()=>{
+ for(const datos of [{code:-1000,msg:'Error'},'<html>error</html>',[[octubre]], [vela(octubre),vela(octubre)], [vela(septiembre)]]) {
+  await caso(async s=>{await s.run();assert.equal(leerEstado(s.estado).estado,'pausado');assert.equal(fs.existsSync(s.base),false);},{datos:()=>datos});
+ }
+});
+test('HTTP fallido con cuerpo [] no termina el activo',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-http-'));const archivo=path.join(root,'estado');const m=crearMotor({base:()=>path.join(root,'velas'),archivoEstado:()=>archivo,resolver:async()=>({ok:true,simbolo:'AA'}),avisar:async()=>{},fetchImpl:async()=>({ok:false,status:429,text:async()=>'[]'})});
+ try{await m.iniciar({clase:'stock',codigos:['AA'],event});assert.equal(leerEstado(archivo).estado,'pausado');assert.equal(leerEstado(archivo).indice,0);}finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+test('una orden distinta no sustituye cola pausada',async()=>caso(async s=>{await s.run(['AA','BB']);const antes=fs.readFileSync(s.estado,'utf8');await s.run(['CC']);assert.equal(fs.readFileSync(s.estado,'utf8'),antes);assert.ok(s.msgs.at(-1).text.includes('No lo sustituyo'));},{resolver:()=>({ok:false,motivo:'no existe'})}));
+test('inicio automatico no reintenta un error pausado',async()=>caso(async s=>{await s.run();const n=s.resoluciones.length;const nuevo=setup({root:s.root});await nuevo.m.iniciar({arranque:true});assert.equal(nuevo.resoluciones.length,0);assert.equal(n,1);},{resolver:()=>({ok:false,motivo:'no existe'})}));
+test('concurrencia bloqueada incluso mientras valida',async()=>{
+ let soltar;const espera=new Promise(r=>soltar=r);await caso(async s=>{const a=s.run();await new Promise(r=>setImmediate(r));await s.run(['BB']);soltar();await a;assert.deepEqual(s.resoluciones.map(x=>x[1]),['AA']);assert.ok(s.msgs.some(x=>x.text.includes('Ya estoy')));},{resolver:async()=>{await espera;return {ok:true,simbolo:'AAUSDT'};}});
+});
+test('avance corrupto se conserva, no se lanza otro trabajo',async()=>caso(async s=>{fs.mkdirSync(path.dirname(s.estado),{recursive:true});fs.writeFileSync(s.estado,'{');await s.run();assert.equal(fs.readFileSync(s.estado,'utf8'),'{');assert.equal(s.consultas.length,0);}));
+test('fichero temporal sin definitivo no cuenta como mes guardado',async()=>caso(async s=>{const p=path.join(s.base,'stock/AA/2610_AA.tmp');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,'incompleto');await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(fs.existsSync(p),false);}));
+test('reanudacion tras SIGKILL antes/despues de enlace y avance, sin perder ni pisar',async()=>{
+ const helper=new URL('./registro-corte.mjs',import.meta.url);
+ for(const punto of ['antes-guardar','despues-enlace','despues-avance','entre-activos','antes-aviso-final']) {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-corte-'));
+  try{
+   const a=spawnSync(process.execPath,[helper.pathname,root,punto],{encoding:'utf8'});assert.equal(a.signal,'SIGKILL',a.stderr);
+   const b=spawnSync(process.execPath,[helper.pathname,root,'reanudar'],{encoding:'utf8'});assert.equal(b.status,0,b.stderr);
+   const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.equal(j.conteo.activos,2);
+   assert.equal(j.conteo.guardados+j.conteo.existentes,2);
+   assert.equal(fs.readFileSync(path.join(root,'velas/stock/AA/2610_AA'),'utf8'),JSON.stringify([vela(octubre)]));
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+ }
+});
+test('integracion del comando: lista, datos faltantes, duplicados, orden directa y control de acceso intacto',async()=>{
+ const {registrar}=await import('../app/modulos/velas.mjs');let handler,patron;const msgs=[];const init=[];
+ registrar({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{handler=f;patron=p;assert.equal(o.delegable,true);},alIniciar:f=>init.push(f),activas:new Map()});
+ assert.ok(patron.test('registra stock AA BB'));
+ for(const x of ['registra AA','registra stock','registra stock AA AA'])await handler(event,x);
+ assert.equal(msgs.length,3);assert.ok(msgs.every(m=>!m.includes('👍')));
+ const app=fs.readFileSync(new URL('../app/app.mjs',import.meta.url),'utf8');assert.match(app,/event.user !== USUARIO && !delegado/);
+ for(const f of ['github.mjs','actualizar.mjs','archivos.mjs','borrar-hilo.mjs'])assert.match(fs.readFileSync(new URL('../app/modulos/'+f,import.meta.url),'utf8'),/ctx.confirmar/);
+});
+
+test('el avance se guarda antes de la primera consulta y el progreso conserva hilo de origen',async()=>{
+ let s; s=setup({aviso:async(j,t)=>{const a=leerEstado(s.estado);assert.ok(a);assert.equal(j.channel,event.channel);assert.equal(j.thread_ts,event.ts);}});
+ try{await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');}finally{s.close();}
+});
+test('tope de meses pausa, no declara completo y no consulta el mes fuera del limite',async()=>caso(async s=>{
+ const j={version:1,estado:'en-curso',clase:'stock',codigos:['AA'],indice:0,mes:Date.UTC(2006,9,1),channel:'prueba',thread_ts:'prueba',conteo:{guardados:0,existentes:0,activos:0}};
+ guardarEstado(s.estado,j);await s.m.iniciar({continuar:true,event});assert.equal(s.consultas.length,0);assert.equal(leerEstado(s.estado).estado,'pausado');assert.equal(leerEstado(s.estado).conteo.activos,0);
+}));
+test('fallo de aviso pausa tras guardar avance sin repetir el mes al continuar',async()=>{
+ let falla=true;await caso(async s=>{await s.run();assert.equal(leerEstado(s.estado).mes,septiembre);assert.equal(leerEstado(s.estado).estado,'pausado');
+ falla=false;await s.m.iniciar({continuar:true,event});assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(s.consultas.filter(x=>x[1]===octubre).length,1);
+ },{aviso:async(_,t)=>{if(falla&&t.includes('velas guardadas'))throw Error('Slack simulado');}});
+});
+test('integracion real velas+activos+motor: lista separada por comas y progreso sin pulgares',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-comando-'));const original=globalThis.fetch;let handler;const msgs=[];
+ globalThis.fetch=async u=>{let j;const url=new URL(u);
+  if(u.includes('exchangeInfo')) {const symbol=url.searchParams.get('symbol');j={symbols:[{symbol,status:'TRADING',quoteAsset:'USDT',baseAsset:symbol.slice(0,-4)}]};}
+  else if(u.includes('get-products'))j={data:[{s:'NVDABUSDT',tags:['bStocks'],an:'NVIDIA (bStocks)'},{s:'SPCXBUSDT',tags:['bStocks'],an:'SpaceX (bStocks)'},...Array.from({length:100},(_,i)=>({s:'PRUEBA'+i}))]};
+  else {const t=Number(url.searchParams.get('startTime'));j=t===octubre?[vela(t)]:[];}
+  return{ok:true,status:200,text:async()=>JSON.stringify(j)};
+ };
+ try{
+  const {registrar}=await import('../app/modulos/velas.mjs');
+  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  await handler(event,'registra stock nvda, spcx');
+  const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.deepEqual(j.codigos,['NVDA','SPCX']);assert.equal(j.conteo.guardados,2);assert.ok(msgs.some(m=>m.text.includes('NVIDIA')));assert.ok(msgs.some(m=>m.text.includes('SpaceX')));assert.ok(msgs.every(m=>m.channel===event.channel&&m.thread_ts===event.ts));
+ }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
 });
