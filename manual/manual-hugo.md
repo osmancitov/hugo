@@ -6,7 +6,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 Bot de Slack propio (Socket Mode, Node.js). Corre en la Debian como servicio de usuario `hugo.service` y es el puente entre Slack y esa máquina: recibe y envía archivos, borra hilos y se actualiza. Existe para quitarle trabajo al usuario: el asistente de IA y Hugo hacen el trabajo y el usuario decide con 👍.
 
 ## Comandos de Slack
-Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza` y `registra`, que también puede pedir el asistente (`HUGO_DELEGADO`).
+Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza`, `registra` y `sincroniza registros`, que también puede pedir el asistente (`HUGO_DELEGADO`).
 
 | Orden | Qué hace |
 | --- | --- |
@@ -17,6 +17,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
+| `sincroniza registros` | Pregunta y copia los registros de velas entre la Debian y GitHub, en ambos sentidos y sin pisar contenido distinto (ver «Sincronización de registros»). También `sincronizar`. |
 | `estado` | Dice qué hace, qué 👍 espera o que está libre, y cuánto lleva activo. |
 | `restart` o `reiniciar` | Reinicia a Hugo. No lo hace si hay una actualización en curso o está ocupado. |
 | `ayuda` o `comandos` | Muestra la lista de órdenes. |
@@ -34,7 +35,7 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Instalar un `.sh` a mano (solo si Hugo no puede recibirlo): `bash ~/Downloads/actualizar-hugo.sh`
 
 ## Actualizar
-- Fuente: el repositorio público de `HUGO_GITHUB` (`propietario/repositorio`, rama `main`). Hugo solo descarga; nunca sube.
+- Fuente: el repositorio público de `HUGO_GITHUB` (`propietario/repositorio`, rama `main`). Para el código, Hugo solo descarga; nunca sube código (los registros de velas sí se sincronizan: ver «Sincronización de registros»).
 - `@Hugo actualiza` descarga el último commit a una carpeta temporal, comprueba que los archivos son normales y pasan `node --check`, y compara su contenido con lo instalado. Si no hay diferencias dice que ya está al día. Si las hay, pregunta con el commit, su título y los archivos que cambian.
 - Con 👍: copia lo anterior a `~/.local/share/hugo-respaldo/<fecha>`, instala, reinicia y avisa en el hilo: «Hugo actualizado (commit …)» o el fallo con las últimas líneas del registro. Si algo falla o Hugo no queda activo, vuelve a lo anterior.
 - Solo toca `app/app.mjs`, `app/modulos/` y `manual/manual-hugo.md`. No toca `config.env`, `keys/`, `historial-hugo.md`, `package.json` ni `node_modules/`.
@@ -52,9 +53,17 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Visibilidad: avisa al empezar la consulta y al terminar el mes: velas guardadas, los días que faltan si los hay (sin dar el mes por completo) y lo que tardaron la consulta y el guardado por separado. Si algo falla, dice en qué mes y paso se detuvo; lo ya registrado no se toca.
 - Meses parciales (por ejemplo, el primer mes del activo) se guardan con sus días y se reportan como incompletos.
 
+## Sincronización de registros
+- Orden: `sincroniza registros` (la pide el usuario o el asistente; el 👍 que la ejecuta es siempre del usuario). Copia el registro de velas entre la Debian y el repositorio público de `HUGO_GITHUB`, en los dos sentidos. Los registros son públicos por decisión del usuario.
+- Antes de cambiar nada muestra el plan: qué meses sube, cuáles baja, cuántos ya son iguales y qué conflictos hay. Solo actúa con el 👍.
+- Lo que solo está en la Debian se sube en un solo commit (el título lista los meses; autor y committer con el correo del usuario). Lo que solo está en GitHub se baja sin pisar, con el mismo criterio que el registro.
+- La comparación es por contenido, no por nombre ni por fecha: el mismo mes con contenido distinto en los dos lados es un conflicto; Hugo lo reporta y no lo toca en ningún lado. Si el repo cambia entre el plan y la ejecución, lo nuevo con contenido distinto se omite y se reporta; nada se pisa.
+- Solo toca `registros/velas-24h/<ACTIVO>/yymm_ACTIVO`, con la misma estructura en los dos lados. Ninguna otra carpeta, en ningún sentido. Archivos vacíos o de más de 5 MB no entran.
+- Credencial: `keys/.github-key` (token de GitHub). Hugo lo lee solo aquí, nunca lo imprime ni lo envía, y antes de ofrecer subida comprueba contra la API que tiene escritura en el repo. Sin el archivo o sin ese permiso, la bajada funciona igual (el repo es público) y la subida queda pendiente, avisando.
+
 ## Dónde está cada cosa (`~/Documents/hugo`)
 - `app/`: `app.mjs`, `modulos/`, `config.env` (valores no secretos), `package.json`, `node_modules/`.
-- `keys/`: `.bot-token` y `.app-token` (al arrancar) y `.user-token` (solo para borrar hilos).
+- `keys/`: `.bot-token` y `.app-token` (al arrancar), `.user-token` (solo para borrar hilos) y `.github-key` (solo para subir registros a GitHub).
 - `manual/`: este manual y el historial.
 - Servicio: `~/.config/systemd/user/hugo.service` (arranca al encender la Debian con `linger`; aún no se ha comprobado reiniciando la Debian).
 - Respaldos y estado de actualizaciones: `~/.local/share/hugo-respaldo/`, fuera de `hugo/`.

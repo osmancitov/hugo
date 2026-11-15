@@ -15,6 +15,7 @@ import * as estado from './modulos/estado.mjs';
 import * as ayuda from './modulos/ayuda.mjs';
 import * as reiniciar from './modulos/reiniciar.mjs';
 import * as velas from './modulos/velas.mjs';
+import * as sincronizarRegistros from './modulos/sincronizar-registros.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const leerClave = (f) => { try { return fs.readFileSync(path.join(dir, '..', 'keys', f), 'utf8').trim(); } catch { return ''; } };
@@ -29,7 +30,7 @@ try {
 } catch {}
 const CANAL = process.env.HUGO_AVISO_CANAL || conf.HUGO_AVISO_CANAL;
 const USUARIO = process.env.HUGO_USUARIO || conf.HUGO_USUARIO || ''; // unica persona que puede dar ordenes (id de Slack)
-const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente: solo puede pedir los comandos marcados delegables (actualizar); la confirmacion sigue siendo de USUARIO
+const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente: solo puede pedir los comandos marcados delegables; la confirmacion sigue siendo de USUARIO (salvo el pulgar del asistente en registra)
 const botToken = leerClave('.bot-token');
 const appToken = leerClave('.app-token');
 if (!botToken || !appToken || !CANAL) {
@@ -58,7 +59,7 @@ const ctx = {
 };
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, saludo, velas]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, saludo, velas, sincronizarRegistros]) m.registrar(ctx);
 
 app.event('app_mention', async ({ event }) => {
   const texto = (event.text || '').replace(/<@[A-Z0-9]+>/g, ' ').trim();
@@ -67,7 +68,7 @@ app.event('app_mention', async ({ event }) => {
     const c = comandos.find((x) => (typeof x.patron === 'function' ? x.patron(texto, event) : x.patron.test(texto)));
     if (c) {
       // Ordenes (borrar, guardar, servir, actualizar): solo la persona definida en HUGO_USUARIO. Sin definir, nadie.
-      // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; quien confirma sigue siendo HUGO_USUARIO.
+      // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; quien confirma sigue siendo HUGO_USUARIO (en registra tambien vale su pulgar).
       const delegado = !!USUARIO && !!DELEGADO && event.user === DELEGADO && c.delegable;
       if (!USUARIO || (event.user !== USUARIO && !delegado)) { console.error(`Orden ignorada: usuario ${event.user || '?'} no autorizado`); return; }
       const idAct = `${Date.now()}-${Math.random()}`;
