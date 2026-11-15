@@ -6,6 +6,7 @@ const TEXTO = [
   '\u2022 `envia RUTA`: pide confirmaci\u00f3n y sube ese archivo al hilo.',
   '\u2022 `actualiza` con un `.sh` adjunto: pide confirmaci\u00f3n, lo instala y reinicia a Hugo.',
   '\u2022 `actualiza` sin adjunto: baja la \u00faltima versi\u00f3n de GitHub, pide confirmaci\u00f3n, la instala y reinicia a Hugo.',
+  '\u2022 `registra ACTIVO`: pide confirmaci\u00f3n y registra un mes de sus velas diarias (registros/velas-24h/).',
   '\u2022 `estado`: dice si est\u00e1 haciendo algo o esperando instrucciones.',
   '\u2022 `restart` o `reiniciar`: reinicia a Hugo.',
   '\u2022 `ayuda` o `comandos`: muestra esta lista.',

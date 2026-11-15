@@ -13,6 +13,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); la ún
 | `borrar hilo` | Dentro de un hilo. Pregunta y borra lo que Slack permita. |
 | archivos adjuntos | Pregunta y los guarda en Descargas, sin pisar uno existente. |
 | `envia RUTA` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
+| `registra ACTIVO` | Pregunta y registra un mes de las velas diarias del activo (ver «Registro de velas»). También `registrar`. |
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
@@ -41,6 +42,16 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Al arrancar, unos segundos después del saludo (la fecha), Hugo comprueba GitHub en segundo plano y avisa en el canal solo si hay cambios. Al día: silencio. Sin conexión: 3 intentos cortos, un aviso único («sigo con la versión instalada, sin dar por comprobada la actualización») y reintentos a los 2, 10 y 60 minutos. Comprobar nunca instala ni reinicia, así que no puede causar un bucle.
 - Al iniciar publica la fecha y hora del arranque (UTC-4, `Sat Nov 14 - 10:20 PM`) en el canal `HUGO_AVISO_CANAL`.
 
+## Registro de velas
+- Orden: `registra ACTIVO` (solo el usuario; pide el 👍 de siempre). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
+- Fuente: la API de Binance, velas `1d` con el corte predeterminado UTC (de medianoche a medianoche UTC).
+- Correspondencia: el código que escribes es el nombre visible del registro (comandos, reportes, carpetas, archivos, e ilustraciones, gráficos y rótulos cuando los haya) y su instrumento de Binance está en una tabla escrita y verificada del módulo `velas` (hoy: `SPCX` → SPCXBUSDT, SpaceX bStocks). No es una regla de memoria ni de sufijos: un código sin entrada en esa tabla falla con aviso claro y no se guarda nada; agregar un activo es un cambio del código (ver «Cómo modificar Hugo»). Antes de consultar, Hugo valida contra Binance que el instrumento existe y está activo.
+- Se guarda la vela completa, tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos. El cierre es el precio de referencia del registro.
+- Destino: `~/Documents/hugo/registros/velas-24h/ACTIVO/yymm_ACTIVO` (por ejemplo `2610_SPCX` para octubre de 2026). Una carpeta por código de activo, sin el par, y un archivo por mes. `HUGO_VELAS_DIR` en `config.env` cambia la carpeta base.
+- Un mes ya registrado no se pisa ni se repite: la siguiente orden toma el mes anterior pendiente. Si Binance no tiene velas de ese mes, no guarda nada y lo dice.
+- Visibilidad: avisa al empezar la consulta y al terminar el mes: velas guardadas, los días que faltan si los hay (sin dar el mes por completo) y lo que tardaron la consulta y el guardado por separado. Si algo falla, dice en qué mes y paso se detuvo; lo ya registrado no se toca.
+- Meses parciales (por ejemplo, el primer mes del activo) se guardan con sus días y se reportan como incompletos.
+
 ## Dónde está cada cosa (`~/Documents/hugo`)
 - `app/`: `app.mjs`, `modulos/`, `config.env` (valores no secretos), `package.json`, `node_modules/`.
 - `keys/`: `.bot-token` y `.app-token` (al arrancar) y `.user-token` (solo para borrar hilos).
@@ -55,6 +66,7 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Descargas de Slack: solo desde `files.slack.com`.
 - Borrar hilos: los mensajes de Hugo con su token; los demás con `keys/.user-token`, solo los que ese usuario puede borrar. Si alguno no se puede borrar, el primer mensaje se conserva y lo dice. Hugo debe estar en el canal y tener `channels:history` (hoy solo canales públicos); si no puede leer el hilo, lo dice y no borra.
 - `estado` informa solo de lo que Hugo registra (trabajo en curso, confirmaciones, actualización). No revisa la Debian.
+- El registro de velas solo lee de la API pública de Binance; no usa claves ni mueve fondos.
 - Slack: eventos `app_mention` y `reaction_added`. Permisos del bot: app_mentions:read, channels:history, channels:join, chat:write, files:read, files:write, reactions:read. Permiso de usuario: chat:write.
 
 ## Cómo modificar Hugo

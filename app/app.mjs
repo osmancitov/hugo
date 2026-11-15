@@ -14,6 +14,7 @@ import * as github from './modulos/github.mjs';
 import * as estado from './modulos/estado.mjs';
 import * as ayuda from './modulos/ayuda.mjs';
 import * as reiniciar from './modulos/reiniciar.mjs';
+import * as velas from './modulos/velas.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const leerClave = (f) => { try { return fs.readFileSync(path.join(dir, '..', 'keys', f), 'utf8').trim(); } catch { return ''; } };
@@ -57,7 +58,7 @@ const ctx = {
 };
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, saludo]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, saludo, velas]) m.registrar(ctx);
 
 app.event('app_mention', async ({ event }) => {
   const texto = (event.text || '').replace(/<@[A-Z0-9]+>/g, ' ').trim();
