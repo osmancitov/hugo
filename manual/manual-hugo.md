@@ -6,7 +6,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 Bot de Slack propio (Socket Mode, Node.js). Corre en la Debian como servicio de usuario `hugo.service` y es el puente entre Slack y esa máquina: recibe y envía archivos, borra hilos y se actualiza. Existe para quitarle trabajo al usuario: el asistente de IA y Hugo hacen el trabajo y el usuario decide con 👍.
 
 ## Comandos de Slack
-Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); la única excepción es `actualiza`, que también puede pedir el asistente (`HUGO_DELEGADO`).
+Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza` y `registra`, que también puede pedir el asistente (`HUGO_DELEGADO`).
 
 | Orden | Qué hace |
 | --- | --- |
@@ -43,7 +43,7 @@ Todo lo que cambia algo (borrar, guardar, enviar, actualizar) se pregunta en el 
 - Al iniciar publica la fecha y hora del arranque (UTC-4, `Sat Nov 14 - 10:20 PM`) en el canal `HUGO_AVISO_CANAL`.
 
 ## Registro de velas
-- Orden: `registra ACTIVO` (solo el usuario; pide el 👍 de siempre). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
+- Orden: `registra ACTIVO` (la pide el usuario o el asistente; el 👍 que la ejecuta es siempre del usuario). Registra UN mes por orden: el más reciente pendiente antes de la fecha cero (1 de noviembre de 2026, 00:00 UTC), yendo hacia atrás mes por mes.
 - Fuente: la API de Binance, velas `1d` con el corte predeterminado UTC (de medianoche a medianoche UTC).
 - Correspondencia: el código que escribes es el nombre visible del registro (comandos, reportes, carpetas y archivos) y su instrumento de Binance está en una tabla escrita y verificada del módulo `velas` (hoy: `SPCX` → SPCXBUSDT, SpaceX bStocks). No es una regla de memoria ni de sufijos: un código sin entrada en esa tabla falla con aviso claro y no se guarda nada; agregar un activo es un cambio del código (ver «Cómo modificar Hugo»). Antes de consultar, Hugo valida contra Binance que el instrumento existe y está activo.
 - Se guarda la vela completa, tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos. El cierre es el precio de referencia del registro.

@@ -127,5 +127,5 @@ export function registrar(ctx) {
       },
       alNo: async () => { await decir(event, 'Sin respuesta: no registr\u00e9 nada.'); },
     });
-  }, { nombre: 'registrar velas' });
+  }, { nombre: 'registrar velas', delegable: true }); // delegable: la puede pedir el asistente; el 👍 que la ejecuta sigue siendo solo del usuario
 }
