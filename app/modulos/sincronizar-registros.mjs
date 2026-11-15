@@ -12,7 +12,7 @@
 // Antes de cambiar nada muestra el plan (que sube, que baja, que conflictos hay) y solo actua con
 // el pulgar del usuario. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
-// Mudanza unica de lo heredado (mudanza acotada, una sola vez): los registros de la ruta anterior
+// Mudanza unica de lo heredado (una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
 // contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
 import fs from 'node:fs';
