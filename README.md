@@ -14,4 +14,4 @@ Este repositorio es la fuente del código y del manual. La Debian descarga de aq
 Claves (`keys/`), `config.env`, `node_modules/`, copias de respaldo y cualquier dato local. Nunca se publican.
 
 ## Uso
-Las órdenes de Slack están en la sección "Comandos" del [manual](manual/manual-hugo.md). Para actualizarse desde este repositorio, en Slack: `@Hugo actualiza` (sin adjunto). Hugo muestra el commit y los archivos que cambian, y solo instala con el 👍 del usuario.
+Todo lo que hay que saber para operarlo y modificarlo está en el [manual](manual/manual-hugo.md).
