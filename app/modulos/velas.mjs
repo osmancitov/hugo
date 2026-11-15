@@ -5,10 +5,10 @@
 // Fuente: API de Binance, velas 1d con el corte predeterminado UTC. Se guarda la vela completa,
 // tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos; el cierre es
 // el precio de referencia del registro.
-// Correspondencia codigo del registro -> instrumento de Binance, escrita y verificada abajo (no
-// depende de recordarla): el codigo es el nombre visible (comandos, reportes, carpetas, archivos);
-// el instrumento solo se usa en la consulta interna. Un codigo sin entrada no se adivina: la orden
-// falla con aviso claro y agregar uno es un cambio de codigo (ver el manual).
+// Correspondencia codigo del registro -> instrumento de Binance: la resuelve el modulo comun activos
+// (catalogo de bStocks + comprobacion en vivo), sin tabla por activo aqui. El codigo es el nombre visible
+// (comandos, reportes, carpetas, archivos); el instrumento solo se usa en la consulta interna. Si no se
+// puede resolver con seguridad (inexistente, inactivo o ambiguo), la orden falla con aviso claro y no guarda nada.
 // Destino: registros/velas-24h/<ACTIVO>/yymm_ACTIVO (carpeta por codigo, un archivo por mes, dentro
 // de ~/Documents/hugo; HUGO_VELAS_DIR cambia la carpeta base).
 // Visibilidad: avisa al empezar la consulta y al terminar el mes (velas guardadas, dias que faltan
@@ -18,16 +18,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { resolverActivo, CODIGO_OK as ACTIVO_OK } from './activos.mjs';
 
 const CERO = Date.UTC(2026, 10, 1); // fecha cero acordada: 2026-11-01 00:00 UTC; el registro va hacia atras
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-const ACTIVO_OK = /^[A-Z0-9]{2,15}$/;
 const LIMITE_MESES = 240; // tope de seguridad al buscar el mes pendiente
-
-// Correspondencia verificada codigo del registro -> instrumento de Binance (status TRADING comprobado).
-// SPCX: SpaceX (bStocks Tokenized Stock); instrumento SPCXBUSDT, verificado el 15 nov 2026.
-// NVDA: NVIDIA (bStocks Tokenized Stock, NVDAB/USDT); instrumento NVDABUSDT, verificado el 15 nov 2026.
-const SIMBOLOS = { SPCX: 'SPCXBUSDT', NVDA: 'NVDABUSDT' };
 
 const nombreMes = (ms) => { const d = new Date(ms); return `${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 const yymm = (ms) => { const d = new Date(ms); return `${String(d.getUTCFullYear() % 100).padStart(2, '0')}${String(d.getUTCMonth() + 1).padStart(2, '0')}`; };
@@ -49,18 +44,6 @@ export function registrar(ctx) {
       if (!fs.existsSync(path.join(dir, `${yymm(inicio)}_${activo}`))) return inicio;
     }
     return null;
-  }
-
-  // Confirma contra Binance que el instrumento existe y esta activo (TRADING) antes de consultar velas.
-  // Un fallo de red o una respuesta ajena (p. ej. bloqueo por ubicacion) se reporta como detencion, no como "inactivo".
-  async function instrumentoActivo(simbolo) {
-    const r = await fetch(`https://api.binance.com/api/v3/exchangeInfo?symbol=${simbolo}`, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'hugo' } });
-    const cuerpo = await r.text();
-    let info;
-    try { info = JSON.parse(cuerpo); } catch { throw new Error(`la respuesta de validacion no fue JSON (HTTP ${r.status})`); }
-    if (!info || !Array.isArray(info.symbols)) throw new Error(`Binance respondio al validar: ${String((info && (info.msg || info.message)) || cuerpo.slice(0, 120))}`);
-    const s = info.symbols[0];
-    return !!(s && s.symbol === simbolo && s.status === 'TRADING');
   }
 
   // Consulta un mes de velas diarias. Devuelve { datos, cuerpo, consultaMs }; cuerpo es el texto crudo que se guarda.
@@ -90,8 +73,10 @@ export function registrar(ctx) {
     const activo = (texto.match(/^\s*registr\w*\s+([A-Za-z0-9]{2,15})\s*[.!?]*\s*$/i) || [])[1]?.toUpperCase() || '';
     if (enCurso) return decir(event, 'Ya estoy registrando velas; espera a que termine.');
     if (!ACTIVO_OK.test(activo)) return decir(event, `\u00ab${activo}\u00bb no parece un codigo de activo.`);
-    const simbolo = SIMBOLOS[activo];
-    if (!simbolo) return decir(event, `No tengo una correspondencia verificada para ${activo} y no la invento. Agregar un activo es un cambio del codigo de Hugo (manual \u00abC\u00f3mo modificar Hugo\u00bb).`);
+    let res;
+    try { res = await resolverActivo(activo); } catch (e) { return decir(event, `No pude comprobar ${activo} en Binance: ${e.message}. No guard\u00e9 nada.`); }
+    if (!res.ok) return decir(event, `${res.motivo} No guard\u00e9 nada.`);
+    const simbolo = res.simbolo;
     const dir = path.join(dirBase(), activo);
     const inicio = mesPendiente(dir, activo);
     if (inicio === null) return decir(event, `No encuentro ningun mes pendiente de ${activo} antes de la fecha cero (noviembre 2026); no hago nada.`);
@@ -102,7 +87,6 @@ export function registrar(ctx) {
       alSi: async () => {
         enCurso = true;
         try {
-          if (!(await instrumentoActivo(simbolo))) return decir(event, `Binance no tiene activo el instrumento que corresponde a ${activo}; no guard\u00e9 nada. Si cambi\u00f3 de s\u00edmbolo, la correspondencia se actualiza en el c\u00f3digo de Hugo.`);
           await decir(event, `Empiezo: consulto a Binance las velas diarias de ${activo} de ${nombreMes(inicio)}.`);
           const { datos, cuerpo, consultaMs } = await velasDelMes(simbolo, inicio);
           if (!datos.length) {
