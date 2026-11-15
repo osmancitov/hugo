@@ -26,7 +26,8 @@ const LIMITE_MESES = 240; // tope de seguridad al buscar el mes pendiente
 
 // Correspondencia verificada codigo del registro -> instrumento de Binance (status TRADING comprobado).
 // SPCX: SpaceX (bStocks Tokenized Stock); instrumento SPCXBUSDT, verificado el 15 nov 2026.
-const SIMBOLOS = { SPCX: 'SPCXBUSDT' };
+// NVDA: NVIDIA (bStocks Tokenized Stock, NVDAB/USDT); instrumento NVDABUSDT, verificado el 15 nov 2026.
+const SIMBOLOS = { SPCX: 'SPCXBUSDT', NVDA: 'NVDABUSDT' };
 
 const nombreMes = (ms) => { const d = new Date(ms); return `${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 const yymm = (ms) => { const d = new Date(ms); return `${String(d.getUTCFullYear() % 100).padStart(2, '0')}${String(d.getUTCMonth() + 1).padStart(2, '0')}`; };
