@@ -6,7 +6,7 @@
 // tal como la entrega la API (el cuerpo crudo de la respuesta), sin filtrar campos; el cierre es
 // el precio de referencia del registro.
 // Correspondencia codigo del registro -> instrumento de Binance: la resuelve el modulo comun activos
-// (catalogo de bStocks + comprobacion en vivo), sin tabla por activo aqui. El codigo es el nombre visible
+// (identidad comprobada en vivo contra Binance), sin tabla por activo aqui. El codigo es el nombre visible
 // (comandos, reportes, carpetas, archivos); el instrumento solo se usa en la consulta interna. Si no se
 // puede resolver con seguridad (inexistente, inactivo o ambiguo), la orden falla con aviso claro y no guarda nada.
 // Destino: registros/velas-24h/<ACTIVO>/yymm_ACTIVO (carpeta por codigo, un archivo por mes, dentro
@@ -83,7 +83,7 @@ export function registrar(ctx) {
     const destino = path.join(dir, `${yymm(inicio)}_${activo}`);
     await ctx.confirmar({
       que: 'registrar velas', channel: event.channel, thread_ts: hilo, user: ctx.usuario, tambien: ctx.delegado,
-      texto: `Solicitud.\n\u00bfRegistro las velas diarias de ${activo} (Binance, corte UTC) de ${nombreMes(inicio)}? Se guardan completas, tal como las entrega la API, en ${destino}.`,
+      texto: `Solicitud.\n\u00bfRegistro las velas diarias de ${activo} (${res.nombre ? `${res.nombre}, ` : ''}Binance, corte UTC) de ${nombreMes(inicio)}? Se guardan completas, tal como las entrega la API, en ${destino}.`,
       alSi: async () => {
         enCurso = true;
         try {

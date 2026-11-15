@@ -6,7 +6,7 @@ Este repositorio es la fuente del código y del manual. La Debian descarga de aq
 
 ## Contenido
 - `app/app.mjs`: arranca Hugo y conecta los módulos.
-- `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `velas`, `sincronizar-registros`; y las bibliotecas `activos` y `activos-catalogo`, que resuelven el código de un activo a su instrumento de Binance).
+- `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `velas`, `sincronizar-registros`; y la biblioteca `activos`, que resuelve el código de un activo a su instrumento de Binance).
 - `app/config.ejemplo.env`: plantilla de la configuración local (`config.env` no se versiona).
 - `manual/manual-hugo.md`: el manual, con las órdenes de Slack y las de la consola.
 
