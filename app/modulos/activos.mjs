@@ -1,18 +1,20 @@
 // Modulo activos: traduce el CODIGO VISIBLE de un activo (el de la bolsa de valores o del cripto: NVDA, SPCX, BTC)
 // al instrumento de Binance que se usa SOLO al consultar. Lo ven el usuario y los archivos: el codigo. Lo ve la
 // consulta: el par. Es una biblioteca (sin registrar): la usan los modulos que consultan Binance, sin copiar su logica.
-// No hay tabla ni lista por activo: todo se comprueba en vivo contra Binance en cada orden.
-//   Identidad del instrumento (API documentada, exchangeInfo): el par existe, esta TRADING, cotiza en USDT y su activo
-//   base es exactamente el esperado.
-//   - CODIGO+USDT con base CODIGO: es el activo mismo; se acepta sin clasificar nada.
-//   - CODIGO+B+USDT con base CODIGOB: solo vale como accion tokenizada si Binance la etiqueta bStocks en su lista publica de
-//     productos (campo "tags", y su nombre termina en "(bStocks)"). Sin etiqueta no se asume que la B signifique tokenizado.
-//   - Si el codigo resuelve a dos instrumentos (un bStock y un cripto con el mismo codigo, p. ej. STX), no se elige: se
-//     rechaza con aviso. Si falla la clasificacion (red, respuesta ajena), se detiene la orden; no se adivina.
+// La CLASE la dice la orden (registra stock X / registra cripto X): no se busca ni se adivina entre clases. No hay tabla ni
+// lista por activo: todo se comprueba en vivo contra Binance en cada orden.
+//   Identidad del instrumento (API documentada, exchangeInfo): el par existe, esta TRADING, cotiza en USDT y su activo base
+//   es exactamente el esperado.
+//   - stock: la accion tokenizada de la bolsa de valores. Par CODIGO+B+USDT (base CODIGOB); solo vale si Binance lo etiqueta
+//     bStocks en su lista publica de productos (campo "tags", y su nombre termina en "(bStocks)").
+//   - cripto: par CODIGO+USDT (base CODIGO) y que Binance NO lo etiquete bStocks (si lo etiqueta, es una accion tokenizada
+//     y se rechaza con la orden correcta: base exacta sola no basta, p. ej. NVDAB existe como par).
+//   Si falla la clasificacion (red, respuesta ajena), la orden se detiene: no se adivina.
 // Limite conocido: la lista de productos (bapi) es la API publica interna de la web de Binance, no la documentada del
-// Spot; no hay una clasificacion documentada. Si dejara de servirla, el efecto es detener los tokenizados con aviso claro
-// (los activos directos no dependen de ella).
+// Spot ni estable; no hay una clasificacion documentada. Si dejara de servirla, las ordenes se detienen con aviso claro.
+// Las clases tambien definen las carpetas del registro (velas-24h/<clase>/<CODIGO>/): una sola fuente para velas y sync.
 export const CODIGO_OK = /^[A-Z0-9]{2,15}$/;
+export const CLASES = ['stock', 'cripto'];
 
 const API = 'https://api.binance.com';
 const WEB = 'https://www.binance.com';
@@ -48,21 +50,22 @@ async function productoDe(simbolo, { web, fetchImpl }) {
 const esBStock = (p) => !!p && Array.isArray(p.tags) && p.tags.includes('bStocks') && /bstocks\s*[)）]\s*$/i.test(String(p.an || ''));
 const limpiarNombre = (an) => String(an || '').replace(/\s*[(（]\s*bStocks\s*[)）]\s*$/i, '').trim();
 
-// Devuelve { ok: true, codigo, simbolo, tipo: 'tokenizado'|'directo', nombre? } o { ok: false, motivo }.
-export async function resolverActivo(codigoEntrada, opciones = {}) {
+// Devuelve { ok: true, clase, codigo, simbolo, nombre? } o { ok: false, motivo }.
+export async function resolverActivo(clase, codigoEntrada, opciones = {}) {
   const o = { api: opciones.api || API, web: opciones.web || WEB, fetchImpl: opciones.fetchImpl || fetch };
+  if (!CLASES.includes(clase)) return { ok: false, motivo: `Falta la clase: usa \`registra stock ${codigoEntrada}\` o \`registra cripto ${codigoEntrada}\`.` };
   const codigo = String(codigoEntrada || '').trim().toUpperCase();
   if (!CODIGO_OK.test(codigo)) return { ok: false, motivo: `\u00ab${codigoEntrada}\u00bb no parece un codigo de activo.` };
-  const directo = `${codigo}USDT`;
-  const conB = `${codigo}BUSDT`;
-  const directoOk = vigente(await consultarPar(directo, o), codigo);
-  const conBOk = vigente(await consultarPar(conB, o), `${codigo}B`);
-  let producto = null;
-  if (conBOk) producto = await productoDe(conB, o); // solo se clasifica si hay un candidato con B
-  const tokenizado = conBOk && esBStock(producto);
-  if (directoOk && tokenizado) return { ok: false, motivo: `${codigo} es ambiguo: existe como acci\u00f3n tokenizada (${conB}, \u00ab${producto.an}\u00bb) y tambi\u00e9n como activo propio (${directo}). No elijo por mi cuenta.` };
-  if (tokenizado) return { ok: true, codigo, simbolo: conB, tipo: 'tokenizado', nombre: limpiarNombre(producto.an) };
-  if (directoOk) return { ok: true, codigo, simbolo: directo, tipo: 'directo' };
-  if (conBOk) return { ok: false, motivo: `${codigo} no tiene par propio activo y existe ${conB}, pero Binance no lo etiqueta como bStocks; no doy por hecho que la B signifique tokenizado.` };
-  return { ok: false, motivo: `No encuentro ${codigo} en Binance contra USDT (ni como activo propio ni como tokenizado).` };
+  if (clase === 'stock') {
+    const simbolo = `${codigo}BUSDT`;
+    if (!vigente(await consultarPar(simbolo, o), `${codigo}B`)) return { ok: false, motivo: `No encuentro la acci\u00f3n tokenizada ${codigo} (${simbolo}) activa en Binance.` };
+    const producto = await productoDe(simbolo, o);
+    if (!esBStock(producto)) return { ok: false, motivo: `${simbolo} existe, pero Binance no lo etiqueta como bStocks; no es una acci\u00f3n tokenizada de ${codigo}.` };
+    return { ok: true, clase, codigo, simbolo, nombre: limpiarNombre(producto.an) };
+  }
+  const simbolo = `${codigo}USDT`;
+  if (!vigente(await consultarPar(simbolo, o), codigo)) return { ok: false, motivo: `No encuentro el cripto ${codigo} (${simbolo}) activo en Binance.` };
+  const producto = await productoDe(simbolo, o);
+  if (esBStock(producto)) return { ok: false, motivo: `${simbolo} es una acci\u00f3n tokenizada (\u00ab${producto.an}\u00bb), no un cripto. Para ella usa \`registra stock ${codigo.replace(/B$/, '')}\`.` };
+  return { ok: true, clase, codigo, simbolo, nombre: producto ? String(producto.an || '') : '' };
 }

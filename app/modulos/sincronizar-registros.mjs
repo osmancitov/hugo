@@ -10,15 +10,21 @@
 // token tiene permiso de escritura en el repo. Sin el archivo o sin ese permiso, la bajada funciona
 // igual (el repo es publico) y la subida queda pendiente, avisando.
 // Antes de cambiar nada muestra el plan (que sube, que baja, que conflictos hay) y solo actua con
-// el pulgar del usuario. Solo toca rutas registros/velas-24h/<ACTIVO>/yymm_ACTIVO; ninguna otra
-// carpeta, en ningun sentido.
+// el pulgar del usuario. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
+// cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
+// Mudanza unica de lo heredado (autorizada por el usuario el 15-nov-2026): los registros de la ruta anterior
+// velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
+// contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { CLASES } from './activos.mjs';
 
 const PREFIJO = 'registros/velas-24h';
-const RUTA_OK = /^registros\/velas-24h\/[A-Z0-9]{2,15}\/\d{4}_[A-Z0-9]{2,15}$/;
+const RUTA_OK = new RegExp(`^registros/velas-24h/(?:${CLASES.join('|')})/[A-Z0-9]{2,15}/\\d{4}_[A-Z0-9]{2,15}$`);
+const RUTA_HEREDADA = /^registros\/velas-24h\/([A-Z0-9]{2,15})\/(\d{4}_\1)$/; // ruta anterior, sin clase
+const CLASE_HEREDADA = 'stock';
 const ARCHIVO_OK = /^\d{4}_[A-Z0-9]{2,15}$/;
 const ACTIVO_OK = /^[A-Z0-9]{2,15}$/;
 const MAX_BYTES = 5 * 1024 * 1024; // un registro mensual pesa KB; algo mayor es un error a revisar a mano
@@ -55,22 +61,68 @@ export function registrar(ctx) {
   // Archivos locales del registro: [{ rel, ruta, bytes }], solo nombres con la forma acordada.
   function locales() {
     const lista = [];
-    let activos = [];
-    try { activos = fs.readdirSync(dirBase()); } catch { return lista; }
-    for (const a of activos) {
-      if (!ACTIVO_OK.test(a)) continue;
-      let nombres = [];
-      try { nombres = fs.readdirSync(path.join(dirBase(), a)); } catch { continue; }
-      for (const n of nombres) {
-        if (!ARCHIVO_OK.test(n)) continue;
-        const ruta = path.join(dirBase(), a, n);
-        let st;
-        try { st = fs.lstatSync(ruta); } catch { continue; }
-        if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
-        lista.push({ rel: `${PREFIJO}/${a}/${n}`, ruta, bytes: st.size });
+    for (const clase of CLASES) {
+      let activos = [];
+      try { activos = fs.readdirSync(path.join(dirBase(), clase)); } catch { continue; }
+      for (const a of activos) {
+        if (!ACTIVO_OK.test(a)) continue;
+        let nombres = [];
+        try { nombres = fs.readdirSync(path.join(dirBase(), clase, a)); } catch { continue; }
+        for (const n of nombres) {
+          if (!ARCHIVO_OK.test(n)) continue;
+          const ruta = path.join(dirBase(), clase, a, n);
+          let st;
+          try { st = fs.lstatSync(ruta); } catch { continue; }
+          if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
+          lista.push({ rel: `${PREFIJO}/${clase}/${a}/${n}`, ruta, bytes: st.size });
+        }
       }
     }
     return lista;
+  }
+
+  const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+  // Mudanza local de lo heredado: velas-24h/<ACTIVO>/yymm_ACTIVO -> velas-24h/stock/<ACTIVO>/yymm_ACTIVO.
+  // Copia a un temporal, comprueba por sha256 que es identica, la enlaza sin pisar y solo entonces quita el original.
+  // Si el destino ya existe con otro contenido, no toca ninguno de los dos y lo reporta.
+  function mudarLocalHeredado() {
+    const movidos = [], conflictos = [], fallos = [];
+    let activos = [];
+    try { activos = fs.readdirSync(dirBase()); } catch { return { movidos, conflictos, fallos }; }
+    for (const a of activos) {
+      if (!ACTIVO_OK.test(a)) continue; // las carpetas de clase van en minuscula: no entran
+      const dirViejo = path.join(dirBase(), a);
+      let st; try { st = fs.lstatSync(dirViejo); } catch { continue; }
+      if (!st.isDirectory()) continue;
+      let nombres = []; try { nombres = fs.readdirSync(dirViejo); } catch { continue; }
+      for (const n of nombres) {
+        if (!ARCHIVO_OK.test(n)) continue;
+        const viejo = path.join(dirViejo, n);
+        const destino = path.join(dirBase(), CLASE_HEREDADA, a, n);
+        const rel = `${a}/${n}`;
+        try {
+          const sv = fs.lstatSync(viejo);
+          if (!sv.isFile() || sv.size === 0 || sv.size > MAX_BYTES) continue;
+          const buf = fs.readFileSync(viejo);
+          if (fs.existsSync(destino)) {
+            if (sha256(fs.readFileSync(destino)) === sha256(buf)) { fs.rmSync(viejo); movidos.push(rel); } else conflictos.push(rel);
+            continue;
+          }
+          fs.mkdirSync(path.dirname(destino), { recursive: true });
+          const tmp = `${destino}.tmp-${process.pid}`;
+          fs.writeFileSync(tmp, buf);
+          if (sha256(fs.readFileSync(tmp)) !== sha256(buf)) { fs.rmSync(tmp, { force: true }); throw new Error('la copia no coincide'); }
+          fs.linkSync(tmp, destino); // falla si ya existe: nunca pisa
+          fs.rmSync(tmp, { force: true });
+          if (sha256(fs.readFileSync(destino)) !== sha256(buf)) throw new Error('el destino no coincide; dejo el original');
+          fs.rmSync(viejo);
+          movidos.push(rel);
+        } catch (e) { fallos.push(`${rel}: ${e.message}`.slice(0, 160)); }
+      }
+      try { fs.rmdirSync(dirViejo); } catch { /* sigue con archivos: no se borra */ }
+    }
+    return { movidos, conflictos, fallos };
   }
 
   // Arbol del repo (ruta -> sha de blob), solo rutas del registro con forma valida.
@@ -80,12 +132,60 @@ export function registrar(ctx) {
     const arbol = await api(repo, `/git/trees/${commit.tree.sha}?recursive=1`, { token });
     if (arbol.truncated) throw new Error('el arbol del repo es demasiado grande para leerlo completo');
     const mapa = new Map();
-    for (const e of arbol.tree || []) if (e.type === 'blob' && RUTA_OK.test(e.path)) mapa.set(e.path, e.sha);
-    return mapa;
+    const heredados = [];
+    for (const e of arbol.tree || []) {
+      if (e.type !== 'blob') continue;
+      if (RUTA_OK.test(e.path)) mapa.set(e.path, e.sha);
+      else if (RUTA_HEREDADA.test(e.path)) heredados.push(e.path); // ruta anterior sin clase: no se sincroniza, solo se muda
+    }
+    return { mapa, heredados };
+  }
+
+  // Renombra en GitHub lo heredado a la ruta con clase, en UN commit, sin subir contenido: el blob es el mismo (misma huella),
+  // asi que el contenido movido es identico por construccion. Solo mueve lo que la Debian ya tiene identico en la ruta nueva;
+  // si el destino remoto existe con otro contenido, o no hay copia local identica, no lo toca y lo reporta.
+  async function mudarRemotoHeredado(repo, token) {
+    const ref = await api(repo, `/git/ref/heads/${RAMA}`, { token });
+    const baseCommit = await api(repo, `/git/commits/${ref.object.sha}`, { token });
+    const arbol = await api(repo, `/git/trees/${baseCommit.tree.sha}?recursive=1`, { token });
+    if (arbol.truncated) throw new Error('el arbol del repo es demasiado grande para leerlo completo');
+    const blobs = new Map();
+    for (const e of arbol.tree || []) if (e.type === 'blob') blobs.set(e.path, e.sha);
+    const viejos = [...blobs.keys()].filter((r) => RUTA_HEREDADA.test(r)).sort();
+    if (!viejos.length) return { movidos: [], pendientes: [] };
+    const entradas = [], movidos = [], pendientes = [];
+    for (const viejo of viejos) {
+      const [, a, n] = viejo.match(RUTA_HEREDADA);
+      const nuevo = `${PREFIJO}/${CLASE_HEREDADA}/${a}/${n}`;
+      const corto = viejo.replace(`${PREFIJO}/`, '');
+      const local = path.join(dirBase(), CLASE_HEREDADA, a, n);
+      let shaLocal = null;
+      try { shaLocal = shaBlob(fs.readFileSync(local)); } catch { /* sin copia local */ }
+      const shaViejo = blobs.get(viejo);
+      const shaNuevo = blobs.get(nuevo);
+      if (shaLocal !== shaViejo) { pendientes.push(`${corto}: la Debian no tiene una copia id\u00e9ntica en ${CLASE_HEREDADA}/`); continue; }
+      if (shaNuevo !== undefined && shaNuevo !== shaViejo) { pendientes.push(`${corto}: ya existe en ${CLASE_HEREDADA}/ con otro contenido`); continue; }
+      if (shaNuevo === undefined) entradas.push({ path: nuevo, mode: '100644', type: 'blob', sha: shaViejo });
+      entradas.push({ path: viejo, mode: '100644', type: 'blob', sha: null });
+      movidos.push(corto);
+    }
+    if (!movidos.length) return { movidos, pendientes };
+    const tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: entradas } });
+    const commit = await api(repo, '/git/commits', {
+      token, method: 'POST',
+      body: {
+        message: `Registros de velas: mudanza a ${CLASE_HEREDADA}/ (${movidos.join(', ')})`,
+        tree: tree.sha, parents: [ref.object.sha],
+        author: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
+        committer: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
+      },
+    });
+    await api(repo, `/git/refs/heads/${RAMA}`, { token, method: 'PATCH', body: { sha: commit.sha } }); // sin force
+    return { movidos, pendientes, commit: commit.sha };
   }
 
   async function planear(repo, token) {
-    const mapa = await remotos(repo, token);
+    const { mapa, heredados } = await remotos(repo, token);
     const subir = [], bajar = [], conflictos = [];
     let iguales = 0;
     for (const f of locales()) {
@@ -98,7 +198,7 @@ export function registrar(ctx) {
     subir.sort((a, b) => a.rel.localeCompare(b.rel));
     bajar.sort((a, b) => a.rel.localeCompare(b.rel));
     conflictos.sort();
-    return { subir, bajar, iguales, conflictos };
+    return { subir, bajar, iguales, conflictos, heredados };
   }
 
   const cortas = (l) => l.map((x) => (typeof x === 'string' ? x : x.rel).replace(`${PREFIJO}/`, ''));
@@ -164,17 +264,34 @@ export function registrar(ctx) {
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
     const token = ctx.leerClave('.github-key');
+    // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego GitHub. Idempotente: sin heredados no hace nada.
+    const previo = [];
+    let mudo = false;
+    const mud = mudarLocalHeredado();
+    if (mud.movidos.length) { mudo = true; previo.push(`mud\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido`); }
+    if (mud.conflictos.length) previo.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
+    if (mud.fallos.length) previo.push(`no pude mudar: ${mud.fallos.join('; ')}`);
     let plan;
-    try { plan = await planear(repo, token); }
-    catch (e) { return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada.` }; }
+    try {
+      plan = await planear(repo, token);
+      if (plan.heredados.length) {
+        if (await puedeSubir(repo, token)) {
+          const r = await mudarRemotoHeredado(repo, token);
+          if (r.movidos.length) { mudo = true; previo.push(`renombr\u00e9 en GitHub ${r.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ (${r.movidos.join(', ')}) en el commit ${r.commit.slice(0, 7)}, mismo contenido`); }
+          if (r.pendientes.length) previo.push(`heredados en GitHub sin tocar: ${r.pendientes.join('; ')}`);
+          plan = await planear(repo, token);
+        } else previo.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key o escritura en el repo`);
+      }
+    } catch (e) { return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo }; }
     const { subir, bajar, iguales, conflictos } = plan;
+    const aviso = previo.length ? ` ${previo.join('. ')}.` : '';
     const notaConflicto = conflictos.length ? ` Conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}.` : '';
     const clave = conflictos.join(',');
-    if (!subir.length && !bajar.length) return { cambios: false, conflictos: clave, texto: `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}` };
+    if (!subir.length && !bajar.length) return { cambios: mudo, hayPendiente: previo.length > 0 && !mudo, conflictos: clave, texto: `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}${aviso}` };
     const subidaLista = subir.length > 0 && (await puedeSubir(repo, token));
     const t0 = Date.now();
     const res = [], extra = [];
-    let hizoAlgo = false;
+    let hizoAlgo = mudo;
     try {
       if (bajar.length) {
         const baj = await bajarArchivos(repo, token, bajar);
@@ -196,7 +313,7 @@ export function registrar(ctx) {
     if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
     const segundos = ((Date.now() - t0) / 1000).toFixed(1);
     res.push(`iguales: ${iguales}`);
-    return { cambios: hizoAlgo, conflictos: clave, hayPendiente: extra.length > 0, texto: `Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${extra.length ? ` ${extra.join('. ')}.` : ''}` };
+    return { cambios: hizoAlgo, conflictos: clave, hayPendiente: extra.length > 0, texto: `Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${extra.length ? ` ${extra.join('. ')}.` : ''}${aviso}` };
   }
 
   // Orden manual: corre una pasada ya, sin 👍, y contesta en el hilo.
