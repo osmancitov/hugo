@@ -164,6 +164,87 @@ const CRIPTOS = CATALOGO.cripto.map((e) => ({ ...e, clase: 'cripto' })).sort((a,
 const STOCKS = CATALOGO.stock.map((e) => ({ ...e, clase: 'stock' }));
 for (const e of CRIPTOS) TODOS.push(e);
 for (const e of STOCKS) TODOS.push(e);
+// Destinos de pronósticos verificados el 16-nov-2026. Solo acciones subyacentes.
+const PRONOSTICOS = {
+  "AAOI": "https://stockanalysis.com/stocks/aaoi/forecast/",
+  "AAPL": "https://stockanalysis.com/stocks/aapl/forecast/",
+  "ADBE": "https://stockanalysis.com/stocks/adbe/forecast/",
+  "ALAB": "https://stockanalysis.com/stocks/alab/forecast/",
+  "AMAT": "https://stockanalysis.com/stocks/amat/forecast/",
+  "AMC": "https://stockanalysis.com/stocks/amc/forecast/",
+  "AMD": "https://stockanalysis.com/stocks/amd/forecast/",
+  "AMZN": "https://stockanalysis.com/stocks/amzn/forecast/",
+  "APP": "https://stockanalysis.com/stocks/app/forecast/",
+  "ARM": "https://stockanalysis.com/stocks/arm/forecast/",
+  "ASML": "https://stockanalysis.com/stocks/asml/forecast/",
+  "ASTS": "https://stockanalysis.com/stocks/asts/forecast/",
+  "AVGO": "https://stockanalysis.com/stocks/avgo/forecast/",
+  "AXTI": "https://stockanalysis.com/stocks/axti/forecast/",
+  "BABA": "https://stockanalysis.com/stocks/baba/forecast/",
+  "BB": "https://stockanalysis.com/stocks/bb/forecast/",
+  "BE": "https://stockanalysis.com/stocks/be/forecast/",
+  "BMNR": "https://stockanalysis.com/stocks/bmnr/forecast/",
+  "BRKB": "https://stockanalysis.com/stocks/brk.b/forecast/",
+  "BSP": "https://stockanalysis.com/stocks/bsp/forecast/",
+  "CBRS": "https://stockanalysis.com/stocks/cbrs/forecast/",
+  "COHR": "https://stockanalysis.com/stocks/cohr/forecast/",
+  "COIN": "https://stockanalysis.com/stocks/coin/forecast/",
+  "CRCL": "https://stockanalysis.com/stocks/crcl/forecast/",
+  "CRDO": "https://stockanalysis.com/stocks/crdo/forecast/",
+  "CRM": "https://stockanalysis.com/stocks/crm/forecast/",
+  "CRWD": "https://stockanalysis.com/stocks/crwd/forecast/",
+  "CRWV": "https://stockanalysis.com/stocks/crwv/forecast/",
+  "DELL": "https://stockanalysis.com/stocks/dell/forecast/",
+  "FLNC": "https://stockanalysis.com/stocks/flnc/forecast/",
+  "FWDI": "https://stockanalysis.com/stocks/fwdi/forecast/",
+  "GEV": "https://stockanalysis.com/stocks/gev/forecast/",
+  "GLW": "https://stockanalysis.com/stocks/glw/forecast/",
+  "GOOGL": "https://stockanalysis.com/stocks/googl/forecast/",
+  "GS": "https://stockanalysis.com/stocks/gs/forecast/",
+  "HIMS": "https://stockanalysis.com/stocks/hims/forecast/",
+  "HOOD": "https://stockanalysis.com/stocks/hood/forecast/",
+  "HPE": "https://stockanalysis.com/stocks/hpe/forecast/",
+  "IBM": "https://stockanalysis.com/stocks/ibm/forecast/",
+  "INTC": "https://stockanalysis.com/stocks/intc/forecast/",
+  "IREN": "https://stockanalysis.com/stocks/iren/forecast/",
+  "JPM": "https://stockanalysis.com/stocks/jpm/forecast/",
+  "LITE": "https://stockanalysis.com/stocks/lite/forecast/",
+  "LLY": "https://stockanalysis.com/stocks/lly/forecast/",
+  "MDB": "https://stockanalysis.com/stocks/mdb/forecast/",
+  "META": "https://stockanalysis.com/stocks/meta/forecast/",
+  "MRNA": "https://stockanalysis.com/stocks/mrna/forecast/",
+  "MRVL": "https://stockanalysis.com/stocks/mrvl/forecast/",
+  "MSFT": "https://stockanalysis.com/stocks/msft/forecast/",
+  "MSTR": "https://stockanalysis.com/stocks/mstr/forecast/",
+  "MU": "https://stockanalysis.com/stocks/mu/forecast/",
+  "NBIS": "https://stockanalysis.com/stocks/nbis/forecast/",
+  "NFLX": "https://stockanalysis.com/stocks/nflx/forecast/",
+  "NOK": "https://stockanalysis.com/stocks/nok/forecast/",
+  "NVDA": "https://stockanalysis.com/stocks/nvda/forecast/",
+  "ORCL": "https://stockanalysis.com/stocks/orcl/forecast/",
+  "PDD": "https://stockanalysis.com/stocks/pdd/forecast/",
+  "PENG": "https://stockanalysis.com/stocks/peng/forecast/",
+  "PLTR": "https://stockanalysis.com/stocks/pltr/forecast/",
+  "PYPL": "https://stockanalysis.com/stocks/pypl/forecast/",
+  "QCOM": "https://stockanalysis.com/stocks/qcom/forecast/",
+  "QNT": "https://stockanalysis.com/stocks/qnt/forecast/",
+  "RDDT": "https://stockanalysis.com/stocks/rddt/forecast/",
+  "RKLB": "https://stockanalysis.com/stocks/rklb/forecast/",
+  "SECZ": "https://stockanalysis.com/stocks/secz/forecast/",
+  "SHAZ": "https://stockanalysis.com/stocks/shaz/forecast/",
+  "SKHY": "https://stockanalysis.com/stocks/skhy/forecast/",
+  "SMCI": "https://stockanalysis.com/stocks/smci/forecast/",
+  "SNDK": "https://stockanalysis.com/stocks/sndk/forecast/",
+  "SPCX": "https://stockanalysis.com/stocks/spcx/forecast/",
+  "STX": "https://stockanalysis.com/stocks/stx/forecast/",
+  "TSLA": "https://stockanalysis.com/stocks/tsla/forecast/",
+  "TSM": "https://stockanalysis.com/stocks/tsm/forecast/",
+  "USAR": "https://stockanalysis.com/stocks/usar/forecast/",
+  "VST": "https://stockanalysis.com/stocks/vst/forecast/",
+  "WDC": "https://stockanalysis.com/stocks/wdc/forecast/",
+  "WEN": "https://stockanalysis.com/stocks/wen/forecast/",
+  "ZM": "https://stockanalysis.com/stocks/zm/forecast/"
+};
 const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 
@@ -519,6 +600,12 @@ function vistaActivo(clase, codigo) {
     const a = document.createElement('a');
     a.href = e.edgar; a.target = '_blank'; a.rel = 'noopener';
     a.textContent = 'Ficha ↗';
+    meta.appendChild(a);
+  }
+  if (clase === 'stock' && e.tipo === 'empresa' && PRONOSTICOS[e.codigo]) {
+    const a = document.createElement('a');
+    a.href = PRONOSTICOS[e.codigo]; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'Pronósticos ↗';
     meta.appendChild(a);
   }
   ficha.appendChild(meta);
