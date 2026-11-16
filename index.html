@@ -164,7 +164,7 @@ const CRIPTOS = CATALOGO.cripto.map((e) => ({ ...e, clase: 'cripto' })).sort((a,
 const STOCKS = CATALOGO.stock.map((e) => ({ ...e, clase: 'stock' }));
 for (const e of CRIPTOS) TODOS.push(e);
 for (const e of STOCKS) TODOS.push(e);
-// Destinos de pronósticos verificados el 16-nov-2026. Solo acciones subyacentes.
+// Destinos de pronósticos verificados el 16-nov-2026. Solo acciones subyacentes; GPRO conserva historial.
 const PRONOSTICOS = {
   "AAOI": "https://stockanalysis.com/stocks/aaoi/forecast/",
   "AAPL": "https://stockanalysis.com/stocks/aapl/forecast/",
@@ -194,12 +194,15 @@ const PRONOSTICOS = {
   "CRM": "https://stockanalysis.com/stocks/crm/forecast/",
   "CRWD": "https://stockanalysis.com/stocks/crwd/forecast/",
   "CRWV": "https://stockanalysis.com/stocks/crwv/forecast/",
+  "CYPH": "https://www.tipranks.com/stocks/cyph/forecast",
   "DELL": "https://stockanalysis.com/stocks/dell/forecast/",
   "FLNC": "https://stockanalysis.com/stocks/flnc/forecast/",
   "FWDI": "https://stockanalysis.com/stocks/fwdi/forecast/",
   "GEV": "https://stockanalysis.com/stocks/gev/forecast/",
   "GLW": "https://stockanalysis.com/stocks/glw/forecast/",
+  "GME": "https://www.tipranks.com/stocks/gme/forecast",
   "GOOGL": "https://stockanalysis.com/stocks/googl/forecast/",
+  "GPRO": "https://www.tipranks.com/stocks/gpro/forecast",
   "GS": "https://stockanalysis.com/stocks/gs/forecast/",
   "HIMS": "https://stockanalysis.com/stocks/hims/forecast/",
   "HOOD": "https://stockanalysis.com/stocks/hood/forecast/",
