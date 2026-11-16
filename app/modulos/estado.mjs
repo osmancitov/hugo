@@ -25,5 +25,5 @@ export function registrar(ctx) {
     if (!activas.length && !actualizando && !esperando.length) l.push('Libre: no hago nada y no espero ninguna instrucci\u00f3n.');
     l.push(`Llevo activo ${dur(Date.now() - ctx.desde)} desde el \u00faltimo arranque.`);
     await app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text: l.join('\n') });
-  }, { nombre: 'dar el estado' });
+  }, { nombre: 'dar el estado', delegable: true });
 }
