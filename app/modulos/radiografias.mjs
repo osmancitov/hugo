@@ -421,7 +421,7 @@ export function registrar(ctx) {
     return '';
   }
 
-  ctx.comando(/^\s*radiograf\w*(?:\s|$)/i, async (event, texto) => {
+  ctx.comando(/^\s*radiograf[ií]as?(?:\s|$)/i, async (event, texto) => {
     const partes = texto.trim().replace(/[.!?]+$/, '').split(/[\s,;]+/);
     partes.shift();
     const codigos = partes.map((p) => p.toUpperCase());

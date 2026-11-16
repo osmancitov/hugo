@@ -23,14 +23,18 @@ const ctx = {
     },
   } },
 };
-// el dispatcher de app.mjs busca el primer patrón que coincide; aquí llamamos directo
+// el dispatcher de app.mjs busca el primer patrón que coincide; la simulación hace LO
+// MISMO (si el patrón no reconoce la orden, la prueba falla: fue el fallo del estreno real)
 const comandos = [];
 ctx.comando = (patron, fn, op) => comandos.push({ patron, fn, op });
 const { registrar } = await import('../app/modulos/radiografias.mjs');
 registrar(ctx);
-const cmd = comandos[0];
 const evento = { channel: 'C1', ts: '1.0', thread_ts: '1.0', user: 'U1' };
-const corre = (texto) => cmd.fn(evento, texto, { delegado: false });
+const corre = async (texto) => {
+  const c = comandos.find((x) => x.patron.test(texto));
+  if (!c) { mal.push(`orden no reconocida: ${texto}`); return; }
+  await c.fn(evento, texto, { delegado: false });
+};
 
 const ok = [], mal = [];
 const espera = (nombre, cond) => (cond ? ok.push(nombre) : mal.push(nombre));
@@ -74,6 +78,10 @@ await corre('radiografía SPCX SPCX');
 espera('repetidos', mensajes.some((m) => m.includes('repetidos')));
 await corre('radiografía');
 espera('sin códigos', mensajes.some((m) => m.includes('Indica uno o varios')));
+
+// 6) el patrón reconoce con y sin tilde, singular y plural
+const formas = ['radiografía SPCX', 'radiografia SPCX', 'radiografías SPCX NVDA', 'radiografias'];
+espera('reconoce tilde/sin tilde', formas.every((f) => comandos.some((x) => x.patron.test(f))));
 
 console.log('OK:', ok.length, ok.map((x) => `[${x}]`).join(' '));
 if (mal.length) { console.log('MAL:', mal.join(' | ')); process.exit(1); }
