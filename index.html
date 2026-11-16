@@ -479,7 +479,7 @@ function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
   // leyenda (primero medimos para que las marcas la esquiven)
   const lineas = [
     { tipo: 'lin', w: 0.7 * 0.72, txt: `mín ${Math.round(d.vmin)} v/p` },
-    { tipo: 'lin', w: ((0.7 + 12) / 2) * 0.72, txt: `med ${Math.round(d.vmed)} v/p` },
+    { tipo: 'lin', w: wpix(d.vmed) * 0.72, txt: `med ${Math.round(d.vmed)} v/p` },
     { tipo: 'lin', w: 12 * 0.72, txt: `máx ${miles(d.vmax)} v/p` },
     { tipo: 'parche', c: GREEN, txt: `+${Math.round(d.asum)} %d / ${d.dpos} d` },
     { tipo: 'parche', c: RED, txt: `−${Math.round(Math.abs(d.ansum))} %d / ${d.dneg} d` },
@@ -649,7 +649,7 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
   };
   const rotulo=(x,y,txt)=>{ctx.fillStyle=TICK;ctx.fillText(txt,x+38,y);};
   rotulo(30,y0,`mín ${Math.round(d.vmin)} v/p`);muestraLin(30,y0,grosor(d.vmin));
-  rotulo(30,y0+29,`med ${Math.round(d.vmed)} v/p`);muestraLin(30,y0+29,6.5);
+  rotulo(30,y0+29,`med ${Math.round(d.vmed)} v/p`);muestraLin(30,y0+29,grosor(d.vmed));
   rotulo(30,y0+58,`máx ${miles(d.vmax)} v/p`);muestraLin(30,y0+58,12);
   const x2=380;
   rotulo(x2,y0,`+${Math.round(d.asum)} %d / ${d.dpos} d`);muestraParche(x2,y0,GREEN);
