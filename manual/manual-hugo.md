@@ -2,6 +2,13 @@
 
 Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modifica. Solo describe lo instalado. La historia de cambios va aparte, en `manual/historial-hugo.md` (solo local).
 
+## En corto
+- Hugo es el bot de Slack de la Debian: tú le escribes una orden mencionándolo y él trabaja.
+- Las órdenes delicadas (borrar, guardar, enviar, actualizar, parar, reiniciar) solo se hacen con tu 👍. Las de trabajo (registrar velas, radiografías, sincronizar registros, consultar el estado) arrancan directo.
+- Mientras trabaja avisa: el registro y las radiografías reportan en el hilo de la orden; la sincronización automática reporta su avance en el canal de avisos solo cuando tiene algo que copiar.
+- Si Hugo se reinicia a la mitad, lo ya guardado se conserva y lo que estaba a medias se repite; nunca se pisa contenido.
+- El resto de este manual es la referencia completa: qué hace cada orden, cómo se actualiza y cómo se modifica.
+
 ## Qué es
 Bot de Slack propio (Socket Mode, Node.js). Corre en la Debian como servicio de usuario `hugo.service` y es el puente entre Slack y esa máquina: recibe y envía archivos, borra hilos y se actualiza. Existe para quitarle trabajo al usuario: el asistente de IA y Hugo hacen el trabajo y el usuario decide con 👍.
 
@@ -40,7 +47,7 @@ Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`res
 ## Actualizar
 - Fuente: el repositorio público de `HUGO_GITHUB` (`propietario/repositorio`, rama `main`). Para el código, Hugo solo descarga; nunca sube código (los registros de velas sí se sincronizan: ver «Sincronización de registros»).
 - `@Hugo actualiza` descarga el último commit a una carpeta temporal, comprueba que los archivos son normales y pasan `node --check`, y compara su contenido con lo instalado. Si no hay diferencias dice que ya está al día. Si las hay, pregunta con el commit, su título y los archivos que cambian.
-- Antes de pedir el 👍, si hay un trabajo largo en curso (registro, radiografías, sincronización o un borrado) la pregunta lo dice y avisa que el reinicio lo corta: lo ya guardado se conserva y lo que estaba a medias habrá que repetirlo.
+- Antes de pedir el 👍, si hay un trabajo largo en curso (registro, radiografías, sincronización o un borrado) la pregunta lo dice y avisa que el reinicio lo corta: lo ya guardado se conserva y lo que estaba a medias habrá que repetirlo. (Este aviso se instala con el próximo `actualiza`; la versión instalada aún no lo muestra.)
 - Con 👍: copia lo anterior a `~/.local/share/hugo-respaldo/<fecha>`, instala, reinicia y avisa en el hilo: «Hugo actualizado (commit …)» o el fallo con las últimas líneas del registro. Si algo falla o Hugo no queda activo, vuelve a lo anterior.
 - Solo toca `app/app.mjs`, `app/modulos/` y `manual/manual-hugo.md`. No toca `config.env`, `keys/`, `historial-hugo.md`, `package.json` ni `node_modules/`.
 - Con un `.sh` adjunto el flujo es el mismo (copia, reversión y aviso), pero el contenido lo trae el instalador. Una actualización a la vez; su estado queda en `~/.local/share/hugo-respaldo/pendiente.json` hasta que sale el aviso.
