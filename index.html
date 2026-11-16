@@ -841,6 +841,11 @@ $('#buscar').addEventListener('input', () => {
   if (/^#\/a\//.test(location.hash)) location.hash = '#/';
   else ruta();
 });
+// Volver al inicio desde el título limpia la búsqueda y muestra el catálogo completo.
+document.querySelector('.tit-link').addEventListener('click', () => {
+  $('#buscar').value = '';
+  if (location.hash === '' || location.hash === '#/') ruta();
+});
 window.addEventListener('hashchange', ruta);
 ruta();
 
