@@ -116,14 +116,6 @@ button.boton:hover { background: var(--oro); color: var(--tinta); }
   .lab-sub { min-width: 4.6em; }
 }
 .cap-fecha { color: var(--tenue); font-size: .68rem; }
-.cap-sub { min-width: 6.4em; }
-.caps .cap { min-width: 4.2em; }
-.lab-sub { min-width: 6.4em; }
-.lab-cap { min-width: 4.2em; }
-@media (max-width: 560px) {
-  .cap-sub { min-width: 5.6em; }
-  .lab-sub { min-width: 5.6em; }
-}
 
 </style>
 </head>
@@ -171,9 +163,10 @@ const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa').sort((a, b) => (b.ca
 const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 
 function fmtCap(v) {
-  const m = v / 1e6;
-  if (m >= 1) return Math.round(m).toLocaleString('es-ES');
-  return m.toLocaleString('es-ES', { maximumFractionDigits: 2 });
+  if (v >= 1e12) return (v / 1e12).toFixed(2).replace('.', ',') + ' B';
+  if (v >= 1e9) return (v / 1e9).toFixed(1).replace('.', ',') + ' MM';
+  if (v >= 1e7) return Math.round(v / 1e6) + ' M';
+  return (v / 1e6).toFixed(1).replace('.', ',') + ' M';
 }
 
 function filaActivo(e, conCap) {
@@ -204,7 +197,7 @@ function cabCaps() {
   d.className = 'fila-cab';
   d.innerHTML = '<span class="nota-caps"></span><span class="lab-cols"><span class="lab-sub">Base</span><span class="lab-cap">Token</span></span>';
   d.querySelector('.nota-caps').textContent =
-    'En millones de USD · Base: capitalización del activo subyacente (stockanalysis.com, cierre 13-nov-2026) · Token: capitalización de la ficha bStock (CoinGecko, 16-nov-2026)';
+    'Base: capitalización del activo subyacente (stockanalysis.com, cierre 13-nov-2026) · Token: capitalización de la ficha bStock (CoinGecko, 16-nov-2026) · B = billones, MM = miles de millones, M = millones';
   return d;
 }
 
