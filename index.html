@@ -130,10 +130,12 @@ const app = $('#app');
 
 /* ---------- catálogo ---------- */
 const TODOS = [];
-for (const e of CATALOGO.cripto) TODOS.push({ ...e, clase: 'cripto' });
-for (const e of CATALOGO.stock) TODOS.push({ ...e, clase: 'stock' });
-const EMPRESAS = CATALOGO.stock.filter((e) => e.tipo === 'empresa');
-const FONDOS = CATALOGO.stock.filter((e) => e.tipo !== 'empresa');
+const CRIPTOS = CATALOGO.cripto.map((e) => ({ ...e, clase: 'cripto' }));
+const STOCKS = CATALOGO.stock.map((e) => ({ ...e, clase: 'stock' }));
+for (const e of CRIPTOS) TODOS.push(e);
+for (const e of STOCKS) TODOS.push(e);
+const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa');
+const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa');
 
 function filaActivo(e) {
   const a = document.createElement('a');
@@ -178,7 +180,7 @@ function vistaArbol(q) {
     app.appendChild(caja);
     return;
   }
-  app.appendChild(nodoArbol('Cripto', CATALOGO.cripto.length + ' activos', CATALOGO.cripto));
+  app.appendChild(nodoArbol('Cripto', CRIPTOS.length + ' activos', CRIPTOS));
   const nStocks = nodoArbol('Stocks', CATALOGO.stock.length + ' activos', []);
   const hijos = nStocks.querySelector('.hijos');
   hijos.innerHTML = '';
@@ -423,7 +425,7 @@ function radiografia(ctx, d, codigo, subtitulo, hasta) {
 function vistaActivo(clase, codigo) {
   const e = TODOS.find((x) => x.clase === clase && x.codigo === codigo);
   if (!e) { location.hash = ''; return; }
-  const lista = clase === 'cripto' ? CATALOGO.cripto : CATALOGO.stock;
+  const lista = clase === 'cripto' ? CRIPTOS : STOCKS;
   const pos = lista.findIndex((x) => x.codigo === codigo);
   const ant = lista[pos - 1], sig = lista[pos + 1];
 
