@@ -21,7 +21,8 @@ export const CODIGO_OK = /^[\p{L}\p{N}]{1,15}$/u;
 export const CLASES = ['stock', 'cripto'];
 
 // Monedas fiat con par contra USDT: no son cripto (vease el encabezado). CODIGO -> nombre para el aviso.
-const FIAT = new Map([['EUR', 'el euro']]);
+// Exportada: es la referencia del repo para excluir fiat del universo (p. ej. al regenerar el catalogo del visualizador).
+export const FIAT = new Map([['EUR', 'el euro']]);
 
 const API = 'https://api.binance.com';
 const WEB = 'https://www.binance.com';
