@@ -18,7 +18,9 @@
 // empresas). La clase operativa de Hugo no cambia: siguen siendo «stock» en carpetas y ordenes.
 // Ejecuta directo, como registra y sincroniza: la respuesta a la orden ES la imagen. Es trabajo
 // largo: se anota en ctx.activas (la ven estado, stop y restart) y mira la parada unica entre
-// activo y activo; lo ya dibujado se conserva.
+// activo y activo; lo ya dibujado se conserva. Al cerrar la encomienda avisa cuantas entrego
+// y si alguna fallo (decision del usuario, 16-nov-2026); si le piden parada, el cierre dice
+// cuantas llevaba, sin darla por terminada.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -435,13 +437,20 @@ export function registrar(ctx) {
     const paradaAlEmpezar = ctx.parada.n;
     const idAct = `radiografias-${Date.now()}`;
     ctx.activas.set(idAct, { que: `dibujar radiograf\u00edas (${codigos.length})`, desde: Date.now(), largo: true });
+    // Cierre de la encomienda (decision del usuario, 16-nov-2026): dice cuantas entrego y si
+    // alguna fallo. Entregada = su imagen llego al hilo (el aviso de no-pisado no la impide).
+    const hechas = [];
+    const fallas = [];
     try {
       for (let i = 0; i < codigos.length; i++) {
-        if (ctx.parada.n !== paradaAlEmpezar) { await decir(event, 'Parada pedida: no sigo con el resto de la lista. Lo ya dibujado se conserva.'); return; }
+        if (ctx.parada.n !== paradaAlEmpezar) {
+          await decir(event, `Parada pedida: no sigo con el resto de la lista. Llevaba ${hechas.length} de ${codigos.length} entregadas${fallas.length ? `; fallaron: ${fallas.join(', ')}` : ''}. Lo ya dibujado se conserva.`);
+          return;
+        }
         const codigo = codigos[i];
         ctx.activas.set(idAct, { que: `dibujar radiograf\u00eda ${codigo} (${i + 1}/${codigos.length})`, desde: Date.now(), largo: true });
         const clase = claseDe(codigo);
-        if (!clase) { await decir(event, `${codigo}: no tiene registros guardados (o aparece en las dos clases); no lo dibuj\u00e9.`); continue; }
+        if (!clase) { fallas.push(codigo); await decir(event, `${codigo}: no tiene registros guardados (o aparece en las dos clases); no lo dibuj\u00e9.`); continue; }
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-radiografia-'));
         try {
           const png = path.join(tmp, `${codigo}.png`);
@@ -453,12 +462,15 @@ export function registrar(ctx) {
             token: botToken, channel_id: event.channel, thread_ts: event.thread_ts || event.ts,
             file: fs.createReadStream(png), filename: `${codigo}_radiografia.png`,
           });
+          hechas.push(codigo);
         } catch (e) {
+          fallas.push(codigo);
           await decir(event, `No pude dibujar ${codigo}: ${String(e.stderr || e.message).trim().slice(0, 300)}`);
         } finally {
           fs.rmSync(tmp, { recursive: true, force: true });
         }
       }
+      await decir(event, `Encomienda terminada: ${hechas.length} de ${codigos.length} radiograf\u00edas entregadas${fallas.length ? `. Fallaron ${fallas.length}: ${fallas.join(', ')}` : ', sin fallos'}.`);
     } finally {
       ctx.activas.delete(idAct);
     }

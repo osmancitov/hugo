@@ -48,12 +48,14 @@ espera('INTW guardado', fs.existsSync('/tmp/hugo_sim/graficas2/stock/INTW/INTW_r
 espera('huellas', fs.existsSync('/tmp/hugo_sim/graficas2/stock/SPCX/.SPCX_radiografia.sha256'));
 espera('nombre entregado', subidas.every((s) => s.filename === `${s.filename.split('_')[0]}_radiografia.png`));
 espera('marcada largo', largoVisto.length === 2 && largoVisto.every((l) => l && l.largo));
+espera('cierre 2 de 2', mensajes.some((m) => m.includes('Encomienda terminada: 2 de 2 radiograf\u00edas entregadas, sin fallos')));
 espera('activas limpia', ctx.activas.size === 0);
 
 // 2) reorden mismo activo: pisa lo propio sin aviso
 mensajes.length = 0;
 await corre('radiografia SPCX');
 espera('reorden sin aviso de pisado', !mensajes.some((m) => m.includes('no lo pis')));
+espera('cierre reorden 1 de 1', mensajes.some((m) => m.includes('Encomienda terminada: 1 de 1')));
 
 // 3) archivo ajeno: no se pisa, se avisa, igual se sube
 const dirAmd = '/tmp/hugo_sim/graficas2/stock/AMD';
@@ -64,17 +66,20 @@ await corre('radiografía AMD');
 espera('ajeno avisado', mensajes.some((m) => m.includes('no lo pis')));
 espera('ajeno intacto', fs.readFileSync(path.join(dirAmd, 'AMD_radiografia.png'), 'utf8') === 'archivo puesto a mano');
 espera('ajeno igual sube al hilo', subidas.length === 1);
+espera('ajeno cuenta entregada', mensajes.some((m) => m.includes('Encomienda terminada: 1 de 1 radiograf\u00edas entregadas, sin fallos')));
 
 // 4) parada única: tras la primera subida, stop corta el resto
 mensajes.length = 0; subidas.length = 0;
 alSubir = () => { ctx.parada.n++; };
 await corre('radiografía MU NVDA SNDK');
 espera('parada corta lista', subidas.length === 1 && mensajes.some((m) => m.includes('Parada pedida')));
+espera('parada no la da por terminada', mensajes.some((m) => m.includes('Llevaba 1 de 3 entregadas')) && !mensajes.some((m) => m.includes('Encomienda terminada')));
 
 // 5) errores de entrada
 mensajes.length = 0;
 await corre('radiografía FFFFFF');
 espera('sin registros', mensajes.some((m) => m.includes('no tiene registros')));
+espera('cierre con fallo', mensajes.some((m) => m.includes('Encomienda terminada: 0 de 1 radiograf\u00edas entregadas. Fallaron 1: FFFFFF')));
 await corre('radiografía SPCX SPCX');
 espera('repetidos', mensajes.some((m) => m.includes('repetidos')));
 await corre('radiografía');
