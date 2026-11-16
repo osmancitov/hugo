@@ -166,7 +166,9 @@ app.addEventListener('click', (ev) => {
   if (!fila) return;
   const abiertos = [...app.querySelectorAll('.nodo.abierto > .nodo-tit > span:first-child')]
     .map((s) => s.textContent);
-  estadoLista = { abiertos, busqueda: $('#buscar').value, y: window.scrollY };
+  estadoLista = { abiertos, y: window.scrollY };
+  // Entrar a un activo limpia la casilla de búsqueda.
+  $('#buscar').value = '';
 });
 
 /* ---------- catálogo ---------- */
@@ -856,9 +858,8 @@ function ruta() {
   else {
     const guardado = estadoLista;
     estadoLista = null;
-    if (guardado) $('#buscar').value = guardado.busqueda;
     vistaArbol($('#buscar').value.trim());
-    // «Volver» recupera la búsqueda, las ramas abiertas y el punto exacto de la lista.
+    // «Volver» recupera las ramas abiertas y el punto exacto de la lista (la búsqueda quedó limpia al entrar).
     if (guardado) {
       for (const n of app.querySelectorAll('.nodo')) {
         const t = n.querySelector(':scope > .nodo-tit > span:first-child');
