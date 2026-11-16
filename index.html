@@ -89,6 +89,7 @@ a.activo-fila:hover { background: var(--panel); text-decoration: none; }
 .lienzo-caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 4px; padding: .4rem; overflow-x: auto; }
 canvas { display: block; width: 100%; height: auto; }
 .pie-grafica { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: .6rem; flex-wrap: wrap; }
+.controles-grafica { display: flex; gap: .5rem; flex-wrap: wrap; }
 .pie-grafica .nota { color: var(--tenue); font-size: .8rem; font-style: italic; }
 button.boton {
   background: none; border: 1px solid var(--oro); color: var(--oro);
@@ -151,7 +152,6 @@ const GREEN_S = 'rgb(37,133,92)', RED_S = 'rgb(183,61,64)';
 const MARCO = '#3d4759';
 const FUENTE = '"DejaVu Sans","Noto Sans CJK SC","Noto Sans CJK TC","WenQuanYi Zen Hei",sans-serif';
 
-const YLO = -15, YHI = 15, TLO = -14, THI = 14;
 const LW = 1516, LH = 758, ML = 80, MR = 27, MT = 57, MB = 36;
 const PW = LW - ML - MR, PH = LH - MT - MB;
 
@@ -374,24 +374,24 @@ function preparar(filas) {
   };
 }
 
-function lienzo(caja) {
+function lienzo(caja, geometria) {
   const dpr = window.devicePixelRatio || 1;
   const ancho = caja.clientWidth - 16;
-  // en pantallas angostas el lienzo no baja de 940 CSS px: se desplaza en vez de volverse ilegible
-  const cssW = ancho < 940 ? 940 : Math.min(ancho, LW);
-  const escala = cssW / LW;
+  const cssW = Math.min(ancho, geometria.ancho);
+  const escala = cssW / geometria.ancho;
   const cv = document.createElement('canvas');
-  cv.width = Math.round(LW * escala * dpr);
-  cv.height = Math.round(LH * escala * dpr);
-  cv.style.width = Math.round(LW * escala) + 'px';
-  cv.style.height = Math.round(LH * escala) + 'px';
+  cv.width = Math.round(geometria.ancho * escala * dpr);
+  cv.height = Math.round(geometria.alto * escala * dpr);
+  cv.style.width = Math.round(cssW) + 'px';
+  cv.style.height = Math.round(geometria.alto * escala) + 'px';
   const ctx = cv.getContext('2d');
   ctx.scale(escala * dpr, escala * dpr);
-  caja.appendChild(cv);
+  caja.replaceChildren(cv);
   return ctx;
 }
 
-function radiografia(ctx, d, codigo, subtitulo, hasta) {
+function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
+  const YLO = -limite, YHI = limite, TLO = -limite + (limite === 5 ? 1 : 2), THI = limite - 1;
   const npts = d.rs.length;
   const X = (i) => ML + (i / (npts - 1)) * PW;
   const Y = (v) => MT + ((YHI - v) / (YHI - YLO)) * PH;
@@ -408,7 +408,7 @@ function radiografia(ctx, d, codigo, subtitulo, hasta) {
     ctx.beginPath(); ctx.moveTo(X(i), MT); ctx.lineTo(X(i), MT + PH); ctx.stroke();
   }
   ctx.strokeStyle = GRID_D; ctx.lineWidth = 0.72;
-  for (let v = TLO; v <= THI; v += 2) {
+  for (let v = TLO; v <= THI; v += limite === 5 ? 1 : 2) {
     ctx.beginPath(); ctx.moveTo(ML, Y(v)); ctx.lineTo(ML + PW, Y(v)); ctx.stroke();
   }
   ctx.strokeStyle = MARCO; ctx.lineWidth = 1.44;
@@ -420,7 +420,7 @@ function radiografia(ctx, d, codigo, subtitulo, hasta) {
   ctx.fillStyle = TICK;
   ctx.font = '10.5px ' + FUENTE;
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  const marcas = [YLO]; for (let v = TLO; v <= THI; v += 2) marcas.push(v); marcas.push(YHI);
+  const marcas = [YLO]; for (let v = TLO; v <= THI; v += limite === 5 ? 1 : 2) marcas.push(v); marcas.push(YHI);
   for (const v of marcas) ctx.fillText(v + '%', ML - 8, Y(v));
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (let i = 0; i < npts; i++) {
@@ -563,6 +563,88 @@ function radiografia(ctx, d, codigo, subtitulo, hasta) {
   });
 }
 
+function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
+  const w = 700, left = 104, right = 628, top = 134, bottom = alto - 180;
+  const n = d.rs.length;
+  const X = (v) => left + ((v + limite) / (2 * limite)) * (right - left);
+  const Y = (i) => top + (i / (n - 1)) * (bottom - top);
+  const fin = hasta === undefined ? n : hasta;
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
+  ctx.fillText(codigo + ' variación diaria', w / 2, 26);
+  ctx.fillStyle = '#9aa0ac'; ctx.font = '18px ' + FUENTE;
+  // Dos líneas como máximo, sin comprimir las letras del subtítulo.
+  const palabras = subtitulo.split(' '); let linea = '', filas = [];
+  for (const palabra of palabras) {
+    if (ctx.measureText(linea + ' ' + palabra).width > 650 && linea) { filas.push(linea); linea = palabra; }
+    else linea += (linea ? ' ' : '') + palabra;
+  }
+  filas.push(linea); filas.slice(0, 2).forEach((l, i) => ctx.fillText(l, w / 2, 58 + i * 24));
+  const paso = limite === 5 ? 1 : limite === 10 ? 2 : 5;
+  const marcas = [-limite];
+  for (let v = -limite + paso; v < limite; v += paso) marcas.push(v);
+  if (!marcas.includes(0)) marcas.push(0);
+  marcas.push(limite); marcas.sort((a,b) => a-b);
+  ctx.font = '20px ' + FUENTE;
+  for (const v of marcas) {
+    ctx.strokeStyle = v === 0 ? ZERO : GRID_D; ctx.lineWidth = v === 0 ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(X(v), top); ctx.lineTo(X(v), bottom); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.fillText((v > 0 ? '+' : '') + v + '%', X(v), top - 23);
+    ctx.fillText((v > 0 ? '+' : '') + v + '%', X(v), bottom + 26);
+  }
+  ctx.font = '20px ' + FUENTE; ctx.textAlign = 'right';
+  for (let i = 0; i < n; i++) {
+    const f = d.fechas[i], dia = f.getUTCDate();
+    ctx.strokeStyle = dia === 1 ? GRID_1 : dia === 15 ? GRID_15 : GRID_D;
+    ctx.lineWidth = dia === 1 || dia === 15 ? 1.5 : 0.7;
+    ctx.beginPath(); ctx.moveTo(left, Y(i)); ctx.lineTo(right, Y(i)); ctx.stroke();
+    if (dia === 1 || dia === 15 || i === 0 || i === n - 1) {
+      // El extremo no duplica una fecha del día anterior.
+      const cerca = i === n - 1 && i > 0 && [1,15].includes(d.fechas[i-1].getUTCDate());
+      if (!cerca) {ctx.fillStyle = TICK;ctx.fillText(String(dia).padStart(2,'0') + ' ' + MESES_ES[f.getUTCMonth()], left - 14, Y(i));}
+    }
+  }
+  ctx.strokeStyle = MARCO; ctx.lineWidth = 1.5; ctx.strokeRect(left, top, right-left, bottom-top);
+  ctx.save(); ctx.beginPath(); ctx.rect(left, top, right-left, bottom-top); ctx.clip();
+  for (let i = 1; i < fin; i++) {
+    const v = d.rs[i]; if (v === 0) continue;
+    ctx.fillStyle = v > 0 ? GREEN : RED;
+    ctx.fillRect(Math.min(X(0),X(v)),Y(i-1),Math.abs(X(v)-X(0)),Y(i)-Y(i-1));
+  }
+  const grosor = (v) => d.vmax > d.vmin ? Math.max(1,Math.min(12,1+((v-d.vmin)/(d.vmax-d.vmin))*11)) : 1;
+  ctx.strokeStyle = BLUE; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let i=1;i<fin;i++) {
+    ctx.lineWidth = grosor(d.vp[i]);ctx.beginPath();ctx.moveTo(X(d.rs[i-1]),Y(i-1));ctx.lineTo(X(d.rs[i]),Y(i));ctx.stroke();
+  }
+  ctx.restore();
+  if (fin < n) return;
+  // Valores fuera de escala: triángulo en el borde y rótulo con su valor real.
+  let ultPos = -100, ultNeg = -100, carrilPos = 0, carrilNeg = 0;
+  ctx.font = '20px ' + FUENTE;
+  for (let i=1;i<n;i++) {
+    const v=d.rs[i];if(Math.abs(v)<=limite)continue;
+    const pos=v>0, x=pos?right:left, y=Y(i);
+    let carril;
+    if(pos){carrilPos=y-ultPos<26?(carrilPos+1)%3:0;ultPos=y;carril=carrilPos;}
+    else{carrilNeg=y-ultNeg<26?(carrilNeg+1)%3:0;ultNeg=y;carril=carrilNeg;}
+    const tx=pos?right-18-carril*85:left+18+carril*85;
+    ctx.fillStyle=pos?GREEN_S:RED_S;ctx.beginPath();ctx.moveTo(x+(pos?12:-12),y);ctx.lineTo(x,y-6);ctx.lineTo(x,y+6);ctx.closePath();ctx.fill();
+    ctx.textAlign=pos?'right':'left';ctx.lineWidth=4;ctx.strokeStyle=BG;
+    const texto=(pos?'+':'−')+Math.abs(v).toFixed(1)+'%';ctx.strokeText(texto,tx,y);ctx.fillText(texto,tx,y);
+  }
+  ctx.textAlign='left';ctx.fillStyle=TICK;ctx.font='20px '+FUENTE;
+  const y0=bottom+67;
+  const leyenda=[
+    `Grosor v/p: mín ${Math.round(d.vmin)} · med ${Math.round(d.vmed)} · máx ${miles(d.vmax)}`,
+    `+${Math.round(d.asum)} %d / ${d.dpos} d · −${Math.round(Math.abs(d.ansum))} %d / ${d.dneg} d`,
+  ];
+  if(d.ansum!==0&&d.dneg>0)leyenda.push(`Razones: ${(d.asum/Math.abs(d.ansum)).toFixed(2)} / ${(d.dpos/d.dneg).toFixed(2)}`);
+  leyenda.forEach((l,i)=>ctx.fillText(l,30,y0+i*29));
+}
+
+let limpiarGrafica = () => {};
+
 /* ---------- vista de activo ---------- */
 function vistaActivo(clase, codigo) {
   const e = TODOS.find((x) => x.clase === clase && x.codigo === codigo);
@@ -629,37 +711,105 @@ function vistaActivo(clase, codigo) {
       caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>';
       return;
     }
+    if (!caja.isConnected) return;
     const d = preparar(filas);
-    const ctx = lienzo(caja);
     const info = [e.nombre, e.tipo].filter(Boolean).join(' · ');
     const subtitulo = `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length - 1} días`;
     const uf = new Date(d.ultima);
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
-
+    const pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
     const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let animId = null;
-    const dibujarTodo = () => radiografia(ctx, d, e.codigo, subtitulo);
+    let limite = 5, animId = null, ctx, geometria, ultimoAncho;
+    const orientacion = matchMedia('(orientation: portrait)');
+    const configurar = () => {
+      geometria = orientacion.matches
+        ? { vertical: true, ancho: 700, alto: Math.max(1400, d.rs.length * 18 + 320) }
+        : { vertical: false, ancho: LW, alto: LH + 32 };
+      ctx = lienzo(caja, geometria); ultimoAncho = caja.clientWidth;
+    };
+    const dibujarEn = (destino, hasta) => {
+      if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
+      else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
+      if (hasta === undefined || hasta >= d.rs.length) {
+        destino.fillStyle = BG;
+        destino.fillRect(0, geometria.alto - 28, geometria.ancho, 28);
+        destino.fillStyle = TICK; destino.textAlign = 'center'; destino.textBaseline = 'middle';
+        destino.font = (geometria.vertical ? '18px ' : '13px ') + FUENTE;
+        destino.fillText(pieDatos + limite + '%', geometria.ancho / 2, geometria.alto - 13);
+      }
+    };
+    const terminar = () => {
+      if (animId) cancelAnimationFrame(animId);
+      animId = null;
+      dibujarEn(ctx);
+    };
     const trazar = () => {
       if (animId) cancelAnimationFrame(animId);
-      if (sinMovimiento) { dibujarTodo(); return; }
+      if (sinMovimiento) { terminar(); return; }
       const t0 = performance.now();
       const paso = (t) => {
+        if (!caja.isConnected) { animId = null; return; }
         const p = Math.min(1, (t - t0) / 2000);
         const k = 1 + Math.floor(p * (d.rs.length - 1));
-        if (p < 1) { radiografia(ctx, d, e.codigo, subtitulo, k); animId = requestAnimationFrame(paso); }
-        else { dibujarTodo(); animId = null; }
+        if (p < 1) { dibujarEn(ctx, k); animId = requestAnimationFrame(paso); }
+        else { dibujarEn(ctx); animId = null; }
       };
       animId = requestAnimationFrame(paso);
     };
-    trazar();
-
+    configurar(); trazar();
+    const controles = document.createElement('div');
+    controles.className = 'controles-grafica';
     const btn = document.createElement('button');
     btn.className = 'boton'; btn.textContent = 'Repetir trazado';
     btn.addEventListener('click', trazar);
+    const escala = document.createElement('button');
+    escala.className = 'boton'; escala.textContent = 'Escala: ±5 %';
+    escala.title = 'Cambiar escala: ±5 %, ±10 %, ±15 %';
+    escala.addEventListener('click', () => {
+      limite = limite === 15 ? 5 : limite + 5;
+      escala.textContent = 'Escala: ±' + limite + ' %';
+      terminar();
+    });
+    const descargar = document.createElement('button');
+    descargar.className = 'boton'; descargar.textContent = 'Descargar imagen';
+    descargar.addEventListener('click', () => {
+      terminar();
+      // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
+      // No amplía los píxeles del lienzo mostrado en pantalla.
+      const salida = document.createElement('canvas');
+      const resolucion = Math.min(3, Math.sqrt(14000000 / (geometria.ancho * geometria.alto)), 14000 / geometria.alto);
+      salida.width = Math.floor(geometria.ancho * resolucion);
+      salida.height = Math.floor(geometria.alto * resolucion);
+      const tinta = salida.getContext('2d'); tinta.scale(resolucion, resolucion); dibujarEn(tinta);
+      salida.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url;
+        const fechaArchivo = uf.toISOString().slice(0, 10);
+        a.download = `${e.codigo}_${fechaArchivo}_${geometria.vertical ? 'vertical' : 'horizontal'}_escala-${limite}.png`;
+        a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }, 'image/png');
+    });
+    controles.append(btn, escala, descargar);
     const nota = document.createElement('span');
     nota.className = 'nota';
     nota.textContent = `Trazada en vivo desde los registros publicados · datos al ${fecha} (UTC)`;
-    pie.append(btn, nota);
+    pie.append(controles, nota);
+    // La orientación y el ancho cambian el dibujo, no los datos ni la escala elegida.
+    const ajustar = new ResizeObserver(() => {
+      if (!caja.isConnected) { ajustar.disconnect(); return; }
+      if (ultimoAncho === caja.clientWidth && geometria.vertical === orientacion.matches) return;
+      if (animId) cancelAnimationFrame(animId);
+      configurar(); terminar();
+    });
+    ajustar.observe(caja);
+    const girar = () => { if (caja.isConnected) { configurar(); terminar(); } };
+    orientacion.addEventListener('change', girar);
+    limpiarGrafica = () => {
+      if (animId) cancelAnimationFrame(animId);
+      ajustar.disconnect(); orientacion.removeEventListener('change', girar);
+    };
+
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este activo (' + err.message + ').';
   });
@@ -667,6 +817,7 @@ function vistaActivo(clase, codigo) {
 
 /* ---------- arranque ---------- */
 function ruta() {
+  limpiarGrafica(); limpiarGrafica = () => {};
   const m = location.hash.match(/^#\/a\/(cripto|stock)\/(.+)$/);
   if (m) vistaActivo(m[1], decodeURIComponent(m[2]));
   else vistaArbol($('#buscar').value.trim());
