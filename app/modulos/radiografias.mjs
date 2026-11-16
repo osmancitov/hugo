@@ -199,7 +199,7 @@ import math
 # primero: el diseño no cambia. Sin fuente CJK instalada, todo queda como estaba.
 _CJK = ['Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK JP', 'Source Han Sans SC',
         'WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'Droid Sans Fallback', 'AR PL UMing CN',
-        'Microsoft YaHei', 'SimHei', 'PingFang SC']
+        'Microsoft YaHei', 'SimHei', 'PingFang SC', 'Unifont', 'Unifont-JP']
 _inst = {f.name for f in font_manager.fontManager.ttflist}
 _cjk = [c for c in _CJK if c in _inst]
 _FAM = ['DejaVu Sans'] + _cjk if _cjk else None  # None = familia por defecto, sin tocar
