@@ -12,6 +12,9 @@
 // Sin confirmacion, dentro de la sincronizacion autorizada. Las series mensuales solo crecen
 // cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
+// Recuperacion: los blobs ya preparados quedan anotados en un punto de control en disco
+// (velas-24h/.punto-sincronizar.json) y crear el arbol reintenta dos veces si GitHub responde 5xx,
+// asi una pasada que muere al publicar no vuelve a subir todo.
 // Mudanza unica de lo heredado (una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
 // contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
@@ -41,6 +44,30 @@ export function registrar(ctx) {
   const dirBase = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
   const decir = (event, text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text });
   let enCurso = false;
+  const esperar = ctx.esperar || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+
+  // Punto de control de la subida: cada blob ya preparado en GitHub se anota en disco (huella del
+  // contenido local -> sha del blob). Si una pasada muere despues de subir blobs (p.ej. GitHub
+  // responde 502 al crear el arbol), la siguiente NO los resube: los blobs son por contenido y
+  // GitHub los conserva aunque el commit nunca se publicara. Se guarda cada 25 subidas y antes de
+  // publicar; al publicar el commit se borra, y si GitHub responde 422 (un blob anotado ya no
+  // existe) tambien se borra para que la proxima pasada los resuba.
+  const rutaPunto = () => path.join(dirBase(), '.punto-sincronizar.json');
+  function leerPunto(repo) {
+    try {
+      const j = JSON.parse(fs.readFileSync(rutaPunto(), 'utf8'));
+      if (j && j.repo === repo && j.blobs && typeof j.blobs === 'object') return j;
+    } catch { /* sin punto de control valido */ }
+    return { repo, blobs: {} };
+  }
+  function guardarPunto(punto) {
+    try {
+      const tmp = `${rutaPunto()}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(punto));
+      fs.renameSync(tmp, rutaPunto());
+    } catch (e) { console.error('Punto de control de sincronizacion:', e.message); }
+  }
+  function borrarPunto() { try { fs.rmSync(rutaPunto(), { force: true }); } catch { /* nada que borrar */ } }
 
   async function api(repo, ruta, { token = '', method = 'GET', body } = {}) {
     const headers = { 'User-Agent': 'hugo', Accept: 'application/vnd.github+json' };
@@ -48,7 +75,7 @@ export function registrar(ctx) {
     let datos;
     if (body !== undefined) { headers['Content-Type'] = 'application/json'; datos = JSON.stringify(body); }
     const r = await fetch(`https://api.github.com/repos/${repo}${ruta}`, { method, headers, body: datos, signal: AbortSignal.timeout(30000) });
-    if (!r.ok) throw new Error(`GitHub respondio ${r.status} en ${ruta || '/'}`);
+    if (!r.ok) { const e = new Error(`GitHub respondio ${r.status} en ${ruta || '/'}`); e.status = r.status; throw e; }
     return r.json();
   }
 
@@ -286,11 +313,16 @@ export function registrar(ctx) {
     const actuales = new Map();
     for (const e of arbol.tree || []) if (e.type === 'blob' && RUTA_OK.test(e.path)) actuales.set(e.path, e.sha);
     const items = [], omitidos = [];
+    const punto = leerPunto(repo);
+    const enEstaPasada = new Set(subir.map((f) => f.rel));
+    for (const rel of Object.keys(punto.blobs)) if (!enEstaPasada.has(rel)) delete punto.blobs[rel]; // solo sirven los de esta subida
+    let guardados = 0;
     for (const f of subir) {
       verificar();
       const buf = fs.readFileSync(f.ruta);
+      const shaLocal = shaBlob(buf);
       const shaRemota = actuales.get(f.rel);
-      if (shaRemota === shaBlob(buf)) continue; // ya esta igual
+      if (shaRemota === shaLocal) continue; // ya esta igual
       try {
         if(!validarSerie(JSON.parse(buf),mesDeRuta(f.rel)).length)throw Error('No sincronizo un archivo mensual vacio.');
         if(shaRemota!==undefined) {
@@ -299,14 +331,40 @@ export function registrar(ctx) {
           if(modo!=='ampliar')continue; // remoto igual o mayor: no recortar
         }
       } catch(e) {omitidos.push(`${f.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`);continue;}
-      const blob = await api(repo, '/git/blobs', { token, method: 'POST', body: { content: buf.toString('base64'), encoding: 'base64' } });
-      items.push({ path: f.rel, mode: '100644', type: 'blob', sha: blob.sha });
+      const previo = punto.blobs[f.rel];
+      if (previo && previo.contenido === shaLocal) {
+        items.push({ path: f.rel, mode: '100644', type: 'blob', sha: previo.blob }); // ya preparado en una pasada anterior
+      } else {
+        const blob = await api(repo, '/git/blobs', { token, method: 'POST', body: { content: buf.toString('base64'), encoding: 'base64' } });
+        items.push({ path: f.rel, mode: '100644', type: 'blob', sha: blob.sha });
+        punto.blobs[f.rel] = { contenido: shaLocal, blob: blob.sha };
+        if (++guardados % 25 === 0) guardarPunto(punto);
+      }
       await progreso(`Subida: ${items.length}/${subir.length} archivo(s) preparados en GitHub; aun sin publicar el commit.`);
     }
-    if (!items.length) return { commit: null, subidos: [], omitidos };
+    if (!items.length) { borrarPunto(); return { commit: null, subidos: [], omitidos }; }
     verificar(); // frena antes de publicar el commit: blobs preparados no cuentan como subida
+    guardarPunto(punto);
     await progreso(`Publicando commit con ${items.length} archivo(s); falta confirmar la rama.`);
-    const tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: items } });
+    // Crear el arbol es un solo POST grande: si GitHub responde 5xx se reintenta dos veces con
+    // esperas prudentes dentro de la misma pasada; lo ya preparado queda en el punto de control.
+    let tree;
+    for (let intento = 1; ; intento++) {
+      try {
+        tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: items } });
+        break;
+      } catch (e) {
+        if (e.status === 422) { borrarPunto(); throw e; } // un blob anotado ya no existe: la proxima pasada los resube
+        if (e.status >= 500 && intento < 3) {
+          const espera = intento * 30000;
+          await progreso(`GitHub respondio ${e.status} al publicar el arbol; reintento en ${espera / 1000} s (intento ${intento + 1} de 3).`);
+          await esperar(espera);
+          verificar();
+          continue;
+        }
+        throw e;
+      }
+    }
     const commit = await api(repo, '/git/commits', {
       token, method: 'POST',
       body: {
@@ -317,6 +375,7 @@ export function registrar(ctx) {
       },
     });
     await api(repo, `/git/refs/heads/${RAMA}`, { token, method: 'PATCH', body: { sha: commit.sha } }); // sin force: un avance ajeno se rechaza
+    borrarPunto();
     return { commit: commit.sha, subidos: items.map((i) => i.path), omitidos };
   }
 
