@@ -17,4 +17,4 @@ Claves (`keys/`), `config.env`, `node_modules/`, copias de respaldo y cualquier 
 Todo lo que hay que saber para operarlo y modificarlo está en el [manual](manual/manual-hugo.md).
 
 ## Pruebas sin red
-`node --test pruebas/registra-directo.mjs` comprueba recorrido, progreso, conflictos y recuperación con datos simulados, incluidos cortes del proceso. No usa cuentas ni registra activos reales.
+`node --test pruebas/registra-directo.mjs pruebas/mes-en-curso.mjs` comprueba recorrido, progreso, conflictos y recuperación con datos simulados, incluidos cortes del proceso, mes abierto, cambios de mes y sincronización de ampliaciones. No usa cuentas ni registra activos reales.

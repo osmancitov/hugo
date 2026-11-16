@@ -13,7 +13,7 @@ function setup(opts={}) {
  const root=opts.root||fs.mkdtempSync(path.join(os.tmpdir(),'hugo-registra-'));
  const msgs=[],consultas=[],resoluciones=[],activas=new Map();
  const base=path.join(root,'velas'),estado=path.join(root,'privado/estado.json');
- const m=crearMotor({base:()=>base,archivoEstado:()=>estado,activas,
+ const m=crearMotor({ahora:()=>Date.UTC(2026,10,1),base:()=>base,archivoEstado:()=>estado,activas,
   resolver:async(clase,codigo)=>{resoluciones.push([clase,codigo]);return opts.resolver?opts.resolver(clase,codigo):{ok:true,simbolo:codigo+'USDT',nombre:codigo};},
   fetchImpl:async u=>{const q=new URL(u).searchParams;const t=Number(q.get('startTime')),codigo=q.get('symbol');consultas.push([codigo,t]);const d=opts.datos?await opts.datos(codigo,t):t===octubre?[vela(t)]:[];return {ok:true,status:200,text:async()=>typeof d==='string'?d:JSON.stringify(d)};},
   avisar:async(j,t)=>{msgs.push({j:structuredClone(j),text:t});if(opts.aviso)await opts.aviso(j,t);},
@@ -23,7 +23,7 @@ function setup(opts={}) {
 async function caso(fn,opts){const s=setup(opts);try{await fn(s);}finally{s.close();}}
 test('uno o varios activos: recorre meses y cola en orden, sin confirmacion',async()=>caso(async s=>{
  await s.run(['AA','BB']);assert.deepEqual(s.consultas,[['AAUSDT',octubre],['AAUSDT',septiembre],['BBUSDT',octubre],['BBUSDT',septiembre]]);
- const j=leerEstado(s.estado);assert.equal(j.estado,'terminado');assert.deepEqual(j.conteo,{guardados:2,existentes:0,activos:2});assert.equal(j.notificado,true);assert.equal(s.activas.size,0);
+ const j=leerEstado(s.estado);assert.equal(j.estado,'terminado');assert.deepEqual(j.conteo,{guardados:2,existentes:0,activos:2,ampliados:0});assert.equal(j.notificado,true);assert.equal(s.activas.size,0);
  assert.equal(fs.readFileSync(path.join(s.base,'stock/AA/2610_AA'),'utf8'),JSON.stringify([vela(octubre)]));
  assert.ok(s.msgs.some(m=>m.text.includes('Activo 2/2')));assert.ok(s.msgs.some(m=>m.text.includes('Mes parcial')));assert.ok(s.msgs.at(-1).text.includes('Registro terminado'));
 }));
@@ -50,7 +50,7 @@ test('respuesta objeto, no JSON o velas invalidas se pausa',async()=>{
  }
 });
 test('HTTP fallido con cuerpo [] no termina el activo',async()=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-http-'));const archivo=path.join(root,'estado');const m=crearMotor({base:()=>path.join(root,'velas'),archivoEstado:()=>archivo,resolver:async()=>({ok:true,simbolo:'AA'}),avisar:async()=>{},fetchImpl:async()=>({ok:false,status:429,text:async()=>'[]'})});
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-http-'));const archivo=path.join(root,'estado');const m=crearMotor({ahora:()=>Date.UTC(2026,10,1),base:()=>path.join(root,'velas'),archivoEstado:()=>archivo,resolver:async()=>({ok:true,simbolo:'AA'}),avisar:async()=>{},ahora:()=>Date.UTC(2026,10,1),fetchImpl:async()=>({ok:false,status:429,text:async()=>'[]'})});
  try{await m.iniciar({clase:'stock',codigos:['AA'],event});assert.equal(leerEstado(archivo).estado,'pausado');assert.equal(leerEstado(archivo).indice,0);}finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test('una orden distinta no sustituye cola pausada',async()=>caso(async s=>{await s.run(['AA','BB']);const antes=fs.readFileSync(s.estado,'utf8');await s.run(['CC']);assert.equal(fs.readFileSync(s.estado,'utf8'),antes);assert.ok(s.msgs.at(-1).text.includes('No lo sustituyo'));},{resolver:()=>({ok:false,motivo:'no existe'})}));
@@ -59,7 +59,7 @@ test('concurrencia bloqueada incluso mientras valida',async()=>{
  let soltar;const espera=new Promise(r=>soltar=r);await caso(async s=>{const a=s.run();await new Promise(r=>setImmediate(r));await s.run(['BB']);soltar();await a;assert.deepEqual(s.resoluciones.map(x=>x[1]),['AA']);assert.ok(s.msgs.some(x=>x.text.includes('Ya estoy')));},{resolver:async()=>{await espera;return {ok:true,simbolo:'AAUSDT'};}});
 });
 test('avance corrupto se conserva, no se lanza otro trabajo',async()=>caso(async s=>{fs.mkdirSync(path.dirname(s.estado),{recursive:true});fs.writeFileSync(s.estado,'{');await s.run();assert.equal(fs.readFileSync(s.estado,'utf8'),'{');assert.equal(s.consultas.length,0);}));
-test('fichero temporal sin definitivo no cuenta como mes guardado',async()=>caso(async s=>{const p=path.join(s.base,'stock/AA/2610_AA.tmp');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,'incompleto');await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(fs.existsSync(p),false);}));
+test('fichero temporal sin definitivo no cuenta como mes guardado',async()=>caso(async s=>{const p=path.join(s.base,'stock/AA/2610_AA.serie-tmp');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,'incompleto');await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(fs.existsSync(p),false);}));
 test('reanudacion tras SIGKILL antes/despues de enlace y avance, sin perder ni pisar',async()=>{
  const helper=new URL('./registro-corte.mjs',import.meta.url);
  for(const punto of ['antes-guardar','despues-enlace','despues-avance','entre-activos','antes-aviso-final']) {
@@ -101,7 +101,7 @@ test('integracion real velas+activos+motor: lista separada por comas y progreso 
  globalThis.fetch=async u=>{let j;const url=new URL(u);
   if(u.includes('exchangeInfo')) {const symbol=url.searchParams.get('symbol');j={symbols:[{symbol,status:'TRADING',quoteAsset:'USDT',baseAsset:symbol.slice(0,-4)}]};}
   else if(u.includes('get-products'))j={data:[{s:'NVDABUSDT',tags:['bStocks'],an:'NVIDIA (bStocks)'},{s:'SPCXBUSDT',tags:['bStocks'],an:'SpaceX (bStocks)'},...Array.from({length:100},(_,i)=>({s:'PRUEBA'+i}))]};
-  else {const t=Number(url.searchParams.get('startTime'));j=t===octubre?[vela(t)]:[];}
+  else {const t=Number(url.searchParams.get('startTime'));const now=new Date();const m=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1);j=t===m?[vela(t)]:[];}
   return{ok:true,status:200,text:async()=>JSON.stringify(j)};
  };
  try{

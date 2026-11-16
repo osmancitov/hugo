@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES, CODIGO_OK } from './activos.mjs';
+import { cierreUTC, inicioMes, compararSeries, validarSerie, publicarSerie } from './registro-serie.mjs';
 
 export const CERO = Date.UTC(2026, 10, 1);
 const LIMITE = 240;
@@ -33,22 +34,15 @@ function leerNormal(archivo) {
 export function leerEstado(archivo) {
   if (!fs.existsSync(archivo)) return null;
   const j=JSON.parse(leerNormal(archivo));
+  if(j.version===1) {j.version=2;j.hasta=CERO;j.inicial=inicial;j.conteo.ampliados=0;} // reanuda el corte antiguo sin inventar dias
   const estados=['en-curso','pausado','terminado'];
-  if (j.version!==1 || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>inicial || j.mes<anterior(Date.UTC(2006,10,1)) || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0)) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0)) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
   if ((j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
   return j;
 }
-function validarVelas(datos, mes) {
-  if (!Array.isArray(datos)) throw new Error('Binance no devolvio una lista de velas; no equivale a un mes vacio.');
-  let ultimo=-1;
-  for (const v of datos) {
-    if (!Array.isArray(v) || v.length!==12 || !Number.isSafeInteger(v[0]) || v[0]<mes || v[0]>=siguiente(mes) || v[0]%86400000!==0 || v[0]<=ultimo || v[6]!==v[0]+86400000-1) throw new Error('Velas invalidas, repetidas o fuera del mes UTC; no guardo esa respuesta.');
-    ultimo=v[0];
-  }
-}
-function resumen(j) { return `${j.conteo.activos}/${j.codigos.length} activos terminados; ${j.conteo.guardados} meses nuevos y ${j.conteo.existentes} existentes comprobados.`; }
+function resumen(j) { return `${j.conteo.activos}/${j.codigos.length} activos terminados; ${j.conteo.guardados} meses nuevos, ${j.conteo.existentes} existentes comprobados y ${j.conteo.ampliados||0} meses ampliados.`; }
 
-export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map() }) {
+export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map(), ahora=Date.now }) {
   let ocupado=false;
   const guardar=(j)=>guardarEstado(archivoEstado(),j);
   const avisarFin=async(j)=>{await avisar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);j.notificado=true;guardar(j);};
@@ -57,7 +51,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     activas.set(id,{que:'registrar historial',desde:Date.now()});
     try {
       j.estado='en-curso';delete j.error;guardar(j);
-      await avisar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await avisar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
       while(j.indice<j.codigos.length) {
         const codigo=j.codigos[j.indice];
         activas.set(id,{que:`registrar ${codigo}, ${etiqueta(j.mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now()});
@@ -66,44 +60,46 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         await avisar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}; corte UTC).`);
         let terminado=false;
         while(!terminado) {
-          const meses=(2026-new Date(j.mes).getUTCFullYear())*12+9-new Date(j.mes).getUTCMonth();
+          const meses=(new Date(j.inicial).getUTCFullYear()-new Date(j.mes).getUTCFullYear())*12+new Date(j.inicial).getUTCMonth()-new Date(j.mes).getUTCMonth();
           if(meses>=LIMITE) throw new Error(`Tope de seguridad: ${LIMITE} meses para ${codigo}; no doy su historial por terminado.`);
           const mes=j.mes;
           const destino=path.join(base(),j.clase,codigo,`${yymm(mes)}_${codigo}`);
           activas.set(id,{que:`registrar ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now()});
           await avisar(j,`Consulto ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length}; corte UTC).`);
           const t=Date.now();
-          const r=await fetchImpl(`https://api.binance.com/api/v3/klines?symbol=${res.simbolo}&interval=1d&startTime=${mes}&endTime=${siguiente(mes)-1}&limit=1000`,{signal:AbortSignal.timeout(30000),headers:{'User-Agent':'hugo'}});
+          const r=await fetchImpl(`https://api.binance.com/api/v3/klines?symbol=${res.simbolo}&interval=1d&startTime=${mes}&endTime=${Math.min(siguiente(mes),j.hasta)-1}&limit=1000`,{signal:AbortSignal.timeout(30000),headers:{'User-Agent':'hugo'}});
           const cuerpo=await r.text();
           if(!r.ok) throw new Error(`Binance HTTP ${r.status}; no equivale a un mes vacio.`);
           let datos;try{datos=JSON.parse(cuerpo);}catch{throw new Error('Binance no devolvio JSON; no equivale a un mes vacio.');}
-          validarVelas(datos,mes);
+          validarSerie(datos,mes,j.hasta);
           const consultaMs=Date.now()-t;
           const existe=fs.existsSync(destino);
-          // Releer antes de saltar: un definitivo truncado por el corte no cuenta como mes completo.
+          let modo='nuevo', previoBuf=null;
           if(existe) {
-            let previo;try{previo=JSON.parse(leerNormal(destino));}catch{throw new Error(`Archivo existente ilegible o incompleto: ${destino}. Lo conservo sin pisar.`);}
-            if(JSON.stringify(previo)!==JSON.stringify(datos)) throw new Error(`Conflicto con Binance en ${destino}. No sobrescribo el archivo local.`);
+            let previo;try{previoBuf=Buffer.from(leerNormal(destino));previo=JSON.parse(previoBuf);}catch{throw new Error(`Archivo existente ilegible o incompleto: ${destino}. Lo conservo sin pisar.`);}
+            modo=compararSeries(previo,datos,mes,cierreUTC(ahora()));
           }
           if(!datos.length) {
+            if(siguiente(mes)>j.hasta && !existe) {
+              j.mes=anterior(mes);guardar(j);
+              await avisar(j,`${codigo}: ${etiqueta(mes)} aun no tiene velas cerradas al corte. No doy su historial por terminado; sigo con ${etiqueta(j.mes)}.`);
+              continue;
+            }
             if(existe) throw new Error(`Archivo vacio existente: ${destino}. Lo conservo para revisar, no doy el activo por terminado.`);
-            j.indice++;j.mes=inicial;j.conteo.activos++;terminado=true;
+            j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length) {j.estado='terminado';j.notificado=false;}
             guardar(j);
             await avisar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`);
           } else {
             const inicioGuardado=Date.now();
-            if(!existe) {
-              const tmp=escribirTemporal(destino,cuerpo);
-              // Enlace sin reemplazar: protege tambien ante una sincronizacion concurrente.
-              fs.linkSync(tmp,destino);syncDir(path.dirname(destino));fs.rmSync(tmp);syncDir(path.dirname(destino));
-              j.conteo.guardados++;
-            } else j.conteo.existentes++;
+            if(modo==='nuevo') {publicarSerie(destino,Buffer.from(cuerpo));j.conteo.guardados++;}
+            else if(modo==='ampliar') {publicarSerie(destino,Buffer.from(cuerpo),previoBuf);j.conteo.ampliados=(j.conteo.ampliados||0)+1;}
+            else j.conteo.existentes++;
             j.mes=anterior(mes);guardar(j);
             const ndias=new Date(siguiente(mes)-1).getUTCDate();
             const dias=new Set(datos.map(v=>new Date(v[0]).getUTCDate()));
             const faltan=Array.from({length:ndias},(_,i)=>i+1).filter(n=>!dias.has(n));
-            await avisar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`);
+            await avisar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`);
           }
         }
       }
@@ -123,6 +119,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       if(estadoAbs===baseAbs || estadoAbs.startsWith(baseAbs+path.sep)) throw new Error('El avance privado debe quedar fuera de la carpeta de registros que se sincroniza con GitHub.');
       let j;
       try{j=leerEstado(archivoEstado());}catch(e){if(!arranque)await avisar(event,`No puedo leer el avance: ${e.message}. No lo sustituyo.`);else throw new Error(`No puedo leer el avance de registra: ${e.message}`);return;}
+      if(j && j.hasta>cierreUTC(ahora()))throw new Error('El corte guardado esta en el futuro; revisa el reloj o el avance.');
       if(arranque) {
         if(!j)return;
         if(j.estado==='terminado') {if(!j.notificado)await avisarFin(j);return;}
@@ -134,7 +131,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos);
           if(!mismo) {await avisar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
         } else {
-          j={version:1,estado:'en-curso',clase,codigos,indice:0,mes:inicial,channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0},notificado:false};
+          const hasta=cierreUTC(ahora());
+          j={version:2,estado:'en-curso',clase,codigos,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
         }
       }

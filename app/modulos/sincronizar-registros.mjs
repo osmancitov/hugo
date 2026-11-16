@@ -3,14 +3,14 @@
 // distinto. Los registros son publicos y van al repo por decision del usuario (15-nov-2026).
 // Sentidos: lo que solo esta en la Debian sube en UN commit (autor y committer con el correo del
 // usuario); lo que solo esta en GitHub baja sin pisar (tmp + enlace duro, como el registro). Lo que
-// esta en los dos lados con contenido DISTINTO es un conflicto: se reporta y no se toca en ningun
+// esta en los dos lados con contenido DISTINTO que no sea una ampliacion estricta es un conflicto: se reporta y no se toca en ningun
 // lado. La comparacion es por contenido (la huella sha de blob de git), nunca por nombre ni fecha.
 // Credencial: keys/.github-key, un token de GitHub que el usuario ya tiene en la Debian. Hugo lo lee
 // solo aqui y NUNCA lo imprime ni lo envia; antes de ofrecer subida comprueba contra la API que el
 // token tiene permiso de escritura en el repo. Sin el archivo o sin ese permiso, la bajada funciona
 // igual (el repo es publico) y la subida queda pendiente, avisando.
-// Antes de cambiar nada muestra el plan (que sube, que baja, que conflictos hay) y solo actua con
-// el pulgar del usuario. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
+// Sin confirmacion, dentro de la sincronizacion autorizada. Las series mensuales solo crecen
+// cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
 // Mudanza unica de lo heredado (una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
@@ -20,6 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CLASES } from './activos.mjs';
+import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 
 const PREFIJO = 'registros/velas-24h';
 const RUTA_OK = new RegExp(`^registros/velas-24h/(?:${CLASES.join('|')})/[A-Z0-9]{2,15}/\\d{4}_[A-Z0-9]{2,15}$`);
@@ -209,6 +210,15 @@ export function registrar(ctx) {
     return { movidos, pendientes, commit: commit.sha };
   }
 
+  async function leerBlob(repo,token,sha) {
+    const blob=await api(repo,`/git/blobs/${sha}`,{token});
+    const buf=Buffer.from(String(blob.content||''),'base64');
+    if(!buf.length||buf.length>MAX_BYTES||shaBlob(buf)!==sha)throw Error('El blob remoto no tiene el contenido o tamano esperado.');
+    return buf;
+  }
+  function relacion(local,remoto,rel) {
+    return compararSeries(JSON.parse(local),JSON.parse(remoto),mesDeRuta(rel));
+  }
   async function planear(repo, token) {
     const { mapa, heredados } = await remotos(repo, token);
     const subir = [], bajar = [], conflictos = [];
@@ -217,7 +227,17 @@ export function registrar(ctx) {
     for (const f of locales()) {
       const shaRemota = mapa.get(f.rel);
       if (shaRemota === undefined) { subir.push(f); continue; }
-      if (shaBlob(fs.readFileSync(f.ruta)) === shaRemota) iguales++; else conflictos.push(f.rel);
+      const local=fs.readFileSync(f.ruta);
+      if (shaBlob(local) === shaRemota) iguales++;
+      else {
+        const remoto=await leerBlob(repo,token,shaRemota);
+        try {
+          const modo=relacion(local,remoto,f.rel);
+          if(modo==='ampliar')bajar.push({rel:f.rel,sha:shaRemota});
+          else if(modo==='conservar')subir.push(f);
+          else iguales++;
+        } catch {conflictos.push(f.rel);}
+      }
       mapa.delete(f.rel);
     }
     for (const [rel, sha] of mapa) bajar.push({ rel, sha });
@@ -235,15 +255,16 @@ export function registrar(ctx) {
     const hechos = [], fallos = [];
     for (const b of bajar) {
       try {
-        const blob = await api(repo, `/git/blobs/${b.sha}`, { token });
-        const buf = Buffer.from(String(blob.content || ''), 'base64');
-        if (!buf.length || buf.length > MAX_BYTES) throw new Error(`tamano fuera de lo esperado (${buf.length} bytes)`);
-        const destino = path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
-        fs.mkdirSync(path.dirname(destino), { recursive: true });
-        const tmp = `${destino}.tmp-${process.pid}`;
-        fs.writeFileSync(tmp, buf);
-        fs.linkSync(tmp, destino); // falla si ya existe: nunca pisa
-        fs.rmSync(tmp, { force: true });
+        const buf=await leerBlob(repo,token,b.sha);
+        const destino=path.join(dirBase(),b.rel.slice(PREFIJO.length+1));
+        if(!validarSerie(JSON.parse(buf),mesDeRuta(b.rel)).length)throw Error('No sincronizo un archivo mensual vacio.');
+        if(fs.existsSync(destino)) {
+          if(!fs.lstatSync(destino).isFile())throw Error('El destino no es un archivo normal.');
+          const previo=fs.readFileSync(destino);
+          const modo=relacion(previo,buf,b.rel);
+          if(modo==='ampliar')publicarSerie(destino,buf,previo);
+          else continue; // iguales o la Debian tiene una extension mayor: nunca recortar
+        } else publicarSerie(destino,buf);
         hechos.push(b.rel);
       } catch (e) { fallos.push(`${b.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`.slice(0, 160)); }
     }
@@ -264,7 +285,14 @@ export function registrar(ctx) {
       const buf = fs.readFileSync(f.ruta);
       const shaRemota = actuales.get(f.rel);
       if (shaRemota === shaBlob(buf)) continue; // ya esta igual
-      if (shaRemota !== undefined) { omitidos.push(`${f.rel.replace(`${PREFIJO}/`, '')}: aparecio en el repo con otro contenido`); continue; }
+      try {
+        if(!validarSerie(JSON.parse(buf),mesDeRuta(f.rel)).length)throw Error('No sincronizo un archivo mensual vacio.');
+        if(shaRemota!==undefined) {
+          const remoto=await leerBlob(repo,token,shaRemota);
+          const modo=relacion(remoto,buf,f.rel);
+          if(modo!=='ampliar')continue; // remoto igual o mayor: no recortar
+        }
+      } catch(e) {omitidos.push(`${f.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`);continue;}
       const blob = await api(repo, '/git/blobs', { token, method: 'POST', body: { content: buf.toString('base64'), encoding: 'base64' } });
       items.push({ path: f.rel, mode: '100644', type: 'blob', sha: blob.sha });
     }
@@ -284,8 +312,8 @@ export function registrar(ctx) {
   }
 
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
-  // pasada: el usuario autorizo la sincronizacion automatica de este alcance (15-nov-2026). Nada se
-  // pisa nunca; los conflictos se reportan y no se tocan.
+  // pasada: mantiene la sincronizacion automatica configurada. No se
+  // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
   async function pasada() {
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
