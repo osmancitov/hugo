@@ -1,5 +1,7 @@
 // Motor unico de registra: un activo o una lista, meses UTC hacia atras y avance durable.
 // No envia ordenes ni usa claves. La integracion decide quien puede iniciar una orden.
+// Piso opcional (j.piso, milisegundos del dia 1 del mes): el activo termina al completar ese mes;
+// sin piso, termina en el primer mes vacio como siempre. El piso viaja en el avance: continuar lo conserva.
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES, CODIGO_OK } from './activos.mjs';
@@ -36,7 +38,7 @@ export function leerEstado(archivo) {
   const j=JSON.parse(leerNormal(archivo));
   if(j.version===1) {j.version=2;j.hasta=CERO;j.inicial=inicial;j.conteo.ampliados=0;} // reanuda el corte antiguo sin inventar dias
   const estados=['en-curso','pausado','terminado'];
-  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0)) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0)) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
   if ((j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
   return j;
 }
@@ -62,7 +64,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     try {
       j.estado='en-curso';delete j.error;guardar(j);
       await vaciarAviso(j);
-      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}.${j.piso!=null?` Tramo: no bajo de ${etiqueta(j.piso)}.`:''} Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
       while(j.indice<j.codigos.length) {
         if(pedida(marca))throw errorParada();
         const codigo=j.codigos[j.indice];
@@ -73,6 +75,12 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         let terminado=false;
         while(!terminado) {
           if(pedida(marca))throw errorParada();
+          if(j.piso!=null && j.mes<j.piso) {
+            j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
+            if(j.indice===j.codigos.length) {j.estado='terminado';j.notificado=false;}
+            await notificar(j,`${codigo}: tramo desde ${etiqueta(j.piso)} cubierto; no bajo mas. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Tramo desde ${etiqueta(j.piso)} cubierto. ${j.indice}/${j.codigos.length} activos.`});
+            continue;
+          }
           const meses=(new Date(j.inicial).getUTCFullYear()-new Date(j.mes).getUTCFullYear())*12+new Date(j.inicial).getUTCMonth()-new Date(j.mes).getUTCMonth();
           if(meses>=LIMITE) throw new Error(`Tope de seguridad: ${LIMITE} meses para ${codigo}; no doy su historial por terminado.`);
           const mes=j.mes;
@@ -127,7 +135,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       }
     } finally {activas.delete(id);}
   }
-  async function iniciar({clase,codigos,event,continuar=false,arranque=false}) {
+  async function iniciar({clase,codigos,event,piso=null,continuar=false,arranque=false}) {
     if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
@@ -145,11 +153,12 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         if(!j || j.estado==='terminado') {await notificar(event,'No hay un registro pendiente que continuar.');return;}
       } else {
         if(j && j.estado!=='terminado') {
-          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos);
+          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos) && (j.piso??null)===(piso??null);
           if(!mismo) {await notificar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
         } else {
           const hasta=cierreUTC(ahora());
-          j={version:2,estado:'en-curso',clase,codigos,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
+          if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
+          j={version:2,estado:'en-curso',clase,codigos,piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
         }
       }

@@ -1,11 +1,13 @@
-// Modulo radiografias: "@hugo radiografia CODIGO [CODIGO ...]" dibuja la radiografia de variacion
-// de cada activo con sus registros guardados, la guarda y la sube a este mismo hilo.
+// Modulo radiografias: "@hugo radiografia [CLASE] CODIGO [CODIGO ...]" dibuja la radiografia de
+// variacion de cada activo con sus registros guardados, la guarda y la sube a este mismo hilo.
+// La CLASE (stock/cripto) es opcional y aplica a toda la lista, como en registra: desambigua los
+// codigos con carpeta en las dos clases. Sin clase, la de cada activo se deduce de su carpeta.
 // El dibujo lo hace el productor (Python + matplotlib), el programa afinado y aprobado con SPCX
 // (modulo md/radiografia-de-variacion.md del Nucleo). Este modulo lo lleva escrito y lo instala en
 // ~/.local/share/hugo-radiografias/ la primera vez y cada vez que cambie; lo ejecuta con python3.
 // Si falta python3 o matplotlib en la Debian, lo dice y ofrece el instalador autorizable; no dibuja nada.
 // Registros: la misma carpeta base que usa el registro (HUGO_VELAS_DIR); la clase (stock/cripto)
-// se deduce de la carpeta del activo, sin adivinar entre clases.
+// se deduce de la carpeta del activo si la orden no la fija; si está en ambas, se detiene.
 // Destino de las imagenes: un clon de la estructura de registros bajo graficas/ (decision del
 // usuario, 15-nov-2026): graficas/velas-24h/<clase>/<CODIGO>/<CODIGO>_radiografia.png junto a
 // registros/; HUGO_GRAFICAS_DIR cambia la raiz. El nombre <CODIGO>_radiografia.png es decision del
@@ -145,14 +147,17 @@ const ACTIVOS_INFO = {
   ZM: ["Zoom", "empresa"],
 };
 
-// Texto «nombre · tipo» para el subtítulo. Los 105 registrados: de la tabla verificada.
-// Uno nuevo: su nombre en vivo de Binance, SIN tipo (nunca se inventa una clasificación);
-// si no se puede leer el nombre, la radiografía sale sin la línea de info.
-async function infoDe(codigo) {
-  const conocido = ACTIVOS_INFO[codigo];
-  if (conocido) return `${conocido[0]} · ${conocido[1]}`;
+// Texto «nombre · tipo» para el subtítulo. Los 105 stock registrados: de la tabla verificada
+// (solo aplica a stock: un cripto con el mismo código es otro activo y no hereda ese nombre).
+// Uno nuevo o un cripto: su nombre en vivo de Binance, SIN tipo (nunca se inventa una
+// clasificación); si no se puede leer el nombre, la radiografía sale sin la línea de info.
+async function infoDe(codigo, clase) {
+  if (clase === 'stock') {
+    const conocido = ACTIVOS_INFO[codigo];
+    if (conocido) return `${conocido[0]} · ${conocido[1]}`;
+  }
   try {
-    const r = await resolverActivo('stock', codigo);
+    const r = await resolverActivo(clase, codigo);
     return r && r.ok && r.nombre ? r.nombre : '';
   } catch { return ''; }
 }
@@ -161,9 +166,10 @@ const PRODUCTOR = `#!/usr/bin/env python3
 """Productor de radiografías de variación.
 Aplica el módulo md/radiografia-de-variacion.md a cualquier activo de los registros.
 
-Uso: productor_radiografia.py CODIGO SALIDA.png [BASE_REGISTROS] [INFO]
+Uso: productor_radiografia.py CODIGO SALIDA.png [BASE_REGISTROS] [INFO] [CLASE]
   BASE_REGISTROS: carpeta velas-24h (por defecto ~/Documents/hugo/registros/velas-24h).
-  La clase (stock/cripto) se deduce de la carpeta del activo; si está en ambas, se detiene.
+  CLASE (opcional, stock/cripto): la que validó la orden. Sin ella la clase se deduce de
+  la carpeta del activo; si está en ambas, se detiene.
   INFO (opcional): texto «nombre · tipo» del activo para el subtítulo (decisión del
   usuario, 15-nov-2026: empresa / fondo ETF / apalancado N× / inverso N× bien visibles).
 
@@ -203,8 +209,11 @@ def ventana(rets):
     """Devuelve (ylo, yhi, tick_lo, tick_hi): el marco uniforme, para todos igual."""
     return YLO0, YHI0, TLO, THI
 
-def cargar(base, codigo):
-    clases = [c for c in ('stock', 'cripto') if glob.glob(os.path.join(base, c, codigo, f'26*_{codigo}'))]
+def cargar(base, codigo, clase_arg=''):
+    if clase_arg:
+        clases = [clase_arg] if glob.glob(os.path.join(base, clase_arg, codigo, f'26*_{codigo}')) else []
+    else:
+        clases = [c for c in ('stock', 'cripto') if glob.glob(os.path.join(base, c, codigo, f'26*_{codigo}'))]
     if len(clases) != 1:
         sys.exit(f'{codigo}: esperaba una sola carpeta de clase con registros; hay {len(clases)} ({clases})')
     rows = []
@@ -213,8 +222,8 @@ def cargar(base, codigo):
     rows.sort(key=lambda r: r[0])
     return rows, clases[0]
 
-def radiografia(codigo, base, out, info=''):
-    rows, clase = cargar(base, codigo)
+def radiografia(codigo, base, out, info='', clase_arg=''):
+    rows, clase = cargar(base, codigo, clase_arg)
     if len(rows) < 2:
         sys.exit(f'{codigo}: hacen falta al menos 2 velas; hay {len(rows)}')
     fechas=[datetime.datetime.utcfromtimestamp(r[0]/1000) for r in rows]
@@ -359,10 +368,11 @@ def radiografia(codigo, base, out, info=''):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        sys.exit('uso: productor_radiografia.py CODIGO SALIDA.png [BASE_REGISTROS] [INFO]')
+        sys.exit('uso: productor_radiografia.py CODIGO SALIDA.png [BASE_REGISTROS] [INFO] [CLASE]')
     base = sys.argv[3] if len(sys.argv) > 3 else os.path.expanduser('~/Documents/hugo/registros/velas-24h')
     info = sys.argv[4] if len(sys.argv) > 4 else ''
-    radiografia(sys.argv[1].upper(), base, sys.argv[2], info)
+    clase_arg = sys.argv[5] if len(sys.argv) > 5 else ''
+    radiografia(sys.argv[1].upper(), base, sys.argv[2], info, clase_arg)
 `;
 
 export function registrar(ctx) {
@@ -428,8 +438,11 @@ export function registrar(ctx) {
   ctx.comando(/^\s*radiograf[ií]as?(?:\s|$)/i, async (event, texto) => {
     const partes = texto.trim().replace(/[.!?]+$/, '').split(/[\s,;]+/);
     partes.shift();
+    // Clase opcional al inicio: aplica a toda la lista y desambigua carpetas duplicadas.
+    let claseOrden = null;
+    if (partes.length && CLASES.includes(partes[0].toLowerCase())) claseOrden = partes.shift().toLowerCase();
     const codigos = partes.map((p) => p.toUpperCase());
-    if (!codigos.length || codigos.length > 120 || codigos.some((c) => !CODIGO_OK.test(c))) return decir(event, 'Indica uno o varios c\u00f3digos: radiograf\u00eda SPCX NVDA. No dibuj\u00e9 nada.');
+    if (!codigos.length || codigos.length > 120 || codigos.some((c) => !CODIGO_OK.test(c))) return decir(event, 'Indica uno o varios c\u00f3digos: radiograf\u00eda SPCX NVDA (o radiograf\u00eda cripto BTC ETH). No dibuj\u00e9 nada.');
     if (new Set(codigos).size !== codigos.length) return decir(event, 'Hay c\u00f3digos repetidos en la lista. Qu\u00edtalos y vuelve a pedirlo; no dibuj\u00e9 nada.');
     const falta = await entornoListo();
     if (falta) return decir(event, falta);
@@ -449,13 +462,13 @@ export function registrar(ctx) {
         }
         const codigo = codigos[i];
         ctx.activas.set(idAct, { que: `dibujar radiograf\u00eda ${codigo} (${i + 1}/${codigos.length})`, desde: Date.now(), largo: true });
-        const clase = claseDe(codigo);
+        const clase = claseOrden || claseDe(codigo);
         if (!clase) { fallas.push(codigo); await decir(event, `${codigo}: no tiene registros guardados (o aparece en las dos clases); no lo dibuj\u00e9.`); continue; }
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-radiografia-'));
         try {
           const png = path.join(tmp, `${codigo}.png`);
-          const info = await infoDe(codigo);
-          await ex('python3', [productor, codigo, png, base(), info], { timeout: 120000 });
+          const info = await infoDe(codigo, clase);
+          await ex('python3', [productor, codigo, png, base(), info, clase], { timeout: 120000 });
           const aviso = guardar(png, codigo, clase);
           if (aviso) await decir(event, aviso);
           await app.client.filesUploadV2({

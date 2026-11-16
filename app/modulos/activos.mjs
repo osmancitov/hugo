@@ -13,7 +13,8 @@
 // Limite conocido: la lista de productos (bapi) es la API publica interna de la web de Binance, no la documentada del
 // Spot ni estable; no hay una clasificacion documentada. Si dejara de servirla, las ordenes se detienen con aviso claro.
 // Las clases tambien definen las carpetas del registro (velas-24h/<clase>/<CODIGO>/): una sola fuente para velas y sync.
-export const CODIGO_OK = /^[A-Z0-9]{2,15}$/;
+// Hay criptos de una sola letra (A, W, ...) y con nombre Unicode (p. ej. 币安人生): letras y numeros Unicode, 1-15.
+export const CODIGO_OK = /^[\p{L}\p{N}]{1,15}$/u;
 export const CLASES = ['stock', 'cripto'];
 
 const API = 'https://api.binance.com';

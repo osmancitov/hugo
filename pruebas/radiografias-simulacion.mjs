@@ -89,5 +89,45 @@ espera('sin códigos', mensajes.some((m) => m.includes('Indica uno o varios')));
 const formas = ['radiografía SPCX', 'radiografia SPCX', 'radiografías SPCX NVDA', 'radiografias'];
 espera('reconoce tilde/sin tilde', formas.every((f) => comandos.some((x) => x.patron.test(f))));
 
+// 7) clase explícita: código con carpeta en las dos clases se dibuja por la pedida; códigos de
+//    1 letra y Unicode pasan la validación de la orden (fallan después por falta de registros)
+const velasSim = '/tmp/hugo_sim/velas';
+fs.rmSync(velasSim, { recursive: true, force: true });
+const velasSimu = [];
+let precio = 100;
+for (let i = 0; i < 45; i++) { // 1 oct - 14 nov 2026, con días verdes y rojos (Date.UTC desborda el mes solo)
+  const t = Date.UTC(2026, 9, 1 + i);
+  const delta = (i % 3 === 0 ? -1 : 1) * (1 + (i % 5));
+  const cierre = precio + delta;
+  velasSimu.push([t, String(precio), String(Math.max(precio, cierre)), String(Math.min(precio, cierre)), String(cierre), '1000', t + 86400000 - 1, '1000', 3, '1', '2', '0']);
+  precio = cierre;
+}
+const octSimu = velasSimu.filter((v) => new Date(v[0]).getUTCMonth() === 9);
+const novSimu = velasSimu.filter((v) => new Date(v[0]).getUTCMonth() === 10);
+for (const claseSim of ['cripto', 'stock']) {
+  const dirSim = path.join(velasSim, claseSim, 'SIMU');
+  fs.mkdirSync(dirSim, { recursive: true });
+  fs.writeFileSync(path.join(dirSim, '2610_SIMU'), JSON.stringify(octSimu));
+  fs.writeFileSync(path.join(dirSim, '2611_SIMU'), JSON.stringify(novSimu));
+}
+const velasAntes = process.env.HUGO_VELAS_DIR;
+process.env.HUGO_VELAS_DIR = velasSim;
+mensajes.length = 0; subidas.length = 0;
+await corre('radiografía SIMU');
+espera('dos clases sin clase explícita se detiene', mensajes.some((m) => m.includes('aparece en las dos clases')));
+espera('cierre con fallo SIMU', mensajes.some((m) => m.includes('Encomienda terminada: 0 de 1 radiograf\u00edas entregadas. Fallaron 1: SIMU')));
+mensajes.length = 0; subidas.length = 0;
+await corre('radiografía cripto SIMU');
+espera('clase explícita dibuja', subidas.length === 1 && subidas[0].filename === 'SIMU_radiografia.png');
+espera('clase explícita guarda en su clase', fs.existsSync('/tmp/hugo_sim/graficas2/cripto/SIMU/SIMU_radiografia.png') && fs.existsSync('/tmp/hugo_sim/graficas2/cripto/SIMU/.SIMU_radiografia.sha256'));
+espera('cierre 1 de 1 cripto', mensajes.some((m) => m.includes('Encomienda terminada: 1 de 1 radiograf\u00edas entregadas, sin fallos')));
+mensajes.length = 0;
+await corre('radiografía cripto W');
+espera('código de 1 letra pasa validación', mensajes.some((m) => m.includes('No pude dibujar W:')) && !mensajes.some((m) => m.includes('Indica uno o varios')));
+mensajes.length = 0;
+await corre('radiografía cripto 牛来');
+espera('código Unicode pasa validación', mensajes.some((m) => m.includes('No pude dibujar 牛来:')) && !mensajes.some((m) => m.includes('Indica uno o varios')));
+process.env.HUGO_VELAS_DIR = velasAntes;
+
 console.log('OK:', ok.length, ok.map((x) => `[${x}]`).join(' '));
 if (mal.length) { console.log('MAL:', mal.join(' | ')); process.exit(1); }
