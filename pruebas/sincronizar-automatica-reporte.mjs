@@ -67,9 +67,12 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     const posts = b.llamadas.filter((l) => l.tipo === 'post');
     const updates = b.llamadas.filter((l) => l.tipo === 'update');
     // Ni un mensaje por archivo ni uno solo editado toda la pasada: ~1 por minuto con 12 avances de 30 s.
-    assert.ok(posts.length >= 3 && posts.length <= 8, `mensajes abiertos: ${posts.length}`);
-    assert.equal(posts.filter((p) => p.thread_ts).length, 0, 'el reporte automatico va al canal, sin hilo');
-    assert.ok(posts.every((p) => p.channel === 'avisos' && p.text.startsWith('Sincronización automática de registros en curso.')));
+    assert.ok(posts.length >= 4 && posts.length <= 9, `mensajes abiertos: ${posts.length}`);
+    // El primer mensaje avisa en el canal que empieza la pasada; los avances son respuestas en su hilo.
+    assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
+    assert.ok(/empiezo una pasada con archivos por copiar/.test(posts[0].text), posts[0].text);
+    assert.ok(posts.slice(1).every((p) => p.thread_ts === posts[0].tsAsignado), 'los avances cuelgan del aviso inicial');
+    assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && p.text.startsWith('Sincronización automática de registros en curso.')));
     // A 30 s por archivo, tras el primero el ritmo permite estimar: alguna edicion muestra el tiempo aproximado.
     assert.ok(updates.some((u) => /quedan aprox\. \d+ min \(estimación aproximada, no exacta\)/.test(u.text)), 'falta la estimacion aproximada');
     assert.ok(updates.some((u) => /\(sigue en un mensaje nuevo\)/.test(u.text)), 'falta el cierre al renovar el mensaje');

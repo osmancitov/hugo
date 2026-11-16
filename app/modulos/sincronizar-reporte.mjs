@@ -1,8 +1,8 @@
 // Un reporte de sincronizacion (manual o automatica): un solo mensaje, editado con el avance y el resultado.
 // Con event va al hilo del comando; con canal va al canal de avisos sin hilo.
-export async function crearReporteSync({client,token,event,canal,inicio,ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
+export async function crearReporteSync({client,token,event,canal,hilo:hiloOpt,inicio,ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
- const hilo=event?event.thread_ts||event.ts:undefined;
+ const hilo=event?event.thread_ts||event.ts:hiloOpt;
  const m=await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio||'Sincronizacion en curso: comparando registros locales con GitHub. Los archivos no estan confirmados en la rama hasta el resultado final.'});
  if(!m?.ts)throw Error('Slack no devolvio referencia del reporte de sincronizacion.');
  let ultimo=ahora();

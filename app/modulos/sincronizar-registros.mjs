@@ -424,9 +424,14 @@ export function registrar(ctx) {
       // uno por minuto mientras hay avance) para no editar el mismo mensaje toda la pasada ni
       // llenar el canal, y el ultimo queda editado con el resultado final. Cuando el ritmo de la
       // fase permite estimarlo, el avance muestra el tiempo restante aproximado (no es promesa).
-      let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0;
+      let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0, padre = null;
       const abrirReporte = async (texto) => {
-        reporte = await crearReporteSync({ client: app.client, token: botToken, canal: ctx.canal, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
+        if (!padre) {
+          const m = await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: 'Sincronizaci\u00f3n autom\u00e1tica de registros: empiezo una pasada con archivos por copiar; reporto el avance en este hilo.' });
+          padre = m?.ts;
+          if (!padre) throw Error('Slack no devolvio referencia del aviso de sincronizacion.');
+        }
+        reporte = await crearReporteSync({ client: app.client, token: botToken, canal: ctx.canal, hilo: padre, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
         abiertoEn = Date.now();
       };
       const conEstimacion = (texto) => {
