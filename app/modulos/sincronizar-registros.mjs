@@ -354,10 +354,25 @@ export function registrar(ctx) {
     // control. Un 422 (un blob anotado ya no existe) invalida el punto para que la proxima resuba.
     const LOTE = 300;
     let tree = { sha: baseCommit.tree.sha };
+    // Reanudar la cadena anotada en el punto de control: solo vale si la rama sigue en el mismo
+    // commit y cada entrada ya encadenada coincide con lo que toca subir ahora; si no, se descarta
+    // y se arma desde el arbol actual. Lo ya encadenado vive en GitHub, y el ref sin force sigue
+    // protegiendo cualquier cambio ajeno si la rama avanzo entretanto.
+    let restantes = items, aplicadas = {};
+    if (punto.arbol && punto.arbol.base === ref.object.sha) {
+      const hechas = punto.arbol.hechas || {};
+      const porRel = new Map(items.map((i) => [i.path, i.sha]));
+      if (Object.entries(hechas).every(([rel, sha]) => porRel.get(rel) === sha)) {
+        tree = { sha: punto.arbol.sha };
+        aplicadas = { ...hechas };
+        restantes = items.filter((i) => !(i.path in hechas));
+        if (restantes.length && Object.keys(hechas).length) await progreso(`Reanudo la publicacion del arbol: ya estaban ${Object.keys(hechas).length}/${items.length} entradas encadenadas.`);
+      }
+    }
     const lotes = [];
-    for (let i = 0; i < items.length; i += LOTE) lotes.push(items.slice(i, i + LOTE));
+    for (let i = 0; i < restantes.length; i += LOTE) lotes.push(restantes.slice(i, i + LOTE));
     for (let k = 0; k < lotes.length; k++) {
-      if (lotes.length > 1) await progreso(`Publicando el arbol por lotes: ${k + 1}/${lotes.length}.`);
+      if (items.length > LOTE) await progreso(`Publicando el arbol por lotes: ${k + 1}/${lotes.length}.`);
       for (let intento = 1; ; intento++) {
         try {
           tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: tree.sha, tree: lotes[k] } });
@@ -374,6 +389,9 @@ export function registrar(ctx) {
           throw e;
         }
       }
+      for (const i of lotes[k]) aplicadas[i.path] = i.sha;
+      punto.arbol = { base: ref.object.sha, sha: tree.sha, hechas: aplicadas };
+      guardarPunto(punto);
     }
     const commit = await api(repo, '/git/commits', {
       token, method: 'POST',
