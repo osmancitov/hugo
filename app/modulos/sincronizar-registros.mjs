@@ -13,8 +13,8 @@
 // cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
 // Recuperacion: los blobs ya preparados quedan anotados en un punto de control en disco
-// (velas-24h/.punto-sincronizar.json) y crear el arbol reintenta dos veces si GitHub responde 5xx,
-// asi una pasada que muere al publicar no vuelve a subir todo.
+// (velas-24h/.punto-sincronizar.json) y el arbol se crea por lotes encadenados (base_tree), con
+// reintento si GitHub responde 5xx, asi una pasada que muere al publicar no vuelve a subir todo.
 // Mudanza unica de lo heredado (una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
 // contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
@@ -346,23 +346,33 @@ export function registrar(ctx) {
     verificar(); // frena antes de publicar el commit: blobs preparados no cuentan como subida
     guardarPunto(punto);
     await progreso(`Publicando commit con ${items.length} archivo(s); falta confirmar la rama.`);
-    // Crear el arbol es un solo POST grande: si GitHub responde 5xx se reintenta dos veces con
-    // esperas prudentes dentro de la misma pasada; lo ya preparado queda en el punto de control.
-    let tree;
-    for (let intento = 1; ; intento++) {
-      try {
-        tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: items } });
-        break;
-      } catch (e) {
-        if (e.status === 422) { borrarPunto(); throw e; } // un blob anotado ya no existe: la proxima pasada los resube
-        if (e.status >= 500 && intento < 3) {
-          const espera = intento * 30000;
-          await progreso(`GitHub respondio ${e.status} al publicar el arbol; reintento en ${espera / 1000} s (intento ${intento + 1} de 3).`);
-          await esperar(espera);
-          verificar();
-          continue;
+    // Crear el arbol es el paso donde GitHub agota su tiempo si lleva miles de entradas de una
+    // vez (su propio 502 lo sugiere: «consider building the tree incrementally»). Se construye POR
+    // LOTES encadenados con base_tree: cada lote parte del arbol anterior, asi los archivos fuera
+    // del lote (y ajenos al registro) se conservan y el mismo path se pisa. Si GitHub responde 5xx
+    // se reintenta ese lote dos veces con esperas prudentes; lo ya preparado queda en el punto de
+    // control. Un 422 (un blob anotado ya no existe) invalida el punto para que la proxima resuba.
+    const LOTE = 300;
+    let tree = { sha: baseCommit.tree.sha };
+    const lotes = [];
+    for (let i = 0; i < items.length; i += LOTE) lotes.push(items.slice(i, i + LOTE));
+    for (let k = 0; k < lotes.length; k++) {
+      if (lotes.length > 1) await progreso(`Publicando el arbol por lotes: ${k + 1}/${lotes.length}.`);
+      for (let intento = 1; ; intento++) {
+        try {
+          tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: tree.sha, tree: lotes[k] } });
+          break;
+        } catch (e) {
+          if (e.status === 422) { borrarPunto(); throw e; }
+          if (e.status >= 500 && intento < 3) {
+            const espera = intento * 30000;
+            await progreso(`GitHub respondio ${e.status} al publicar el arbol; reintento en ${espera / 1000} s (intento ${intento + 1} de 3).`);
+            await esperar(espera);
+            verificar();
+            continue;
+          }
+          throw e;
         }
-        throw e;
       }
     }
     const commit = await api(repo, '/git/commits', {
