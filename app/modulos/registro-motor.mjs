@@ -126,6 +126,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       let j;
       try{j=leerEstado(archivoEstado());}catch(e){if(!arranque)await notificar(event,`No puedo leer el avance: ${e.message}. No lo sustituyo.`);else throw new Error(`No puedo leer el avance de registra: ${e.message}`);return;}
       if(j && j.hasta>cierreUTC(ahora()))throw new Error('El corte guardado esta en el futuro; revisa el reloj o el avance.');
+      if(j?.estado==='terminado' && (j.avisoPendiente||!j.notificado)){await vaciarAviso(j);await avisarFin(j);if(continuar||arranque)return;}
       if(arranque) {
         if(!j)return;
         if(j.estado==='terminado') {await vaciarAviso(j);if(!j.notificado)await avisarFin(j);return;}
