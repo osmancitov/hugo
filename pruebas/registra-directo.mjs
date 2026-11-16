@@ -111,3 +111,20 @@ test('integracion real velas+activos+motor: lista separada por comas y progreso 
   const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.deepEqual(j.codigos,['NVDA','SPCX']);assert.equal(j.conteo.guardados,2);assert.ok(msgs.some(m=>m.text.includes('NVIDIA')));assert.ok(msgs.some(m=>m.text.includes('SpaceX')));assert.ok(msgs.every(m=>m.channel===event.channel&&m.thread_ts===event.ts));
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
 });
+test('registra cripto EUR se detiene: el euro es fiat, no un cripto; USDT se conserva',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-fiat-'));const original=globalThis.fetch;let handler;const msgs=[];let llamadas=0;
+ globalThis.fetch=async u=>{llamadas++;let j;const url=new URL(u);
+  if(u.includes('exchangeInfo')) {const symbol=url.searchParams.get('symbol');j={symbols:[{symbol,status:'TRADING',quoteAsset:'USDT',baseAsset:symbol.slice(0,-4)}]};}
+  else if(u.includes('get-products'))j={data:Array.from({length:101},(_,i)=>({s:'PRUEBA'+i}))};
+  else j=[];
+  return{ok:true,status:200,text:async()=>JSON.stringify(j)};
+ };
+ try{
+  const {registrar}=await import('../app/modulos/velas.mjs');
+  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  await handler(event,'registra cripto EUR');
+  const j=leerEstado(path.join(root,'estado.json'));
+  assert.equal(j.estado,'pausado');assert.match(j.error,/moneda fiat/);assert.equal(llamadas,0);
+  assert.ok(!fs.existsSync(path.join(root,'velas')));assert.ok(msgs.some(m=>m.text.includes('Registro detenido en EUR')));
+ }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
+});

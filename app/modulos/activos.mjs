@@ -9,6 +9,9 @@
 //     bStocks en su lista publica de productos (campo "tags", y su nombre termina en "(bStocks)").
 //   - cripto: par CODIGO+USDT (base CODIGO) y que Binance NO lo etiquete bStocks (si lo etiqueta, es una accion tokenizada
 //     y se rechaza con la orden correcta: base exacta sola no basta, p. ej. NVDAB existe como par).
+//   Excepcion curada: las monedas fiat no son cripto aunque tengan par vivo contra USDT. Binance no publica
+//   una etiqueta de fiat (su lista de productos trae EURUSDT, «Euro», sin marca que lo distinga), asi que se
+//   rechazan a mano en FIAT. Decision del usuario, 16-nov-2026: EUR fuera del universo de activos; USDT se conserva.
 //   Si falla la clasificacion (red, respuesta ajena), la orden se detiene: no se adivina.
 // Limite conocido: la lista de productos (bapi) es la API publica interna de la web de Binance, no la documentada del
 // Spot ni estable; no hay una clasificacion documentada. Si dejara de servirla, las ordenes se detienen con aviso claro.
@@ -16,6 +19,9 @@
 // Hay criptos de una sola letra (A, W, ...) y con nombre Unicode (p. ej. 币安人生): letras y numeros Unicode, 1-15.
 export const CODIGO_OK = /^[\p{L}\p{N}]{1,15}$/u;
 export const CLASES = ['stock', 'cripto'];
+
+// Monedas fiat con par contra USDT: no son cripto (vease el encabezado). CODIGO -> nombre para el aviso.
+const FIAT = new Map([['EUR', 'el euro']]);
 
 const API = 'https://api.binance.com';
 const WEB = 'https://www.binance.com';
@@ -65,6 +71,7 @@ export async function resolverActivo(clase, codigoEntrada, opciones = {}) {
     return { ok: true, clase, codigo, simbolo, nombre: limpiarNombre(producto.an) };
   }
   const simbolo = `${codigo}USDT`;
+  if (FIAT.has(codigo)) return { ok: false, motivo: `${codigo} es ${FIAT.get(codigo)}, una moneda fiat: ${simbolo} es un par de divisas, no un cripto. No lo registro.` };
   if (!vigente(await consultarPar(simbolo, o), codigo)) return { ok: false, motivo: `No encuentro el cripto ${codigo} (${simbolo}) activo en Binance.` };
   const producto = await productoDe(simbolo, o);
   if (esBStock(producto)) return { ok: false, motivo: `${simbolo} es una acci\u00f3n tokenizada (\u00ab${producto.an}\u00bb), no un cripto. Para ella usa \`registra stock ${codigo.replace(/B$/, '')}\`.` };
