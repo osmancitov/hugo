@@ -831,7 +831,11 @@ function ruta() {
   if (m) vistaActivo(m[1], decodeURIComponent(m[2]));
   else vistaArbol($('#buscar').value.trim());
 }
-$('#buscar').addEventListener('input', ruta);
+$('#buscar').addEventListener('input', () => {
+  // Dentro de un activo, buscar vuelve al catálogo filtrado en vez de reiniciar la gráfica.
+  if (/^#\/a\//.test(location.hash)) location.hash = '#/';
+  else ruta();
+});
 window.addEventListener('hashchange', ruta);
 ruta();
 
