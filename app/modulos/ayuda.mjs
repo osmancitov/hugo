@@ -8,6 +8,7 @@ const TEXTO = [
   '\u2022 `actualiza` sin adjunto: baja la \u00faltima versi\u00f3n de GitHub, pide confirmaci\u00f3n, la instala y reinicia a Hugo.',
   '\u2022 `registra stock CODIGO [CODIGO ...]` / `registra cripto CODIGO [CODIGO ...]`: recorre historiales completos en orden, sin pedir confirmaci\u00f3n. Incluye el mes en curso solo hasta el ultimo dia cerrado UTC. Edita un mensaje por activo con una linea por mes; conserva el avance para retomar tras un corte.',
   '\u2022 `registra continuar`: retoma un recorrido pausado tras corregir la causa, sin pedir confirmaci\u00f3n.',
+  '\u2022 `radiograf\u00eda CODIGO [CODIGO ...]`: dibuja la radiograf\u00eda de variaci\u00f3n de cada activo con sus registros guardados, la sube al hilo y la guarda en graficas/ (misma estructura que registros/; HUGO_GRAFICAS_DIR cambia la ra\u00edz), sin \ud83d\udc4d.',
   '\u2022 `sincroniza registros`: fuerza ya una pasada de la sincronizaci\u00f3n (que es autom\u00e1tica, sin \ud83d\udc4d) de los registros de velas entre la Debian y GitHub, sin pisar contenido distinto.',
   '\u2022 `estado`: dice si est\u00e1 haciendo algo o esperando instrucciones.',
   '\u2022 `stop`: pide tu \ud83d\udc4d y detiene el trabajo en curso (borrado, registro o sincronizaci\u00f3n). Lo ya hecho se conserva.',
