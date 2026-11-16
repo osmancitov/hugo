@@ -22,7 +22,7 @@ export function compararSeries(a,b,mes,hasta=cierreUTC()) {
  return a.length===b.length?'igual':a.length<b.length?'ampliar':'conservar';
 }
 export function mesDeRuta(ruta) {
- const m=path.basename(ruta).match(/^(\d{2})(\d{2})_[A-Z0-9]{2,15}$/);
+ const m=path.basename(ruta).match(/^(\d{2})(\d{2})_[\p{L}\p{N}]{1,15}$/u);
  if(!m||Number(m[2])<1||Number(m[2])>12)throw Error('Nombre de mes invalido.');
  return Date.UTC(2000+Number(m[1]),Number(m[2])-1,1);
 }

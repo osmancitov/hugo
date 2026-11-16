@@ -24,11 +24,12 @@ import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './regist
 import { crearReporteSync } from './sincronizar-reporte.mjs';
 
 const PREFIJO = 'registros/velas-24h';
-const RUTA_OK = new RegExp(`^registros/velas-24h/(?:${CLASES.join('|')})/[A-Z0-9]{2,15}/\\d{4}_[A-Z0-9]{2,15}$`);
-const RUTA_HEREDADA = /^registros\/velas-24h\/([A-Z0-9]{2,15})\/(\d{4}_\1)$/; // ruta anterior, sin clase
+// La forma del codigo es la de activos.mjs (CODIGO_OK): hay criptos de una letra y con nombre Unicode.
+const RUTA_OK = new RegExp(`^registros/velas-24h/(?:${CLASES.join('|')})/[\\p{L}\\p{N}]{1,15}/\\d{4}_[\\p{L}\\p{N}]{1,15}$`, 'u');
+const RUTA_HEREDADA = /^registros\/velas-24h\/([A-Z0-9]{2,15})\/(\d{4}_\1)$/; // ruta anterior, sin clase (solo ASCII: lo heredado era stock)
 const CLASE_HEREDADA = 'stock';
-const ARCHIVO_OK = /^\d{4}_[A-Z0-9]{2,15}$/;
-const ACTIVO_OK = /^[A-Z0-9]{2,15}$/;
+const ARCHIVO_OK = /^\d{4}_[\p{L}\p{N}]{1,15}$/u;
+const ACTIVO_OK = /^[\p{L}\p{N}]{1,15}$/u;
 const MAX_BYTES = 5 * 1024 * 1024; // un registro mensual pesa KB; algo mayor es un error a revisar a mano
 const RAMA = 'main';
 
@@ -94,7 +95,7 @@ export function registrar(ctx) {
     let activos = [];
     try { activos = fs.readdirSync(dirBase()); } catch { return { movidos, conflictos, fallos }; }
     for (const a of activos) {
-      if (!ACTIVO_OK.test(a)) continue; // las carpetas de clase van en minuscula: no entran
+      if (!ACTIVO_OK.test(a)) continue; // las carpetas de clase (stock/cripto) tambien pasan el patron: sus hijas son carpetas de activo, no archivos mensuales, y se saltan solas
       const dirViejo = path.join(dirBase(), a);
       let st; try { st = fs.lstatSync(dirViejo); } catch { continue; }
       if (!st.isDirectory()) continue;
