@@ -72,6 +72,7 @@ a:hover { text-decoration: underline; }
   padding: .34rem .2rem; border-radius: 3px; color: var(--texto);
 }
 a.activo-fila:hover { background: var(--panel); text-decoration: none; }
+.activo-fila.resaltado { background: rgba(194, 161, 90, .14); outline: 1px solid rgba(194, 161, 90, .45); outline-offset: -1px; border-radius: 3px; }
 .activo-fila .cod { font-weight: 700; min-width: 7.5em; }
 .activo-fila .nom { color: var(--tenue); font-size: .9rem; }
 .activo-fila .cap { color: var(--oro); font-size: .82rem; margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -157,6 +158,16 @@ const PW = LW - ML - MR, PH = LH - MT - MB;
 
 const $ = (sel) => document.querySelector(sel);
 const app = $('#app');
+
+// Lugar de la lista guardado al entrar en un activo, para que «volver» regrese ahí.
+let estadoLista = null;
+app.addEventListener('click', (ev) => {
+  const fila = ev.target.closest('a.activo-fila');
+  if (!fila) return;
+  const abiertos = [...app.querySelectorAll('.nodo.abierto > .nodo-tit > span:first-child')]
+    .map((s) => s.textContent);
+  estadoLista = { abiertos, busqueda: $('#buscar').value, y: window.scrollY };
+});
 
 /* ---------- catálogo ---------- */
 const TODOS = [];
@@ -307,17 +318,6 @@ function nodoArbol(titulo, cuenta, lista, conCap) {
 
 function vistaArbol(q) {
   app.innerHTML = '';
-  if (q) {
-    const s = q.toLowerCase();
-    const hall = TODOS.filter((e) =>
-      e.codigo.toLowerCase().includes(s) || (e.nombre || '').toLowerCase().includes(s) ||
-      (e.lectura || '').toLowerCase().includes(s));
-    const caja = document.createElement('div');
-    if (!hall.length) caja.innerHTML = '<p class="vacio">Nada coincide con esa búsqueda.</p>';
-    for (const e of hall) caja.appendChild(filaActivo(e));
-    app.appendChild(caja);
-    return;
-  }
   const nStocks = nodoArbol('Stocks', STOCKS.length + ' activos', []);
   const hijos = nStocks.querySelector('.hijos');
   hijos.innerHTML = '';
@@ -329,6 +329,28 @@ function vistaArbol(q) {
   hijos.appendChild(nFon);
   app.appendChild(nStocks);
   app.appendChild(nodoArbol('Cripto', CRIPTOS.length + ' activos', CRIPTOS, true));
+  if (!q) return;
+  // La búsqueda localiza y resalta dentro del árbol, sin esconder los demás activos.
+  const s = q.toLowerCase();
+  const hall = TODOS.filter((e) =>
+    e.codigo.toLowerCase().includes(s) || (e.nombre || '').toLowerCase().includes(s) ||
+    (e.lectura || '').toLowerCase().includes(s));
+  if (!hall.length) {
+    const aviso = document.createElement('p');
+    aviso.className = 'vacio';
+    aviso.textContent = 'Nada coincide con esa búsqueda.';
+    app.prepend(aviso);
+    return;
+  }
+  let primera = null;
+  for (const e of hall) {
+    const fila = app.querySelector(`a.activo-fila[href="#/a/${e.clase}/${encodeURIComponent(e.codigo)}"]`);
+    if (!fila) continue;
+    fila.classList.add('resaltado');
+    for (let n = fila.closest('.nodo'); n; n = n.parentElement.closest('.nodo')) n.classList.add('abierto');
+    if (!primera) primera = fila;
+  }
+  if (primera) primera.scrollIntoView({ block: 'center' });
 }
 
 /* ---------- datos ---------- */
@@ -671,8 +693,7 @@ function vistaActivo(clase, codigo) {
   nav.innerHTML = enlace(ant, '← ' + (ant ? ant.codigo : '')) + enlace(sig, (sig ? sig.codigo : '') + ' →');
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = '#/'; volver.textContent = 'volver';
-  // Volver también limpia la búsqueda y muestra el catálogo completo.
-  volver.addEventListener('click', () => { $('#buscar').value = ''; });
+  // «Volver» no toca la búsqueda: ruta() recupera el lugar guardado de la lista.
 
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
@@ -832,15 +853,30 @@ function ruta() {
   limpiarGrafica(); limpiarGrafica = () => {};
   const m = location.hash.match(/^#\/a\/(cripto|stock)\/(.+)$/);
   if (m) vistaActivo(m[1], decodeURIComponent(m[2]));
-  else vistaArbol($('#buscar').value.trim());
+  else {
+    const guardado = estadoLista;
+    estadoLista = null;
+    if (guardado) $('#buscar').value = guardado.busqueda;
+    vistaArbol($('#buscar').value.trim());
+    // «Volver» recupera la búsqueda, las ramas abiertas y el punto exacto de la lista.
+    if (guardado) {
+      for (const n of app.querySelectorAll('.nodo')) {
+        const t = n.querySelector(':scope > .nodo-tit > span:first-child');
+        if (t && guardado.abiertos.includes(t.textContent)) n.classList.add('abierto');
+      }
+      requestAnimationFrame(() => window.scrollTo(0, guardado.y));
+    }
+  }
 }
 $('#buscar').addEventListener('input', () => {
+  estadoLista = null;
   // Dentro de un activo, buscar vuelve al catálogo filtrado en vez de reiniciar la gráfica.
   if (/^#\/a\//.test(location.hash)) location.hash = '#/';
   else ruta();
 });
 // Volver al inicio desde el título limpia la búsqueda y muestra el catálogo completo.
 document.querySelector('.tit-link').addEventListener('click', () => {
+  estadoLista = null;
   $('#buscar').value = '';
   if (location.hash === '' || location.hash === '#/') ruta();
 });
