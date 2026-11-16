@@ -564,12 +564,8 @@ function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
 }
 
 function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
-  const w = 700, top = 134, bottom = alto - 220;
-  // Marco centrado horizontalmente contando las fechas de la izquierda (meses de 3 letras).
-  ctx.font = '20px ' + FUENTE;
-  const anchoFecha = ctx.measureText('00 ' + MESES_ES[0]).width;
-  const left = Math.round((w - (anchoFecha + 14 + 524)) / 2 + anchoFecha + 14);
-  const right = left + 524;
+  // El marco va centrado en el lienzo; las fechas quedan fuera, a la izquierda.
+  const w = 700, left = 88, right = 612, top = 134, bottom = alto - 260;
   const n = d.rs.length;
   const X = (v) => left + ((v + limite) / (2 * limite)) * (right - left);
   const Y = (i) => top + (i / (n - 1)) * (bottom - top);
@@ -639,7 +635,7 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
     const texto=(pos?'+':'−')+Math.abs(v).toFixed(1)+'%';ctx.strokeText(texto,tx,y);ctx.fillText(texto,tx,y);
   }
   ctx.textAlign='left';ctx.font='20px '+FUENTE;
-  const y0=bottom+84;
+  const y0=bottom+100;
   // Las mismas entradas que la leyenda horizontal, cada una con su muestra.
   const muestraLin=(x,y,w)=>{ctx.strokeStyle=BLUE;ctx.globalAlpha=0.9;ctx.lineCap='round';ctx.lineWidth=Math.max(1,w);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+30,y);ctx.stroke();ctx.globalAlpha=1;};
   const muestraParche=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y-8,30,16);};
@@ -649,12 +645,12 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
   };
   const rotulo=(x,y,txt)=>{ctx.fillStyle=TICK;ctx.fillText(txt,x+38,y);};
   rotulo(30,y0,`mín ${Math.round(d.vmin)} v/p`);muestraLin(30,y0,grosor(d.vmin));
-  rotulo(30,y0+34,`med ${Math.round(d.vmed)} v/p`);muestraLin(30,y0+34,grosor(d.vmed));
-  rotulo(30,y0+68,`máx ${miles(d.vmax)} v/p`);muestraLin(30,y0+68,12);
+  rotulo(30,y0+36,`med ${Math.round(d.vmed)} v/p`);muestraLin(30,y0+36,grosor(d.vmed));
+  rotulo(30,y0+72,`máx ${miles(d.vmax)} v/p`);muestraLin(30,y0+72,12);
   const x2=380;
   rotulo(x2,y0,`+${Math.round(d.asum)} %d / ${d.dpos} d`);muestraParche(x2,y0,GREEN);
-  rotulo(x2,y0+34,`−${Math.round(Math.abs(d.ansum))} %d / ${d.dneg} d`);muestraParche(x2,y0+34,RED);
-  if(d.ansum!==0&&d.dneg>0){rotulo(x2,y0+68,`${(d.asum/Math.abs(d.ansum)).toFixed(2)} / ${(d.dpos/d.dneg).toFixed(2)}`);muestraFlag(x2,y0+68);}
+  rotulo(x2,y0+36,`−${Math.round(Math.abs(d.ansum))} %d / ${d.dneg} d`);muestraParche(x2,y0+36,RED);
+  if(d.ansum!==0&&d.dneg>0){rotulo(x2,y0+72,`${(d.asum/Math.abs(d.ansum)).toFixed(2)} / ${(d.dpos/d.dneg).toFixed(2)}`);muestraFlag(x2,y0+72);}
 }
 
 let limpiarGrafica = () => {};
