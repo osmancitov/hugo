@@ -671,6 +671,8 @@ function vistaActivo(clase, codigo) {
   nav.innerHTML = enlace(ant, '← ' + (ant ? ant.codigo : '')) + enlace(sig, (sig ? sig.codigo : '') + ' →');
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = '#/'; volver.textContent = 'volver';
+  // Volver también limpia la búsqueda y muestra el catálogo completo.
+  volver.addEventListener('click', () => { $('#buscar').value = ''; });
 
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
