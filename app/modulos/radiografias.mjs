@@ -7,9 +7,11 @@
 // Registros: la misma carpeta base que usa el registro (HUGO_VELAS_DIR); la clase (stock/cripto)
 // se deduce de la carpeta del activo, sin adivinar entre clases.
 // Destino de las imagenes: un clon de la estructura de registros bajo graficas/ (decision del
-// usuario, 15-nov-2026): graficas/velas-24h/<clase>/<CODIGO>/<CODIGO>.png junto a registros/;
-// HUGO_GRAFICAS_DIR cambia la raiz. Cada orden regenera la imagen del activo con su historial
-// completo y pisa la anterior SOLO si la escribio este modulo (huella sha256 en .<CODIGO>.sha256);
+// usuario, 15-nov-2026): graficas/velas-24h/<clase>/<CODIGO>/<CODIGO>_radiografia.png junto a
+// registros/; HUGO_GRAFICAS_DIR cambia la raiz. El nombre <CODIGO>_radiografia.png es decision del
+// usuario (16-nov-2026): dice el activo y lo que muestra incluso fuera de su carpeta. Cada orden
+// regenera la imagen del activo con su historial completo y pisa la anterior SOLO si la escribio
+// este modulo (huella sha256 en .<CODIGO>_radiografia.sha256);
 // un archivo ajeno nunca se pisa: se avisa y la imagen nueva solo va al hilo.
 // Cada radiografía lleva en el subtítulo el nombre y el tipo del activo (empresa / fondo ETF /
 // apalancado N× / inverso N×; decisión del usuario 15-nov-2026, para no confundir fondos con
@@ -406,13 +408,13 @@ export function registrar(ctx) {
   // Guarda la imagen solo si el destino esta libre o lo escribio este modulo. Devuelve texto de aviso o ''.
   function guardar(png, codigo, clase) {
     const destino = path.join(graficas(), clase, codigo);
-    const salida = path.join(destino, `${codigo}.png`);
-    const huella = path.join(destino, `.${codigo}.sha256`);
+    const salida = path.join(destino, `${codigo}_radiografia.png`);
+    const huella = path.join(destino, `.${codigo}_radiografia.sha256`);
     if (fs.existsSync(salida)) {
       let previa = null;
       try { previa = fs.readFileSync(huella, 'utf8').trim(); } catch {}
       if (previa !== sha256(salida)) {
-        return `${codigo}: ya hab\u00eda un ${codigo}.png en ${destino} que no gener\u00e9 yo; no lo pis\u00e9. La radiograf\u00eda nueva va solo en este mensaje.`;
+        return `${codigo}: ya hab\u00eda un ${codigo}_radiografia.png en ${destino} que no gener\u00e9 yo; no lo pis\u00e9. La radiograf\u00eda nueva va solo en este mensaje.`;
       }
     }
     fs.mkdirSync(destino, { recursive: true });
@@ -449,7 +451,7 @@ export function registrar(ctx) {
           if (aviso) await decir(event, aviso);
           await app.client.filesUploadV2({
             token: botToken, channel_id: event.channel, thread_ts: event.thread_ts || event.ts,
-            file: fs.createReadStream(png), filename: `${codigo} variaci\u00f3n diaria.png`,
+            file: fs.createReadStream(png), filename: `${codigo}_radiografia.png`,
           });
         } catch (e) {
           await decir(event, `No pude dibujar ${codigo}: ${String(e.stderr || e.message).trim().slice(0, 300)}`);

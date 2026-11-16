@@ -43,9 +43,10 @@ const espera = (nombre, cond) => (cond ? ok.push(nombre) : mal.push(nombre));
 await corre('radiografía SPCX INTW');
 espera('2 subidas', subidas.length === 2);
 espera('subidas >100KB', subidas.every((s) => s.bytes > 100000));
-espera('SPCX guardado', fs.existsSync('/tmp/hugo_sim/graficas2/stock/SPCX/SPCX.png'));
-espera('INTW guardado', fs.existsSync('/tmp/hugo_sim/graficas2/stock/INTW/INTW.png'));
-espera('huellas', fs.existsSync('/tmp/hugo_sim/graficas2/stock/SPCX/.SPCX.sha256'));
+espera('SPCX guardado', fs.existsSync('/tmp/hugo_sim/graficas2/stock/SPCX/SPCX_radiografia.png'));
+espera('INTW guardado', fs.existsSync('/tmp/hugo_sim/graficas2/stock/INTW/INTW_radiografia.png'));
+espera('huellas', fs.existsSync('/tmp/hugo_sim/graficas2/stock/SPCX/.SPCX_radiografia.sha256'));
+espera('nombre entregado', subidas.every((s) => s.filename === `${s.filename.split('_')[0]}_radiografia.png`));
 espera('marcada largo', largoVisto.length === 2 && largoVisto.every((l) => l && l.largo));
 espera('activas limpia', ctx.activas.size === 0);
 
@@ -57,11 +58,11 @@ espera('reorden sin aviso de pisado', !mensajes.some((m) => m.includes('no lo pi
 // 3) archivo ajeno: no se pisa, se avisa, igual se sube
 const dirAmd = '/tmp/hugo_sim/graficas2/stock/AMD';
 fs.mkdirSync(dirAmd, { recursive: true });
-fs.writeFileSync(path.join(dirAmd, 'AMD.png'), 'archivo puesto a mano');
+fs.writeFileSync(path.join(dirAmd, 'AMD_radiografia.png'), 'archivo puesto a mano');
 mensajes.length = 0; subidas.length = 0;
 await corre('radiografía AMD');
 espera('ajeno avisado', mensajes.some((m) => m.includes('no lo pis')));
-espera('ajeno intacto', fs.readFileSync(path.join(dirAmd, 'AMD.png'), 'utf8') === 'archivo puesto a mano');
+espera('ajeno intacto', fs.readFileSync(path.join(dirAmd, 'AMD_radiografia.png'), 'utf8') === 'archivo puesto a mano');
 espera('ajeno igual sube al hilo', subidas.length === 1);
 
 // 4) parada única: tras la primera subida, stop corta el resto
