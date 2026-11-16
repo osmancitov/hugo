@@ -252,9 +252,10 @@ export function registrar(ctx) {
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
   // Baja sin pisar: tmp + enlace duro, el mismo criterio que el registro de velas.
-  async function bajarArchivos(repo, token, bajar, progreso=async()=>{}) {
+  async function bajarArchivos(repo, token, bajar, progreso=async()=>{}, verificar=()=>{}) {
     const hechos = [], fallos = [];
     for (const b of bajar) {
+      verificar();
       try {
         const buf=await leerBlob(repo,token,b.sha);
         const destino=path.join(dirBase(),b.rel.slice(PREFIJO.length+1));
@@ -275,7 +276,8 @@ export function registrar(ctx) {
 
   // Sube en UN solo commit. Relee la punta de la rama justo antes: lo que mientras tanto aparezca en
   // el repo con contenido distinto se omite y se reporta (del plan a la ejecucion nunca se pisa).
-  async function subirArchivos(repo, token, subir, progreso=async()=>{}) {
+  async function subirArchivos(repo, token, subir, progreso=async()=>{}, verificar=()=>{}) {
+    verificar();
     const ref = await api(repo, `/git/ref/heads/${RAMA}`, { token });
     const baseCommit = await api(repo, `/git/commits/${ref.object.sha}`, { token });
     const arbol = await api(repo, `/git/trees/${baseCommit.tree.sha}?recursive=1`, { token });
@@ -284,6 +286,7 @@ export function registrar(ctx) {
     for (const e of arbol.tree || []) if (e.type === 'blob' && RUTA_OK.test(e.path)) actuales.set(e.path, e.sha);
     const items = [], omitidos = [];
     for (const f of subir) {
+      verificar();
       const buf = fs.readFileSync(f.ruta);
       const shaRemota = actuales.get(f.rel);
       if (shaRemota === shaBlob(buf)) continue; // ya esta igual
@@ -300,6 +303,7 @@ export function registrar(ctx) {
       await progreso(`Subida: ${items.length}/${subir.length} archivo(s) preparados en GitHub; aun sin publicar el commit.`);
     }
     if (!items.length) return { commit: null, subidos: [], omitidos };
+    verificar(); // frena antes de publicar el commit: blobs preparados no cuentan como subida
     await progreso(`Publicando commit con ${items.length} archivo(s); falta confirmar la rama.`);
     const tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: items } });
     const commit = await api(repo, '/git/commits', {
@@ -321,6 +325,10 @@ export function registrar(ctx) {
   async function pasada(progreso=async()=>{}) {
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
+    // stop o restart suben ctx.parada.n: la pasada frena entre archivos; lo ya copiado queda y nada se pisa.
+    const parada = ctx.parada || { n: 0 };
+    const marcaParada = parada.n;
+    const verificar = () => { if (parada.n !== marcaParada) { const e = new Error('a pedido (stop o restart)'); e.detenida = true; throw e; } };
     const token = ctx.leerClave('.github-key');
     // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego GitHub. Idempotente: sin heredados no hace nada.
     const previo = [];
@@ -343,7 +351,11 @@ export function registrar(ctx) {
       const ret = retirarLocalHeredado(plan.visto, plan.heredados);
       if (ret.retirados.length) { mudo = true; previo.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
       if (ret.conservados.length) previo.push(`originales conservados (GitHub aun no confirma la ruta nueva): ${ret.conservados.join(', ')}`);
-    } catch (e) { return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo }; }
+      verificar();
+    } catch (e) {
+      if (e.detenida) return { detenida: true, hizoAlgo: mudo, texto: `Sincronizaci\u00f3n detenida a pedido durante la comparaci\u00f3n. No cambi\u00e9 nada m\u00e1s; la pr\u00f3xima pasada retoma lo que falte.${previo.length ? ` ${previo.join('. ')}.` : ''}` };
+      return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo };
+    }
     const { subir, bajar, iguales, conflictos } = plan;
     await progreso(`Comparacion lista: ${subir.length} por subir, ${bajar.length} por bajar, ${iguales} iguales, ${conflictos.length} conflictos sin tocar.`);
     const aviso = previo.length ? ` ${previo.join('. ')}.` : '';
@@ -356,13 +368,13 @@ export function registrar(ctx) {
     let hizoAlgo = mudo;
     try {
       if (bajar.length) {
-        const baj = await bajarArchivos(repo, token, bajar, progreso);
+        const baj = await bajarArchivos(repo, token, bajar, progreso, verificar);
         if (baj.hechos.length) hizoAlgo = true;
         res.push(`baj\u00e9 ${baj.hechos.length} (${lista(baj.hechos)})`);
         if (baj.fallos.length) extra.push(`no pude bajar: ${baj.fallos.join('; ')}`);
       }
       if (subir.length && subidaLista) {
-        const sub = await subirArchivos(repo, token, subir, progreso);
+        const sub = await subirArchivos(repo, token, subir, progreso, verificar);
         if (sub.commit) hizoAlgo = true;
         res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
         if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
@@ -370,6 +382,7 @@ export function registrar(ctx) {
         extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): falta keys/.github-key o el token no tiene escritura en este repo`);
       }
     } catch (e) {
+      if (e.detenida) return { detenida: true, hizoAlgo, texto: 'Sincronizaci\u00f3n detenida a pedido. Lo ya copiado queda y nada se pis\u00f3 en ning\u00fan lado; la pr\u00f3xima pasada retoma lo que falte.' };
       return { error: `La sincronizaci\u00f3n se detuvo: ${e.message} Lo ya copiado queda; nada se pis\u00f3 en ning\u00fan lado.`, hizoAlgo };
     }
     if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
@@ -382,6 +395,7 @@ export function registrar(ctx) {
   ctx.comando(/^\s*sincroniz\w*\s+registros?\s*[.!?]*\s*$/i, async (event) => {
     if (enCurso) return decir(event, 'Ya estoy sincronizando registros; espera a que termine.');
     enCurso = true;
+    ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
     let reporte;
     try {
       reporte=await crearReporteSync({client:app.client,token:botToken,event});
@@ -390,7 +404,7 @@ export function registrar(ctx) {
     } catch (e) {
       const texto=`La sincronizacion se detuvo o no pude informar su resultado: ${e.message}. Lo ya copiado se conserva; revisa el estado antes de repetir.`;
       try {if(reporte)await reporte.final(texto);else await decir(event,texto);}catch(err){console.error('No pude informar sincronizacion:',err.message);}
-    } finally { enCurso = false; }
+    } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
   }, { nombre: 'sincronizar registros', delegable: true });
 
   // Automatica: una pasada poco despues de arrancar y luego cada HUGO_SYNC_MINUTOS (60 por defecto;
@@ -400,10 +414,12 @@ export function registrar(ctx) {
   async function automatica() {
     if (enCurso) return;
     enCurso = true;
+    ctx.activas.set('sincronizacion', { que: 'sincronizar registros (autom\u00e1tica)', desde: Date.now(), largo: true });
     try {
       const r = await pasada();
       let aviso = '';
       if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
+      else if (r.detenida) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros detenida a pedido. Lo ya copiado queda; la pr\u00f3xima pasada retoma lo que falte.`;
       else if (r.cambios || r.hayPendiente || r.conflictos) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros. ${r.texto}`;
       const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
       const repetido = !r.cambios && firma === ultimoAviso;
@@ -411,7 +427,7 @@ export function registrar(ctx) {
       ultimoAviso = r.cambios ? '' : firma;
     } catch (e) {
       console.error('Sincronizacion automatica:', e.message);
-    } finally { enCurso = false; }
+    } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
   }
   const minutos = Number(process.env.HUGO_SYNC_MINUTOS ?? ctx.conf.HUGO_SYNC_MINUTOS ?? 60);
   if (Number.isFinite(minutos) && minutos >= 5) {

@@ -9,9 +9,10 @@ const esPulgar = (r) => r === '+1' || r === 'thumbsup' || r.startsWith('+1::') |
 export function registrar(ctx) {
   const { app, botToken } = ctx;
 
-  // confirmar({ channel, thread_ts, user, texto, alSi, alNo, minutos, tambien })
+  // confirmar({ channel, thread_ts, user, texto, alSi, alNo, minutos, tambien, largo })
   // `tambien`: id de Slack opcional que tambien confirma con su pulgar (sin usos actuales).
-  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '' }) => {
+  // `largo`: el trabajo que arranca el pulgar es largo y se puede cortar con stop o restart (lo miran esos modulos).
+  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false }) => {
     const r = await app.client.chat.postMessage({
       token: botToken, channel, thread_ts,
       text: `${texto}\n\u{1F44D} = s\u00ed.`,
@@ -21,7 +22,7 @@ export function registrar(ctx) {
       if (!pendientes.delete(clave)) return;
       try { await alNo({ motivo: 'sin-respuesta', ts: r.ts }); } catch (e) { console.error('alNo:', e.data?.error || e.message); }
     }, minutos * 60 * 1000);
-    pendientes.set(clave, { user, tambien, alSi, alNo, timer, que, desde: Date.now() });
+    pendientes.set(clave, { user, tambien, alSi, alNo, timer, que, desde: Date.now(), largo });
     return r.ts;
   };
 
@@ -37,7 +38,7 @@ export function registrar(ctx) {
     clearTimeout(p.timer);
     pendientes.delete(clave);
     const idAct = `conf-${clave}`;
-    ctx.activas.set(idAct, { que: p.que, desde: Date.now() });
+    ctx.activas.set(idAct, { que: p.que, desde: Date.now(), largo: !!p.largo });
     try { await p.alSi({ ts: event.item.ts }); } catch (e) { console.error('alSi:', e.data?.error || e.message); }
     finally { ctx.activas.delete(idAct); }
   });

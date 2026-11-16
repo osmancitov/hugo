@@ -14,6 +14,7 @@ import * as github from './modulos/github.mjs';
 import * as estado from './modulos/estado.mjs';
 import * as ayuda from './modulos/ayuda.mjs';
 import * as reiniciar from './modulos/reiniciar.mjs';
+import * as detener from './modulos/detener.mjs';
 import * as velas from './modulos/velas.mjs';
 import * as sincronizarRegistros from './modulos/sincronizar-registros.mjs';
 
@@ -44,12 +45,13 @@ const app = new bolt.App({ token: botToken, appToken, socketMode: true });
 const comandos = [];
 const alIniciar = [];
 const alMencionar = [];
-const activas = new Map();   // trabajo en curso: id -> { que, desde }; lo ven los modulos (estado, reiniciar)
+const activas = new Map();   // trabajo en curso: id -> { que, desde, largo }; lo ven los modulos (estado, detener, reiniciar)
+const parada = { n: 0 };      // parada unica: stop y restart la suben; cada trabajo largo la mira en cada paso y frena limpio
 const ctx = {
   app, botToken, canal: CANAL, leerClave, conf, usuario: USUARIO, delegado: DELEGADO,
   botUserId: '',
   desde: Date.now(),
-  activas,
+  activas, parada,
   comandos: () => comandos.map((c) => ({ nombre: c.nombre, delegable: c.delegable })),
   comando: (patron, fn, opciones = {}) => comandos.push({ patron, fn, delegable: !!opciones.delegable, nombre: opciones.nombre || '' }),   // patron: regex sobre el texto, o funcion (texto, evento) => bool
   porDefecto: (fn) => { ctx._defecto = fn; },               // si ningun comando coincide
@@ -59,7 +61,7 @@ const ctx = {
 };
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, saludo, velas, sincronizarRegistros]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros]) m.registrar(ctx);
 
 app.event('app_mention', async ({ event }) => {
   const texto = (event.text || '').replace(/<@[A-Z0-9]+>/g, ' ').trim();

@@ -10,7 +10,8 @@ const TEXTO = [
   '\u2022 `registra continuar`: retoma un recorrido pausado tras corregir la causa, sin pedir confirmaci\u00f3n.',
   '\u2022 `sincroniza registros`: fuerza ya una pasada de la sincronizaci\u00f3n (que es autom\u00e1tica, sin \ud83d\udc4d) de los registros de velas entre la Debian y GitHub, sin pisar contenido distinto.',
   '\u2022 `estado`: dice si est\u00e1 haciendo algo o esperando instrucciones.',
-  '\u2022 `restart` o `reiniciar`: reinicia a Hugo.',
+  '\u2022 `stop`: pide tu \ud83d\udc4d y detiene el trabajo en curso (borrado, registro o sincronizaci\u00f3n). Lo ya hecho se conserva.',
+  '\u2022 `restart` o `reiniciar`: pide tu \ud83d\udc4d y reinicia a Hugo; si est\u00e1 haciendo un trabajo, lo interrumpe antes.',
   '\u2022 `ayuda` o `comandos`: muestra esta lista.',
 ].join('\n');
 

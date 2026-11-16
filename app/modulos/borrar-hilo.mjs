@@ -44,7 +44,9 @@ export function registrar(ctx) {
     const { token: userToken } = await duenoDelToken();
     const respuestas = msgs.filter((m) => m.ts !== thread_ts).reverse(); // de la mas nueva a la mas vieja
     const raiz = msgs.filter((m) => m.ts === thread_ts);
+    const marca = ctx.parada.n; // stop o restart la cambian: freno entre mensaje y mensaje
     let borrados = 0;
+    let detenido = false;
     const fallos = {};
     const intentar = async (m) => {
       const token = ctx.botUserId && m.user === ctx.botUserId ? botToken : userToken;
@@ -60,12 +62,15 @@ export function registrar(ctx) {
         return false;
       } finally { if (pausa) await espera(pausa); }
     };
-    for (const m of respuestas) await intentar(m);
-    // El primer mensaje solo se borra si todo lo demas se borro.
+    for (const m of respuestas) {
+      if (ctx.parada.n !== marca) { detenido = true; break; }
+      await intentar(m);
+    }
+    // El primer mensaje solo se borra si todo lo demas se borro y nadie lo detuvo.
     let raizBorrada = false;
-    if (Object.keys(fallos).length === 0) for (const m of raiz) raizBorrada = await intentar(m);
-    else if (raiz.length) fallos.primer_mensaje_conservado = 1;
-    return { total: msgs.length, borrados, fallos, raizBorrada };
+    if (!detenido && Object.keys(fallos).length === 0) for (const m of raiz) raizBorrada = await intentar(m);
+    else if (!detenido && raiz.length) fallos.primer_mensaje_conservado = 1;
+    return { total: msgs.length, borrados, fallos, raizBorrada, detenido };
   }
 
   ctx.comando(/\bborrar\s+hilo\b/i, async (event) => {
@@ -90,7 +95,7 @@ export function registrar(ctx) {
     if (c.otros) texto += `. ${c.otros} ${id ? 'son de otras personas o apps' : 'no son de Hugo y no tengo token de usuario v\u00e1lido'}: solo se borran si Slack lo permite`;
     texto += c.otros ? '. Si alguno no se puede borrar, dejo el primer mensaje del hilo y te lo digo.' : '.';
     await ctx.confirmar({
-      channel, thread_ts, user: event.user, texto, que: 'borrar un hilo',
+      channel, thread_ts, user: event.user, texto, que: 'borrar un hilo', largo: true,
       alSi: async () => {
         let r;
         try { r = await borrar(channel, thread_ts); }
@@ -98,8 +103,12 @@ export function registrar(ctx) {
           await app.client.chat.postMessage({ token: botToken, channel, thread_ts, text: `No pude leer el hilo para borrarlo (${e.data?.error || e.message}).` });
           return;
         }
-        console.log(`borrar-hilo: ${r.borrados}/${r.total}`, JSON.stringify(r.fallos));
+        console.log(`borrar-hilo: ${r.borrados}/${r.total}`, JSON.stringify(r.fallos), r.detenido ? 'detenido' : '');
         const quedan = r.total - r.borrados;
+        if (r.detenido) {
+          await app.client.chat.postMessage({ token: botToken, channel, thread_ts, text: `Borrado detenido a pedido: borr\u00e9 ${r.borrados} de ${r.total}. Quedan ${quedan} y el primer mensaje se conserva; otra orden \u00abborrar hilo\u00bb los termina.` });
+          return;
+        }
         if (quedan > 0) {
           const det = Object.entries(r.fallos).map(([k, v]) => `${k}: ${v}`).join(', ');
           await app.client.chat.postMessage({ token: botToken, channel, thread_ts, text: `Borr\u00e9 ${r.borrados} de ${r.total}. Quedan ${quedan} (${det}).` });
