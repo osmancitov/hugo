@@ -74,15 +74,15 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     assert.ok(posts.slice(1).every((p) => p.thread_ts === posts[0].tsAsignado), 'los avances cuelgan del aviso inicial');
     assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && p.text.startsWith('Sincronización automática de registros en curso.')));
     // A 30 s por archivo, tras el primero el ritmo permite estimar: alguna edicion muestra el tiempo aproximado.
-    assert.ok(updates.some((u) => /quedan aprox\. \d+ min \(estimación aproximada, no exacta\)/.test(u.text)), 'falta la estimacion aproximada');
-    assert.ok(updates.some((u) => /\(sigue en un mensaje nuevo\)/.test(u.text)), 'falta el cierre al renovar el mensaje');
+    assert.ok(updates.some((u) => /Quedan aprox\. \d+ min\./.test(u.text)), 'falta la estimacion aproximada');
+    assert.ok(!updates.some((u) => /estimación aproximada, no exacta|sigue en un mensaje nuevo/.test(u.text)), 'sobran las muletillas retiradas');
     // El ultimo mensaje abierto queda editado con el resultado final de la pasada.
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
     assert.equal(ultimo.ts, posts.at(-1).tsAsignado, 'el resultado se edita sobre el ultimo mensaje abierto');
     assert.ok(/Sincronización automática de registros\./.test(ultimo.text) && /subí 12/.test(ultimo.text), ultimo.text);
-    // La estimacion nunca promete: siempre va marcada como aproximada.
-    assert.ok(!updates.some((u) => /quedan( aprox\.?)? \d+ min(?! \(estimación)/.test(u.text) && !/estimación aproximada/.test(u.text)));
+    // La estimacion nunca promete: siempre lleva «aprox.».
+    assert.ok(!updates.some((u) => /[Qq]uedan \d+ min/.test(u.text) || (/[Qq]uedan aprox\. \d+ min/.test(u.text) && !/Quedan aprox\. \d+ min\./.test(u.text))));
   } finally { b.restaurar(); }
 });
 

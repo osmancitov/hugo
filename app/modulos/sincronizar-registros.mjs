@@ -443,7 +443,7 @@ export function registrar(ctx) {
         const trans = (ahora - faseInicio) / 1000, avanzados = hechos - faseBase;
         if (avanzados < 1 || trans < 10 || hechos >= total) return texto;
         const min = Math.max(1, Math.round((total - hechos) * trans / avanzados / 60));
-        return `${texto} A este ritmo quedan aprox. ${min} min (estimaci\u00f3n aproximada, no exacta).`;
+        return `${texto} Quedan aprox. ${min} min.`;
       };
       const progreso = async (texto) => {
         try {
@@ -456,7 +456,7 @@ export function registrar(ctx) {
           }
           const conEst = conEstimacion(texto);
           if (Date.now() - abiertoEn >= 60000) {
-            await reporte.final(`Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${conEst} (sigue en un mensaje nuevo)`);
+            await reporte.final(`Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${conEst}`);
             await abrirReporte(conEst);
             return;
           }
