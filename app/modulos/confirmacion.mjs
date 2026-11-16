@@ -15,7 +15,7 @@ export function registrar(ctx) {
   // `corta`: la orden interrumpe el trabajo largo que este en curso (reinicio); se avisa en la pregunta.
   ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false, corta = false }) => {
     const ocupado = corta ? [...ctx.activas.values()].filter((a) => a.largo) : [];
-    const aviso = ocupado.length ? `\nOjo: ahora estoy en: ${ocupado.map((a) => `${a.que} (desde hace ${Math.max(1, Math.round((Date.now() - a.desde) / 60000))} min)`).join('; ')}. Si aplicas, me reinicio y ese trabajo se corta; lo ya copiado queda y lo retomo despu\u00e9s.` : '';
+    const aviso = ocupado.length ? `\nOjo: ahora estoy en: ${ocupado.map((a) => `${a.que} (desde hace ${Math.max(1, Math.round((Date.now() - a.desde) / 60000))} min)`).join('; ')}. Si aplicas, me reinicio y ese trabajo se corta: lo ya guardado se conserva; lo que estaba a medias habr\u00e1 que repetirlo.` : '';
     const r = await app.client.chat.postMessage({
       token: botToken, channel, thread_ts,
       text: `${texto}${aviso}\n\u{1F44D} = s\u00ed.`,
