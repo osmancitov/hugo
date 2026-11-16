@@ -190,7 +190,19 @@ from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Polygon
 from matplotlib.legend_handler import HandlerBase
+from matplotlib import font_manager
 import math
+
+# Códigos con nombre Unicode (p.ej. 牛来): DejaVu no trae glifos CJK. Si el sistema tiene
+# una fuente que sí, se usa como respaldo por glifo SOLO en título y subtítulo (donde va el
+# código/nombre), pasando la lista de familias al texto (matplotlib >= 3.6). DejaVu sigue
+# primero: el diseño no cambia. Sin fuente CJK instalada, todo queda como estaba.
+_CJK = ['Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK JP', 'Source Han Sans SC',
+        'WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'Droid Sans Fallback', 'AR PL UMing CN',
+        'Microsoft YaHei', 'SimHei', 'PingFang SC']
+_inst = {f.name for f in font_manager.fontManager.ttflist}
+_cjk = [c for c in _CJK if c in _inst]
+_FAM = ['DejaVu Sans'] + _cjk if _cjk else None  # None = familia por defecto, sin tocar
 
 BG='#131722'; BLUE='#5a92d6'; TICK='#c9ccd3'
 GRID_D='#212835'; GRID_15='#313b50'; GRID_1='#3d4759'; ZERO='#8b93a1'
@@ -284,49 +296,6 @@ def radiografia(codigo, base, out, info='', clase_arg=''):
     ax.add_collection(lc)
 
     marcas = [ylo] + list(range(tlo, thi+1, 2)) + [yhi]  # rejilla cada 2 puntos + bordes ±15 explícitos
-    # días fuera del marco: triángulo en el borde con la variación real
-    fuera = [(i, rs[i]) for i in range(1, npts) if abs(rs[i]) > yhi]
-    filas_txt = []  # (x, fila) para no chocar
-    for i, r in fuera:
-        arriba = r > 0
-        ym = yhi if arriba else ylo
-        color = GREEN if arriba else RED
-        ax.scatter([i], [ym], marker='^' if arriba else 'v', s=90, color=[color],
-                   alpha=0.9, zorder=6, clip_on=False)
-        # la etiqueta se corre hacia el tramo más plano para no montarse en la línea,
-        # pero nunca invierte el orden respecto a su triángulo (evita conectores cruzados)
-        pi = rs[i - 1] if i - 1 >= 0 else 0.0
-        si = rs[i + 1] if i + 1 < npts else 0.0
-        pref = -1.8 if abs(si - r) > abs(pi - r) else 1.8
-        ultimo = filas_txt[-1][0] if filas_txt else None
-        i_txt = i + pref
-        for cand in (pref, 0.0, -pref):
-            if ultimo is None or i + cand > ultimo + 0.8:
-                i_txt = i + cand
-                break
-        fila = 0
-        for xp, fp in filas_txt:
-            if abs(xp - i_txt) < 6 and fp == fila:
-                fila += 1
-        filas_txt.append((i_txt, fila))
-        yt = ym - (1.6 + fila*2.1) if arriba else ym + (1.2 + fila*2.1)
-        # conector discreto de la marca a su etiqueta (la etiqueta se corre para no chocar)
-        yc0 = ym - 0.6 if arriba else ym + 0.6
-        yc1 = yt + 0.15 if arriba else yt - 0.15
-        ax.plot([i, i_txt], [yc0, yc1], color=TICK, alpha=0.45, lw=0.8, zorder=5.5)
-        ax.text(i_txt, yt, f'{"+" if arriba else "−"}{abs(r):.1f} %', ha='center',
-                va='bottom' if not arriba else 'top', fontsize=8, color=TICK, zorder=6, clip_on=False,
-                path_effects=[pe.withStroke(linewidth=2.5, foreground=BG)])
-
-    ax.set_yticks(marcas)
-    ax.set_yticklabels([f'{v}%' for v in marcas])
-    ax.set_xticks(xt_d); ax.set_xticklabels(xt_l)
-    ax.set_ylabel('Variación diaria', fontsize=12, color=TICK, labelpad=8)
-
-    fig.text(0.5,0.980,f'{codigo} variación diaria', ha='center', va='center', fontsize=14, color='#e8eaed')
-    partes = [f'{info}'] if info else []
-    partes.append(f'Grosor = volumen/precio · {len(rets)} días')
-    fig.text(0.5,0.947,' · '.join(partes), ha='center', va='center', fontsize=11, color='#9aa0ac')
 
     class Flag:
         pass
@@ -357,6 +326,60 @@ def radiografia(codigo, base, out, info='', clase_arg=''):
                   labelcolor=TICK, borderpad=0.3, labelspacing=0.42, handlelength=1.7,
                   handletextpad=0.6, borderaxespad=0, handler_map={Flag: FlagHandler()})
     leg.set_zorder(10)
+    # La leyenda va encima (zorder 10): una etiqueta de marca que caiga en su caja quedaría
+    # tapada. Se mide su caja en coordenadas de datos para que las etiquetas la esquiven.
+    fig.canvas.draw()
+    bb_leg = leg.get_window_extent().transformed(ax.transData.inverted())
+    medio_txt = 23.0 * npts / 1409.0  # semiancho estimado de una etiqueta, en días
+
+    # días fuera del marco: triángulo en el borde con la variación real
+    fuera = [(i, rs[i]) for i in range(1, npts) if abs(rs[i]) > yhi]
+    filas_txt = []  # (x, fila) para no chocar
+    for i, r in fuera:
+        arriba = r > 0
+        ym = yhi if arriba else ylo
+        color = GREEN if arriba else RED
+        ax.scatter([i], [ym], marker='^' if arriba else 'v', s=90, color=[color],
+                   alpha=0.9, zorder=6, clip_on=False)
+        # la etiqueta se corre hacia el tramo más plano para no montarse en la línea,
+        # pero nunca invierte el orden respecto a su triángulo (evita conectores cruzados)
+        pi = rs[i - 1] if i - 1 >= 0 else 0.0
+        si = rs[i + 1] if i + 1 < npts else 0.0
+        pref = -1.8 if abs(si - r) > abs(pi - r) else 1.8
+        ultimo = filas_txt[-1][0] if filas_txt else None
+        i_txt = i + pref
+        for cand in (pref, 0.0, -pref):
+            if ultimo is None or i + cand > ultimo + 0.8:
+                i_txt = i + cand
+                break
+        fila = 0
+        for xp, fp in filas_txt:
+            if abs(xp - i_txt) < 6 and fp == fila:
+                fila += 1
+        # si la etiqueta caería dentro de la caja de la leyenda, baja de fila hasta salir
+        if arriba:
+            while (i_txt + medio_txt > bb_leg.x0) and (i_txt - medio_txt < bb_leg.x1) \
+                    and (ym - (1.6 + fila*2.1) > bb_leg.y0):
+                fila += 1
+        filas_txt.append((i_txt, fila))
+        yt = ym - (1.6 + fila*2.1) if arriba else ym + (1.2 + fila*2.1)
+        # conector discreto de la marca a su etiqueta (la etiqueta se corre para no chocar)
+        yc0 = ym - 0.6 if arriba else ym + 0.6
+        yc1 = yt + 0.15 if arriba else yt - 0.15
+        ax.plot([i, i_txt], [yc0, yc1], color=TICK, alpha=0.45, lw=0.8, zorder=5.5)
+        ax.text(i_txt, yt, f'{"+" if arriba else "−"}{abs(r):.1f} %', ha='center',
+                va='bottom' if not arriba else 'top', fontsize=8, color=TICK, zorder=6, clip_on=False,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground=BG)])
+
+    ax.set_yticks(marcas)
+    ax.set_yticklabels([f'{v}%' for v in marcas])
+    ax.set_xticks(xt_d); ax.set_xticklabels(xt_l)
+    ax.set_ylabel('Variación diaria', fontsize=12, color=TICK, labelpad=8)
+
+    fig.text(0.5,0.980,f'{codigo} variación diaria', ha='center', va='center', fontsize=14, color='#e8eaed', fontfamily=_FAM)
+    partes = [f'{info}'] if info else []
+    partes.append(f'Grosor = volumen/precio · {len(rets)} días')
+    fig.text(0.5,0.947,' · '.join(partes), ha='center', va='center', fontsize=11, color='#9aa0ac', fontfamily=_FAM)
 
     d = os.path.dirname(os.path.abspath(out))
     os.makedirs(d, exist_ok=True)
