@@ -409,23 +409,69 @@ export function registrar(ctx) {
   }, { nombre: 'sincronizar registros', delegable: true });
 
   // Automatica: una pasada poco despues de arrancar y luego cada HUGO_SYNC_MINUTOS (60 por defecto;
-  // 0 la apaga). Solo avisa en el canal de avisos cuando algo cambio, hay un conflicto nuevo o un
-  // error nuevo; si todo sigue igual, calla. Un error repetido se avisa una vez hasta que se arregle.
+  // 0 la apaga). Cuando hay trabajo real (archivos por subir o bajar), abre un solo mensaje en el
+  // canal de avisos y lo va editando con el avance y el resultado, como el reporte manual. Si la
+  // pasada no tiene nada que copiar, calla como siempre: solo avisa cuando algo cambio, hay un
+  // conflicto nuevo o un error nuevo, y un error repetido se avisa una vez hasta que se arregle.
+  // Un fallo del propio reporte nunca interrumpe la copia.
   let ultimoAviso = '';
   async function automatica() {
     if (enCurso) return;
     enCurso = true;
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros (autom\u00e1tica)', desde: Date.now(), largo: true });
     try {
-      const r = await pasada();
+      // Un solo mensaje que se va editando con el avance; se renueva con prudencia (mas o menos
+      // uno por minuto mientras hay avance) para no editar el mismo mensaje toda la pasada ni
+      // llenar el canal, y el ultimo queda editado con el resultado final. Cuando el ritmo de la
+      // fase permite estimarlo, el avance muestra el tiempo restante aproximado (no es promesa).
+      let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0;
+      const abrirReporte = async (texto) => {
+        reporte = await crearReporteSync({ client: app.client, token: botToken, canal: ctx.canal, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
+        abiertoEn = Date.now();
+      };
+      const conEstimacion = (texto) => {
+        const m = texto.match(/^(Subida|Descarga): (\d+)\/(\d+) /);
+        if (!m) return texto;
+        const hechos = Number(m[2]), total = Number(m[3]);
+        const ahora = Date.now();
+        if (m[1] !== fase) { fase = m[1]; faseInicio = ahora; faseBase = hechos; return texto; }
+        const trans = (ahora - faseInicio) / 1000, avanzados = hechos - faseBase;
+        if (avanzados < 1 || trans < 10 || hechos >= total) return texto;
+        const min = Math.max(1, Math.round((total - hechos) * trans / avanzados / 60));
+        return `${texto} A este ritmo quedan aprox. ${min} min (estimaci\u00f3n aproximada, no exacta).`;
+      };
+      const progreso = async (texto) => {
+        try {
+          if (ociosa) return;
+          if (!reporte) {
+            if (/^Comparacion lista: 0 por subir, 0 por bajar/.test(texto)) { ociosa = true; return; }
+            if (!ctx.canal) { ociosa = true; return; }
+            await abrirReporte(texto);
+            return;
+          }
+          const conEst = conEstimacion(texto);
+          if (Date.now() - abiertoEn >= 60000) {
+            await reporte.final(`Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${conEst} (sigue en un mensaje nuevo)`);
+            await abrirReporte(conEst);
+            return;
+          }
+          await reporte.progreso(conEst);
+        } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
+      };
+      const r = await pasada(progreso);
       let aviso = '';
       if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
       else if (r.detenida) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros detenida a pedido. Lo ya copiado queda; la pr\u00f3xima pasada retoma lo que falte.`;
       else if (r.cambios || r.hayPendiente || r.conflictos) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros. ${r.texto}`;
-      const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
-      const repetido = !r.cambios && firma === ultimoAviso;
-      if (aviso && !repetido && ctx.canal) await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: aviso });
-      ultimoAviso = r.cambios ? '' : firma;
+      if (reporte) {
+        try { await reporte.final(aviso || `Sincronizaci\u00f3n autom\u00e1tica de registros: sin cambios; todo sigue igual.`); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
+        ultimoAviso = '';
+      } else {
+        const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
+        const repetido = !r.cambios && firma === ultimoAviso;
+        if (aviso && !repetido && ctx.canal) await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: aviso });
+        ultimoAviso = r.cambios ? '' : firma;
+      }
     } catch (e) {
       console.error('Sincronizacion automatica:', e.message);
     } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
