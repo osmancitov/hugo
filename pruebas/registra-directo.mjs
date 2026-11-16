@@ -106,7 +106,7 @@ test('integracion real velas+activos+motor: lista separada por comas y progreso 
  };
  try{
   const {registrar}=await import('../app/modulos/velas.mjs');
-  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
   await handler(event,'registra stock nvda, spcx');
   const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.deepEqual(j.codigos,['NVDA','SPCX']);assert.equal(j.conteo.guardados,2);assert.ok(msgs.some(m=>m.text.includes('NVIDIA')));assert.ok(msgs.some(m=>m.text.includes('SpaceX')));assert.ok(msgs.every(m=>m.channel===event.channel&&m.thread_ts===event.ts));
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}

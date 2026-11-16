@@ -45,19 +45,26 @@ function resumen(j) { return `${j.conteo.activos}/${j.codigos.length} activos te
 export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map(), ahora=Date.now }) {
   let ocupado=false;
   const guardar=(j)=>guardarEstado(archivoEstado(),j);
-  const avisarFin=async(j)=>{await avisar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);j.notificado=true;guardar(j);};
+  const notificar=async(j,text,meta)=>{
+    if(j.version===2 && ['mes','fin-activo'].includes(meta?.tipo)){j.avisoPendiente={text,meta};guardar(j);}
+    await avisar(j,text,meta);
+    if(j.version===2){if(['mes','fin-activo'].includes(meta?.tipo))delete j.avisoPendiente;guardar(j);}
+  };
+  const vaciarAviso=async j=>{if(j.avisoPendiente){const {text,meta}=j.avisoPendiente;await notificar(j,text,meta);}};
+  const avisarFin=async(j)=>{await notificar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);j.notificado=true;guardar(j);};
   async function correr(j) {
     const id='registro-historial';
     activas.set(id,{que:'registrar historial',desde:Date.now()});
     try {
       j.estado='en-curso';delete j.error;guardar(j);
-      await avisar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await vaciarAviso(j);
+      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
       while(j.indice<j.codigos.length) {
         const codigo=j.codigos[j.indice];
         activas.set(id,{que:`registrar ${codigo}, ${etiqueta(j.mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now()});
         const res=await resolver(j.clase,codigo);
         if(!res.ok) throw new Error(res.motivo);
-        await avisar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}; corte UTC).`);
+        await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}; corte UTC).`,{tipo:'activo'});
         let terminado=false;
         while(!terminado) {
           const meses=(new Date(j.inicial).getUTCFullYear()-new Date(j.mes).getUTCFullYear())*12+new Date(j.inicial).getUTCMonth()-new Date(j.mes).getUTCMonth();
@@ -65,7 +72,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           const mes=j.mes;
           const destino=path.join(base(),j.clase,codigo,`${yymm(mes)}_${codigo}`);
           activas.set(id,{que:`registrar ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now()});
-          await avisar(j,`Consulto ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length}; corte UTC).`);
+          await notificar(j,`Consulto ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length}; corte UTC).`,{tipo:'consulta'});
           const t=Date.now();
           const r=await fetchImpl(`https://api.binance.com/api/v3/klines?symbol=${res.simbolo}&interval=1d&startTime=${mes}&endTime=${Math.min(siguiente(mes),j.hasta)-1}&limit=1000`,{signal:AbortSignal.timeout(30000),headers:{'User-Agent':'hugo'}});
           const cuerpo=await r.text();
@@ -81,25 +88,24 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           }
           if(!datos.length) {
             if(siguiente(mes)>j.hasta && !existe) {
-              j.mes=anterior(mes);guardar(j);
-              await avisar(j,`${codigo}: ${etiqueta(mes)} aun no tiene velas cerradas al corte. No doy su historial por terminado; sigo con ${etiqueta(j.mes)}.`);
+              j.mes=anterior(mes);
+              await notificar(j,`${codigo}: ${etiqueta(mes)} aun no tiene velas cerradas al corte. No doy su historial por terminado; sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: sin velas cerradas al corte; sigo atras.`});
               continue;
             }
             if(existe) throw new Error(`Archivo vacio existente: ${destino}. Lo conservo para revisar, no doy el activo por terminado.`);
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length) {j.estado='terminado';j.notificado=false;}
-            guardar(j);
-            await avisar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`);
+            await notificar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Historial terminado: ${etiqueta(mes)} sin velas. ${j.indice}/${j.codigos.length} activos.`});
           } else {
             const inicioGuardado=Date.now();
             if(modo==='nuevo') {publicarSerie(destino,Buffer.from(cuerpo));j.conteo.guardados++;}
             else if(modo==='ampliar') {publicarSerie(destino,Buffer.from(cuerpo),previoBuf);j.conteo.ampliados=(j.conteo.ampliados||0)+1;}
             else j.conteo.existentes++;
-            j.mes=anterior(mes);guardar(j);
+            j.mes=anterior(mes);
             const ndias=new Date(siguiente(mes)-1).getUTCDate();
             const dias=new Set(datos.map(v=>new Date(v[0]).getUTCDate()));
             const faltan=Array.from({length:ndias},(_,i)=>i+1).filter(n=>!dias.has(n));
-            await avisar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`);
+            await notificar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: ${datos.length} velas; ${modo==='ampliar'?'ampliado':existe?'comprobado':'guardado'}${faltan.length?'; parcial':' completo'}; consulta ${dur(consultaMs)}, disco ${dur(Date.now()-inicioGuardado)}.`});
           }
         }
       }
@@ -108,28 +114,28 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       // Si ya se termino, solo falta el aviso. No volver a consultar una cola completada.
       if(j.estado!=='terminado') {j.estado='pausado';j.error=String(e.message).slice(0,1000);}
       try{guardar(j);}catch(err){console.error('No pude guardar avance del registro:',err.message);}
-      try{await avisar(j,`Registro detenido en ${j.codigos[j.indice]||'el aviso final'}, ${etiqueta(j.mes)}: ${e.message} Lo guardado se conserva. ${resumen(j)} Corrige la causa y pide registra continuar.`);}catch(err){console.error('No pude avisar del registro detenido:',err.message);}
+      try{await notificar(j,`Registro detenido en ${j.codigos[j.indice]||'el aviso final'}, ${etiqueta(j.mes)}: ${e.message} Lo guardado se conserva. ${resumen(j)} Corrige la causa y pide registra continuar.`);}catch(err){console.error('No pude avisar del registro detenido:',err.message);}
     } finally {activas.delete(id);}
   }
   async function iniciar({clase,codigos,event,continuar=false,arranque=false}) {
-    if(ocupado) {if(!arranque)await avisar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
+    if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
       const estadoAbs=path.resolve(archivoEstado()),baseAbs=path.resolve(base());
       if(estadoAbs===baseAbs || estadoAbs.startsWith(baseAbs+path.sep)) throw new Error('El avance privado debe quedar fuera de la carpeta de registros que se sincroniza con GitHub.');
       let j;
-      try{j=leerEstado(archivoEstado());}catch(e){if(!arranque)await avisar(event,`No puedo leer el avance: ${e.message}. No lo sustituyo.`);else throw new Error(`No puedo leer el avance de registra: ${e.message}`);return;}
+      try{j=leerEstado(archivoEstado());}catch(e){if(!arranque)await notificar(event,`No puedo leer el avance: ${e.message}. No lo sustituyo.`);else throw new Error(`No puedo leer el avance de registra: ${e.message}`);return;}
       if(j && j.hasta>cierreUTC(ahora()))throw new Error('El corte guardado esta en el futuro; revisa el reloj o el avance.');
       if(arranque) {
         if(!j)return;
-        if(j.estado==='terminado') {if(!j.notificado)await avisarFin(j);return;}
-        if(j.estado==='pausado') {await avisar(j,`Registro pausado en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}: ${j.error||'requiere revision'}. Pide registra continuar cuando se corrija la causa.`);return;}
+        if(j.estado==='terminado') {await vaciarAviso(j);if(!j.notificado)await avisarFin(j);return;}
+        if(j.estado==='pausado') {await notificar(j,`Registro pausado en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}: ${j.error||'requiere revision'}. Pide registra continuar cuando se corrija la causa.`);return;}
       } else if(continuar) {
-        if(!j || j.estado==='terminado') {await avisar(event,'No hay un registro pendiente que continuar.');return;}
+        if(!j || j.estado==='terminado') {await notificar(event,'No hay un registro pendiente que continuar.');return;}
       } else {
         if(j && j.estado!=='terminado') {
           const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos);
-          if(!mismo) {await avisar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
+          if(!mismo) {await notificar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
         } else {
           const hasta=cierreUTC(ahora());
           j={version:2,estado:'en-curso',clase,codigos,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
@@ -139,7 +145,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       await correr(j);
     } catch(e) {
       if(arranque) throw e;
-      await avisar(event,`No pude iniciar el registro: ${e.message}. No sustituyo el avance guardado.`);
+      await notificar(event,`No pude iniciar el registro: ${e.message}. No sustituyo el avance guardado.`);
     } finally {ocupado=false;}
   }
   return {iniciar};
