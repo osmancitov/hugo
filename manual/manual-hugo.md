@@ -6,7 +6,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 - Hugo es el bot de Slack de la Debian: tú le escribes una orden mencionándolo y él trabaja.
 - Las órdenes delicadas (borrar, guardar, enviar, actualizar, parar, reiniciar) solo se hacen con tu 👍. Las de trabajo (registrar velas, radiografías, sincronizar registros, consultar el estado) arrancan directo.
 - Mientras trabaja avisa: el registro y las radiografías reportan en el hilo de la orden; la sincronización automática reporta su avance en el canal de avisos solo cuando tiene algo que copiar.
-- Si Hugo se reinicia a la mitad, lo ya guardado se conserva y lo que estaba a medias se repite; nunca se pisa contenido.
+- Si Hugo se reinicia a la mitad de un trabajo, lo ya guardado se conserva: el registro y la sincronización retoman solos lo que falta, y una radiografía a medias se repite pidiéndola de nuevo. Un registro que difiera entre la Debian y GitHub nunca se pisa: Hugo avisa el conflicto.
 - El resto de este manual es la referencia completa: qué hace cada orden, cómo se actualiza y cómo se modifica.
 
 ## Qué es
