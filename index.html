@@ -871,9 +871,12 @@ function ruta() {
 }
 $('#buscar').addEventListener('input', () => {
   estadoLista = null;
-  // Dentro de un activo, buscar vuelve al catálogo filtrado en vez de reiniciar la gráfica.
-  if (/^#\/a\//.test(location.hash)) location.hash = '#/';
-  else ruta();
+  if (/^#\/a\//.test(location.hash)) {
+    // Buscar desde un activo vuelve al catálogo como localizador; vaciar la casilla no saca del activo.
+    if ($('#buscar').value.trim()) location.hash = '#/';
+    return;
+  }
+  ruta();
 });
 // Volver al inicio desde el título limpia la búsqueda y muestra el catálogo completo.
 document.querySelector('.tit-link').addEventListener('click', () => {
