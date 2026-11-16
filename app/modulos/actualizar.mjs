@@ -129,7 +129,7 @@ export function registrar(ctx) {
     if (!/\.sh$/i.test(f.name || '')) return decir(event.channel, hilo, `\u00ab${f.name}\u00bb no es un instalador .sh; no lo aplico.`);
     if (await enCurso()) return decir(event.channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
     await ctx.confirmar({
-      que: 'aplicar una actualizaci\u00f3n', channel: event.channel, thread_ts: hilo, user: ctx.usuario, // el 👍 que cuenta es siempre el del usuario
+      que: 'aplicar una actualizaci\u00f3n', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true, // el 👍 que cuenta es siempre el del usuario
       texto: `Solicitud.\n\u00bfAplico ${ctx.archivos.limpio(f.name)} (${ctx.archivos.kb(f.size || 0)}${quien ? `, subida por <@${quien}>` : ''})?`,
       alSi: async () => {
         if (await enCurso()) return decir(event.channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');

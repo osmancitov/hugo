@@ -9,13 +9,16 @@ const esPulgar = (r) => r === '+1' || r === 'thumbsup' || r.startsWith('+1::') |
 export function registrar(ctx) {
   const { app, botToken } = ctx;
 
-  // confirmar({ channel, thread_ts, user, texto, alSi, alNo, minutos, tambien, largo })
+  // confirmar({ channel, thread_ts, user, texto, alSi, alNo, minutos, tambien, largo, corta })
   // `tambien`: id de Slack opcional que tambien confirma con su pulgar (sin usos actuales).
   // `largo`: el trabajo que arranca el pulgar es largo y se puede cortar con stop o restart (lo miran esos modulos).
-  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false }) => {
+  // `corta`: la orden interrumpe el trabajo largo que este en curso (reinicio); se avisa en la pregunta.
+  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false, corta = false }) => {
+    const ocupado = corta ? [...ctx.activas.values()].filter((a) => a.largo) : [];
+    const aviso = ocupado.length ? `\nOjo: ahora estoy en: ${ocupado.map((a) => `${a.que} (desde hace ${Math.max(1, Math.round((Date.now() - a.desde) / 60000))} min)`).join('; ')}. Si aplicas, me reinicio y ese trabajo se corta; lo ya copiado queda y lo retomo despu\u00e9s.` : '';
     const r = await app.client.chat.postMessage({
       token: botToken, channel, thread_ts,
-      text: `${texto}\n\u{1F44D} = s\u00ed.`,
+      text: `${texto}${aviso}\n\u{1F44D} = s\u00ed.`,
     });
     const clave = `${channel}:${r.ts}`;
     const timer = setTimeout(async () => {

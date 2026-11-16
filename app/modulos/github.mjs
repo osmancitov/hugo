@@ -158,7 +158,7 @@ export function registrar(ctx) {
       return decir(event.channel, hilo, `Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}).`);
     }
     await ctx.confirmar({
-      que: 'actualizar desde GitHub', channel: event.channel, thread_ts: hilo, user: ctx.usuario,
+      que: 'actualizar desde GitHub', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true,
       texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,
       alSi: async () => {
         try {
