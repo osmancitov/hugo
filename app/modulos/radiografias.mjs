@@ -313,12 +313,11 @@ def radiografia(codigo, base, out, info='', clase_arg=''):
             return [g, r]
 
     handles=[Line2D([0],[0],color=BLUE,alpha=ALPHA,lw=0.7*0.72),
-             Line2D([0],[0],color=BLUE,alpha=ALPHA,lw=wpix(vmed)*0.72),
              Line2D([0],[0],color=BLUE,alpha=ALPHA,lw=12*0.72),
              Patch(facecolor=GREEN,alpha=0.5,edgecolor='none'),
              Patch(facecolor=RED,alpha=0.5,edgecolor='none'),
              Flag()]
-    labels=[f'mín {round(vmin)} v/p', f'med {round(vmed)} v/p', f'máx {vmax:,.0f} v/p'.replace(',','.'),
+    labels=[f'mín {round(vmin)} v/p', f'máx {vmax:,.0f} v/p'.replace(',','.'),
             f'+{round(asum)} %d / {dpos} d',
             f'−{round(abs(ansum))} %d / {dneg} d',
             f'{asum/abs(ansum):.2f} / {dpos/dneg:.2f}']
