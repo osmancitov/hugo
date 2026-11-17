@@ -241,8 +241,9 @@ def radiografia(codigo, base, out, info='', clase_arg=''):
     fechas=[datetime.datetime.utcfromtimestamp(r[0]/1000) for r in rows]
     ohlc4=[(float(r[1])+float(r[2])+float(r[3])+float(r[4]))/4 for r in rows]
     vol=[float(r[5]) for r in rows]
-    rets=[(ohlc4[i]/ohlc4[i-1]-1)*100 for i in range(1,len(ohlc4))]
-    rs=[0.0]+rets
+    # Variación de cada vela entre su apertura y su cierre, como la app.
+    rets=[(float(r[4])/float(r[1])-1)*100 for r in rows]
+    rs=rets
     npts=len(rs)
     vp=[v/p for v,p in zip(vol,ohlc4)]
     vmin,vmax=min(vp),max(vp); vmed=statistics.median(vp)
