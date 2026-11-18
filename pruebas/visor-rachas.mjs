@@ -9,6 +9,11 @@ test('racha usa apertura/cierre; su cambio real incluye cambios entre velas, sin
  const r=resumir([vela(0,100,101),vela(1,200,180),vela(2,190,171)]);
  assert.equal(r.dias,2); assert.equal(r.limitada,false); assert.ok(Math.abs(r.acumulado+14.5)<1e-10); assert.ok(Math.abs(r.variacion+10)<1e-10);
 });
+test('rango diario usa máximo menos mínimo relativo a apertura, no a cierre',()=>{
+ const v=vela(0,100,110); v[2]='130';v[3]='80';
+ const r=resumir([v]);assert.equal(r.rango,50);assert.ok(Math.abs(r.variacion-10)<1e-10);
+ const plana=vela(0,100,100);assert.equal(resumir([plana]).rango,0);
+});
 test('velas negativas pueden tener cambio de precio de racha positivo',()=>{
  const r=resumir([vela(-1,100,101),vela(0,100,90),vela(1,110,105)]);
  assert.equal(r.dias,2); assert.equal(r.limitada,false); assert.ok(Math.abs(r.acumulado-5)<1e-10);
@@ -58,6 +63,7 @@ test('todos los registros del catálogo real se validan y resumen sin alterar ar
    }
    const esperado=n?(Number(filas.at(-1)[4])/Number(primera[1])-1)*100:0;
    assert.equal(r.dias,n,e.codigo); assert.ok(Math.abs(r.acumulado-esperado)<1e-8,e.codigo);
+   assert.ok(Math.abs(r.rango-(Number(filas.at(-1)[2])-Number(filas.at(-1)[3]))/Number(filas.at(-1)[1])*100)<1e-8,e.codigo);
    resultados.push({activo:e,datos:r});
  }
  assert.equal(resultados.length,catalogo.stock.length+catalogo.cripto.length); assert.ok(separar(resultados).comparables.length>0);

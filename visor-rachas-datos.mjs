@@ -23,6 +23,7 @@ export function resumir(filas, inicioConocido = false) {
     anteriores = f[0];
   }
   const ultima = filas.at(-1);
+  const rango = (Number(ultima[2]) - Number(ultima[3])) / Number(ultima[1]) * 100;
   const variacion = (Number(ultima[4]) / Number(ultima[1]) - 1) * 100;
   let dias = 0, primeraApertura = Number(ultima[1]), motivo = '', siguiente = ultima[0] + DIA;
   for (let i = filas.length - 1; i >= 0; i--) {
@@ -33,7 +34,7 @@ export function resumir(filas, inicioConocido = false) {
     dias++; primeraApertura = Number(f[1]); siguiente = f[0];
     if (i === 0) motivo = inicioConocido ? 'inicio del registro disponible' : 'faltan meses anteriores';
   }
-  return { fecha: ultima[0], variacion, dias, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
+  return { fecha: ultima[0], variacion, rango, dias, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
 }
 export function separar(resultados) {
   const validos = resultados.filter(x => x.datos);

@@ -57,7 +57,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['variacion','Variación: menor a mayor'],['subida','Variación: mayor a menor'],['dias','Racha: más días primero'],['acumulado','Cambio completo de racha: menor a mayor']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['variacion','Variación: menor a mayor'],['subida','Variación: mayor a menor'],['dias','Racha: más días primero'],['rango','Rango del día: mayor a menor'],['rango-asc','Rango del día: menor a mayor'],['acumulado','Cambio completo de racha: menor a mayor']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const etiqueta = texto('label',''); const check = document.createElement('input'); check.type='checkbox'; check.checked=soloRacha; etiqueta.append(check, document.createTextNode(' Solo con racha negativa'));
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Leyendo registros publicados…','rachas-nota'); estado.setAttribute('role','status');
@@ -65,6 +65,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
   reglas.append(texto('p','Variación = (cierre / apertura - 1) × 100 de una vela 1d UTC, como en la gráfica. La racha cuenta días UTC consecutivos con cierre menor que apertura; una vela plana o positiva la corta.'));
+  reglas.append(texto('p','Rango del día = (máximo - mínimo) / apertura × 100 de esa misma vela UTC. Mide su amplitud, sin afirmar si primero ocurrió el máximo o el mínimo ni el recorrido total entre operaciones.'));
   reglas.append(texto('p','Cambio de la racha = (último cierre / apertura de la primera vela negativa - 1) × 100. Incluye los cambios de precio entre velas; por eso puede ser positivo aunque las velas sean negativas. No es la suma de las variaciones diarias.'));
   reglas.append(texto('p','≥ y * indican una racha limitada por un hueco o por el inicio del registro: se muestran solo los días y el cambio de precio del tramo observado, no el total desconocido. No se rellenan huecos. Los datos atrasados y los errores quedan fuera del orden principal.'));
   controles.append(selector,clasificar,etiqueta,recargar);
@@ -77,7 +78,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
     const visibles=partes.comparables.filter(coincide).filter(x=>!soloRacha||x.datos.dias>0);
     visibles.sort((a,b)=> {
       const x=a.datos,y=b.datos;
-      const d=orden==='subida'?y.variacion-x.variacion:orden==='dias'?y.dias-x.dias:orden==='acumulado'?(Number(x.limitada)-Number(y.limitada)||x.acumulado-y.acumulado):x.variacion-y.variacion;
+      const d=orden==='subida'?y.variacion-x.variacion:orden==='dias'?y.dias-x.dias:orden==='rango'?y.rango-x.rango:orden==='rango-asc'?x.rango-y.rango:orden==='acumulado'?(Number(x.limitada)-Number(y.limitada)||x.acumulado-y.acumulado):x.variacion-y.variacion;
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
@@ -87,7 +88,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
     const link=texto('a',ultimo.revision.slice(0,7)); link.href='https://github.com/osmancitov/hugo/commit/'+ultimo.revision; link.target='_blank'; link.rel='noopener'; fuente.append(link);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of ['Activo','Variación diaria','Días negativos','Cambio en la racha']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of ['Activo','Variación diaria','Rango del día','Días negativos','Cambio en la racha']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
@@ -95,7 +96,8 @@ export function montarRachas(contenedor, catalogo, consulta) {
       const v=texto('td',pct(d.variacion),d.variacion<0?'negativo':d.variacion>0?'positivo':'');
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias); const acum=texto('td',d.dias?pct(d.acumulado)+(d.limitada?' *':''):'-');
       if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Cambio del tramo observado: '+d.motivo; }
-      r.append(id,v,dias,acum); body.append(r);
+      const rango=texto('td',d.rango.toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})+' %');
+      r.append(id,v,rango,dias,acum); body.append(r);
     }
     tabla.append(cab,body); caja.append(tabla); cuerpo.append(caja);
     if(!visibles.length) cuerpo.append(texto('p','Ningún activo coincide con los filtros.','vacio'));
