@@ -5,7 +5,8 @@
 import os from 'node:os';
 import path from 'node:path';
 import { resolverActivo, CLASES, CODIGO_OK } from './activos.mjs';
-import { crearMotor } from './registro-motor.mjs';
+import { crearMotor, leerEstado } from './registro-motor.mjs';
+import { prepararUniverso } from './registro-universo.mjs';
 import { crearAvisador } from './registro-avisos.mjs';
 
 export function registrar(ctx) {
@@ -13,7 +14,9 @@ export function registrar(ctx) {
   const archivoEstado=()=>process.env.HUGO_REGISTRO_ESTADO || ctx.conf.HUGO_REGISTRO_ESTADO || path.join(os.homedir(),'.local','share','hugo-registro','estado.json');
   const avisar=crearAvisador({client:ctx.app.client,token:ctx.botToken});
   const motor=crearMotor({base,archivoEstado,resolver:resolverActivo,avisar,activas:ctx.activas,parada:ctx.parada});
+  let cotejando = false;
   ctx.comando(/^\s*registr\w*(?:\s|$)/i, async(event,texto)=>{
+    if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');
     const partes=texto.trim().replace(/[.!?]+$/,'').split(/[\s,;]+/);
     partes.shift();
     if(partes.length===1 && partes[0].toLowerCase()==='continuar') return motor.iniciar({event,continuar:true});
@@ -28,6 +31,21 @@ export function registrar(ctx) {
       piso=Date.UTC(2000+Number(m.slice(0,2)),Number(m.slice(2))-1,1);
     }
     if(partes.some(p=>p.toLowerCase()==='desde')) return avisar(event,'«desde AAMM» solo va al principio de la lista: registra cripto desde 2607 BTC ETH. No inicie el registro.');
+    if(partes.length===1 && partes[0].toLowerCase()==='todos') {
+      cotejando=true;
+      try {
+        const pendiente=leerEstado(archivoEstado());
+        if(pendiente && pendiente.estado!=='terminado') return await avisar(event,'Hay un registro pendiente; no cambio su lista. Usa registra continuar.');
+        const archivo=path.join(path.dirname(archivoEstado()),'universo.json');
+        const u=await prepararUniverso({clase,base:base(),archivo});
+        // El aviso aceptado precede a guardar el catalogo y a descargar velas.
+        await avisar(event,u.texto);
+        await u.guardar();
+        return await motor.iniciar({clase,codigos:u.codigos,event,piso});
+      } catch(e) { return await avisar(event,`No inicie la actualizacion completa: ${e.message}`); }
+      finally {cotejando=false;}
+    }
+    if(partes.some(p=>p.toLowerCase()==='todos')) return avisar(event,'Usa todos sin mezclarlo con codigos: registra cripto todos, o registra stock todos.');
     const codigos=partes.map(p=>p.toUpperCase());
     if(!codigos.length || codigos.length>500 || codigos.some(c=>!CODIGO_OK.test(c))) return avisar(event,'Falta una lista valida de codigos (hasta 500, separados por espacios o comas). No inicie el registro.');
     if(new Set(codigos).size!==codigos.length) return avisar(event,'Hay codigos repetidos en la lista. Quitalos para conservar un orden claro; no inicie el registro.');

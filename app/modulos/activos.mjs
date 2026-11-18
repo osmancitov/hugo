@@ -55,7 +55,7 @@ async function productoDe(simbolo, { web, fetchImpl }) {
   return cacheProductos.porSimbolo.get(simbolo) || null;
 }
 
-const esBStock = (p) => !!p && Array.isArray(p.tags) && p.tags.includes('bStocks') && /bstocks\s*[)）]\s*$/i.test(String(p.an || ''));
+export const esBStock = (p) => !!p && Array.isArray(p.tags) && p.tags.includes('bStocks') && /bstocks\s*[)）]\s*$/i.test(String(p.an || ''));
 const limpiarNombre = (an) => String(an || '').replace(/\s*[(（]\s*bStocks\s*[)）]\s*$/i, '').trim();
 
 // Devuelve { ok: true, clase, codigo, simbolo, nombre? } o { ok: false, motivo }.

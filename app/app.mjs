@@ -12,6 +12,7 @@ import * as actualizar from './modulos/actualizar.mjs';
 import * as saludo from './modulos/saludo.mjs';
 import * as github from './modulos/github.mjs';
 import * as estado from './modulos/estado.mjs';
+import * as estadoRegistro from './modulos/estado-registro.mjs';
 import * as ayuda from './modulos/ayuda.mjs';
 import * as reiniciar from './modulos/reiniciar.mjs';
 import * as detener from './modulos/detener.mjs';
@@ -62,7 +63,7 @@ const ctx = {
 };
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias]) m.registrar(ctx);
 
 app.event('app_mention', async ({ event }) => {
   const texto = (event.text || '').replace(/<@[A-Z0-9]+>/g, ' ').trim();
