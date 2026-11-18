@@ -4,6 +4,7 @@ const TEXTO = [
   '`estado` - que hago y que confirmaciones espero.',
   '`estado del registro` - hasta que dia hay velas y ultima publicacion de datos.',
   '`registra CLASE todos` - cotejar Binance, avisar altas/bajas y registrar todo.',
+  '`registra todo` - todo el universo en una orden: stock y luego cripto.',
   '`registra CLASE CODIGO ...` - registrar historiales (stock o cripto).',
   '`registra CLASE desde AAMM CODIGO ...` - registrar desde ese mes.',
   '`registra continuar` - retomar un registro pausado.',

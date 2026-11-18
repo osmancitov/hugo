@@ -2,6 +2,8 @@
 // No envia ordenes ni usa claves. La integracion decide quien puede iniciar una orden.
 // Piso opcional (j.piso, milisegundos del dia 1 del mes): el activo termina al completar ese mes;
 // sin piso, termina en el primer mes vacio como siempre. El piso viaja en el avance: continuar lo conserva.
+// Varios tramos (j.siguientes): «registra todo» recorre las clases en secuencia con un solo corte UTC;
+// el avance guarda la clase que sigue y un corte entre clases se retoma con continuar, sin repetir lo hecho.
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES, CODIGO_OK } from './activos.mjs';
@@ -33,16 +35,19 @@ function leerNormal(archivo) {
   if (!fs.lstatSync(archivo).isFile()) throw new Error(`No es un archivo normal: ${archivo}`);
   return fs.readFileSync(archivo,'utf8');
 }
+const tramoValido=t=>t && CLASES.includes(t.clase) && Array.isArray(t.codigos) && t.codigos.length && t.codigos.length<=500 && !t.codigos.some(c=>!CODIGO_OK.test(c)) && new Set(t.codigos).size===t.codigos.length;
 export function leerEstado(archivo) {
   if (!fs.existsSync(archivo)) return null;
   const j=JSON.parse(leerNormal(archivo));
   if(j.version===1) {j.version=2;j.hasta=CERO;j.inicial=inicial;j.conteo.ampliados=0;} // reanuda el corte antiguo sin inventar dias
+  if(j.siguientes==null) j.siguientes=[]; // los avances de una sola clase no la traen
   const estados=['en-curso','pausado','terminado'];
-  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0)) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
-  if ((j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
+  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0) || !Array.isArray(j.siguientes) || j.siguientes.length>CLASES.length || !j.siguientes.every(tramoValido) || (j.total!=null && (!Number.isInteger(j.total) || j.total<j.codigos.length))) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  const enBorde=j.siguientes.length>0 && j.indice===j.codigos.length && (j.estado==='en-curso'||j.estado==='pausado');
+  if (!enBorde && (j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
   return j;
 }
-function resumen(j) { return `${j.conteo.activos}/${j.codigos.length} activos terminados; ${j.conteo.guardados} meses nuevos, ${j.conteo.existentes} existentes comprobados y ${j.conteo.ampliados||0} meses ampliados.`; }
+function resumen(j) { const total=j.total||j.codigos.length; return `${j.conteo.activos}/${total} activos terminados; ${j.conteo.guardados} meses nuevos, ${j.conteo.existentes} existentes comprobados y ${j.conteo.ampliados||0} meses ampliados.`; }
 
 export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map(), parada={n:0}, ahora=Date.now }) {
   let ocupado=false;
@@ -64,7 +69,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     try {
       j.estado='en-curso';delete j.error;guardar(j);
       await vaciarAviso(j);
-      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s). Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}.${j.piso!=null?` Tramo: no bajo de ${etiqueta(j.piso)}.`:''} Retomo en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s)${j.siguientes.length?`, y luego ${j.siguientes.map(t=>t.clase).join(', ')}`:''}. Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}.${j.piso!=null?` Tramo: no bajo de ${etiqueta(j.piso)}.`:''} Retomo en ${j.codigos[j.indice]||j.codigos[j.codigos.length-1]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      while(true) {
       while(j.indice<j.codigos.length) {
         if(pedida(marca))throw errorParada();
         const codigo=j.codigos[j.indice];
@@ -77,7 +83,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(pedida(marca))throw errorParada();
           if(j.piso!=null && j.mes<j.piso) {
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
-            if(j.indice===j.codigos.length) {j.estado='terminado';j.notificado=false;}
+            if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             await notificar(j,`${codigo}: tramo desde ${etiqueta(j.piso)} cubierto; no bajo mas. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Tramo desde ${etiqueta(j.piso)} cubierto. ${j.indice}/${j.codigos.length} activos.`});
             continue;
           }
@@ -108,7 +114,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             }
             if(existe) throw new Error(`Archivo vacio existente: ${destino}. Lo conservo para revisar, no doy el activo por terminado.`);
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
-            if(j.indice===j.codigos.length) {j.estado='terminado';j.notificado=false;}
+            if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             await notificar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Historial terminado: ${etiqueta(mes)} sin velas. ${j.indice}/${j.codigos.length} activos.`});
           } else {
             const inicioGuardado=Date.now();
@@ -123,6 +129,12 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           }
         }
       }
+      if(!j.siguientes.length) break;
+      if(pedida(marca))throw errorParada();
+      const tramo=j.siguientes.shift();
+      await notificar(j,`Termine ${j.clase} (${j.codigos.length} activos). Sigo con ${tramo.clase}: ${tramo.codigos.length} activo(s), con el mismo corte UTC. ${resumen(j)}`);
+      j.clase=tramo.clase;j.codigos=tramo.codigos;j.indice=0;j.mes=j.inicial;j.reporte=null;guardar(j);
+      }
       await avisarFin(j);
     } catch(e) {
       // Si ya se termino, solo falta el aviso. No volver a consultar una cola completada.
@@ -135,7 +147,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       }
     } finally {activas.delete(id);}
   }
-  async function iniciar({clase,codigos,event,piso=null,continuar=false,arranque=false}) {
+  async function iniciar({clase,codigos,siguientes=[],event,piso=null,continuar=false,arranque=false}) {
     if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
@@ -153,12 +165,13 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         if(!j || j.estado==='terminado') {await notificar(event,'No hay un registro pendiente que continuar.');return;}
       } else {
         if(j && j.estado!=='terminado') {
-          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos) && (j.piso??null)===(piso??null);
+          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos) && JSON.stringify(j.siguientes||[])===JSON.stringify(siguientes||[]) && (j.piso??null)===(piso??null);
           if(!mismo) {await notificar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
         } else {
+          if(!Array.isArray(siguientes) || !siguientes.every(tramoValido)) {await notificar(event,'La lista de clases siguientes no es valida; no inicie el registro.');return;}
           const hasta=cierreUTC(ahora());
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
-          j={version:2,estado:'en-curso',clase,codigos,piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
+          j={version:2,estado:'en-curso',clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
         }
       }

@@ -1,5 +1,7 @@
 // Registra: una orden directa para recorrer el historial de uno o varios activos.
 // La clase aplica a toda la lista. No hay confirmaciones especiales por clase.
+// «registra todo»: el universo completo de las dos clases en una sola orden, stock y luego cripto,
+// con un solo corte UTC y el mismo reporte por activo que se va editando.
 // Piso opcional: «registra cripto desde 2607 BTC ...» no baja del mes de inicio pedido
 // (aamm, como el nombre de los archivos). Sin «desde», el recorrido llega al primer mes vacio.
 import os from 'node:os';
@@ -20,8 +22,27 @@ export function registrar(ctx) {
     const partes=texto.trim().replace(/[.!?]+$/,'').split(/[\s,;]+/);
     partes.shift();
     if(partes.length===1 && partes[0].toLowerCase()==='continuar') return motor.iniciar({event,continuar:true});
+    if(partes.length && partes[0].toLowerCase()==='todo') {
+      if(partes.length!==1) return avisar(event,'«registra todo» no admite codigos ni «desde»: recorre todo el universo, stock primero y cripto despues.');
+      cotejando=true;
+      try {
+        const pendiente=leerEstado(archivoEstado());
+        if(pendiente && pendiente.estado!=='terminado') return await avisar(event,'Hay un registro pendiente; no cambio su lista. Usa registra continuar.');
+        const archivo=path.join(path.dirname(archivoEstado()),'universo.json');
+        const tramos=[];
+        for(const clase of CLASES) {
+          const u=await prepararUniverso({clase,base:base(),archivo});
+          // El aviso aceptado de cada clase precede a guardar su catalogo y a descargar velas.
+          await avisar(event,u.texto);
+          await u.guardar();
+          tramos.push({clase,codigos:u.codigos});
+        }
+        return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,siguientes:tramos.slice(1),event});
+      } catch(e) { return await avisar(event,`No inicie la actualizacion completa: ${e.message}`); }
+      finally {cotejando=false;}
+    }
     const clase=String(partes.shift()||'').toLowerCase();
-    if(!CLASES.includes(clase)) return avisar(event,'Indica la clase y uno o varios codigos: registra stock NVDA SPCX, o registra cripto BTC ETH. Para retomar un trabajo pendiente: registra continuar.');
+    if(!CLASES.includes(clase)) return avisar(event,'Indica la clase y uno o varios codigos: registra stock NVDA SPCX, o registra cripto BTC ETH. Para todo el universo en una orden: registra todo. Para retomar un trabajo pendiente: registra continuar.');
     // «desde AAMM» solo vale al principio de la lista, antes de los codigos.
     let piso=null;
     if(partes.length && partes[0].toLowerCase()==='desde') {
