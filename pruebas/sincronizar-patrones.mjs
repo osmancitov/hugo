@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { conectarCaja } from './caja.mjs';
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
 const serie = JSON.stringify([vela(Date.UTC(2026, 10, 1)), vela(Date.UTC(2026, 10, 2))]);
@@ -42,7 +43,7 @@ test('pasada sube cripto/A, cripto/牛来 y stock/AA en un solo commit; nombres 
       parada: { n: 0 }, activas: new Map(), leerClave: () => 'token-simulado',
       comando: () => {}, alIniciar: () => {},
     };
-    registrar(ctx);
+    registrar(conectarCaja(ctx));
     const r = await ctx.pasadaSincronizacion();
     assert.ok(r.texto.includes('subí 3'), r.texto);
     assert.equal(arboles.length, 1);

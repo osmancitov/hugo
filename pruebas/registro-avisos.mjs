@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {crearAvisador} from '../app/modulos/registro-avisos.mjs';
+import {crearAvisador} from '../app/modulos/reporte.mjs';
 import {crearMotor,leerEstado} from '../app/modulos/registro-motor.mjs';
 function simulado(){let reloj=0;const calls=[];let falla=false;const client={chat:{postMessage:async m=>{calls.push({tipo:'post',reloj,...m});return{ts:String(calls.length)};},update:async m=>{calls.push({tipo:'update',reloj,...m});if(falla)throw Error('Slack simulado');return{ts:m.ts};}}};const crear=()=>crearAvisador({client,token:'simulado',ahora:()=>reloj,esperar:async ms=>{reloj+=ms;}});return{calls,crear,fallar:v=>falla=v};}
 const trabajo=()=>({version:2,indice:0,codigos:['AA','BB'],channel:'canal',thread_ts:'hilo',hasta:Date.UTC(2026,10,16)});

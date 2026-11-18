@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { crearMotor, leerEstado } from '../app/modulos/registro-motor.mjs';
+import { conectarCaja } from './caja.mjs';
 
 const event = { channel: 'C', ts: '100', thread_ts: '100', user: 'U1' };
 
@@ -194,6 +195,7 @@ test('restart siempre pide pulgar; con trabajo largo ademas interrumpe', async (
 // Sincronizacion: GitHub simulado; la parada frena la pasada sin publicar nada.
 function ctxSync(root, alLlamar) {
   const { ctx, msgs } = fakeCtx({ conf: { HUGO_GITHUB: 'a/b' }, leerClave: () => 'tok' });
+  conectarCaja(ctx);
   const llamadas = [];
   const original = globalThis.fetch;
   globalThis.fetch = async (u, opts = {}) => {

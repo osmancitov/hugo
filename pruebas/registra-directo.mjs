@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { crearMotor, leerEstado, guardarEstado, CERO } from '../app/modulos/registro-motor.mjs';
+import { conectarCaja } from './caja.mjs';
 const event={channel:'canal-prueba',ts:'raiz-prueba'};
 const octubre=Date.UTC(2026,9,1), septiembre=Date.UTC(2026,8,1);
 const vela=t=>[t,'1','2','1','2','10',t+86400000-1,'10',3,'1','2','0'];
@@ -75,7 +76,7 @@ test('reanudacion tras SIGKILL antes/despues de enlace y avance, sin perder ni p
 });
 test('integracion del comando: lista, datos faltantes, duplicados, orden directa y control de acceso intacto',async()=>{
  const {registrar}=await import('../app/modulos/velas.mjs');let handler,patron;const msgs=[];const init=[];
- registrar({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{handler=f;patron=p;assert.equal(o.delegable,true);},alIniciar:f=>init.push(f),activas:new Map()});
+ registrar(conectarCaja({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{handler=f;patron=p;assert.equal(o.delegable,true);},alIniciar:f=>init.push(f),activas:new Map()}));
  assert.ok(patron.test('registra stock AA BB'));
  for(const x of ['registra AA','registra stock','registra stock AA AA'])await handler(event,x);
  assert.equal(msgs.length,3);assert.ok(msgs.every(m=>!m.includes('👍')));
@@ -106,7 +107,7 @@ test('integracion real velas+activos+motor: lista separada por comas y progreso 
  };
  try{
   const {registrar}=await import('../app/modulos/velas.mjs');
-  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f}));
   await handler(event,'registra stock nvda, spcx');
   const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.deepEqual(j.codigos,['NVDA','SPCX']);assert.equal(j.conteo.guardados,2);assert.ok(msgs.some(m=>m.text.includes('NVIDIA')));assert.ok(msgs.some(m=>m.text.includes('SpaceX')));assert.ok(msgs.every(m=>m.channel===event.channel&&m.thread_ts===event.ts));
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
@@ -121,7 +122,7 @@ test('registra cripto EUR se detiene: el euro es fiat, no un cripto; USDT se con
  };
  try{
   const {registrar}=await import('../app/modulos/velas.mjs');
-  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f}));
   await handler(event,'registra cripto EUR');
   const j=leerEstado(path.join(root,'estado.json'));
   assert.equal(j.estado,'pausado');assert.match(j.error,/moneda fiat/);assert.equal(llamadas,0);

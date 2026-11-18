@@ -25,7 +25,6 @@ import crypto from 'node:crypto';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
-import { crearReporteSync } from './sincronizar-reporte.mjs';
 
 const PREFIJO = 'registros/velas-24h';
 // La forma del codigo es la de activos.mjs (CODIGO_OK): hay criptos de una letra y con nombre Unicode.
@@ -497,7 +496,7 @@ export function registrar(ctx) {
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
     let reporte;
     try {
-      reporte=await crearReporteSync({client:app.client,token:botToken,event});
+      reporte=await ctx.reporte.crearSync({event});
       const r = await pasada(reporte.progreso);
       await reporte.final(r.error || r.texto);
     } catch (e) {
@@ -525,11 +524,9 @@ export function registrar(ctx) {
       let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0, padre = null;
       const abrirReporte = async (texto) => {
         if (!padre) {
-          const m = await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: 'Sincronizaci\u00f3n autom\u00e1tica de registros: empiezo una pasada con archivos por copiar; reporto el avance en este hilo.' });
-          padre = m?.ts;
-          if (!padre) throw Error('Slack no devolvio referencia del aviso de sincronizacion.');
+          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Sincronizaci\u00f3n autom\u00e1tica de registros: empiezo una pasada con archivos por copiar; reporto el avance en este hilo.' });
         }
-        reporte = await crearReporteSync({ client: app.client, token: botToken, canal: ctx.canal, hilo: padre, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
+        reporte = await ctx.reporte.crearSync({ canal: ctx.canal, hilo: padre, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
         abiertoEn = Date.now();
       };
       const conEstimacion = (texto) => {

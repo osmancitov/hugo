@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { prepararUniverso } from '../app/modulos/registro-universo.mjs';
+import { conectarCaja } from './caja.mjs';
 function fuente({vacio=false,parcial=false,fallo=false}={}) {
  const symbols=Array.from({length:110},(_,i)=>({symbol:`X${i}USDT`,baseAsset:`X${i}`,quoteAsset:'USDT',status:'TRADING'}));
  symbols.push({symbol:'EURUSDT',baseAsset:'EUR',quoteAsset:'USDT',status:'TRADING'});
@@ -40,7 +41,7 @@ test('aviso de altas rechazado impide guardar catalogo y descargar velas',async(
  globalThis.fetch=async url=>{if(String(url).includes('klines'))klines++;return fuente()(url);};
  try {
  const ctx={conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async()=>{envios++;if(envios===1)throw Error('Slack no disponible');}}}},comando:(p,fn)=>comandos.push(fn),alIniciar:()=>{},activas:new Map(),parada:{n:0}};
- registrar(ctx);await comandos[0]({channel:'canal',ts:'hilo'},'registra cripto todos');
+ registrar(conectarCaja(ctx));await comandos[0]({channel:'canal',ts:'hilo'},'registra cripto todos');
  assert.equal(klines,0);assert.equal(envios,2);await assert.rejects(fs.stat(path.join(root,'universo.json')));await assert.rejects(fs.stat(path.join(root,'estado.json')));
  }finally{globalThis.fetch=original;await fs.rm(root,{recursive:true,force:true});}
 });

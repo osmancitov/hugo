@@ -19,6 +19,7 @@ import * as detener from './modulos/detener.mjs';
 import * as velas from './modulos/velas.mjs';
 import * as sincronizarRegistros from './modulos/sincronizar-registros.mjs';
 import * as radiografias from './modulos/radiografias.mjs';
+import * as reporte from './modulos/reporte.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const leerClave = (f) => { try { return fs.readFileSync(path.join(dir, '..', 'keys', f), 'utf8').trim(); } catch { return ''; } };
@@ -60,7 +61,19 @@ const ctx = {
   alIniciar: (fn) => alIniciar.push(fn),
   alMencionar: (fn) => alMencionar.push(fn),               // completa el evento antes de buscar el comando
   confirmar: null,                                          // lo define el modulo confirmacion
+  // La caja unica de reportes, conectada aqui una sola vez: todo modulo la recibe en el contexto
+  // por defecto; ninguno se conecta a mano ni remienda sus propios mensajes.
+  reporte: {
+    crear: (o) => reporte.crearReporte({ client: app.client, token: botToken, ...o }),
+    crearSync: (o) => reporte.crearReporteSync({ client: app.client, token: botToken, ...o }),
+    avisador: (o = {}) => reporte.crearAvisador({ client: app.client, token: botToken, ...o }),
+    hilo: (o) => reporte.abrirHilo({ client: app.client, token: botToken, ...o }),
+  },
 };
+
+// Los ojitos: cada mencion autorizada recibe de inmediato un mensaje 👀 y la primera respuesta
+// del comando edita ese mismo mensaje. La caja envuelve postMessage una sola vez.
+const ojos = reporte.crearOjos({ client: app.client, token: botToken });
 
 // Orden: confirmacion primero (los demas la usan).
 for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias]) m.registrar(ctx);
@@ -75,10 +88,14 @@ app.event('app_mention', async ({ event }) => {
       // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; registra y sincroniza son directos, actualizar conserva el pulgar de HUGO_USUARIO.
       const delegado = !!USUARIO && !!DELEGADO && event.user === DELEGADO && c.delegable;
       if (!USUARIO || (event.user !== USUARIO && !delegado)) { console.error(`Orden ignorada: usuario ${event.user || '?'} no autorizado`); return; }
+      try { event.ojos = await ojos.anunciar(event); } catch (e) { console.error('Ojitos:', e.data?.error || e.message); }
       const idAct = `${Date.now()}-${Math.random()}`;
       activas.set(idAct, { que: c.nombre || 'atender una orden', desde: Date.now() });
       try { await c.fn(event, texto, { delegado }); } finally { activas.delete(idAct); }
-    } else if (ctx._defecto) await ctx._defecto(event, texto);
+    } else if (ctx._defecto) {
+      try { event.ojos = await ojos.anunciar(event); } catch (e) { console.error('Ojitos:', e.data?.error || e.message); }
+      await ctx._defecto(event, texto);
+    }
   } catch (e) {
     console.error('Error en mencion:', e.data?.error || e.message);
   }

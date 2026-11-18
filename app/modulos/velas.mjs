@@ -9,12 +9,11 @@ import path from 'node:path';
 import { resolverActivo, CLASES, CODIGO_OK } from './activos.mjs';
 import { crearMotor, leerEstado } from './registro-motor.mjs';
 import { prepararUniverso } from './registro-universo.mjs';
-import { crearAvisador } from './registro-avisos.mjs';
 
 export function registrar(ctx) {
   const base=()=>process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(),'Documents','hugo','registros','velas-24h');
   const archivoEstado=()=>process.env.HUGO_REGISTRO_ESTADO || ctx.conf.HUGO_REGISTRO_ESTADO || path.join(os.homedir(),'.local','share','hugo-registro','estado.json');
-  const avisar=crearAvisador({client:ctx.app.client,token:ctx.botToken});
+  const avisar=ctx.reporte.avisador();
   const motor=crearMotor({base,archivoEstado,resolver:resolverActivo,avisar,activas:ctx.activas,parada:ctx.parada});
   let cotejando = false;
   ctx.comando(/^\s*registr\w*(?:\s|$)/i, async(event,texto)=>{

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { conectarCaja } from './caja.mjs';
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
 const serie = JSON.stringify([vela(Date.UTC(2026, 10, 1)), vela(Date.UTC(2026, 10, 2))]);
@@ -45,10 +46,10 @@ function bancoDePruebas(archivos) {
   return {
     llamadas,
     avanzar: (ms) => { ahora += ms; },
-    ctx: {
+    ctx: conectarCaja({
       conf: { HUGO_GITHUB: 'osman/repo', HUGO_VELAS_DIR: velas }, app: { client: slack }, botToken: 'x', canal: 'avisos',
       activas: new Map(), parada: () => false, alIniciar: () => {}, comando: () => {}, leerClave: () => 'xoxb-simulado',
-    },
+    }),
     restaurar: () => {
       globalThis.fetch = originalFetch; Date.now = originalAhora;
       fs.rmSync(root, { recursive: true, force: true });

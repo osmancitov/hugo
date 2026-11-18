@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {crearReporteSync} from '../app/modulos/sincronizar-reporte.mjs';
+import {crearReporteSync} from '../app/modulos/reporte.mjs';
 test('un post inmediato, progreso editado no mas de cada5s y resultado mismo mensaje',async()=>{
  let reloj=0;const calls=[];const client={chat:{postMessage:async m=>{calls.push({tipo:'post',reloj,...m});return{ts:'reporte'};},update:async m=>calls.push({tipo:'update',reloj,...m})}};
  const r=await crearReporteSync({client,token:'simulado',event:{channel:'canal',thread_ts:'hilo'},ahora:()=>reloj,esperar:async ms=>{reloj+=ms;}});

@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import {crearMotor,leerEstado} from '../app/modulos/registro-motor.mjs';
 import {compararSeries,validarSerie,DIA} from '../app/modulos/registro-serie.mjs';
 import {registrar} from '../app/modulos/sincronizar-registros.mjs';
+import { conectarCaja } from './caja.mjs';
 const noviembre=Date.UTC(2026,10,1),octubre=Date.UTC(2026,9,1);
 const v=t=>[t,'1','2','1','2','10',t+DIA-1,'10',3,'1','2','0'];
 const evento={channel:'simulado',ts:'raiz'};
@@ -58,7 +59,7 @@ async function syncCaso({local,remoto,cambioRemoto,falloRef=false}) {
   return{ok:true,status:200,json:async()=>j};
  };
  try{
-  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_SYNC_MINUTOS:0},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(ctx);const resultado=await ctx.pasadaSincronizacion();respuestas.push(resultado);
+  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_SYNC_MINUTOS:0},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(conectarCaja(ctx));const resultado=await ctx.pasadaSincronizacion();respuestas.push(resultado);
   const remotoFinal=trees.get(commits.get(head).tree.sha).get(rel);
   return {resultado,local:fs.existsSync(p)?JSON.parse(fs.readFileSync(p)):null,remoto:remotoFinal?JSON.parse(blobs.get(remotoFinal)):null};
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}

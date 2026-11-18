@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { crearMotor, leerEstado, guardarEstado } from '../app/modulos/registro-motor.mjs';
+import { conectarCaja } from './caja.mjs';
 const event={channel:'canal-prueba',ts:'raiz-prueba'};
 const octubre=Date.UTC(2026,9,1), septiembre=Date.UTC(2026,8,1), corte=Date.UTC(2026,10,1);
 const vela=t=>[t,'1','2','1','2','10',t+86400000-1,'10',3,'1','2','0'];
@@ -92,7 +93,7 @@ test('integracion del comando: «registra todo» coteja ambas clases, avisa y re
  };
  try{
   const {registrar}=await import('../app/modulos/velas.mjs');
-  registrar({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada-'+msgs.length};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f});
+  registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada-'+msgs.length};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f}));
   await handler(event,'registra todo BTC');
   assert.ok(msgs.some(m=>m.text.includes('no admite codigos')));
   msgs.length=0;

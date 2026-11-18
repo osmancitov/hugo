@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { crearMotor, leerEstado, guardarEstado } from '../app/modulos/registro-motor.mjs';
+import { conectarCaja } from './caja.mjs';
 const event = { channel: 'canal-prueba', ts: 'raiz-prueba' };
 const octubre = Date.UTC(2026, 9, 1), septiembre = Date.UTC(2026, 8, 1), agosto = Date.UTC(2026, 7, 1), julio = Date.UTC(2026, 6, 1), noviembre = Date.UTC(2026, 10, 1);
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
@@ -105,11 +106,11 @@ test('parseo de la orden: desde AAMM, codigos de 1 letra y Unicode; errores clar
   try {
     const { registrar } = await import('../app/modulos/velas.mjs');
     let handler;
-    registrar({
+    registrar(conectarCaja({
       conf: { HUGO_VELAS_DIR: path.join(root, 'velas'), HUGO_REGISTRO_ESTADO: path.join(root, 'estado.json') },
       app: { client: { chat: { postMessage: async (m) => { msgs.push(m.text); return { ts: 'simulada' }; }, update: async (m) => { msgs.push(m.text); return { ts: m.ts }; } } } },
       activas: new Map(), alIniciar: () => {}, comando: (_, f) => (handler = f),
-    });
+    }));
     await handler(event, `registra cripto desde ${aammActual} a, 牛来`);
     const j = leerEstado(path.join(root, 'estado.json'));
     assert.equal(j.estado, 'terminado'); assert.deepEqual(j.codigos, ['A', '牛来']); assert.equal(j.piso, mesActual);
