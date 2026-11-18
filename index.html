@@ -204,6 +204,15 @@ const CRIPTOS = CATALOGO.cripto.map((e) => ({ ...e, clase: 'cripto' })).sort((a,
 const STOCKS = CATALOGO.stock.map((e) => ({ ...e, clase: 'stock' }));
 for (const e of CRIPTOS) TODOS.push(e);
 for (const e of STOCKS) TODOS.push(e);
+// Fichas de Stock Analysis y TipRanks: solo para los códigos cuyo destino se comprobó el 18-nov-2026 (cargan y el título coincide con el activo).
+// Empresas: /stocks/<ticker>/ y /stocks/<ticker>; fondos: /etf/<ticker>/ y /etf/<ticker>. BRKB se escribe brk.b en ambos sitios.
+const FICHAS_VERIFICADAS = new Set("AAOI AAPL ADBE AGPU ALAB AMAT AMC AMD AMZN APP ARM ASML ASTS AVGO AXTI BABA BB BE BMNR BNC BOT BRKB BSP CBRS COHR COIN CRCL CRDO CRM CRWD CRWV CYPH DELL DJT DRAM EWY FLNC FWDI GEV GLW GME GOOGL GPRO GS HIMS HOOD HPE IBM INTC INTW IREN JPM KORU KSTR LITE LLY MDB META MRNA MRVL MSFT MSTR MU MUU MVLL NBIS NFLX NOK NVDA ORCL PDD PENG PLTR PYPL QCOM QNT QQQ RDDT RKLB SECZ SHAZ SKDD SKHY SKUU SMCI SMH SNDK SNXX SOXL SOXS SPCX SPY SQQQ STX TMF TQQQ TSLA TSM USAR USDE UVXY VST WDC WEN ZM".split(' '));
+function fichasExternas(e) {
+  if (!FICHAS_VERIFICADAS.has(e.codigo)) return [];
+  const t = e.codigo === 'BRKB' ? 'brk.b' : e.codigo.toLowerCase();
+  const ruta = e.tipo === 'empresa' ? 'stocks' : 'etf';
+  return [['Stock Analysis ↗', `https://stockanalysis.com/${ruta}/${t}/`], ['TipRanks ↗', `https://www.tipranks.com/${ruta}/${t}`]];
+}
 // Destinos de pronósticos verificados el 16-nov-2026. Solo acciones subyacentes; GPRO conserva historial.
 const PRONOSTICOS = {
   "AAOI": "https://stockanalysis.com/stocks/aaoi/forecast/",
@@ -745,6 +754,12 @@ function vistaActivo(clase, codigo) {
     const a = document.createElement('a');
     a.href = e.edgar; a.target = '_blank'; a.rel = 'noopener';
     a.textContent = 'Ficha ↗';
+    meta.appendChild(a);
+  }
+  if (clase === 'stock') for (const [rotulo, destino] of fichasExternas(e)) {
+    const a = document.createElement('a');
+    a.href = destino; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = rotulo;
     meta.appendChild(a);
   }
   if (clase === 'stock' && e.tipo === 'empresa' && PRONOSTICOS[e.codigo]) {

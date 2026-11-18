@@ -18,8 +18,20 @@ test('velas negativas pueden tener cambio de precio de racha positivo',()=>{
  const r=resumir([vela(-1,100,101),vela(0,100,90),vela(1,110,105)]);
  assert.equal(r.dias,2); assert.equal(r.limitada,false); assert.ok(Math.abs(r.acumulado-5)<1e-10);
 });
-test('vela plana y positiva cortan racha y no incluyen rachas antiguas',()=>{
- for(const c of [100,101]) { const r=resumir([vela(0,100,90),vela(1,100,c)]); assert.equal(r.dias,0); assert.equal(r.acumulado,0); assert.equal(r.limitada,false); }
+test('vela plana deja racha 0; una vela positiva abre racha al alza y corta la baja anterior',()=>{
+ const p=resumir([vela(0,100,90),vela(1,100,100)]); assert.equal(p.dias,0); assert.equal(p.direccion,0); assert.equal(p.acumulado,0); assert.equal(p.limitada,false);
+ const u=resumir([vela(0,100,90),vela(1,100,101)]); assert.equal(u.dias,1); assert.equal(u.direccion,1); assert.ok(Math.abs(u.acumulado-1)<1e-10);
+});
+test('racha al alza cuenta días seguidos y su total incluye los saltos entre velas',()=>{
+ const r=resumir([vela(0,100,90),vela(1,90,100),vela(2,95,105),vela(3,110,121)]);
+ assert.equal(r.dias,3); assert.equal(r.direccion,1); assert.equal(r.limitada,false); assert.ok(Math.abs(r.acumulado-(121/90-1)*100)<1e-10);
+});
+test('la última vela fija la dirección y una vela plana corta la racha al alza',()=>{
+ const r=resumir([vela(0,100,110),vela(1,100,100),vela(2,100,110)]); assert.equal(r.dias,1); assert.equal(r.direccion,1);
+ const n=resumir([vela(0,100,110),vela(1,110,100)]); assert.equal(n.dias,1); assert.equal(n.direccion,-1);
+});
+test('con un día de racha el total coincide con la variación del día',()=>{
+ for(const c of [90,110]) { const r=resumir([vela(0,100,c)]); assert.equal(r.dias,1); assert.ok(Math.abs(r.acumulado-r.variacion)<1e-10); }
 });
 test('huecos no se rellenan, no se conectan rachas a través de días ausentes',()=>{
  const r=resumir([vela(0,100,90),vela(2,100,80)]); assert.equal(r.dias,1); assert.equal(r.limitada,true); assert.match(r.motivo,/hueco/);
@@ -56,12 +68,15 @@ test('todos los registros del catálogo real se validan y resumen sin alterar ar
    for(const m of meses) filas.push(...validarMes(JSON.parse(fs.readFileSync(new URL(m,dir))),m.slice(0,4),corteUTC()));
    const r=resumir(filas,true);
    // Oráculo independiente por cocientes y diferencia de fechas.
+   const dirOf=f=>Math.sign(Number(f[4])-Number(f[1]));
+   const sentido=dirOf(filas.at(-1));
    let k=filas.length-1, n=0, primera=null;
-   while(k>=0&&Number(filas[k][4])<Number(filas[k][1])) {
+   while(sentido!==0&&k>=0&&dirOf(filas[k])===sentido) {
      if(k<filas.length-1&&filas[k+1][0]-filas[k][0]!==DIA) break;
      n++; primera=filas[k]; k--;
    }
    const esperado=n?(Number(filas.at(-1)[4])/Number(primera[1])-1)*100:0;
+   assert.equal(r.direccion,sentido,e.codigo);
    assert.equal(r.dias,n,e.codigo); assert.ok(Math.abs(r.acumulado-esperado)<1e-8,e.codigo);
    assert.ok(Math.abs(r.rango-(Number(filas.at(-1)[2])-Number(filas.at(-1)[3]))/Number(filas.at(-1)[1])*100)<1e-8,e.codigo);
    resultados.push({activo:e,datos:r});

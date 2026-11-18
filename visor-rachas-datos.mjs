@@ -25,16 +25,18 @@ export function resumir(filas, inicioConocido = false) {
   const ultima = filas.at(-1);
   const rango = (Number(ultima[2]) - Number(ultima[3])) / Number(ultima[1]) * 100;
   const variacion = (Number(ultima[4]) / Number(ultima[1]) - 1) * 100;
+  const ratioUltima = Number(ultima[4]) / Number(ultima[1]);
+  const direccion = ratioUltima > 1 ? 1 : ratioUltima < 1 ? -1 : 0;
   let dias = 0, primeraApertura = Number(ultima[1]), motivo = '', siguiente = ultima[0] + DIA;
-  for (let i = filas.length - 1; i >= 0; i--) {
+  if (direccion !== 0) for (let i = filas.length - 1; i >= 0; i--) {
     const f = filas[i];
     if (f[0] !== siguiente - DIA) { motivo = 'hueco en los días registrados'; break; }
     const ratio = Number(f[4]) / Number(f[1]);
-    if (ratio >= 1) break;
+    if (ratio === 1 || (ratio > 1 ? 1 : -1) !== direccion) break;
     dias++; primeraApertura = Number(f[1]); siguiente = f[0];
     if (i === 0) motivo = inicioConocido ? 'inicio del registro disponible' : 'faltan meses anteriores';
   }
-  return { fecha: ultima[0], variacion, rango, dias, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
+  return { fecha: ultima[0], variacion, rango, dias, direccion, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
 }
 export function separar(resultados) {
   const validos = resultados.filter(x => x.datos);
