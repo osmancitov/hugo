@@ -22,8 +22,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { CLASES, FIAT } from './activos.mjs';
-import { retirarEUR } from './retirar-eur.mjs';
+import { CLASES, EXCLUIDOS } from './activos.mjs';
+import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { crearReporteSync } from './sincronizar-reporte.mjs';
 
@@ -43,13 +43,13 @@ const shaBlob = (buf) => crypto.createHash('sha1').update(Buffer.concat([Buffer.
 export function registrar(ctx) {
   const { app, botToken } = ctx;
   const dirBase = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
-  const limpiarEUR = () => retirarEUR(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
+  const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
   ctx.alIniciar(async () => {
     try {
-      const n = limpiarEUR();
-      if (n) await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: `EUR retirado del equipo: ${n} archivo(s) borrados. La sincronizacion lo excluye en ambos sentidos.` });
+      const n = limpiarExcluidos();
+      if (n) await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: `Activos excluidos retirados del equipo: ${n} archivo(s) borrados. La sincronizacion los excluye en ambos sentidos.` });
     } catch {
-      await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: 'No pude completar la retirada local de EUR; hay archivos o carpetas que requieren revision. Sigue excluido de la sincronizacion.' });
+      await app.client.chat.postMessage({ token: botToken, channel: ctx.canal, text: 'No pude completar la retirada local de activos excluidos; hay archivos o carpetas que requieren revision. Siguen excluidos de la sincronizacion.' });
     }
   });
   const decir = (event, text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text });
@@ -105,7 +105,7 @@ export function registrar(ctx) {
       let activos = [];
       try { activos = fs.readdirSync(path.join(dirBase(), clase)); } catch { continue; }
       for (const a of activos) {
-        if (!ACTIVO_OK.test(a) || FIAT.has(a)) continue;
+        if (!ACTIVO_OK.test(a) || (clase === 'cripto' && EXCLUIDOS.has(a))) continue;
         let nombres = [];
         try { nombres = fs.readdirSync(path.join(dirBase(), clase, a)); } catch { continue; }
         for (const n of nombres) {
@@ -132,7 +132,7 @@ export function registrar(ctx) {
     let activos = [];
     try { activos = fs.readdirSync(dirBase()); } catch { return { movidos, conflictos, fallos }; }
     for (const a of activos) {
-      if (!ACTIVO_OK.test(a) || FIAT.has(a)) continue; // las carpetas de clase (stock/cripto) tambien pasan el patron: sus hijas son carpetas de activo, no archivos mensuales, y se saltan solas
+      if (!ACTIVO_OK.test(a)) continue; // las carpetas de clase (stock/cripto) tambien pasan el patron: sus hijas son carpetas de activo, no archivos mensuales, y se saltan solas
       const dirViejo = path.join(dirBase(), a);
       let st; try { st = fs.lstatSync(dirViejo); } catch { continue; }
       if (!st.isDirectory()) continue;
@@ -171,7 +171,7 @@ export function registrar(ctx) {
     const retirados = [], conservados = [];
     let activos = []; try { activos = fs.readdirSync(dirBase()); } catch { return { retirados, conservados }; }
     for (const a of activos) {
-      if (!ACTIVO_OK.test(a) || FIAT.has(a)) continue;
+      if (!ACTIVO_OK.test(a)) continue;
       const dirViejo = path.join(dirBase(), a);
       let nombres = []; try { if (!fs.lstatSync(dirViejo).isDirectory()) continue; nombres = fs.readdirSync(dirViejo); } catch { continue; }
       for (const n of nombres) {
@@ -200,7 +200,7 @@ export function registrar(ctx) {
     const heredados = [];
     for (const e of arbol.tree || []) {
       if (e.type !== 'blob') continue;
-      if (RUTA_OK.test(e.path) && !FIAT.has(e.path.split('/')[3])) mapa.set(e.path, e.sha);
+      if (RUTA_OK.test(e.path) && !(e.path.split('/')[2] === 'cripto' && EXCLUIDOS.has(e.path.split('/')[3]))) mapa.set(e.path, e.sha);
       else if (RUTA_HEREDADA.test(e.path)) heredados.push(e.path); // ruta anterior sin clase: no se sincroniza, solo se muda
     }
     return { mapa, heredados };
@@ -421,7 +421,7 @@ export function registrar(ctx) {
   // pasada: mantiene la sincronizacion automatica configurada. No se
   // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
   async function pasada(progreso=async()=>{}) {
-    try { limpiarEUR(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
+    try { limpiarExcluidos(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
     // stop o restart suben ctx.parada.n: la pasada frena entre archivos; lo ya copiado queda y nada se pisa.

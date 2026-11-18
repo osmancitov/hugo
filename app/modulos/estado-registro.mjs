@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { CLASES, CODIGO_OK, FIAT } from './activos.mjs';
+import { CLASES, CODIGO_OK, EXCLUIDOS } from './activos.mjs';
 import { validarSerie, mesDeRuta } from './registro-serie.mjs';
 
 const dia = t => new Date(t).toISOString().slice(0, 10);
@@ -17,7 +17,7 @@ export async function leerCobertura(base) {
   let archivos = 0, escritura = 0;
   for (const clase of CLASES) {
     for (const a of await entradas(path.join(base, clase))) {
-      if (!a.isDirectory() || !CODIGO_OK.test(a.name) || FIAT.has(a.name)) continue;
+      if (!a.isDirectory() || !CODIGO_OK.test(a.name) || (clase === 'cripto' && EXCLUIDOS.has(a.name))) continue;
       let ultimo = null, encontrados = 0;
       for (const f of await entradas(path.join(base, clase, a.name))) {
         if (!/^\d{4}_/u.test(f.name)) continue;
@@ -88,7 +88,7 @@ export function registrar(ctx) {
         if(u.version !== 1 || !u.clases) throw Error('formato');
         for (const [clase,c] of Object.entries(u.clases)) {
           if(!CLASES.includes(clase) || !Array.isArray(c.retirados) || c.retirados.some(x=>!CODIGO_OK.test(x)) || !Number.isFinite(c.comprobado)) throw Error('formato');
-          const retirados=c.retirados.filter(x=>!FIAT.has(x));
+          const retirados=c.retirados.filter(x=>!(clase==='cripto' && EXCLUIDOS.has(x)));
           lineas.push(`Catalogo ${clase} cotejado: ${fechaLocal(c.comprobado)}. Retirados sin actualizar: ${retirados.length}${retirados.length ? ` (${retirados.join(', ')})` : ''}.`);
         }
       } catch(e) { if(e.code!=='ENOENT') throw e; lineas.push('Todavia no hay un cotejo completo del universo guardado.'); }

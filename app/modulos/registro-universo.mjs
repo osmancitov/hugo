@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { CODIGO_OK, FIAT } from './activos.mjs';
+import { CODIGO_OK, EXCLUIDOS } from './activos.mjs';
 import { listarUniverso } from './universo-binance.mjs';
 export async function prepararUniverso({clase,base,archivo,fetchImpl=fetch}) {
   let previo = null;
@@ -10,9 +10,9 @@ export async function prepararUniverso({clase,base,archivo,fetchImpl=fetch}) {
     for (const c of Object.values(previo.clases)) if (!Array.isArray(c.activos) || !Array.isArray(c.retirados) || [...c.activos,...c.retirados].some(x => !CODIGO_OK.test(x))) throw Error('formato');
   } catch (e) { if(e.code !== 'ENOENT') throw Error('No puedo leer el catalogo guardado; lo conservo sin sustituir.'); }
   let carpetas = [];
-  try { carpetas = (await fs.readdir(path.join(base,clase),{withFileTypes:true})).filter(e=>e.isDirectory()&&CODIGO_OK.test(e.name)&&!FIAT.has(e.name)).map(e=>e.name); }
+  try { carpetas = (await fs.readdir(path.join(base,clase),{withFileTypes:true})).filter(e=>e.isDirectory()&&CODIGO_OK.test(e.name)&&!(clase==='cripto' && EXCLUIDOS.has(e.name))).map(e=>e.name); }
   catch(e){if(e.code!=='ENOENT')throw e;}
-  const conocidos = new Set([...(previo?.clases[clase]?.activos || []),...(previo?.clases[clase]?.retirados || []),...carpetas].filter(c=>!FIAT.has(c)));
+  const conocidos = new Set([...(previo?.clases[clase]?.activos || []),...(previo?.clases[clase]?.retirados || []),...carpetas].filter(c=>!(clase==='cripto' && EXCLUIDOS.has(c))));
   const u = await listarUniverso({fetchImpl}), actuales = u.activos[clase];
   if (!actuales.length) throw Error('El universo de esa clase esta vacio; no sustituyo el catalogo ni interpreto bajas.');
   if (actuales.length > 500) throw Error('El universo supera los 500 activos por lote; no lo recorto ni registro una lista parcial.');
@@ -31,9 +31,11 @@ export async function prepararUniverso({clase,base,archivo,fetchImpl=fetch}) {
     }
   }
   const activosPrevios = previo?.clases[clase]?.activos || carpetas;
-  const bajas = activosPrevios.filter(c=>!FIAT.has(c)&&!actualesSet.has(c));
+  const bajas = activosPrevios.filter(c=>!(clase==='cripto' && EXCLUIDOS.has(c))&&!actualesSet.has(c));
   if (activosPrevios.length>=10 && bajas.length>Math.max(3,Math.floor(activosPrevios.length*0.2))) throw Error('Baja masiva inesperada (mas del 20%); requiere revision, no sustituyo el catalogo.');
   const altas = actuales.filter(c=>!conocidos.has(c));
+  const dudosos = altas.filter(c=>u.revisar.includes(c));
+  if(dudosos.length) throw Error(`Altas que requieren clasificacion por posible paridad: ${dudosos.join(', ')}. No las exclui por su nombre ni inicie el lote; revisar su identidad y actualizar la tabla.`);
   const reactivados = actuales.filter(c=>(previo?.clases[clase]?.retirados || []).includes(c));
   const lista = xs => xs.length ? xs.join(', ') : 'ninguna';
   const texto = `Cotejo de ${clase} con Binance: ${actuales.length} activos elegibles.\nAltas: ${altas.length} (${lista(altas)}). Se incorporan a este lote.\nBajas nuevas: ${bajas.length} (${lista(bajas)}). Conservo sus historiales, no los actualizo.\nReactivados: ${reactivados.length} (${lista(reactivados)}).\nLos codigos excluidos permanecen fuera. Esta orden actualiza todo el universo de ${clase}; no opera activos.`;

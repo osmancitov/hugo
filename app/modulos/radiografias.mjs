@@ -29,7 +29,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { FIAT, CODIGO_OK, CLASES, resolverActivo } from './activos.mjs';
+import { EXCLUIDOS, CODIGO_OK, CLASES, resolverActivo } from './activos.mjs';
 
 const ex = promisify(execFile);
 
@@ -466,7 +466,6 @@ export function registrar(ctx) {
     if (partes.length && CLASES.includes(partes[0].toLowerCase())) claseOrden = partes.shift().toLowerCase();
     const codigos = partes.map((p) => p.toUpperCase());
     if (!codigos.length || codigos.length > 120 || codigos.some((c) => !CODIGO_OK.test(c))) return decir(event, 'Indica uno o varios c\u00f3digos: radiograf\u00eda SPCX NVDA (o radiograf\u00eda cripto BTC ETH). No dibuj\u00e9 nada.');
-    if (codigos.some(c => FIAT.has(c))) return decir(event, 'Ese codigo esta fuera del universo de Hugo; no dibuje nada.');
     if (new Set(codigos).size !== codigos.length) return decir(event, 'Hay c\u00f3digos repetidos en la lista. Qu\u00edtalos y vuelve a pedirlo; no dibuj\u00e9 nada.');
     const falta = await entornoListo();
     if (falta) return decir(event, falta);
@@ -487,6 +486,7 @@ export function registrar(ctx) {
         const codigo = codigos[i];
         ctx.activas.set(idAct, { que: `dibujar radiograf\u00eda ${codigo} (${i + 1}/${codigos.length})`, desde: Date.now(), largo: true });
         const clase = claseOrden || claseDe(codigo);
+        if (clase === 'cripto' && EXCLUIDOS.has(codigo)) { fallas.push(codigo); await decir(event, `${codigo}: activo excluido del universo; no lo dibuje.`); continue; }
         if (!clase) { fallas.push(codigo); await decir(event, `${codigo}: no tiene registros guardados (o aparece en las dos clases); no lo dibuj\u00e9.`); continue; }
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-radiografia-'));
         try {

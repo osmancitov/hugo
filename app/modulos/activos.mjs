@@ -1,3 +1,5 @@
+import { FIAT, STABLES_USD } from './exclusiones.mjs';
+export { FIAT, STABLES_USD, EXCLUIDOS } from './exclusiones.mjs';
 // Modulo activos: traduce el CODIGO VISIBLE de un activo (el de la bolsa de valores o del cripto: NVDA, SPCX, BTC)
 // al instrumento de Binance que se usa SOLO al consultar. Lo ven el usuario y los archivos: el codigo. Lo ve la
 // consulta: el par. Es una biblioteca (sin registrar): la usan los modulos que consultan Binance, sin copiar su logica.
@@ -22,7 +24,7 @@ export const CLASES = ['stock', 'cripto'];
 
 // Monedas fiat con par contra USDT: no son cripto (vease el encabezado). CODIGO -> nombre para el aviso.
 // Exportada: es la referencia del repo para excluir fiat del universo (p. ej. al regenerar el catalogo del visualizador).
-export const FIAT = new Map([['EUR', 'el euro']]);
+// La tabla compartida vive en exclusiones.mjs.
 
 const API = 'https://api.binance.com';
 const WEB = 'https://www.binance.com';
@@ -72,6 +74,7 @@ export async function resolverActivo(clase, codigoEntrada, opciones = {}) {
     return { ok: true, clase, codigo, simbolo, nombre: limpiarNombre(producto.an) };
   }
   const simbolo = `${codigo}USDT`;
+  if (STABLES_USD.has(codigo)) return { ok:false, motivo:`${codigo} esta excluido: activo de paridad USD. No lo registro.` };
   if (FIAT.has(codigo)) return { ok: false, motivo: `${codigo} es ${FIAT.get(codigo)}, una moneda fiat: ${simbolo} es un par de divisas, no un cripto. No lo registro.` };
   if (!vigente(await consultarPar(simbolo, o), codigo)) return { ok: false, motivo: `No encuentro el cripto ${codigo} (${simbolo}) activo en Binance.` };
   const producto = await productoDe(simbolo, o);
