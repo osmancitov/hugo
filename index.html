@@ -745,12 +745,23 @@ function vistaActivo(clase, codigo) {
       return;
     }
     if (!caja.isConnected) return;
-    const d = preparar(filas);
+    // Vista inicial: los últimos tres meses del registro; «Ver todo» dibuja la historia completa.
+    // Los registros no se tocan: solo cambia qué tramo se dibuja.
+    const ultimaFecha = new Date(filas[filas.length - 1][0]);
+    const corte = new Date(Date.UTC(ultimaFecha.getUTCFullYear(), ultimaFecha.getUTCMonth() - 3, ultimaFecha.getUTCDate()));
+    const filasVentana = filas.filter((r) => new Date(r[0]) >= corte);
+    const hayMas = filasVentana.length >= 2 && filasVentana.length < filas.length;
     const info = [e.nombre, e.tipo].filter(Boolean).join(' · ');
-    const subtitulo = `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
-    const uf = new Date(d.ultima);
-    const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
-    const pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
+    let d, subtitulo, uf, fecha, pieDatos, notaBase;
+    const usar = (elegidas, completo) => {
+      d = preparar(elegidas);
+      subtitulo = `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
+      uf = new Date(d.ultima);
+      fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
+      pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
+      notaBase = `Trazada en vivo desde los registros publicados · ${completo ? 'registro completo' : 'últimos 3 meses'} · datos al ${fecha} (UTC)`;
+    };
+    usar(hayMas ? filasVentana : filas, !hayMas);
     const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let limite = 5, animId = null, ctx, geometria, ultimoAncho;
     const orientacion = matchMedia('(orientation: portrait)');
@@ -803,6 +814,18 @@ function vistaActivo(clase, codigo) {
       escala.textContent = 'Escala: ±' + limite + ' %';
       terminar();
     });
+    // Alterna entre la vista de tres meses y el registro completo.
+    let completo = !hayMas;
+    const btnTodo = document.createElement('button');
+    btnTodo.className = 'boton'; btnTodo.textContent = 'Ver todo';
+    btnTodo.title = 'Alternar entre los últimos 3 meses y el registro completo';
+    btnTodo.addEventListener('click', () => {
+      completo = !completo;
+      usar(completo ? filas : filasVentana, completo);
+      btnTodo.textContent = completo ? 'Ver 3 meses' : 'Ver todo';
+      nota.textContent = notaBase;
+      configurar(); trazar();
+    });
     const descargar = document.createElement('button');
     descargar.className = 'boton'; descargar.textContent = 'Descargar imagen';
     descargar.addEventListener('click', () => {
@@ -823,10 +846,10 @@ function vistaActivo(clase, codigo) {
         a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
       }, 'image/png');
     });
-    controles.append(btn, escala, descargar);
+    controles.append(btn, escala, ...(hayMas ? [btnTodo] : []), descargar);
     const nota = document.createElement('span');
     nota.className = 'nota';
-    nota.textContent = `Trazada en vivo desde los registros publicados · datos al ${fecha} (UTC)`;
+    nota.textContent = notaBase;
     pie.append(controles, nota);
     // La orientación y el ancho cambian el dibujo, no los datos ni la escala elegida.
     const ajustar = new ResizeObserver(() => {
