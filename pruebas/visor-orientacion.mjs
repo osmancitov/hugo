@@ -13,7 +13,7 @@ test('la regla de orientación y reajuste existe una sola vez y la usan todas la
   assert.equal(visor.match(/matchMedia\('\(orientation: portrait\)'\)/g)?.length, 1);
   assert.equal(visor.match(/new ResizeObserver/g)?.length, 1);
   // La vista de activo y la vista de indicador pasan por la pieza común.
-  assert.equal(visor.match(/= graficaAdaptable\(caja/g)?.length, 2);
+  assert.equal(visor.match(/= graficaAdaptable\(caja/g)?.length, 1); // solo dentro del graficador común
 });
 
 test('las gráficas de indicadores tienen trazado vertical como la radiografía', () => {
@@ -23,12 +23,12 @@ test('las gráficas de indicadores tienen trazado vertical como la radiografía'
 
 // Guardia del trazado común: un solo controlador y una sola duración para todas las
 // gráficas; activos e indicadores pasan por él y cada una aporta solo su dibujo.
-test('el trazado animado existe una sola vez y lo usan activos e indicadores', () => {
+test('el trazado animado existe una sola vez, dentro del graficador común', () => {
   assert.match(visor, /function trazadoAnimado\(/);
   assert.equal(visor.match(/requestAnimationFrame\(paso\)/g)?.length, 2); // arranque y cuadro siguiente, dentro de la pieza
   assert.equal(visor.match(/prefers-reduced-motion/g)?.length, 1);
   assert.equal(visor.match(/const DURACION_TRAZADO_MS = 2000;/g)?.length, 1);
-  assert.equal(visor.match(/= trazadoAnimado\(caja/g)?.length, 2);
+  assert.equal(visor.match(/= trazadoAnimado\(caja/g)?.length, 1); // solo dentro del graficador común
   assert.doesNotMatch(visor, /\/ 2000\)/);
 });
 
@@ -36,4 +36,23 @@ test('los dibujos de indicador aceptan trazado parcial (hasta) y no pintan el ú
   assert.match(visor, /function graficoIndicador\(ctx, puntos, e, hasta\)/);
   assert.match(visor, /function graficoIndicadorVertical\(ctx, puntos, e, alto, hasta\)/);
   assert.equal(visor.match(/if \(k >= n\)/g)?.length, 2);
+});
+
+// Guardia del graficador configurable: cada caso entrega datos y solo su desviación
+// necesaria; geometría, orientación, trazado, escala y controles salen de lo común.
+test('activos e indicadores pasan por el graficador común y heredan sus valores por defecto', () => {
+  assert.match(visor, /function graficador\(caja, pie, deCaso\)/);
+  assert.match(visor, /const GRAFICADOR_COMUN = \{/);
+  assert.equal(visor.match(/= graficador\(caja, pie, \{|^\s+graficador\(caja, pie, \{/gm)?.length, 2);
+  // Ningún caso repite la geometría común, el botón de repetir ni la descarga.
+  assert.equal(visor.match(/'Repetir trazado'/g)?.length, 1);
+  assert.equal(visor.match(/'Descargar imagen'/g)?.length, 1);
+  assert.equal(visor.match(/toBlob\(/g)?.length, 1);
+  assert.equal(visor.match(/ancho: 700, alto: Math\.max\(1400/g)?.length, 1);
+});
+
+test('la escala vive en el graficador: los activos la configuran, los indicadores no la tienen', () => {
+  assert.equal(visor.match(/escalas: \{/g)?.length, 1);
+  assert.match(visor, /valores: \[5, 10, 15\]/);
+  assert.equal(visor.match(/limite = limite === 15/g)?.length ?? 0, 0);
 });

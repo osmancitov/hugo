@@ -584,26 +584,16 @@ function vistaIndicador(codigo) {
     if (!caja.isConnected) return;
     // Las mismas reglas de presentación que las demás gráficas: en pantalla vertical
     // el índice se dibuja en vertical; la pieza común gira, reajusta y limpia igual.
-    const dibujarEn = (ctx, hasta) => {
-      const geometria = g.geometria;
-      if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto, hasta);
-      else graficoIndicador(ctx, puntos, e, hasta);
-    };
-    const traza = trazadoAnimado(caja, () => puntos.length, (hasta) => dibujarEn(g.ctx, hasta));
-    const g = graficaAdaptable(caja, (vertical) => vertical
-      ? { ancho: 700, alto: Math.max(1400, puntos.length * 18 + 320) }
-      : { ancho: LW, alto: LH + 32 },
-    () => traza.terminar(),
-    () => traza.cancelar());
-    traza.trazar();
-    const controles = document.createElement('div');
-    controles.className = 'controles-grafica';
-    const btn = document.createElement('button');
-    btn.className = 'boton'; btn.textContent = 'Repetir trazado';
-    btn.addEventListener('click', traza.trazar);
-    controles.append(btn);
-    pie.append(controles);
     const uf = new Date(puntos[puntos.length - 1][0]);
+    graficador(caja, pie, {
+      total: () => puntos.length,
+      dibujar: (ctx, geometria, hasta) => {
+        if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto, hasta);
+        else graficoIndicador(ctx, puntos, e, hasta);
+      },
+      codigo: e.codigo,
+      fecha: () => uf,
+    });
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
     nota.className = 'nota';
@@ -722,6 +712,76 @@ function trazadoAnimado(caja, total, dibujar) {
     animId = requestAnimationFrame(paso);
   };
   return t;
+}
+
+// Graficador común: el ensamblado que toda gráfica del visor necesita, escrito una vez.
+// Cada caso (activo, indicador, lo que venga) entrega solo su configuración:
+//   total()   cuántos puntos tiene la serie (de ahí salen geometría y progreso del trazado)
+//   dibujar(ctx, geometria, hasta, escala)   su dibujo; hasta = puntos ya trazados
+//   escalas   {valores, etiqueta, titulo} si la gráfica admite escalas; sin él no hay botón
+//   codigo, fecha()   nombre y fecha del PNG descargable
+// Y solo si el caso se desvía de lo común (todo lo demás hereda el valor por defecto):
+//   extras      botones propios del caso (p. ej. «Ver todo»)
+//   geometria   (vertical, total) -> {ancho, alto}, si su lienzo no es el común
+//   archivo     (vertical, escala) -> nombre del PNG, si no sigue el patrón común
+// El graficador pone geometría vertical/horizontal, orientación y reajuste, trazado
+// (duración única), Repetir trazado, el botón de escala y Descargar imagen.
+const GRAFICADOR_COMUN = {
+  extras: [],
+  geometria: (vertical, total) => vertical
+    ? { ancho: 700, alto: Math.max(1400, total * 18 + 320) }
+    : { ancho: LW, alto: LH + 32 },
+  archivo(vertical, escala) {
+    return `${this.codigo}_${this.fecha().toISOString().slice(0, 10)}_${vertical ? 'vertical' : 'horizontal'}${escala === undefined ? '' : '_escala-' + escala}.png`;
+  },
+};
+function graficador(caja, pie, deCaso) {
+  const cfg = { ...GRAFICADOR_COMUN, ...deCaso };
+  const geometriaPara = (vertical) => cfg.geometria(vertical, cfg.total());
+  let iEscala = 0;
+  const escala = () => (cfg.escalas ? cfg.escalas.valores[iEscala] : undefined);
+  const dibujarEn = (ctx, hasta) => cfg.dibujar(ctx, graf.geometria, hasta, escala());
+  const traza = trazadoAnimado(caja, cfg.total, (hasta) => dibujarEn(graf.ctx, hasta));
+  const graf = graficaAdaptable(caja, geometriaPara, () => traza.terminar(), () => traza.cancelar());
+  const boton = (texto, titulo, alClic) => {
+    const b = document.createElement('button');
+    b.className = 'boton'; b.textContent = texto;
+    if (titulo) b.title = titulo;
+    b.addEventListener('click', alClic);
+    return b;
+  };
+  const controles = document.createElement('div');
+  controles.className = 'controles-grafica';
+  controles.append(boton('Repetir trazado', '', traza.trazar));
+  if (cfg.escalas) {
+    const btn = boton(cfg.escalas.etiqueta(escala()), cfg.escalas.titulo, () => {
+      iEscala = (iEscala + 1) % cfg.escalas.valores.length;
+      btn.textContent = cfg.escalas.etiqueta(escala());
+      traza.terminar();
+    });
+    controles.append(btn);
+  }
+  controles.append(...cfg.extras);
+  controles.append(boton('Descargar imagen', '', () => {
+    traza.terminar();
+    // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
+    // No amplía los píxeles del lienzo mostrado en pantalla.
+    const { ancho, alto, vertical } = graf.geometria;
+    const salida = document.createElement('canvas');
+    const resolucion = Math.min(3, Math.sqrt(14000000 / (ancho * alto)), 14000 / alto);
+    salida.width = Math.floor(ancho * resolucion);
+    salida.height = Math.floor(alto * resolucion);
+    const tinta = salida.getContext('2d'); tinta.scale(resolucion, resolucion); dibujarEn(tinta);
+    salida.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = cfg.archivo(vertical, escala());
+      a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }, 'image/png');
+  }));
+  pie.append(controles);
+  traza.trazar();
+  return { configurar: graf.configurar, trazar: traza.trazar, terminar: traza.terminar };
 }
 
 function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
@@ -1063,42 +1123,6 @@ function vistaActivo(clase, codigo) {
       notaBase = `Trazada en vivo desde los registros publicados · ${completo ? 'registro completo' : 'últimos 3 meses'} · datos al ${fecha} (UTC)`;
     };
     usar(hayMas ? filasVentana : filas, !hayMas);
-    let limite = 5;
-    const dibujarEn = (destino, hasta) => {
-      const geometria = g.geometria;
-      if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
-      else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
-      if (hasta === undefined || hasta >= d.rs.length) {
-        destino.fillStyle = BG;
-        destino.fillRect(0, geometria.alto - 28, geometria.ancho, 28);
-        destino.fillStyle = TICK; destino.textAlign = 'center'; destino.textBaseline = 'middle';
-        destino.font = (geometria.vertical ? '18px ' : '13px ') + FUENTE;
-        destino.fillText(pieDatos + limite + '%', geometria.ancho / 2, geometria.alto - 13);
-      }
-    };
-    const traza = trazadoAnimado(caja, () => d.rs.length, (hasta) => dibujarEn(g.ctx, hasta));
-    const { terminar, trazar } = traza;
-    // La pieza común gira el lienzo en pantallas verticales y reajusta al cambiar
-    // el ancho; el dibujo cambia, no los datos ni la escala elegida.
-    const g = graficaAdaptable(caja, (vertical) => vertical
-      ? { ancho: 700, alto: Math.max(1400, d.rs.length * 18 + 320) }
-      : { ancho: LW, alto: LH + 32 },
-    () => terminar(),
-    () => traza.cancelar());
-    trazar();
-    const controles = document.createElement('div');
-    controles.className = 'controles-grafica';
-    const btn = document.createElement('button');
-    btn.className = 'boton'; btn.textContent = 'Repetir trazado';
-    btn.addEventListener('click', trazar);
-    const escala = document.createElement('button');
-    escala.className = 'boton'; escala.textContent = 'Escala: ±5 %';
-    escala.title = 'Cambiar escala: ±5 %, ±10 %, ±15 %';
-    escala.addEventListener('click', () => {
-      limite = limite === 15 ? 5 : limite + 5;
-      escala.textContent = 'Escala: ±' + limite + ' %';
-      terminar();
-    });
     // Alterna entre la vista de tres meses y el registro completo.
     let completo = !hayMas;
     const btnTodo = document.createElement('button');
@@ -1109,33 +1133,30 @@ function vistaActivo(clase, codigo) {
       usar(completo ? filas : filasVentana, completo);
       btnTodo.textContent = completo ? 'Ver 3 meses' : 'Ver todo';
       nota.textContent = notaBase;
-      g.configurar(); trazar();
+      grafico.configurar(); grafico.trazar();
     });
-    const descargar = document.createElement('button');
-    descargar.className = 'boton'; descargar.textContent = 'Descargar imagen';
-    descargar.addEventListener('click', () => {
-      terminar();
-      // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
-      // No amplía los píxeles del lienzo mostrado en pantalla.
-      const salida = document.createElement('canvas');
-      const resolucion = Math.min(3, Math.sqrt(14000000 / (g.geometria.ancho * g.geometria.alto)), 14000 / g.geometria.alto);
-      salida.width = Math.floor(g.geometria.ancho * resolucion);
-      salida.height = Math.floor(g.geometria.alto * resolucion);
-      const tinta = salida.getContext('2d'); tinta.scale(resolucion, resolucion); dibujarEn(tinta);
-      salida.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob), a = document.createElement('a');
-        a.href = url;
-        const fechaArchivo = uf.toISOString().slice(0, 10);
-        a.download = `${e.codigo}_${fechaArchivo}_${g.geometria.vertical ? 'vertical' : 'horizontal'}_escala-${limite}.png`;
-        a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
-      }, 'image/png');
+    const grafico = graficador(caja, pie, {
+      total: () => d.rs.length,
+      escalas: { valores: [5, 10, 15], etiqueta: (v) => 'Escala: ±' + v + ' %', titulo: 'Cambiar escala: ±5 %, ±10 %, ±15 %' },
+      dibujar: (destino, geometria, hasta, limite) => {
+        if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
+        else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
+        if (hasta === undefined || hasta >= d.rs.length) {
+          destino.fillStyle = BG;
+          destino.fillRect(0, geometria.alto - 28, geometria.ancho, 28);
+          destino.fillStyle = TICK; destino.textAlign = 'center'; destino.textBaseline = 'middle';
+          destino.font = (geometria.vertical ? '18px ' : '13px ') + FUENTE;
+          destino.fillText(pieDatos + limite + '%', geometria.ancho / 2, geometria.alto - 13);
+        }
+      },
+      codigo: e.codigo,
+      fecha: () => uf,
+      ...(hayMas ? { extras: [btnTodo] } : {}),
     });
-    controles.append(btn, escala, ...(hayMas ? [btnTodo] : []), descargar);
     const nota = document.createElement('span');
     nota.className = 'nota';
     nota.textContent = notaBase;
-    pie.append(controles, nota);
+    pie.append(nota);
 
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este activo (' + err.message + ').';
