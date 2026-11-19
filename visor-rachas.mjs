@@ -65,8 +65,8 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
-  reglas.append(texto('p','Cada fila usa la última vela diaria cerrada (día UTC, como en la gráfica). Racha es cuántos días seguidos lleva cerrando en la misma dirección: «↑ 3» son tres días seguidos cerrando por encima de su apertura; «↓ 2», dos días seguidos por debajo. Un día que cierra igual que abre no cuenta y deja la racha en 0.'));
-  reglas.append(texto('p','Variación total es cuánto cambió el precio durante esa racha, desde la apertura del primer día hasta el cierre del último, con su signo. Si la racha es de un solo día, es la variación de ese día. Ejemplo: «↓ 2» con −11,98 % significa que en dos días seguidos a la baja el precio cayó en total casi un 12 %. Puede salir con signo contrario al de las velas, porque cuenta también los saltos entre el cierre de un día y la apertura del siguiente.'));
+  reglas.append(texto('p','Cada fila usa la última vela diaria cerrada (día UTC, como en la gráfica). Racha es cuántos días seguidos lleva cerrando en la misma dirección: «3» son tres días seguidos cerrando por encima de su apertura; el sentido lo dan el color y el signo de la variación total. Un día que cierra igual que abre no cuenta y deja la racha en 0.'));
+  reglas.append(texto('p','Variación total es cuánto cambió el precio durante esa racha, desde la apertura del primer día hasta el cierre del último, con su signo. Si la racha es de un solo día, es la variación de ese día. Ejemplo: racha «2» con −11,98 % significa que en dos días seguidos a la baja el precio cayó en total casi un 12 %. Puede salir con signo contrario al de las velas, porque cuenta también los saltos entre el cierre de un día y la apertura del siguiente.'));
   reglas.append(texto('p','Rango del día mide la amplitud de esa última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura. No dice qué ocurrió primero.'));
   reglas.append(texto('p','≥ y * indican que la racha pudo ser más larga: se corta por un hueco en los datos o por el inicio del registro, y solo se muestra lo observado. No se rellenan huecos. Los datos atrasados y los errores quedan fuera del orden principal.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
@@ -95,8 +95,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
       const id=texto('td',''); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
-      const flecha=d.direccion>0?'↑ ':d.direccion<0?'↓ ':'';
-      const dias=texto('td',(d.limitada?'≥ ':'')+flecha+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
+      const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
       const acum=texto('td',d.dias?pct(d.acumulado)+(d.limitada?' *':''):pct(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
       if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; }
       const rango=texto('td',d.rango.toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})+' %');
