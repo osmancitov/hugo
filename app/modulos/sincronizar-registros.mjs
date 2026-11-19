@@ -12,6 +12,10 @@
 // Sin confirmacion, dentro de la sincronizacion autorizada. Las series mensuales solo crecen
 // cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
+// Piso fijo del registro (decision del usuario, 18-nov-2026): nada anterior al 1-ago-2026 se
+// sincroniza en NINGUN sentido — los archivos AAMM anteriores ni bajan del repo ni suben de
+// la Debian; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
+// planeada con un arbol viejo tampoco puede reintroducirlos.
 // Recuperacion: los blobs ya preparados quedan anotados en un punto de control en disco
 // (velas-24h/.punto-sincronizar.json) y el arbol se crea por lotes encadenados (base_tree), con
 // reintento si GitHub responde 5xx, asi una pasada que muere al publicar no vuelve a subir todo.
@@ -27,6 +31,9 @@ import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 
 const PREFIJO = 'registros/velas-24h';
+// AAMM del piso: los nombres de archivo empiezan por el mes (ARCHIVO_OK exige \d{4}_).
+const PISO_AAMM = '2608';
+const bajoPiso = (nombre) => nombre.slice(0, 4) < PISO_AAMM;
 // La forma del codigo es la de activos.mjs (CODIGO_OK): hay criptos de una letra y con nombre Unicode.
 const RUTA_OK = new RegExp(`^registros/velas-24h/(?:${CLASES.join('|')})/[\\p{L}\\p{N}]{1,15}/\\d{4}_[\\p{L}\\p{N}]{1,15}$`, 'u');
 const RUTA_HEREDADA = /^registros\/velas-24h\/([A-Z0-9]{2,15})\/(\d{4}_\1)$/; // ruta anterior, sin clase (solo ASCII: lo heredado era stock)
@@ -108,7 +115,7 @@ export function registrar(ctx) {
         let nombres = [];
         try { nombres = fs.readdirSync(path.join(dirBase(), clase, a)); } catch { continue; }
         for (const n of nombres) {
-          if (!ARCHIVO_OK.test(n)) continue;
+          if (!ARCHIVO_OK.test(n) || bajoPiso(n)) continue;
           const ruta = path.join(dirBase(), clase, a, n);
           let st;
           try { st = fs.lstatSync(ruta); } catch { continue; }
@@ -199,6 +206,8 @@ export function registrar(ctx) {
     const heredados = [];
     for (const e of arbol.tree || []) {
       if (e.type !== 'blob') continue;
+      const nombre = e.path.slice(e.path.lastIndexOf('/') + 1);
+      if (bajoPiso(nombre)) continue; // piso fijo: lo anterior a ago-2026 no baja ni se muda
       if (RUTA_OK.test(e.path) && !(e.path.split('/')[2] === 'cripto' && EXCLUIDOS.has(e.path.split('/')[3]))) mapa.set(e.path, e.sha);
       else if (RUTA_HEREDADA.test(e.path)) heredados.push(e.path); // ruta anterior sin clase: no se sincroniza, solo se muda
     }

@@ -36,8 +36,8 @@ test('rechaza vela abierta y cambio en dia ya registrado',()=>{
  const a=serie(3),b=serie(5);b[1][4]='99';assert.throws(()=>compararSeries(a,b,noviembre,noviembre+6*DIA),/Conflicto/);
  assert.equal(compararSeries(serie(5),serie(3),noviembre,noviembre+6*DIA),'conservar');
 });
-async function syncCaso({local,remoto,cambioRemoto,falloRef=false}) {
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-sync-'));const rel='registros/velas-24h/stock/AA/2610_AA',p=path.join(root,'stock/AA/2610_AA');const original=globalThis.fetch;
+async function syncCaso({local,remoto,cambioRemoto,falloRef=false,rel='registros/velas-24h/stock/AA/2610_AA'}) {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-sync-'));const p=path.join(root,rel.slice('registros/velas-24h/'.length));const original=globalThis.fetch;
  const blobs=new Map(),trees=new Map(),commits=new Map();let head='base',numero=0,lecturas=0;let arbol=new Map();const respuestas=[];
  const nuevoBlob=d=>{const b=Buffer.from(JSON.stringify(d));const id=sha(b);blobs.set(id,b);return id;};
  if(remoto)arbol.set(rel,nuevoBlob(remoto));trees.set('arbol-base',new Map(arbol));commits.set(head,{tree:{sha:'arbol-base'}});
@@ -70,6 +70,18 @@ test('sync baja ampliacion estricta, nunca recorta',async()=>{const r=await sync
 test('sync conserva ambos ante cambio historico',async()=>{const malo=oct(5);malo[0][4]='99';const r=await syncCaso({local:oct(3),remoto:malo});assert.deepEqual(r.local,oct(3));assert.deepEqual(r.remoto,malo);assert.ok(r.resultado.conflictos);});
 test('sync relee remoto antes de subir; cambio divergente no se pisa',async()=>{const malo=oct(4);malo[0][4]='99';const r=await syncCaso({local:oct(5),remoto:oct(3),cambioRemoto:malo});assert.deepEqual(r.remoto,malo);assert.deepEqual(r.local,oct(5));});
 test('fallo del ref no cambia rama ni local',async()=>{const r=await syncCaso({local:oct(5),remoto:oct(3),falloRef:true});assert.deepEqual(r.remoto,oct(3));assert.deepEqual(r.local,oct(5));assert.ok(r.resultado.error);});
+const julio=Date.UTC(2026,6,1);
+const jul=n=>Array.from({length:n},(_,i)=>v(julio+i*DIA));
+test('piso ago-2026: un 2607 solo en GitHub NO baja',async()=>{
+ const r=await syncCaso({remoto:jul(31),rel:'registros/velas-24h/stock/AA/2607_AA'});
+ assert.equal(r.local,null,'no se descarga nada anterior al piso');
+ assert.equal(r.resultado.error,undefined);
+});
+test('piso ago-2026: un 2607 solo en la Debian NO sube',async()=>{
+ const r=await syncCaso({local:jul(31),rel:'registros/velas-24h/stock/AA/2607_AA'});
+ assert.equal(r.remoto,null,'no se republica nada anterior al piso');
+ assert.deepEqual(r.local,jul(31),'el archivo local queda donde estaba');
+});
 test('mes en curso sin velas cerradas no oculta el historial anterior',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-vacio-hoy-'));const pedidos=[];
  const m=crearMotor({base:()=>path.join(root,'velas'),archivoEstado:()=>path.join(root,'estado'),ahora:()=>noviembre+5*DIA,resolver:async()=>({ok:true,simbolo:'AA'}),avisar:async()=>{},fetchImpl:async u=>{const t=Number(new URL(u).searchParams.get('startTime'));pedidos.push(t);return{ok:true,status:200,text:async()=>JSON.stringify(t===octubre?[v(t)]:[])};}});
