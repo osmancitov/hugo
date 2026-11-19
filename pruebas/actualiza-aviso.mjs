@@ -66,8 +66,11 @@ test('con cambios: aviso inmediato, cierre editado en el mismo mensaje y la preg
   assert.match(s.posts[0].text, /a.n no instalo nada/);
   assert.ok(s.updates.length >= 1);
   assert.ok(s.updates.every(u => u.ts === '9000.1'));
-  assert.match(s.updates.at(-1).text, /Hay cambios en GitHub: commit aaaaaaa/);
-  assert.match(s.updates.at(-1).text, /no instalo nada sin tu/);
+  // El cierre no repite el detalle ni invita al pulgar (decisión del usuario, 19-nov-2026):
+  // la solicitud aparte es el único mensaje con commit/archivos y el único que espera el 👍.
+  assert.match(s.updates.at(-1).text, /Comprobado: hay cambios en GitHub/);
+  assert.doesNotMatch(s.updates.at(-1).text, /aaaaaaa/);
+  assert.doesNotMatch(s.updates.at(-1).text, /sin tu/);
   assert.equal(s.esT(), 1); // la pregunta con 👍 sigue intacta y va aparte
  } finally { s.close(); }
 });

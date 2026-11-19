@@ -164,7 +164,10 @@ export function registrar(ctx) {
       fs.rmSync(tmp, { recursive: true, force: true });
       return reporte.final(`Comprobado: Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}). No cambi\u00e9 nada.`);
     }
-    await reporte.final(`Hay cambios en GitHub: commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb. Te pregunto aparte; no instalo nada sin tu \u{1F44D}.`);
+    // Sin repetir el detalle ni invitar al pulgar aquí (decisión del usuario, 19-nov-2026: el
+    // anuncio previo metía ruido y parecía pedir un segundo 👍). La solicitud que sigue es el
+    // único lugar con commit, título y archivos, y el único mensaje que espera el pulgar.
+    await reporte.final('Comprobado: hay cambios en GitHub. Te pido la aprobaci\u00f3n con el detalle en la solicitud que sigue.');
     await ctx.confirmar({
       que: 'actualizar desde GitHub', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true,
       texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,
