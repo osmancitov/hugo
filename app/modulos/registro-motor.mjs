@@ -238,5 +238,23 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       await notificar(event,`No pude iniciar el registro: ${e.message}. No sustituyo el avance guardado.`);
     } finally {ocupado=false;}
   }
-  return {iniciar};
+  // «descarta registro»: abandona el avance guardado sin tocar los datos. Dos pasos para que
+  // la confirmación pregunte con el detalle real y el borrado revalide justo antes de actuar.
+  function pendienteDescarte() {
+    if(ocupado) return {error:'Estoy registrando un historial; detenlo con stop y luego descarta el avance.'};
+    let j;
+    try{j=leerEstado(archivoEstado());}catch(e){return {error:`No puedo leer el avance: ${e.message}. Lo conservo.`};}
+    if(!j || j.estado==='terminado') return {error:'No hay un registro pendiente que descartar.'};
+    return {detalle:`${j.codigos[j.indice]||'?'}, ${etiqueta(j.mes)} (${j.indice}/${j.codigos.length} activos${j.rapido?', puesta al día':''})`};
+  }
+  function descartar() {
+    if(ocupado) return {error:'Estoy registrando un historial; no descarto el avance en curso.'};
+    let j;
+    try{j=leerEstado(archivoEstado());}catch(e){return {error:`No puedo leer el avance: ${e.message}. Lo conservo.`};}
+    if(!j || j.estado==='terminado') return {error:'No hay un registro pendiente que descartar.'};
+    const detalle=`${j.codigos[j.indice]||'?'}, ${etiqueta(j.mes)} (${j.indice}/${j.codigos.length} activos${j.rapido?', puesta al día':''})`;
+    fs.rmSync(archivoEstado(), {force:true});
+    return {ok:true, detalle};
+  }
+  return {iniciar, pendienteDescarte, descartar};
 }

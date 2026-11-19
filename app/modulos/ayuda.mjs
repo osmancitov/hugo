@@ -6,6 +6,7 @@ const TEXTO = [
   '`registra todo` - todo el universo en una orden: stock y luego cripto (revision completa).',
   '`pon al dia` - mismo universo consultando solo lo pendiente; lo guardado se comprueba en disco.',
   '`registra continuar` - retomar un registro pausado.',
+  '`descarta registro` - abandonar el avance pendiente sin borrar los datos guardados.',
   '`envia RUTA` - enviar un archivo al hilo.',
   '`borrar hilo` - borrar el hilo actual.',
   '`actualiza` - instalar la version de GitHub.',

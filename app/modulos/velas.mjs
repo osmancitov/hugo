@@ -92,6 +92,18 @@ export function registrar(ctx) {
     } catch(e) { return await avisar(event,`No inicie la puesta al dia: ${e.message}`); }
     finally {cotejando=false;}
   },{nombre:'poner al dia los registros',delegable:true});
+  // «descarta registro»: abandona el avance pendiente (pausado o detenido) sin borrar ningún
+  // dato guardado; el próximo registro arranca desde cero. Acción destructiva: pide el 👍 del usuario.
+  ctx.comando(/^\s*descarta\s+registro\s*[.!?]*\s*$/i, async(event)=>{
+    const p=motor.pendienteDescarte();
+    if(p.error) return avisar(event,p.error);
+    await ctx.confirmar({
+      que:'descartar el avance del registro', channel:event.channel, thread_ts:event.thread_ts||event.ts, user:ctx.usuario,
+      texto:`Solicitud.\n¿Descarto el avance del registro pendiente en ${p.detalle}? Solo abandono el avance; los datos guardados no se borran. Después el registro arranca desde cero («pon al día» o «registra todo»).`,
+      alSi: async()=>{ const r=motor.descartar(); await avisar(event, r.ok?`Avance del registro descartado (${r.detalle}). Los datos guardados se conservan; el próximo registro arranca desde cero.`:r.error); },
+      alNo: async()=>{ await avisar(event,'Sin respuesta: conservé el avance del registro.'); },
+    });
+  },{nombre:'descartar el avance del registro', delegable:true});
   // El trabajo nuevo solo nace por una orden. Al volver, continua uno ya aceptado.
   ctx.alIniciar(()=>{motor.iniciar({arranque:true}).catch(async e=>{
     console.error('Reanudar registra:',e.message);
