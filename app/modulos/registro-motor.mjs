@@ -48,25 +48,46 @@ const leerMarca = (dir) => leerAamm(dir, MARCA);
 const escribirMarca = (dir, aamm) => escribirAamm(dir, MARCA, aamm);
 const leerVerificado = (dir) => leerAamm(dir, VERIFICADO);
 const escribirVerificado = (dir, aamm) => escribirAamm(dir, VERIFICADO, aamm);
-// Limpieza pedida por el usuario (18-nov-2026): los registros anteriores al piso no se van a
-// usar. Borra del disco local los archivos de velas AAMM anteriores al piso, una vez por
-// arranque de registro nuevo, y avisa cuántos. No toca marcas ni otros archivos.
-function limpiarAnteriores(baseDir,clases) {
- let n=0;const corteAamm=yymm(PISO_MINIMO);
+// Limpieza pedida por el usuario (18-nov-2026, notas de voz): los registros anteriores al
+// piso no se van a usar, y el extremo superior se recorta UNA VEZ al 17-nov-2026 inclusive
+// UTC para uniformar la base (unos activos habían sumado la vela del 18 y otros no) y
+// comprobar que la puesta al día añade el 18 a todos. Ese techo NO es permanente: lo que la
+// fuente cierre desde el 18 se acumula normal y jamás se vuelve a recortar.
+// Al arrancar un registro nuevo: borra del disco local los archivos AAMM anteriores al piso
+// (siempre) y, solo la primera vez (marca _recorte-techo en la base), borra los archivos
+// posteriores a 2611 y recorta las velas posteriores al 17 dentro de los archivos de ese
+// mes. Avisa cuánto quitó. No toca _primer-mes, _verificado ni otros archivos. Un archivo
+// ilegible o intocable se conserva y se avisa por consola.
+const TECHO_RECO = Date.UTC(2026,10,18); // exclusivo: la última vela conservada es la del 17-nov-2026
+const MARCA_RECO = '_recorte-techo';
+function limpiarFueraDelTramo(baseDir,clases) {
+ let archivos=0,velas=0;const pisoAamm=yymm(PISO_MINIMO),techoAamm=yymm(Date.UTC(2026,10,1));
+ let techoHecho=false;try{techoHecho=fs.readFileSync(path.join(baseDir,MARCA_RECO),'utf8').trim()==='2611';}catch{}
  for(const clase of clases) {
   const raiz=path.join(baseDir,clase);
   let activos;try{activos=fs.readdirSync(raiz,{withFileTypes:true});}catch{continue;}
   for(const a of activos) {
    if(!a.isDirectory())continue;
    const dir=path.join(raiz,a.name);
-   let archivos;try{archivos=fs.readdirSync(dir);}catch{continue;}
-   for(const f of archivos) {
+   let nombres;try{nombres=fs.readdirSync(dir);}catch{continue;}
+   for(const f of nombres) {
     const m=/^(\d{4})_/.exec(f);
-    if(m&&m[1]<corteAamm){try{fs.rmSync(path.join(dir,f));n++;}catch(e){console.error('No pude borrar',f,e.message);}}
+    if(!m)continue;
+    const ruta=path.join(dir,f);
+    if(m[1]<pisoAamm||(!techoHecho&&m[1]>techoAamm)){try{fs.rmSync(ruta);archivos++;}catch(e){console.error('No pude borrar',f,e.message);}continue;}
+    if(!techoHecho&&m[1]===techoAamm) {
+     let datos;try{datos=JSON.parse(leerNormal(ruta));}catch(e){console.error('No pude recortar',f,e.message);continue;}
+     if(!Array.isArray(datos))continue;
+     const quedan=datos.filter(v=>!Array.isArray(v)||typeof v[0]!=='number'||v[0]<TECHO_RECO);
+     if(quedan.length===datos.length)continue;
+     try{const tmp=escribirTemporal(ruta,JSON.stringify(quedan)+'\n');fs.renameSync(tmp,ruta);syncDir(dir);velas+=datos.length-quedan.length;}catch(e){console.error('No pude recortar',f,e.message);}
+    }
    }
   }
  }
- return n;
+ // Sin base de velas no hay nada que recortar ni directorio que crear; la marca espera.
+ if(!techoHecho&&fs.existsSync(baseDir)){try{const tmp=escribirTemporal(path.join(baseDir,MARCA_RECO),'2611\n');fs.renameSync(tmp,path.join(baseDir,MARCA_RECO));syncDir(baseDir);}catch(e){console.error('No pude marcar el recorte del techo',e.message);}}
+ return {archivos,velas};
 }
 // Mes cerrado confiable en disco: serie válida según el contrato de siempre y con vela en el
 // último día del mes. No exige día 1 ni todos los días naturales (listados a mitad de mes y
@@ -272,8 +293,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
           j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
-          const borrados=limpiarAnteriores(base(),[clase,...siguientes.map(t=>t.clase)]);
-          if(borrados) await notificar(event,`Limpieza pedida por el usuario: ${borrados} archivo(s) de velas anteriores a ${etiqueta(PISO_MINIMO)} borrados del disco local; no se vuelven a buscar.`);
+          const limpia=limpiarFueraDelTramo(base(),[clase,...siguientes.map(t=>t.clase)]);
+          if(limpia.archivos||limpia.velas) await notificar(event,`Limpieza pedida por el usuario: ${limpia.archivos} archivo(s) de velas anteriores a ${etiqueta(PISO_MINIMO)} o posteriores a noviembre de 2026 borrados del disco local${limpia.velas?` y ${limpia.velas} vela(s) de noviembre posteriores al 17 recortadas (recorte único para uniformar la base)`:''}. Lo anterior a agosto no se vuelve a buscar; la puesta al día completa desde el 18.`);
         }
       }
       await correr(j);

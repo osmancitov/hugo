@@ -58,6 +58,31 @@ test('piso posterior al mes inicial se rechaza sin iniciar', async () => caso(as
   assert.equal(leerEstado(s.estado), null); assert.equal(s.consultas.length, 0);
 }));
 
+test('peluqueada: borra archivos fuera del tramo ago a 17-nov y recorta velas posteriores al 17 inclusive', async () => caso(async (s) => {
+  const dir = path.join(s.base, 'cripto/AA');
+  fs.mkdirSync(dir, { recursive: true });
+  const dia = (aamm, d) => Date.UTC(2000 + Number(aamm.slice(0, 2)), Number(aamm.slice(2)) - 1, d);
+  fs.writeFileSync(path.join(dir, '2607_AA'), JSON.stringify([vela(dia('2607', 1))]) + '\n');
+  fs.writeFileSync(path.join(dir, '2608_AA'), JSON.stringify([vela(dia('2608', 1))]) + '\n');
+  fs.writeFileSync(path.join(dir, '2611_AA'), JSON.stringify([vela(dia('2611', 16)), vela(dia('2611', 17)), vela(dia('2611', 18)), vela(dia('2611', 19))]) + '\n');
+  fs.writeFileSync(path.join(dir, '2612_AA'), JSON.stringify([vela(dia('2612', 1))]) + '\n');
+  await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: octubre });
+  assert.ok(!fs.existsSync(path.join(dir, '2607_AA')), 'borra el archivo anterior al piso');
+  assert.ok(!fs.existsSync(path.join(dir, '2612_AA')), 'borra el archivo posterior al techo');
+  assert.ok(fs.existsSync(path.join(dir, '2608_AA')), 'conserva dentro del tramo');
+  const nov = JSON.parse(fs.readFileSync(path.join(dir, '2611_AA'), 'utf8'));
+  assert.deepEqual(nov.map((v) => v[0]), [dia('2611', 16), dia('2611', 17)], 'recorta al 17 de noviembre inclusive');
+  assert.ok(s.msgs.some((m) => m.includes('Limpieza pedida por el usuario: 2 archivo(s)') && m.includes('2 vela(s)')));
+  assert.ok(fs.existsSync(path.join(s.base, '_recorte-techo')), 'deja la marca del recorte único');
+  // El techo NO es permanente: la vela del 18 que sume la puesta al día sobrevive al siguiente arranque.
+  fs.writeFileSync(path.join(dir, '2611_AA'), JSON.stringify([vela(dia('2611', 16)), vela(dia('2611', 17)), vela(dia('2611', 18))]) + '\n');
+  s.msgs.length = 0;
+  await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: octubre });
+  const nov2 = JSON.parse(fs.readFileSync(path.join(dir, '2611_AA'), 'utf8'));
+  assert.deepEqual(nov2.map((v) => v[0]), [dia('2611', 16), dia('2611', 17), dia('2611', 18)], 'no vuelve a recortar el techo');
+  assert.ok(!s.msgs.some((m) => m.includes('recortadas')), 'sin segundo recorte no hay segundo aviso de velas');
+}));
+
 test('misma lista con otro piso no desplaza el trabajo pendiente; con el mismo lo retoma', async () => caso(async (s) => {
   await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: julio });
   assert.equal(leerEstado(s.estado).estado, 'pausado');
