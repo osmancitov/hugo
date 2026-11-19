@@ -24,13 +24,13 @@ function setup(opts = {}) {
 async function caso(fn, opts) { const s = setup(opts); try { await fn(s); } finally { s.close(); } }
 
 test('piso: frena al completar el mes pedido, no consulta meses anteriores', async () => caso(async (s) => {
-  await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: julio });
-  assert.deepEqual(s.consultas.map((x) => x[1]), [octubre, septiembre, agosto, julio]);
+  await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: agosto });
+  assert.deepEqual(s.consultas.map((x) => x[1]), [octubre, septiembre, agosto]);
   const j = leerEstado(s.estado);
-  assert.equal(j.estado, 'terminado'); assert.equal(j.piso, julio);
-  assert.deepEqual(j.conteo, { guardados: 4, existentes: 0, activos: 1, ampliados: 0 });
-  for (const aamm of ['2610', '2609', '2608', '2607']) assert.ok(fs.existsSync(path.join(s.base, 'cripto/AA', `${aamm}_AA`)), aamm);
-  assert.ok(!fs.existsSync(path.join(s.base, 'cripto/AA/2606_AA')));
+  assert.equal(j.estado, 'terminado'); assert.equal(j.piso, agosto);
+  assert.deepEqual(j.conteo, { guardados: 3, existentes: 0, activos: 1, ampliados: 0 });
+  for (const aamm of ['2610', '2609', '2608']) assert.ok(fs.existsSync(path.join(s.base, 'cripto/AA', `${aamm}_AA`)), aamm);
+  assert.ok(!fs.existsSync(path.join(s.base, 'cripto/AA/2607_AA')), 'el piso fijo ago-2026 manda aunque se pida julio');
   assert.ok(s.msgs.some((m) => m.includes('Tramo: no bajo de')));
   assert.ok(s.msgs.some((m) => m.includes('tramo desde') && m.includes('cubierto') && m.includes('1/1 activos')));
   assert.equal(s.msgs.at(-1).includes('Registro terminado'), true);

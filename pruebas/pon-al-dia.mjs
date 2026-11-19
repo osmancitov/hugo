@@ -131,6 +131,21 @@ test('primera corrida escribe _verificado; la segunda confia y no recorre meses 
  } finally { b.fin(); }
 });
 
+test('piso fijo ago-2026: no consulta debajo aunque Binance tenga datos, cierra con tramo cubierto, siembra marcas y limpia archivos viejos', async () => {
+ const b = banco({ 2611: DIECISIETE, 2607: TREINTAYUNO, 2606: TREINTA }); // Binance TIENE meses anteriores al piso
+ try {
+  escribirMes(b.root, 'AAA', '2610', TREINTAYUNO); escribirMes(b.root, 'AAA', '2609', TREINTA); escribirMes(b.root, 'AAA', '2608', TREINTAYUNO);
+  escribirMes(b.root, 'AAA', '2607', TREINTAYUNO); // archivo local anterior al piso: la limpieza lo borra
+  await corre(b);
+  assert.deepEqual(b.llamadas, ['2611'], 'no consulta por debajo del piso');
+  assert.ok(!fs.existsSync(path.join(b.root, 'velas/cripto/AAA/2607_AAA')), 'borra el archivo anterior al piso');
+  assert.ok(fs.existsSync(path.join(b.root, 'velas/cripto/AAA/2608_AAA')), 'conserva desde el piso');
+  assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_verificado'), 'utf8').trim(), '2610');
+  assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_primer-mes'), 'utf8').trim(), '2608');
+  assert.ok(b.lineas.some((l) => l.startsWith('Tramo desde agosto de 2026 cubierto.')));
+ } finally { b.fin(); }
+});
+
 test('la orden existe, es delegable y la ayuda la distingue de la revision completa', () => {
  const velas = fs.readFileSync(new URL('../app/modulos/velas.mjs', import.meta.url), 'utf8');
  assert.match(velas, /pon\\s\+al\\s\+d\[ií\]a/);

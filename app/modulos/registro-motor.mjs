@@ -11,6 +11,10 @@ import { cierreUTC, inicioMes, compararSeries, validarSerie, publicarSerie } fro
 
 export const CERO = Date.UTC(2026, 10, 1);
 const LIMITE = 240;
+// Piso fijo de toda corrida de registro (decisión del usuario, 18-nov-2026: el registro de todo
+// activo arranca el 1 de agosto de 2026, para todos los activos, stock y cripto; sin ventana
+// móvil). No se consulta ni se guarda nada anterior; un piso explícito posterior manda.
+const PISO_MINIMO = Date.UTC(2026,7,1);
 const anterior = (t) => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-1,1); };
 const siguiente = (t) => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1); };
 const etiqueta = (t) => new Date(t).toLocaleDateString('es',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -44,6 +48,26 @@ const leerMarca = (dir) => leerAamm(dir, MARCA);
 const escribirMarca = (dir, aamm) => escribirAamm(dir, MARCA, aamm);
 const leerVerificado = (dir) => leerAamm(dir, VERIFICADO);
 const escribirVerificado = (dir, aamm) => escribirAamm(dir, VERIFICADO, aamm);
+// Limpieza pedida por el usuario (18-nov-2026): los registros anteriores al piso no se van a
+// usar. Borra del disco local los archivos de velas AAMM anteriores al piso, una vez por
+// arranque de registro nuevo, y avisa cuántos. No toca marcas ni otros archivos.
+function limpiarAnteriores(baseDir,clases) {
+ let n=0;const corteAamm=yymm(PISO_MINIMO);
+ for(const clase of clases) {
+  const raiz=path.join(baseDir,clase);
+  let activos;try{activos=fs.readdirSync(raiz,{withFileTypes:true});}catch{continue;}
+  for(const a of activos) {
+   if(!a.isDirectory())continue;
+   const dir=path.join(raiz,a.name);
+   let archivos;try{archivos=fs.readdirSync(dir);}catch{continue;}
+   for(const f of archivos) {
+    const m=/^(\d{4})_/.exec(f);
+    if(m&&m[1]<corteAamm){try{fs.rmSync(path.join(dir,f));n++;}catch(e){console.error('No pude borrar',f,e.message);}}
+   }
+  }
+ }
+ return n;
+}
 // Mes cerrado confiable en disco: serie válida según el contrato de siempre y con vela en el
 // último día del mes. No exige día 1 ni todos los días naturales (listados a mitad de mes y
 // días sin negociación son legítimos).
@@ -107,8 +131,9 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     activas.set(id,{que:'registrar historial',desde:Date.now(),largo:true});
     try {
       j.estado='en-curso';delete j.error;guardar(j);
+      const pisoEf=j.piso!=null?Math.max(j.piso,PISO_MINIMO):PISO_MINIMO;
       await vaciarAviso(j);
-      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s)${j.siguientes.length?`, y luego ${j.siguientes.map(t=>t.clase).join(', ')}`:''}. Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}.${j.piso!=null?` Tramo: no bajo de ${etiqueta(j.piso)}.`:''} Retomo en ${j.codigos[j.indice]||j.codigos[j.codigos.length-1]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s)${j.siguientes.length?`, y luego ${j.siguientes.map(t=>t.clase).join(', ')}`:''}. Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Tramo: no bajo de ${etiqueta(pisoEf)}. Retomo en ${j.codigos[j.indice]||j.codigos[j.codigos.length-1]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
       while(true) {
       while(j.indice<j.codigos.length) {
         if(pedida(marca))throw errorParada();
@@ -128,10 +153,12 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         };
         while(!terminado) {
           if(pedida(marca))throw errorParada();
-          if(j.piso!=null && j.mes<j.piso) {
+          if(j.mes<pisoEf) {
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
-            await notificar(j,`${codigo}: tramo desde ${etiqueta(j.piso)} cubierto; no bajo mas. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Tramo desde ${etiqueta(j.piso)} cubierto. ${j.indice}/${j.codigos.length} activos.`});
+            try { escribirMarca(dirActivo, yymm(pisoEf)); } catch(e) { console.error('No pude escribir la marca de primer mes:', e.message); }
+            try { if(!j.rapido || confianza) escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+            await notificar(j,`${codigo}: tramo desde ${etiqueta(pisoEf)} cubierto; no bajo mas. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Tramo desde ${etiqueta(pisoEf)} cubierto. ${j.indice}/${j.codigos.length} activos.`});
             continue;
           }
           const meses=(new Date(j.inicial).getUTCFullYear()-new Date(j.mes).getUTCFullYear())*12+new Date(j.inicial).getUTCMonth()-new Date(j.mes).getUTCMonth();
@@ -245,6 +272,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
           j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
+          const borrados=limpiarAnteriores(base(),[clase,...siguientes.map(t=>t.clase)]);
+          if(borrados) await notificar(event,`Limpieza pedida por el usuario: ${borrados} archivo(s) de velas anteriores a ${etiqueta(PISO_MINIMO)} borrados del disco local; no se vuelven a buscar.`);
         }
       }
       await correr(j);

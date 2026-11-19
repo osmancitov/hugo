@@ -88,9 +88,9 @@ test('el avance se guarda antes de la primera consulta y el progreso conserva hi
  let s; s=setup({aviso:async(j,t)=>{const a=leerEstado(s.estado);assert.ok(a);assert.equal(j.channel,event.channel);assert.equal(j.thread_ts,event.ts);}});
  try{await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');}finally{s.close();}
 });
-test('tope de meses pausa, no declara completo y no consulta el mes fuera del limite',async()=>caso(async s=>{
+test('avance viejo por debajo del piso fijo: frena en el piso sin consultar',async()=>caso(async s=>{
  const j={version:1,estado:'en-curso',clase:'stock',codigos:['AA'],indice:0,mes:Date.UTC(2006,9,1),channel:'prueba',thread_ts:'prueba',conteo:{guardados:0,existentes:0,activos:0}};
- guardarEstado(s.estado,j);await s.m.iniciar({continuar:true,event});assert.equal(s.consultas.length,0);assert.equal(leerEstado(s.estado).estado,'pausado');assert.equal(leerEstado(s.estado).conteo.activos,0);
+ guardarEstado(s.estado,j);await s.m.iniciar({continuar:true,event});assert.equal(s.consultas.length,0);assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(leerEstado(s.estado).conteo.activos,1);
 }));
 test('fallo de aviso pausa tras guardar avance sin repetir el mes al continuar',async()=>{
  let falla=true;await caso(async s=>{await s.run();assert.equal(leerEstado(s.estado).mes,septiembre);assert.equal(leerEstado(s.estado).estado,'pausado');
