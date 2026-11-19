@@ -1,11 +1,14 @@
 // Modulo github: "@hugo actualiza github" trae la ultima version del codigo y del manual desde el repositorio
 // de GitHub configurado (HUGO_GITHUB=propietario/repo en config.env; publico, sin claves) y la instala con el flujo comun.
 // GitHub es la fuente; Hugo solo descarga, nunca sube. Nada cambia sin el pulgar arriba del usuario.
-// Pasos: avisa de inmediato en el hilo con un mensaje que se va editando (comprobando -> resultado) ->
-// pide a GitHub el ultimo commit de la rama principal -> descarga ese commit exacto a una carpeta temporal fuera de hugo
-// -> comprueba que los archivos son normales y que pasan node --check -> compara por CONTENIDO con lo instalado ->
-// si no hay diferencias dice que ya esta al dia; si las hay, pregunta (commit, titulo, archivos que cambian) ->
-// con 👍 ejecuta un instalador local con copia y reversion (ctx.lanzarInstalacion, el mismo de "actualiza").
+// Pasos: pide a GitHub el ultimo commit de la rama principal -> descarga ese commit exacto a una
+// carpeta temporal fuera de hugo -> comprueba que los archivos son normales y que pasan node --check
+// -> compara por CONTENIDO con lo instalado -> si no hay diferencias dice que ya esta al dia; si las
+// hay, publica directamente la solicitud de aprobacion (commit, titulo, archivos que cambian), sin
+// mensaje previo de «comprobando/hay cambios» (decisión del usuario, 19-nov-2026: ese anuncio metía
+// ruido y parecía pedir un segundo 👍; la solicitud es el único lugar para aprobar) -> con 👍 ejecuta
+// un instalador local con copia y reversion (ctx.lanzarInstalacion, el mismo de "actualiza"). El
+// aviso inmediato lo da el 👀 de la mención, que la primera respuesta edita: una sola burbuja siempre.
 // Solo toca app/app.mjs, app/modulos/ y manual/manual-hugo.md. No toca config.env, keys/, historial, package.json ni node_modules.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -150,24 +153,20 @@ export function registrar(ctx) {
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return decir(event.channel, hilo, 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.');
     if (ctx.actualizacionEnCurso && await ctx.actualizacionEnCurso()) return decir(event.channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
-    // Aviso inmediato con la caja unica de reportes (ctx.reporte): un solo mensaje que se
-    // edita con el resultado, sin inundar. Comprobar no instala; instalar sigue pidiendo el 👍.
-    // Si el reporte no abre, se informa con mensajes sueltos y la comprobacion sigue igual.
-    let reporte;
-    try { reporte = await ctx.reporte.crear({ event, inicio: `Compruebo ${repo} en GitHub y comparo con lo instalado; a\u00fan no instalo nada. Te aviso aqu\u00ed mismo.`, prefijo: 'Comprobando GitHub. ' }); }
-    catch (e) { console.error('reporte de actualiza:', e.data?.error || e.message); reporte = { progreso: async () => {}, final: (t) => decir(event.channel, hilo, t) }; }
+    // Sin burbuja previa de «comprobando/hay cambios» (decisión del usuario, 19-nov-2026):
+    // la única respuesta es el resultado mismo. Comprobar no instala; instalar sigue pidiendo el 👍.
     let r;
     try { r = await verificar(repo); }
-    catch (e) { return reporte.final(e.invalido ? `El commit ${e.invalido.slice(0, 7)} de GitHub no pasa la comprobaci\u00f3n (${e.message}). No cambi\u00e9 nada.` : `No pude comprobar GitHub (${e.message}). No cambi\u00e9 nada.`); }
+    catch (e) {
+      return decir(event.channel, hilo, e.invalido
+        ? `El commit ${e.invalido.slice(0, 7)} de GitHub no pasa la comprobaci\u00f3n (${e.message}). No cambi\u00e9 nada.`
+        : `No pude comprobar GitHub (${e.message}). No cambi\u00e9 nada.`);
+    }
     const { sha, titulo, tmp, src, dif } = r;
     if (!dif.length) {
       fs.rmSync(tmp, { recursive: true, force: true });
-      return reporte.final(`Comprobado: Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}). No cambi\u00e9 nada.`);
+      return decir(event.channel, hilo, `Comprobado: Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}). No cambi\u00e9 nada.`);
     }
-    // Sin repetir el detalle ni invitar al pulgar aquí (decisión del usuario, 19-nov-2026: el
-    // anuncio previo metía ruido y parecía pedir un segundo 👍). La solicitud que sigue es el
-    // único lugar con commit, título y archivos, y el único mensaje que espera el pulgar.
-    await reporte.final('Comprobado: hay cambios en GitHub. Te pido la aprobaci\u00f3n con el detalle en la solicitud que sigue.');
     await ctx.confirmar({
       que: 'actualizar desde GitHub', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true,
       texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,

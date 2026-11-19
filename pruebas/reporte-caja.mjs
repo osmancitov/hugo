@@ -37,7 +37,10 @@ test('ningun modulo importa la caja a mano: la recibe por el contexto', () => {
 test('los flujos de trabajo lento usan la caja del contexto', () => {
  assert.match(leer('velas.mjs'), /ctx\.reporte\.avisador\(\)/);
  assert.match(leer('sincronizar-registros.mjs'), /ctx\.reporte\.crearSync\(/);
- assert.match(leer('github.mjs'), /ctx\.reporte\.crear\(/);
+ // Decisión del usuario, 19-nov-2026: "actualiza github" no abre reporte previo; cuando hay
+ // cambios publica directamente la única solicitud de aprobación (ctx.confirmar).
+ assert.doesNotMatch(leer('github.mjs'), /ctx\.reporte\.crear\(/);
+ assert.match(leer('github.mjs'), /ctx\.confirmar\(/);
 });
 
 test('solo la caja edita mensajes; nadie remienda reportes por su cuenta', () => {

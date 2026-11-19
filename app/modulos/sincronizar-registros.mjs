@@ -443,7 +443,6 @@ export function registrar(ctx) {
           if (s.error) previo.push(`indicador ${s.etiqueta} sin actualizar (${s.error}); sigo con las velas`);
           else if (s.nuevos) { const u = s.dias[s.dias.length - 1]; previo.push(`indicador ${s.etiqueta}: ${s.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
         }
-        if (rInd.nuevos) { const u = rInd.dias[rInd.dias.length - 1]; previo.push(`indicador Fear & Greed cripto: ${rInd.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
       } catch (e) { previo.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
     }
     const mud = mudarLocalHeredado();

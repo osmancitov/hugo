@@ -1,5 +1,7 @@
-// node --test pruebas/actualiza-aviso.mjs. «actualiza» avisa al empezar y cierra en el mismo
-// mensaje, usando la caja unica de reportes. GitHub y Slack simulados, sin red; HOME temporal.
+// node --test pruebas/actualiza-aviso.mjs. «actualiza» responde una sola vez: sin burbuja previa de
+// comprobacion cuando hay cambios; la solicitud de aprobacion es la unica respuesta (decision del
+// usuario, 19-nov-2026). Los ojitos de la mencion se convierten en esa unica respuesta.
+// GitHub y Slack simulados, sin red; HOME temporal.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -57,35 +59,28 @@ function banco(t, { conCambios, fallaRed }) {
  }, close: () => { globalThis.fetch = originalFetch; process.env.HOME = homeViejo; fs.rmSync(home, { recursive: true, force: true }); } };
 }
 
-test('con cambios: aviso inmediato, cierre editado en el mismo mensaje y la pregunta va aparte', async (t) => {
+test('con cambios: ni una burbuja previa; la solicitud es la única respuesta y el único lugar del 👍', async (t) => {
  const s = banco(t, { conCambios: true });
  try {
   await s.run();
-  assert.equal(s.posts.length, 1);
-  assert.match(s.posts[0].text, /Compruebo osman\/repo en GitHub/);
-  assert.match(s.posts[0].text, /a.n no instalo nada/);
-  assert.ok(s.updates.length >= 1);
-  assert.ok(s.updates.every(u => u.ts === '9000.1'));
-  // El cierre no repite el detalle ni invita al pulgar (decisión del usuario, 19-nov-2026):
-  // la solicitud aparte es el único mensaje con commit/archivos y el único que espera el 👍.
-  assert.match(s.updates.at(-1).text, /Comprobado: hay cambios en GitHub/);
-  assert.doesNotMatch(s.updates.at(-1).text, /aaaaaaa/);
-  assert.doesNotMatch(s.updates.at(-1).text, /sin tu/);
-  assert.equal(s.esT(), 1); // la pregunta con 👍 sigue intacta y va aparte
+  // Decisión del usuario, 19-nov-2026: nada de «comprobando/hay cambios» antes de la solicitud.
+  assert.equal(s.posts.length, 0);
+  assert.equal(s.updates.length, 0);
+  assert.equal(s.esT(), 1); // la pregunta con 👍 sigue intacta, con commit y archivos
  } finally { s.close(); }
 });
 
-test('al dia: cierra el mismo mensaje y no pregunta nada', async (t) => {
+test('al dia: un solo mensaje con el resultado y no pregunta nada', async (t) => {
  const s = banco(t, { conCambios: false });
  try {
   await s.run();
   assert.equal(s.posts.length, 1);
-  assert.match(s.updates.at(-1).text, /Comprobado: Hugo ya est. al d.a/);
+  assert.match(s.posts[0].text, /Comprobado: Hugo ya est. al d.a/);
   assert.equal(s.esT(), 0);
  } finally { s.close(); }
 });
 
-test('con ojitos: el 👀 de la mencion se convierte en el reporte de actualiza', async (t) => {
+test('con ojitos: el 👀 de la mencion se convierte en la unica respuesta de actualiza', async (t) => {
  const s = banco(t, { conCambios: false });
  try {
   const { crearOjos } = await import('../app/modulos/reporte.mjs');
@@ -94,19 +89,19 @@ test('con ojitos: el 👀 de la mencion se convierte en el reporte de actualiza'
   assert.equal(s.posts.length, 1);
   assert.equal(s.posts[0].text, '👀');
   await s.run();
-  assert.equal(s.posts.length, 1); // ni un mensaje mas: el reporte edito los ojitos
+  assert.equal(s.posts.length, 1); // ni un mensaje mas: la respuesta edito los ojitos
   assert.ok(s.updates.length >= 1);
   assert.ok(s.updates.every(u => u.ts === '9000.1'));
   assert.match(s.updates.at(-1).text, /Comprobado: Hugo ya est. al d.a/);
  } finally { s.close(); }
 });
 
-test('fallo de red: el mismo mensaje dice que no pudo comprobar y que nada cambio', async (t) => {
+test('fallo de red: un solo mensaje dice que no pudo comprobar y que nada cambio', async (t) => {
  const s = banco(t, { fallaRed: true });
  try {
   await s.run();
   assert.equal(s.posts.length, 1);
-  assert.match(s.updates.at(-1).text, /No pude comprobar GitHub \(timeout simulado\)\. No cambi. nada\./);
+  assert.match(s.posts[0].text, /No pude comprobar GitHub \(timeout simulado\)\. No cambi. nada\./);
   assert.equal(s.esT(), 0);
  } finally { s.close(); }
 });

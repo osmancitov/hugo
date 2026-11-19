@@ -216,9 +216,9 @@ test('sincronizacion: la pasada actualiza ambas series, las sube en el mismo com
     assert.deepEqual(JSON.parse(arbol[`registros/${BOLSA}/2611`]), bolsa.slice(0, 2), 'bolsa sin el valor vivo de hoy');
     assert.ok(arbol['registros/velas-24h/cripto/AAA/2611_AAA'], 'las velas subieron igual');
     const cierre = b.textos.join('\n');
-    assert.match(cierre, /Fear & Greed cripto: 1 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear & Greed Index \(Cripto\): 1 día\(s\) nuevo\(s\)/);
     assert.match(cierre, /último 2026-11-18 con valor 12/);
-    assert.match(cierre, /Fear & Greed bolsa: 2 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear & Greed Index \(Stock\): 2 día\(s\) nuevo\(s\)/);
     assert.match(cierre, /último 2026-11-18 con valor 29/);
     assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${SERIE}`)), 'el commit menciona el cripto');
     assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${BOLSA}`)), 'el commit menciona la bolsa');
@@ -238,8 +238,8 @@ test('sincronizacion: si una fuente falla, la otra serie y las velas siguen y el
     assert.ok(!arbol[`registros/${SERIE}/2611`], 'no se invento indicador cripto');
     assert.ok(arbol[`registros/${BOLSA}/2611`], 'la bolsa subio pese al fallo del cripto');
     const cierre = b.textos.join('\n');
-    assert.match(cierre, /Fear & Greed cripto sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
-    assert.match(cierre, /Fear & Greed bolsa: 1 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear & Greed Index \(Cripto\) sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
+    assert.match(cierre, /Fear & Greed Index \(Stock\): 1 día\(s\) nuevo\(s\)/);
   } finally { b.restaurar(); }
 });
 
@@ -262,4 +262,24 @@ test('sincronizacion: un archivo de indicador nuevo en el remoto baja a la Debia
     const bajado = path.join(root, SERIE, '2611');
     assert.deepEqual(leerIndicador(fs.readFileSync(bajado)), puntos);
   } finally { rem.destruir(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('los rotulos de los indicadores tienen una sola fuente: app/modulos/indicadores.json', () => {
+  const rotulos = JSON.parse(fs.readFileSync(new URL('../app/modulos/indicadores.json', import.meta.url), 'utf8'));
+  // Nombres finales decididos por el usuario (19-nov-2026).
+  assert.equal(rotulos['feargreedchart-bolsa'], 'Fear & Greed Index (Stock)');
+  assert.equal(rotulos['alternative-fear-greed'], 'Fear & Greed Index (Cripto)');
+  // El bot los lee de ahi, no los escribe a mano.
+  const bot = fs.readFileSync(new URL('../app/modulos/indicadores.mjs', import.meta.url), 'utf8');
+  assert.match(bot, /indicadores\.json/);
+  assert.doesNotMatch(bot, /etiqueta: '/);
+  // El visor (menu y graficos) los lee del mismo archivo, no los escribe a mano.
+  const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(visor, /indicadores\.json/);
+  assert.doesNotMatch(visor, /nombre: 'Fear/);
+  // Y ningun otro modulo escribe un rotulo de indicador a mano.
+  const dir = new URL('../app/modulos/', import.meta.url);
+  for (const n of fs.readdirSync(dir).filter((n) => n.endsWith('.mjs') && n !== 'indicadores.mjs')) {
+    assert.doesNotMatch(fs.readFileSync(new URL(n, dir), 'utf8'), /Fear & Greed Index \(/, `${n} escribe un rotulo a mano`);
+  }
 });

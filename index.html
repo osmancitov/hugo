@@ -235,14 +235,24 @@ const INDICADORES = [
   // Bolsa EE. UU. según FearGreedChart (VIX, momentum S&P 500, put/call, refugio y crédito).
   // Sus zonas oficiales son 0-20/21-40/41-60/61-80/81-100. Solo días de sesión: el fin de
   // semana y los festivos bursátiles no tienen lectura y quedan como hueco, no se rellenan.
-  { codigo: 'feargreedchart-bolsa', nombre: 'Fear & Greed Index (bolsa)', tipo: 'índice', indicador: true,
+  { codigo: 'feargreedchart-bolsa', tipo: 'índice', indicador: true,
     fuente: 'FearGreedChart.com', fuenteUrl: 'https://feargreedchart.com/',
     bandas: BANDAS_MIEDO([20, 40, 60, 80]), clasif: clasifMiedo([20, 40, 60, 80]),
     notaDias: 'solo días con sesión bursátil; un día sin sesión no tiene lectura' },
-  { codigo: 'alternative-fear-greed', nombre: 'Fear and Greed (Alternative)', tipo: 'índice', indicador: true,
+  { codigo: 'alternative-fear-greed', tipo: 'índice', indicador: true,
     fuente: 'Fear & Greed Index de Alternative.me',
     bandas: BANDAS_MIEDO([24, 44, 55, 74]), clasif: clasifMiedo([24, 44, 55, 74]) },
 ];
+
+// Rótulos de los indicadores: UNA sola definición en el repositorio (app/modulos/indicadores.json),
+// la misma que lee Hugo para sus reportes (decisión del usuario, 19-nov-2026: el nombre se cambia
+// en un solo sitio y vale para menú, gráficos y reportes). Aquí solo se lee; si no se puede traer,
+// se muestra el código técnico.
+const rotulosListos = fetch('app/modulos/indicadores.json').then((r) => (r.ok ? r.json() : {})).then((j) => {
+  for (const e of INDICADORES) e.nombre = j[e.codigo] || e.codigo;
+}).catch(() => {
+  for (const e of INDICADORES) e.nombre = e.codigo;
+});
 
 function fmtCap(v) {
   if (v >= 1e12) return (v / 1e12).toFixed(2).replace('.', ',') + ' B';
@@ -999,7 +1009,8 @@ function vistaActivo(clase, codigo) {
 }
 
 /* ---------- arranque ---------- */
-function ruta() {
+async function ruta() {
+  await rotulosListos;
   limpiarGrafica(); limpiarGrafica = () => {};
   const m = location.hash.match(/^#\/a\/(cripto|stock)\/(.+)$/);
   const mi = location.hash.match(/^#\/i\/(.+)$/);

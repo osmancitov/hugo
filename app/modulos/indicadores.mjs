@@ -20,6 +20,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Rotulos visibles de cada serie: UNA sola definicion, en indicadores.json junto a este modulo
+// (decision del usuario, 19-nov-2026: el nombre se cambia en un solo sitio). La lee Hugo para
+// sus reportes y la lee el visor para el menu y los graficos; nadie mas escribe nombres a mano.
+// Si el archivo falta, se usa la clave tecnica de la serie.
+export const ROTULOS = (() => {
+  try { return JSON.parse(fs.readFileSync(new URL('./indicadores.json', import.meta.url), 'utf8')); }
+  catch { return {}; }
+})();
+const rotulo = (serie) => ROTULOS[serie] || serie;
+
 export const ARCHIVO_IND = /^\d{4}$/;
 export const DIA = 86400000;
 // Piso permanente y universal (decisión del usuario, 18-nov-2026): nada anterior a ago-2026.
@@ -34,7 +44,6 @@ const fechaNY = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New
 export const SERIES = [
   {
     serie: 'alternative-fear-greed',
-    etiqueta: 'Fear & Greed cripto',
     url: (ultimo, hoy00) => `https://api.alternative.me/fng/?limit=${Math.min(4000, Math.round((hoy00 - ultimo) / DIA) + 1)}`,
     // alternative.me publica el valor del día a las 00:00 UTC, final desde entonces.
     corte: (ahora) => cierreUTC(ahora),
@@ -46,7 +55,6 @@ export const SERIES = [
   },
   {
     serie: 'feargreedchart-bolsa',
-    etiqueta: 'Fear & Greed bolsa',
     url: () => 'https://feargreedchart.com/api/?action=history',
     // Resguardo mientras la fuente no documenta qué sesión representa cada fecha: solo se
     // guardan fechas ya pasadas en Nueva York; la del día en curso queda fuera siempre.
@@ -170,9 +178,9 @@ export async function actualizarIndicadores({ dirRaiz, fetchImpl = fetch, ahora 
   for (const def of SERIES) {
     try {
       const r = await actualizarIndicador({ dir: path.join(dirRaiz, def.serie), def, fetchImpl, ahora });
-      series.push({ etiqueta: def.etiqueta, ...r });
+      series.push({ etiqueta: rotulo(def.serie), ...r });
     } catch (e) {
-      series.push({ etiqueta: def.etiqueta, error: e.message });
+      series.push({ etiqueta: rotulo(def.serie), error: e.message });
     }
   }
   return { series };
