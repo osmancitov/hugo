@@ -466,6 +466,85 @@ function graficoIndicador(ctx, puntos, e) {
   ctx.fillText(`Datos al ${fecha} (UTC) · Fuente: ${e.fuente}`, LW / 2, ALTO - 13);
 }
 
+// El mismo índice en pantalla vertical, con el patrón de radiografiaVertical: los días
+// corren de arriba abajo con sus fechas a la izquierda y el valor 0-100 va en X, con
+// las bandas oficiales como franjas verticales. Mismos datos y mismas bandas, otro eje.
+function graficoIndicadorVertical(ctx, puntos, e, alto) {
+  const w = 700, left = 88, right = 612, top = 134, bottom = alto - 110;
+  const n = puntos.length;
+  const X = (v) => left + (v / 100) * (right - left);
+  const Y = (i) => top + (i / (n - 1)) * (bottom - top);
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
+  // títulos
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
+  ctx.fillText(`${e.nombre} · índice diario`, w / 2, 26);
+  ctx.fillStyle = TICK; ctx.font = '18px ' + FUENTE;
+  ctx.fillText(`0 = miedo extremo · 100 = codicia extrema · ${n} días`, w / 2, 58);
+  // bandas oficiales: franjas verticales con su rótulo en vertical
+  for (const [lo, hi, color, rotulo] of e.bandas) {
+    ctx.fillStyle = color;
+    ctx.fillRect(X(lo), top, X(hi) - X(lo), bottom - top);
+    ctx.save();
+    ctx.fillStyle = 'rgba(201,204,211,0.6)';
+    ctx.font = '18px ' + FUENTE;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.translate((X(lo) + X(hi)) / 2, (top + bottom) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(rotulo, 0, 0);
+    ctx.restore();
+  }
+  // rejilla de días y fechas a la izquierda, como la radiografía vertical
+  ctx.font = '20px ' + FUENTE; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < n; i++) {
+    const f = new Date(puntos[i][0]), dia = f.getUTCDate();
+    ctx.strokeStyle = dia === 1 ? GRID_1 : dia === 15 ? GRID_15 : GRID_D;
+    ctx.lineWidth = dia === 1 || dia === 15 ? 1.5 : 0.7;
+    ctx.beginPath(); ctx.moveTo(left, Y(i)); ctx.lineTo(right, Y(i)); ctx.stroke();
+    if (dia === 1 || dia === 15 || i === 0 || i === n - 1) {
+      // El extremo no duplica una fecha del día anterior.
+      const cerca = i === n - 1 && i > 0 && [1, 15].includes(new Date(puntos[i - 1][0]).getUTCDate());
+      if (!cerca) { ctx.fillStyle = TICK; ctx.fillText(String(dia).padStart(2, '0') + ' ' + MESES_ES[f.getUTCMonth()], left - 14, Y(i)); }
+    }
+  }
+  // valores 0-100 arriba y abajo, con su rejilla vertical
+  ctx.font = '20px ' + FUENTE; ctx.textAlign = 'center';
+  for (const v of [0, 25, 50, 75, 100]) {
+    ctx.strokeStyle = v === 0 || v === 100 ? MARCO : GRID_D;
+    ctx.lineWidth = v === 0 || v === 100 ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(X(v), top); ctx.lineTo(X(v), bottom); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.fillText(String(v), X(v), top - 23);
+    ctx.fillText(String(v), X(v), bottom + 26);
+  }
+  ctx.strokeStyle = MARCO; ctx.lineWidth = 1.5; ctx.strokeRect(left, top, right - left, bottom - top);
+  // línea y puntos, recortados al marco
+  ctx.save();
+  ctx.beginPath(); ctx.rect(left, top, right - left, bottom - top); ctx.clip();
+  ctx.strokeStyle = BLUE; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const x = X(puntos[i][1]), y = Y(i); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.fillStyle = BLUE;
+  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(X(puntos[i][1]), Y(i), 3.5, 0, 7); ctx.fill(); }
+  ctx.restore();
+  // último valor, con su clase
+  const uv = puntos[n - 1][1];
+  const textoUv = `${uv} · ${e.clasif(uv)}`;
+  const derecha = X(uv) > (left + right) / 2;
+  ctx.font = 'bold 22px ' + FUENTE;
+  ctx.fillStyle = '#e8eaed'; ctx.textAlign = derecha ? 'right' : 'left'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5; ctx.strokeStyle = BG;
+  const tx = derecha ? Math.min(X(uv) - 14, right - 8) : Math.max(X(uv) + 14, left + 8);
+  const ty = Math.max(Y(n - 1) - 26, top + 14);
+  ctx.strokeText(textoUv, tx, ty); ctx.fillText(textoUv, tx, ty);
+  // pie: la fuente va junto al gráfico, como piden los términos de Alternative.me
+  const uf = new Date(puntos[n - 1][0]);
+  const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
+  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '18px ' + FUENTE;
+  ctx.fillText(`Datos al ${fecha} (UTC) · Fuente: ${e.fuente}`, w / 2, alto - 13);
+}
+
 function vistaIndicador(codigo) {
   const e = INDICADORES.find((x) => x.codigo === codigo);
   if (!e) { location.hash = ''; return; }
@@ -497,7 +576,16 @@ function vistaIndicador(codigo) {
       return;
     }
     if (!caja.isConnected) return;
-    graficoIndicador(lienzo(caja, { ancho: LW, alto: LH + 32 }), puntos, e);
+    // Las mismas reglas de presentación que las demás gráficas: en pantalla vertical
+    // el índice se dibuja en vertical; la pieza común gira, reajusta y limpia igual.
+    const g = graficaAdaptable(caja, (vertical) => vertical
+      ? { ancho: 700, alto: Math.max(1400, puntos.length * 18 + 320) }
+      : { ancho: LW, alto: LH + 32 },
+    (ctx, geometria) => {
+      if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto);
+      else graficoIndicador(ctx, puntos, e);
+    });
+    g.redibujar();
     const uf = new Date(puntos[puntos.length - 1][0]);
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
@@ -559,6 +647,37 @@ function lienzo(caja, geometria) {
   ctx.scale(escala * dpr, escala * dpr);
   caja.replaceChildren(cv);
   return ctx;
+}
+
+// Regla común de presentación de las gráficas: la orientación y el ancho cambian
+// el dibujo, nunca los datos. Una sola pieza gira el lienzo en pantallas verticales,
+// reajusta al cambiar el ancho y limpia sus oyentes al salir de la vista; cada
+// gráfica aporta solo su geometría y su trazado.
+function graficaAdaptable(caja, geometriaPara, dibujar, alLimpiar) {
+  const orientacion = matchMedia('(orientation: portrait)');
+  const g = { ctx: null, geometria: null, ultimoAncho: 0 };
+  g.configurar = () => {
+    g.geometria = geometriaPara(orientacion.matches);
+    g.geometria.vertical = orientacion.matches;
+    g.ctx = lienzo(caja, g.geometria);
+    g.ultimoAncho = caja.clientWidth;
+  };
+  g.redibujar = () => dibujar(g.ctx, g.geometria);
+  const reconfigurar = () => { g.configurar(); g.redibujar(); };
+  const ajustar = new ResizeObserver(() => {
+    if (!caja.isConnected) { ajustar.disconnect(); return; }
+    if (g.ultimoAncho === caja.clientWidth && g.geometria.vertical === orientacion.matches) return;
+    reconfigurar();
+  });
+  ajustar.observe(caja);
+  const girar = () => { if (caja.isConnected) reconfigurar(); };
+  orientacion.addEventListener('change', girar);
+  limpiarGrafica = () => {
+    if (alLimpiar) alLimpiar();
+    ajustar.disconnect(); orientacion.removeEventListener('change', girar);
+  };
+  g.configurar();
+  return g;
 }
 
 function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
@@ -901,15 +1020,9 @@ function vistaActivo(clase, codigo) {
     };
     usar(hayMas ? filasVentana : filas, !hayMas);
     const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let limite = 5, animId = null, ctx, geometria, ultimoAncho;
-    const orientacion = matchMedia('(orientation: portrait)');
-    const configurar = () => {
-      geometria = orientacion.matches
-        ? { vertical: true, ancho: 700, alto: Math.max(1400, d.rs.length * 18 + 320) }
-        : { vertical: false, ancho: LW, alto: LH + 32 };
-      ctx = lienzo(caja, geometria); ultimoAncho = caja.clientWidth;
-    };
+    let limite = 5, animId = null;
     const dibujarEn = (destino, hasta) => {
+      const geometria = g.geometria;
       if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
       else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
       if (hasta === undefined || hasta >= d.rs.length) {
@@ -923,7 +1036,7 @@ function vistaActivo(clase, codigo) {
     const terminar = () => {
       if (animId) cancelAnimationFrame(animId);
       animId = null;
-      dibujarEn(ctx);
+      dibujarEn(g.ctx);
     };
     const trazar = () => {
       if (animId) cancelAnimationFrame(animId);
@@ -933,12 +1046,19 @@ function vistaActivo(clase, codigo) {
         if (!caja.isConnected) { animId = null; return; }
         const p = Math.min(1, (t - t0) / 2000);
         const k = 1 + Math.floor(p * (d.rs.length - 1));
-        if (p < 1) { dibujarEn(ctx, k); animId = requestAnimationFrame(paso); }
-        else { dibujarEn(ctx); animId = null; }
+        if (p < 1) { dibujarEn(g.ctx, k); animId = requestAnimationFrame(paso); }
+        else { dibujarEn(g.ctx); animId = null; }
       };
       animId = requestAnimationFrame(paso);
     };
-    configurar(); trazar();
+    // La pieza común gira el lienzo en pantallas verticales y reajusta al cambiar
+    // el ancho; el dibujo cambia, no los datos ni la escala elegida.
+    const g = graficaAdaptable(caja, (vertical) => vertical
+      ? { ancho: 700, alto: Math.max(1400, d.rs.length * 18 + 320) }
+      : { ancho: LW, alto: LH + 32 },
+    () => terminar(),
+    () => { if (animId) cancelAnimationFrame(animId); animId = null; });
+    trazar();
     const controles = document.createElement('div');
     controles.className = 'controles-grafica';
     const btn = document.createElement('button');
@@ -962,7 +1082,7 @@ function vistaActivo(clase, codigo) {
       usar(completo ? filas : filasVentana, completo);
       btnTodo.textContent = completo ? 'Ver 3 meses' : 'Ver todo';
       nota.textContent = notaBase;
-      configurar(); trazar();
+      g.configurar(); trazar();
     });
     const descargar = document.createElement('button');
     descargar.className = 'boton'; descargar.textContent = 'Descargar imagen';
@@ -971,16 +1091,16 @@ function vistaActivo(clase, codigo) {
       // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
       // No amplía los píxeles del lienzo mostrado en pantalla.
       const salida = document.createElement('canvas');
-      const resolucion = Math.min(3, Math.sqrt(14000000 / (geometria.ancho * geometria.alto)), 14000 / geometria.alto);
-      salida.width = Math.floor(geometria.ancho * resolucion);
-      salida.height = Math.floor(geometria.alto * resolucion);
+      const resolucion = Math.min(3, Math.sqrt(14000000 / (g.geometria.ancho * g.geometria.alto)), 14000 / g.geometria.alto);
+      salida.width = Math.floor(g.geometria.ancho * resolucion);
+      salida.height = Math.floor(g.geometria.alto * resolucion);
       const tinta = salida.getContext('2d'); tinta.scale(resolucion, resolucion); dibujarEn(tinta);
       salida.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = url;
         const fechaArchivo = uf.toISOString().slice(0, 10);
-        a.download = `${e.codigo}_${fechaArchivo}_${geometria.vertical ? 'vertical' : 'horizontal'}_escala-${limite}.png`;
+        a.download = `${e.codigo}_${fechaArchivo}_${g.geometria.vertical ? 'vertical' : 'horizontal'}_escala-${limite}.png`;
         a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
       }, 'image/png');
     });
@@ -989,20 +1109,6 @@ function vistaActivo(clase, codigo) {
     nota.className = 'nota';
     nota.textContent = notaBase;
     pie.append(controles, nota);
-    // La orientación y el ancho cambian el dibujo, no los datos ni la escala elegida.
-    const ajustar = new ResizeObserver(() => {
-      if (!caja.isConnected) { ajustar.disconnect(); return; }
-      if (ultimoAncho === caja.clientWidth && geometria.vertical === orientacion.matches) return;
-      if (animId) cancelAnimationFrame(animId);
-      configurar(); terminar();
-    });
-    ajustar.observe(caja);
-    const girar = () => { if (caja.isConnected) { configurar(); terminar(); } };
-    orientacion.addEventListener('change', girar);
-    limpiarGrafica = () => {
-      if (animId) cancelAnimationFrame(animId);
-      ajustar.disconnect(); orientacion.removeEventListener('change', girar);
-    };
 
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este activo (' + err.message + ').';
