@@ -15,6 +15,7 @@ export function registrar(ctx) {
   const archivoEstado=()=>process.env.HUGO_REGISTRO_ESTADO || ctx.conf.HUGO_REGISTRO_ESTADO || path.join(os.homedir(),'.local','share','hugo-registro','estado.json');
   const avisar=ctx.reporte.avisador();
   const motor=crearMotor({base,archivoEstado,resolver:resolverActivo,avisar,activas:ctx.activas,parada:ctx.parada});
+  ctx.registroPendiente=()=>motor.pendiente(); // para que «estado» no calle un registro pausado
   let cotejando = false;
   ctx.comando(/^\s*registr\w*(?:\s|$)/i, async(event,texto)=>{
     if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');

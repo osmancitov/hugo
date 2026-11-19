@@ -13,7 +13,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 Bot de Slack propio (Socket Mode, Node.js). Corre en la Debian como servicio de usuario `hugo.service` y es el puente entre Slack y esa máquina: recibe y envía archivos, borra hilos y se actualiza. Existe para quitarle trabajo al usuario: el asistente de IA y Hugo hacen el trabajo y el usuario decide con 👍.
 
 ## Comandos de Slack
-Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza`, `registra`, `sincroniza registros`, `radiografía` y `estado`, que también puede pedir el asistente (`HUGO_DELEGADO`).
+Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza`, `registra`, `pon al día`, `descarta registro`, `sincroniza registros`, `radiografía` y `estado`, que también puede pedir el asistente (`HUGO_DELEGADO`); `descarta registro` y las actualizaciones conservan el 👍 del usuario.
 
 | Orden | Qué hace |
 | --- | --- |
@@ -31,7 +31,7 @@ Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las ex
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
 | `sincroniza registros` | Copia ya (sin 👍) los registros de velas entre la Debian y GitHub, en ambos sentidos y sin pisar contenido distinto (ver «Sincronización de registros»). También `sincronizar`. |
 | `radiografía [CLASE] CODIGO [CODIGO ...]` | Dibuja la radiografía de variación de cada activo con sus registros guardados y la sube a este mismo hilo, sin 👍. La clase (`stock` o `cripto`) es opcional y desambigua códigos presentes en las dos clases. Regenera la imagen con el historial completo y pisa la anterior solo si la escribió Hugo. También `radiografia`. |
-| `estado` | Dice qué hace, qué 👍 espera o que está libre, y cuánto lleva activo. |
+| `estado` | Dice qué hace, qué 👍 espera o que está libre, y cuánto lleva activo. Si hay un registro pausado lo muestra con sus dos salidas (`registra continuar` o `descarta registro`), porque aunque no esté activo bloquea registros nuevos. |
 | `estado del registro` o `estado registro` | Consulta la cobertura local por fecha de ultima vela, separa historiales fiat conservados y muestra la ultima publicacion de registros en GitHub (rama main). No actualiza datos ni consulta Binance. Solo usuario. |
 | `stop` | Pide tu 👍 y detiene el trabajo largo en curso (borrado, registro o sincronización), sin deshacer lo ya hecho: el registro queda pausado para `registra continuar`, el borrado conserva el primer mensaje y lo que quede del hilo, y la sincronización frena entre archivos. Sin trabajo en curso no hace nada. Una actualización en curso no se detiene: termina y reinicia sola. |
 | `restart` o `reiniciar` | Pide tu 👍 y reinicia a Hugo. Si hay un trabajo largo en curso, lo interrumpe primero (la misma parada de `stop`); lo ya hecho se conserva. No lo hace si hay una actualización en curso. |
@@ -132,7 +132,7 @@ Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`res
 - Guardar un archivo no lo ejecuta. Solo `actualiza` ejecuta instaladores.
 - Descargas de Slack: solo desde `files.slack.com`.
 - Borrar hilos: los mensajes de Hugo con su token; los demás con `keys/.user-token`, solo los que ese usuario puede borrar. Si alguno no se puede borrar, el primer mensaje se conserva y lo dice. Hugo debe estar en el canal y tener `channels:history` (hoy solo canales públicos); si no puede leer el hilo, lo dice y no borra.
-- `estado` informa solo de lo que Hugo registra (trabajo en curso, confirmaciones, actualización). No revisa la Debian.
+- `estado` informa solo de lo que Hugo registra (trabajo en curso, confirmaciones, actualización y registro pausado). No revisa la Debian.
 - `stop` y la interrupción de `restart` no deshacen lo ya hecho: un borrado parcial, los meses ya guardados y los archivos ya sincronizados quedan como están.
 - El registro de velas solo lee de la API pública de Binance; no usa claves ni mueve fondos.
 - Slack: eventos `app_mention` y `reaction_added`. Permisos del bot: app_mentions:read, channels:history, channels:join, chat:write, files:read, files:write, reactions:read. Permiso de usuario: chat:write.

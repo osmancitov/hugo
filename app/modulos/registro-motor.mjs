@@ -240,21 +240,29 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
   }
   // «descarta registro»: abandona el avance guardado sin tocar los datos. Dos pasos para que
   // la confirmación pregunte con el detalle real y el borrado revalide justo antes de actuar.
+  // pendiente() es solo lectura: lo usa el comando «estado» para no callar un registro pausado.
+  const detallePendiente=(j)=>`${j.codigos[j.indice]||'?'}, ${etiqueta(j.mes)} (${j.indice}/${j.codigos.length} activos${j.rapido?', puesta al día':''})`;
+  function pendiente() {
+    let j;
+    try{j=leerEstado(archivoEstado());}catch{return null;}
+    if(!j || j.estado==='terminado') return null;
+    return detallePendiente(j);
+  }
   function pendienteDescarte() {
     if(ocupado) return {error:'Estoy registrando un historial; detenlo con stop y luego descarta el avance.'};
     let j;
     try{j=leerEstado(archivoEstado());}catch(e){return {error:`No puedo leer el avance: ${e.message}. Lo conservo.`};}
     if(!j || j.estado==='terminado') return {error:'No hay un registro pendiente que descartar.'};
-    return {detalle:`${j.codigos[j.indice]||'?'}, ${etiqueta(j.mes)} (${j.indice}/${j.codigos.length} activos${j.rapido?', puesta al día':''})`};
+    return {detalle:detallePendiente(j)};
   }
   function descartar() {
     if(ocupado) return {error:'Estoy registrando un historial; no descarto el avance en curso.'};
     let j;
     try{j=leerEstado(archivoEstado());}catch(e){return {error:`No puedo leer el avance: ${e.message}. Lo conservo.`};}
     if(!j || j.estado==='terminado') return {error:'No hay un registro pendiente que descartar.'};
-    const detalle=`${j.codigos[j.indice]||'?'}, ${etiqueta(j.mes)} (${j.indice}/${j.codigos.length} activos${j.rapido?', puesta al día':''})`;
+    const detalle=detallePendiente(j);
     fs.rmSync(archivoEstado(), {force:true});
     return {ok:true, detalle};
   }
-  return {iniciar, pendienteDescarte, descartar};
+  return {iniciar, pendiente, pendienteDescarte, descartar};
 }
