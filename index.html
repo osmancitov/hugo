@@ -248,7 +248,7 @@ const INDICADORES = [
 // (app/modulos/indicadores-rotulos.mjs), la misma que importa Hugo para sus reportes
 // (decisión del usuario, 19-nov-2026: el nombre se cambia en un solo sitio y vale para menú,
 // gráficos y reportes). Aquí solo se importa; si no se puede traer, se muestra el código técnico.
-const rotulosListos = import('app/modulos/indicadores-rotulos.mjs').then((m) => {
+const rotulosListos = import('./app/modulos/indicadores-rotulos.mjs').then((m) => {
   const j = m.default || {};
   for (const e of INDICADORES) e.nombre = j[e.codigo] || e.codigo;
 }).catch(() => {
