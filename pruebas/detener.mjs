@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { crearMotor, leerEstado } from '../app/modulos/registro-motor.mjs';
 import { conectarCaja } from './caja.mjs';
+import { crearRemoto } from './git-remoto.mjs';
 
 const event = { channel: 'C', ts: '100', thread_ts: '100', user: 'U1' };
 
@@ -192,27 +193,12 @@ test('restart siempre pide pulgar; con trabajo largo ademas interrumpe', async (
   }
 });
 
-// Sincronizacion: GitHub simulado; la parada frena la pasada sin publicar nada.
+// Sincronizacion: remoto git real por file:// (sin red); la parada frena la pasada sin publicar nada.
 function ctxSync(root, alLlamar) {
-  const { ctx, msgs } = fakeCtx({ conf: { HUGO_GITHUB: 'a/b' }, leerClave: () => 'tok' });
+  const rem = crearRemoto();
+  const { ctx, msgs } = fakeCtx({ conf: { HUGO_GITHUB: 'a/b', HUGO_REPO_SYNC_URL: rem.url, HUGO_REPO_SYNC_DIR: path.join(root, 'clon') }, leerClave: () => 'tok' });
   conectarCaja(ctx);
-  const llamadas = [];
-  const original = globalThis.fetch;
-  globalThis.fetch = async (u, opts = {}) => {
-    const url = String(u), metodo = opts.method || 'GET';
-    llamadas.push(`${metodo} ${url}`);
-    if (alLlamar) alLlamar(metodo, url);
-    const json = (j) => ({ ok: true, status: 200, json: async () => j });
-    if (/\/git\/ref\//.test(url)) return json({ object: { sha: 'ref1' } });
-    if (/\/git\/commits\/ref1/.test(url)) return json({ tree: { sha: 'tree0' } });
-    if (/\/git\/trees\/tree0/.test(url)) return json({ tree: [] });
-    if (metodo === 'POST' && /\/git\/blobs$/.test(url)) return json({ sha: `blob${llamadas.length}` });
-    if (metodo === 'POST' && /\/git\/trees$/.test(url)) return json({ sha: 'tree1' });
-    if (metodo === 'POST' && /\/git\/commits$/.test(url)) return json({ sha: 'commit1' });
-    if (metodo === 'PATCH') return json({});
-    return json({ permissions: { push: true } }); // GET del repo: puedeSubir
-  };
-  return { ctx, msgs, llamadas, restaurar: () => { globalThis.fetch = original; } };
+  return { ctx, msgs, rem, restaurar: () => {} };
 }
 function velasLocal(root, lista) {
   for (const [activo, yymm, t] of lista) {
@@ -230,18 +216,18 @@ test('sincronizacion: una pasada normal sigue igual (regresion) y se anota como 
   try {
     velasLocal(root, [['AA', '2611', nov1]]);
     let vistoLargo = false;
-    const { ctx, restaurar, llamadas } = ctxSync(root, () => {
-      const e = ctx.activas.get('sincronizacion');
-      if (e && e.largo) vistoLargo = true;
-    });
+    const { ctx, rem } = ctxSync(root);
+    const claveOriginal = ctx.leerClave;
+    ctx.leerClave = (k) => { const e = ctx.activas.get('sincronizacion'); if (e && e.largo) vistoLargo = true; return claveOriginal(k); };
     const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
     registrar(ctx);
     const h = handlerDe(ctx, /sincroniz/);
     await h(event, 'sincroniza registros', {});
-    restaurar();
-    assert.ok(llamadas.some((l) => l.startsWith('PATCH'))); // publico la rama
+    assert.ok(rem.arbol()['registros/velas-24h/stock/AA/2611_AA'], 'subio el archivo al remoto');
+    assert.ok(rem.commits().some((c) => c.includes('<osmanvielma@gmail.com>')), 'autor del commit');
     assert.ok(vistoLargo);
     assert.equal(ctx.activas.size, 0);
+    rem.destruir();
   } finally {
     delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
     fs.rmSync(root, { recursive: true, force: true });
@@ -254,18 +240,17 @@ test('sincronizacion: stop durante la subida frena antes de publicar el commit',
   process.env.HUGO_SYNC_MINUTOS = '0';
   try {
     velasLocal(root, [['AA', '2611', nov1], ['BB', '2611', nov1]]);
-    const { ctx, msgs, restaurar, llamadas } = ctxSync(root, (metodo, url) => {
-      if (metodo === 'POST' && /\/git\/blobs$/.test(url)) ctx.parada.n++; // stop a mitad de la subida
-    });
+    const { ctx, rem } = ctxSync(root);
     const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
     registrar(ctx);
-    const h = handlerDe(ctx, /sincroniz/);
-    await h(event, 'sincroniza registros', {});
-    restaurar();
-    assert.ok(!llamadas.some((l) => l.startsWith('PATCH'))); // nunca publico la rama
-    assert.ok(!llamadas.some((l) => /\/git\/commits$/.test(l)));
-    assert.ok(msgs.some((t) => /detenida a pedido/i.test(t) && /nada se pis/.test(t)));
-    assert.equal(ctx.activas.size, 0);
+    const r = await ctx.pasadaSincronizacion(async (t) => {
+      if (t.startsWith('Subida: 1/')) ctx.parada.n++; // stop a mitad de la subida
+    });
+    assert.equal(r.detenida, true);
+    assert.match(r.texto, /detenida a pedido/i);
+    assert.match(r.texto, /nada se pis/);
+    assert.deepEqual(Object.keys(rem.arbol()).filter((k) => k.includes('velas-24h')), []); // no publico nada
+    rem.destruir();
   } finally {
     delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
     fs.rmSync(root, { recursive: true, force: true });
@@ -278,15 +263,15 @@ test('sincronizacion: stop durante la comparacion no cambia nada', async () => {
   process.env.HUGO_SYNC_MINUTOS = '0';
   try {
     velasLocal(root, [['AA', '2611', nov1]]);
-    const { ctx, restaurar, llamadas } = ctxSync(root, (metodo, url) => {
-      if (/\/git\/trees\/tree0/.test(url)) ctx.parada.n++; // stop mientras compara
-    });
+    const { ctx, rem } = ctxSync(root);
     const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
     registrar(ctx);
-    const r = await ctx.pasadaSincronizacion();
-    restaurar();
+    const r = await ctx.pasadaSincronizacion(async (t) => {
+      if (t.startsWith('Comparacion lista')) ctx.parada.n++; // stop en cuanto termina de comparar
+    });
     assert.equal(r.detenida, true);
-    assert.ok(!llamadas.some((l) => l.startsWith('POST') || l.startsWith('PATCH')));
+    assert.deepEqual(Object.keys(rem.arbol()).filter((k) => k.includes('velas-24h')), []); // no publico nada
+    rem.destruir();
   } finally {
     delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
     fs.rmSync(root, { recursive: true, force: true });

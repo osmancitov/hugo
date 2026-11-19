@@ -48,6 +48,34 @@ const leerMarca = (dir) => leerAamm(dir, MARCA);
 const escribirMarca = (dir, aamm) => escribirAamm(dir, MARCA, aamm);
 const leerVerificado = (dir) => leerAamm(dir, VERIFICADO);
 const escribirVerificado = (dir, aamm) => escribirAamm(dir, VERIFICADO, aamm);
+// Inventario persistente de cobertura (decisión del usuario, 18-nov-2026, nota de voz): el
+// sistema sabe qué hay sin contar de nuevo. _cobertura guarda la FECHA (AAAA-MM-DD, UTC) del
+// último día hasta el que el registro del activo está completo; la puesta al día la consulta
+// y pide solo los días que falten, sin releer ni revalidar archivos. Si algo falta o cambió,
+// se detecta al usarlo (conflicto en la sincronización) y se repara entonces: no se
+// reconstruye por temor. Solo la escribe una corrida con confianza que constató el mes en
+// curso con datos y los meses anteriores cubiertos (marca o la propia corrida). Nunca
+// retrocede. No se sincroniza: es conocimiento local, como las demás marcas.
+const COBERTURA = '_cobertura';
+const DIA = 86400000;
+const fechaDia = (t) => new Date(t).toISOString().slice(0, 10);
+function leerCobertura(dir) {
+  try {
+    const t = fs.readFileSync(path.join(dir, COBERTURA), 'utf8').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+    const ms = Date.parse(t + 'T00:00:00Z');
+    return Number.isFinite(ms) && fechaDia(ms) === t ? ms : null;
+  } catch { return null; }
+}
+function escribirCobertura(dir, hastaDiaMs) {
+  const previo = leerCobertura(dir);
+  if (previo != null && previo >= hastaDiaMs) return; // un inventario mayor ya escrito manda
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const ruta = path.join(dir, COBERTURA);
+  const tmp = ruta + '.tmp';
+  fs.writeFileSync(tmp, fechaDia(hastaDiaMs) + '\n', { mode: 0o600 });
+  fs.renameSync(tmp, ruta);
+}
 // Limpieza pedida por el usuario (18-nov-2026, notas de voz): los registros anteriores al
 // piso no se van a usar, y el extremo superior se recorta UNA VEZ al 17-nov-2026 inclusive
 // UTC para uniformar la base (unos activos habían sumado la vela del 18 y otros no) y
@@ -174,11 +202,20 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}).`,{tipo:'activo'});
         const dirActivo=path.join(base(),j.clase,codigo);
         let pisoVerificado=j.rapido?leerMarca(dirActivo):null, verificado=j.rapido?leerVerificado(dirActivo):null, confianza=true;
+        let cobertura=j.rapido?leerCobertura(dirActivo):null, datoEnCurso=false;
         let terminado=false;
+        const finPorInventario=async(mes)=>{
+          j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
+          if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
+          try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+          try { if(datoEnCurso && (!j.rapido || confianza)) escribirCobertura(dirActivo, j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
+          await notificar(j,`${codigo}: al dia hasta ${fechaDia(j.hasta-DIA)}; desde ${etiqueta(mes)} hacia atras ya estaba completo segun el inventario. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Al dia hasta ${fechaDia(j.hasta-DIA)}; inventario desde ${etiqueta(mes)}. ${j.indice}/${j.codigos.length} activos.`});
+        };
         const finConfiable=async(limite)=>{
           j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
           if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
           try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+          try { if(datoEnCurso && (!j.rapido || confianza)) escribirCobertura(dirActivo, j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
           await notificar(j,`${codigo}: verificado hasta ${etiqueta(limite)}; lo anterior ya estaba comprobado. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Verificado hasta ${etiqueta(limite)}. ${j.indice}/${j.codigos.length} activos.`});
         };
         while(!terminado) {
@@ -188,6 +225,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             try { escribirMarca(dirActivo, yymm(pisoEf)); } catch(e) { console.error('No pude escribir la marca de primer mes:', e.message); }
             try { if(!j.rapido || confianza) escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+            try { if(datoEnCurso && (!j.rapido || confianza)) escribirCobertura(dirActivo, j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
             await notificar(j,`${codigo}: tramo desde ${etiqueta(pisoEf)} cubierto; no bajo mas. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Tramo desde ${etiqueta(pisoEf)} cubierto. ${j.indice}/${j.codigos.length} activos.`});
             continue;
           }
@@ -196,14 +234,32 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           const mes=j.mes;
           const destino=path.join(base(),j.clase,codigo,`${yymm(mes)}_${codigo}`);
           if(j.rapido) {
+            // Inventario de cobertura (ancla operativa cuando existe): el registro ya está
+            // completo hasta _cobertura. Los meses cubiertos no se reconsultan ni se releen;
+            // solo se piden los días desde el último día cubierto hasta el corte, aunque el
+            // atraso cruce varios meses. Si el archivo del mes en curso desapareció, cae a la
+            // consulta y lo reconstruye. Un vacío inesperado apaga la confianza y la
+            // cobertura no avanza sobre huecos.
+            const finEsperado=Math.min(siguiente(mes),j.hasta)-DIA;
+            if(confianza && cobertura!=null && cobertura>=finEsperado) {
+              if(mes===j.inicial && fs.existsSync(destino)) {
+                j.indice++;j.mes=j.inicial;j.conteo.activos++;j.conteo.existentes++;terminado=true;
+                if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
+                try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+                await notificar(j,`${codigo}: completo hasta ${fechaDia(cobertura)} segun el inventario; nada que pedir. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Completo hasta ${fechaDia(cobertura)}; sin consultas. ${j.indice}/${j.codigos.length} activos.`});
+                continue;
+              }
+              if(mes!==j.inicial) { await finPorInventario(mes); continue; }
+            }
             // Meses ya verificados por una corrida anterior con confianza: se confían, no se recorren.
-            if(confianza && verificado!=null && mes<=verificado) { await finConfiable(verificado); continue; }
+            // (Solo sin inventario: con _cobertura presente, ella manda y el atraso se consulta.)
+            if(confianza && cobertura==null && verificado!=null && mes<=verificado) { await finConfiable(verificado); continue; }
             // Piso verificado: debajo de la marca ya lo comprobó una bajada completa.
-            if(confianza && pisoVerificado && mes<pisoVerificado) { await finConfiable(pisoVerificado); continue; }
+            if(confianza && cobertura==null && pisoVerificado && mes<pisoVerificado) { await finConfiable(pisoVerificado); continue; }
             // Mes cerrado con archivo local completo: se comprueba en disco, sin consulta.
             // El mes en curso nunca se salta. Sin marca, la bajada valida en disco hasta el
             // archivo más viejo y la primera consulta sin archivo fija la frontera.
-            if(confianza && mes!==j.inicial && fs.existsSync(destino) && serieLocalCompleta(destino,mes,j.hasta)) {
+            if(confianza && cobertura==null && mes!==j.inicial && fs.existsSync(destino) && serieLocalCompleta(destino,mes,j.hasta)) {
               j.mes=anterior(mes);j.conteo.existentes++;
               await notificar(j,`${codigo}, ${etiqueta(mes)}: comprobado en disco, sin consulta. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: en disco.`});
               continue;
@@ -242,6 +298,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             // La bajada llegó al vacío con todo verificado (en rápido, solo si no hubo huecos):
             // los meses hasta el último cerrado quedan confiables para la próxima puesta al día.
             try { if(!j.rapido || confianza) escribirVerificado(path.dirname(destino), yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+            try { if(datoEnCurso && (!j.rapido || confianza)) escribirCobertura(path.dirname(destino), j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             await notificar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Historial terminado: ${etiqueta(mes)} sin velas. ${j.indice}/${j.codigos.length} activos.`});
@@ -250,6 +307,15 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             if(modo==='nuevo') {publicarSerie(destino,Buffer.from(cuerpo));j.conteo.guardados++;}
             else if(modo==='ampliar') {publicarSerie(destino,Buffer.from(cuerpo),previoBuf);j.conteo.ampliados=(j.conteo.ampliados||0)+1;}
             else j.conteo.existentes++;
+            if(mes===j.inicial) {
+              datoEnCurso=true;
+              // Mes en curso constatado con datos. La cobertura solo se fija al corte si lo
+              // anterior ya está cubierto de verdad: con inventario, solo si él mismo cubre el
+              // mes anterior completo; sin inventario, solo _verificado (que avala hasta su mes;
+              // _primer-mes NO avala los meses entre su piso y aquí: se recorren). Si el atraso
+              // cruza meses o hay un hueco, la bajada sigue y la cobertura no avanza sobre él.
+              try { if (confianza && (cobertura==null ? (verificado!=null && verificado>=anterior(j.inicial)) : cobertura>=j.inicial-DIA)) escribirCobertura(dirActivo, j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
+            }
             j.mes=anterior(mes);
             const ndias=new Date(siguiente(mes)-1).getUTCDate();
             const dias=new Set(datos.map(v=>new Date(v[0]).getUTCDate()));

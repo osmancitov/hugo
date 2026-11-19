@@ -119,15 +119,16 @@ test('primera corrida escribe _verificado; la segunda confia y no recorre meses 
   escribirMes(b.root, 'AAA', '2610', TREINTAYUNO); escribirMes(b.root, 'AAA', '2609', TREINTA);
   await corre(b);
   assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_verificado'), 'utf8').trim(), '2610');
+  assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), 'utf8').trim(), '2026-11-17', 'la corrida deja el inventario al corte');
   // Un mes viejo se daña entre corridas: la puesta al día confía y no lo toca; lo repara «registra todo».
   const viejo = path.join(b.root, 'velas/cripto/AAA/2609_AAA');
   fs.writeFileSync(viejo, '[["roto"]]');
   b.llamadas.length = 0; b.lineas.length = 0;
   await corre(b);
-  assert.deepEqual(b.llamadas, ['2611']);
+  assert.deepEqual(b.llamadas, [], 'segunda corrida: el inventario cubre el corte, cero consultas');
   assert.equal(fs.readFileSync(viejo, 'utf8'), '[["roto"]]', 'no re-valida ni repara lo ya verificado');
   assert.ok(!b.lineas.some((l) => /en disco/.test(l)), 'no recorre meses confiables');
-  assert.ok(b.lineas.some((l) => l.startsWith('Verificado hasta octubre de 2026.')));
+  assert.ok(b.lineas.some((l) => l.startsWith('Completo hasta 2026-11-17; sin consultas.')));
  } finally { b.fin(); }
 });
 
@@ -164,5 +165,70 @@ test('registra continuar retoma una puesta al dia pausada en el mismo modo', asy
   await corre(b);
   const j = leerEstado(path.join(b.root, 'estado.json'));
   assert.equal(j.rapido, true);
+ } finally { b.fin(); }
+});
+
+test('inventario al dia: sin consultas aunque no haya marcas', async () => {
+ const b = banco({ 2611: DIECISIETE });
+ try {
+  escribirMes(b.root, 'AAA', '2611', DIECISIETE);
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), '2026-11-17\n');
+  await corre(b);
+  assert.deepEqual(b.llamadas, []);
+  assert.ok(b.lineas.some((l) => l.startsWith('Completo hasta 2026-11-17; sin consultas.')));
+ } finally { b.fin(); }
+});
+
+test('atraso de varios meses: pide solo los dias que faltan y la cobertura no salta huecos', async () => {
+ const b = banco({ 2611: DIECISIETE, 2610: TREINTAYUNO });
+ try {
+  escribirMes(b.root, 'AAA', '2611', DIECISIETE);
+  escribirMes(b.root, 'AAA', '2610', Array.from({ length: 20 }, (_, i) => i + 1)); // octubre solo hasta el 20
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), '2026-10-20\n');
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_verificado'), '2610\n');
+  await corre(b);
+  assert.deepEqual(b.llamadas, ['2611', '2610'], 'consulta el mes en curso y el mes atrasado; la marca no confia por encima del inventario');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/2610_AAA'))).length, 31, 'octubre quedo completo');
+  assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), 'utf8').trim(), '2026-11-17');
+  assert.ok(b.lineas.some((l) => /inventario desde septiembre/.test(l)), b.lineas.join(' | '));
+  b.llamadas.length = 0; b.lineas.length = 0;
+  await corre(b);
+  assert.deepEqual(b.llamadas, [], 'segunda corrida: todo cubierto');
+ } finally { b.fin(); }
+});
+
+test('archivo del mes en curso ausente con inventario al dia: se reconstruye con una consulta', async () => {
+ const b = banco({ 2611: DIECISIETE });
+ try {
+  fs.mkdirSync(path.join(b.root, 'velas/cripto/AAA'), { recursive: true });
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), '2026-11-17\n');
+  await corre(b);
+  assert.deepEqual(b.llamadas, ['2611'], 'la ausencia real invalida el atajo y reconstruye');
+  assert.ok(fs.existsSync(path.join(b.root, 'velas/cripto/AAA/2611_AAA')));
+ } finally { b.fin(); }
+});
+
+test('alteracion con inventario al dia no provoca reconsulta: se detecta al usar (sync)', async () => {
+ const b = banco({ 2611: DIECISIETE });
+ try {
+  escribirMes(b.root, 'AAA', '2611', DIECISIETE);
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), '2026-11-17\n');
+  const p = path.join(b.root, 'velas/cripto/AAA/2611_AAA');
+  const datos = JSON.parse(fs.readFileSync(p)); datos[3][4] = '99';
+  fs.writeFileSync(p, JSON.stringify(datos));
+  await corre(b);
+  assert.deepEqual(b.llamadas, [], 'confia: no reconsulta ni revalida; el conflicto lo detecta la sincronizacion al usar el dato');
+ } finally { b.fin(); }
+});
+
+test('vacio inesperado sobre el piso apaga la confianza y la cobertura no avanza', async () => {
+ const b = banco({ 2611: DIECISIETE, 2610: [], 2609: TREINTA, 2608: [] });
+ try {
+  escribirMes(b.root, 'AAA', '2611', DIECISIETE);
+  fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_primer-mes'), '2609\n');
+  await corre(b);
+  assert.deepEqual(b.llamadas, ['2611', '2610', '2609', '2608'], 'el hueco sigue consultando hasta el vacio real');
+  assert.ok(!fs.existsSync(path.join(b.root, 'velas/cripto/AAA/_cobertura')), 'sin cobertura: el hueco impide avanzarla');
+  assert.ok(!fs.existsSync(path.join(b.root, 'velas/cripto/AAA/_verificado')), 'sin marca de verificado');
  } finally { b.fin(); }
 });

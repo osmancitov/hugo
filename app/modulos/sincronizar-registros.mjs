@@ -5,10 +5,19 @@
 // usuario); lo que solo esta en GitHub baja sin pisar (tmp + enlace duro, como el registro). Lo que
 // esta en los dos lados con contenido DISTINTO que no sea una ampliacion estricta es un conflicto: se reporta y no se toca en ningun
 // lado. La comparacion es por contenido (la huella sha de blob de git), nunca por nombre ni fecha.
+//
+// Transporte git agrupado (decision del usuario, 18-nov-2026, notas de voz): nada de subir ni
+// bajar archivo por archivo por la REST API ("uno a la vez en una cola enorme"). La pasada trabaja
+// sobre un clon local persistente del repo (HUGO_REPO_SYNC_DIR, por defecto
+// ~/.local/share/hugo/repo-sync): fetch + reset a origin/main, comparacion y lectura de blobs en
+// local, y la subida como UN add + commit + push sin force. Si GitHub avanza entre el fetch y el
+// push, el push sale rechazado (non-fast-forward): se re-lee, se rearma la subida sobre lo ultimo
+// y se reintenta, acotado; nunca se pisa lo ajeno. Requiere git instalado en la Debian; sin git la
+// pasada avisa claro y no toca nada.
 // Credencial: keys/.github-key, un token de GitHub que el usuario ya tiene en la Debian. Hugo lo lee
-// solo aqui y NUNCA lo imprime ni lo envia; antes de ofrecer subida comprueba contra la API que el
-// token tiene permiso de escritura en el repo. Sin el archivo o sin ese permiso, la bajada funciona
-// igual (el repo es publico) y la subida queda pendiente, avisando.
+// solo aqui y NUNCA lo imprime ni lo escribe en disco: va por variable de entorno a un script
+// GIT_ASKPASS propio cuando git pide credenciales; la URL del remoto no lleva clave. Sin el archivo
+// o sin escritura, la bajada funciona igual (el repo es publico) y la subida queda pendiente, avisando.
 // Sin confirmacion, dentro de la sincronizacion autorizada. Las series mensuales solo crecen
 // cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
 // cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
@@ -16,9 +25,9 @@
 // sincroniza en NINGUN sentido — los archivos AAMM anteriores ni bajan del repo ni suben de
 // la Debian; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
 // planeada con un arbol viejo tampoco puede reintroducirlos.
-// Recuperacion: los blobs ya preparados quedan anotados en un punto de control en disco
-// (velas-24h/.punto-sincronizar.json) y el arbol se crea por lotes encadenados (base_tree), con
-// reintento si GitHub responde 5xx, asi una pasada que muere al publicar no vuelve a subir todo.
+// Recuperacion: el clon es duradero por construccion. Una pasada interrumpida deja copias sin
+// publicar en el clon; la siguiente empieza con fetch + reset --hard a origin/main y rearma la
+// subida desde cero, asi nada a medio publicar persiste ni se sube dos veces.
 // Mudanza unica de lo heredado (una sola vez): los registros de la ruta anterior
 // velas-24h/<ACTIVO>/ (solo SPCX, una accion tokenizada) pasan a velas-24h/stock/<ACTIVO>/, con copia verificada por
 // contenido antes de quitar el original, y en GitHub como renombrado del mismo contenido. Si algo no coincide, queda todo.
@@ -26,9 +35,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
+
+const execFileP = promisify(execFile);
 
 const PREFIJO = 'registros/velas-24h';
 // AAMM del piso: los nombres de archivo empiezan por el mes (ARCHIVO_OK exige \d{4}_).
@@ -42,6 +55,7 @@ const ARCHIVO_OK = /^\d{4}_[\p{L}\p{N}]{1,15}$/u;
 const ACTIVO_OK = /^[\p{L}\p{N}]{1,15}$/u;
 const MAX_BYTES = 5 * 1024 * 1024; // un registro mensual pesa KB; algo mayor es un error a revisar a mano
 const RAMA = 'main';
+const INTENTOS_PUSH = 3; // non-fast-forward: re-leer y rearmar, acotado
 
 // Huella de blob de git del contenido local: asi se compara con el arbol del repo sin bajarlo.
 const shaBlob = (buf) => crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${buf.length}\0`, 'latin1'), buf])).digest('hex');
@@ -49,6 +63,8 @@ const shaBlob = (buf) => crypto.createHash('sha1').update(Buffer.concat([Buffer.
 export function registrar(ctx) {
   const { app, botToken } = ctx;
   const dirBase = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
+  const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
+  const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
   ctx.alIniciar(async () => {
     try {
@@ -60,48 +76,77 @@ export function registrar(ctx) {
   });
   const decir = (event, text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text });
   let enCurso = false;
-  const esperar = ctx.esperar || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
 
-  // Punto de control de la subida: cada blob ya preparado en GitHub se anota en disco (huella del
-  // contenido local -> sha del blob). Si una pasada muere despues de subir blobs (p.ej. GitHub
-  // responde 502 al crear el arbol), la siguiente NO los resube: los blobs son por contenido y
-  // GitHub los conserva aunque el commit nunca se publicara. Se guarda cada 25 subidas y antes de
-  // publicar; al publicar el commit se borra, y si GitHub responde 422 (un blob anotado ya no
-  // existe) tambien se borra para que la proxima pasada los resuba.
-  const rutaPunto = () => path.join(dirBase(), '.punto-sincronizar.json');
-  function leerPunto(repo) {
+  // --- Transporte git local ---
+  // El token viaja SOLO por entorno al script askpass; jamas en la linea de comandos, la URL o el disco.
+  const rutaAskpass = () => path.join(path.dirname(clonDir()), 'hugo-git-askpass.sh');
+  function asegurarAskpass() {
     try {
-      const j = JSON.parse(fs.readFileSync(rutaPunto(), 'utf8'));
-      if (j && j.repo === repo && j.blobs && typeof j.blobs === 'object') return j;
-    } catch { /* sin punto de control valido */ }
-    return { repo, blobs: {} };
+      fs.mkdirSync(path.dirname(rutaAskpass()), { recursive: true, mode: 0o700 });
+      fs.writeFileSync(rutaAskpass(), '#!/bin/sh\nprintf %s "$HUGO_GH_TOKEN"\n', { mode: 0o700 });
+    } catch (e) { console.error('No pude preparar el askpass de git:', e.message); }
   }
-  function guardarPunto(punto) {
+  async function git(args, { token = '', cwd, buffer = false } = {}) {
+    const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+    if (token) { asegurarAskpass(); env.GIT_ASKPASS = rutaAskpass(); env.HUGO_GH_TOKEN = token; }
     try {
-      const tmp = `${rutaPunto()}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(punto));
-      fs.renameSync(tmp, rutaPunto());
-    } catch (e) { console.error('Punto de control de sincronizacion:', e.message); }
+      const r = await execFileP('git', args, { cwd: cwd ?? clonDir(), env, maxBuffer: 64 * 1024 * 1024, timeout: 300000, ...(buffer ? { encoding: 'buffer' } : {}) });
+      return r.stdout;
+    } catch (e) {
+      const salida = `${e.stderr || ''} ${e.message || ''}`;
+      if (/403|permission denied|authentication failed|could not read username|invalid username|not permitted/i.test(salida)) { const x = new Error('el token no tiene escritura en este repo o falta'); x.sinPermiso = true; throw x; }
+      e.salidaGit = salida.slice(0, 400);
+      throw e;
+    }
   }
-  function borrarPunto() { try { fs.rmSync(rutaPunto(), { force: true }); } catch { /* nada que borrar */ } }
+  let gitComprobado = false;
+  async function hayGit() {
+    if (gitComprobado) return true;
+    try { await execFileP('git', ['--version'], { timeout: 15000 }); gitComprobado = true; return true; } catch { return false; }
+  }
+  async function asegurarClon(repo, token) {
+    const dir = clonDir(), url = urlRepo(repo);
+    if (!fs.existsSync(path.join(dir, '.git'))) {
+      fs.mkdirSync(path.dirname(dir), { recursive: true, mode: 0o700 });
+      await git(['clone', '--quiet', '--single-branch', '--branch', RAMA, url, dir], { token, cwd: path.dirname(dir) });
+    } else {
+      const actual = String(await git(['remote', 'get-url', 'origin'])).trim();
+      if (actual !== url) await git(['remote', 'set-url', 'origin', url]);
+    }
+  }
+  // Deja el clon en la punta de origin/main: descarta cualquier resto de una pasada interrumpida.
+  async function traerPunta(token) {
+    await git(['fetch', '--quiet', '--prune', 'origin'], { token });
+    await git(['reset', '--hard', '--quiet', `origin/${RAMA}`]);
+  }
+  async function commitGit(mensaje) {
+    const autor = ['-c', 'user.name=Osmancito', '-c', 'user.email=osmanvielma@gmail.com'];
+    await git([...autor, 'commit', '--quiet', '-m', mensaje]);
+    return String(await git(['rev-parse', 'HEAD'])).trim();
+  }
 
-  async function api(repo, ruta, { token = '', method = 'GET', body } = {}) {
-    const headers = { 'User-Agent': 'hugo', Accept: 'application/vnd.github+json' };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    let datos;
-    if (body !== undefined) { headers['Content-Type'] = 'application/json'; datos = JSON.stringify(body); }
-    const r = await fetch(`https://api.github.com/repos/${repo}${ruta}`, { method, headers, body: datos, signal: AbortSignal.timeout(30000) });
-    if (!r.ok) { const e = new Error(`GitHub respondio ${r.status} en ${ruta || '/'}`); e.status = r.status; throw e; }
-    return r.json();
+  // Arbol del repo (ruta -> sha de blob), leido del clon local tras traerPunta: sin red.
+  async function remotos() {
+    const salida = String(await git(['-c', 'core.quotePath=false', 'ls-tree', '-r', `origin/${RAMA}`]));
+    const mapa = new Map(), blobs = new Map();
+    const heredados = [];
+    for (const linea of salida.split('\n')) {
+      if (!linea) continue;
+      const m = /^\d+ blob ([0-9a-f]{40})\t(.+)$/.exec(linea);
+      if (!m) continue;
+      const [, sha, p] = m;
+      const nombre = p.slice(p.lastIndexOf('/') + 1);
+      if (bajoPiso(nombre)) continue; // piso fijo: lo anterior a ago-2026 no baja ni se muda
+      if (RUTA_OK.test(p) && !(p.split('/')[2] === 'cripto' && EXCLUIDOS.has(p.split('/')[3]))) { mapa.set(p, sha); blobs.set(p, sha); }
+      else if (RUTA_HEREDADA.test(p)) { heredados.push(p); blobs.set(p, sha); } // ruta anterior sin clase: no se sincroniza, solo se muda
+    }
+    return { mapa, heredados, blobs };
   }
-
-  // ¿El token existe y tiene escritura en el repo? Solo se comprueba cuando hay algo que subir.
-  async function puedeSubir(repo, token) {
-    if (!token) return false;
-    try {
-      const info = await api(repo, '', { token });
-      return info?.permissions?.push === true;
-    } catch { return false; }
+  // Lee un blob del clon por su huella: contenido exacto, sin depender del checkout.
+  async function leerBlob(sha) {
+    const buf = await git(['cat-file', 'blob', sha], { buffer: true });
+    if (!buf.length || buf.length > MAX_BYTES || shaBlob(buf) !== sha) throw Error('El blob remoto no tiene el contenido o tamano esperado.');
+    return buf;
   }
 
   // Archivos locales del registro: [{ rel, ruta, bytes }], solo nombres con la forma acordada.
@@ -131,7 +176,7 @@ export function registrar(ctx) {
 
   // Mudanza local de lo heredado: velas-24h/<ACTIVO>/yymm_ACTIVO -> velas-24h/stock/<ACTIVO>/yymm_ACTIVO.
   // Solo COPIA: a un temporal, comprueba por sha256 que es identica y la enlaza sin pisar. El original NO se quita aqui:
-  // lo quita retirarLocalHeredado() despues de releer GitHub y ver la ruta nueva identica y la vieja ya ausente.
+  // lo quita retirarLocalHeredado() despues de releer el repo y ver la ruta nueva identica y la vieja ya ausente.
   // Si el destino ya existe con otro contenido, no toca ninguno de los dos y lo reporta.
   function mudarLocalHeredado() {
     const movidos = [], conflictos = [], fallos = [];
@@ -170,9 +215,9 @@ export function registrar(ctx) {
     return { movidos, conflictos, fallos };
   }
 
-  // Quita los originales locales heredados SOLO si, con una lectura de GitHub posterior a todo cambio remoto, la ruta nueva
-  // existe con la misma huella que la copia local, la ruta vieja ya no esta en GitHub y la copia local sigue identica al original.
-  // Cualquier duda (sin lectura, sin copia remota, vieja aun en GitHub) conserva el original.
+  // Quita los originales locales heredados SOLO si, con una lectura del repo posterior a todo cambio remoto, la ruta nueva
+  // existe con la misma huella que la copia local, la ruta vieja ya no esta en el repo y la copia local sigue identica al original.
+  // Cualquier duda (sin lectura, sin copia remota, vieja aun en el repo) conserva el original.
   function retirarLocalHeredado(visto, heredadosRemotos) {
     const retirados = [], conservados = [];
     let activos = []; try { activos = fs.readdirSync(dirBase()); } catch { return { retirados, conservados }; }
@@ -196,37 +241,14 @@ export function registrar(ctx) {
     return { retirados, conservados };
   }
 
-  // Arbol del repo (ruta -> sha de blob), solo rutas del registro con forma valida.
-  async function remotos(repo, token) {
-    const ref = await api(repo, `/git/ref/heads/${RAMA}`, { token });
-    const commit = await api(repo, `/git/commits/${ref.object.sha}`, { token });
-    const arbol = await api(repo, `/git/trees/${commit.tree.sha}?recursive=1`, { token });
-    if (arbol.truncated) throw new Error('el arbol del repo es demasiado grande para leerlo completo');
-    const mapa = new Map();
-    const heredados = [];
-    for (const e of arbol.tree || []) {
-      if (e.type !== 'blob') continue;
-      const nombre = e.path.slice(e.path.lastIndexOf('/') + 1);
-      if (bajoPiso(nombre)) continue; // piso fijo: lo anterior a ago-2026 no baja ni se muda
-      if (RUTA_OK.test(e.path) && !(e.path.split('/')[2] === 'cripto' && EXCLUIDOS.has(e.path.split('/')[3]))) mapa.set(e.path, e.sha);
-      else if (RUTA_HEREDADA.test(e.path)) heredados.push(e.path); // ruta anterior sin clase: no se sincroniza, solo se muda
-    }
-    return { mapa, heredados };
-  }
-
-  // Renombra en GitHub lo heredado a la ruta con clase, en UN commit, sin subir contenido: el blob es el mismo (misma huella),
+  // Renombra en el repo lo heredado a la ruta con clase, en UN commit, sin subir contenido: el blob es el mismo (misma huella),
   // asi que el contenido movido es identico por construccion. Solo mueve lo que la Debian ya tiene identico en la ruta nueva;
   // si el destino remoto existe con otro contenido, o no hay copia local identica, no lo toca y lo reporta.
-  async function mudarRemotoHeredado(repo, token) {
-    const ref = await api(repo, `/git/ref/heads/${RAMA}`, { token });
-    const baseCommit = await api(repo, `/git/commits/${ref.object.sha}`, { token });
-    const arbol = await api(repo, `/git/trees/${baseCommit.tree.sha}?recursive=1`, { token });
-    if (arbol.truncated) throw new Error('el arbol del repo es demasiado grande para leerlo completo');
-    const blobs = new Map();
-    for (const e of arbol.tree || []) if (e.type === 'blob') blobs.set(e.path, e.sha);
-    const viejos = [...blobs.keys()].filter((r) => RUTA_HEREDADA.test(r)).sort();
+  async function mudarRemotoHeredado(token) {
+    const { blobs, heredados } = await remotos();
+    const viejos = [...heredados].sort();
     if (!viejos.length) return { movidos: [], pendientes: [] };
-    const entradas = [], movidos = [], pendientes = [];
+    const movidos = [], pendientes = [];
     for (const viejo of viejos) {
       const [, a, n] = viejo.match(RUTA_HEREDADA);
       const nuevo = `${PREFIJO}/${CLASE_HEREDADA}/${a}/${n}`;
@@ -238,52 +260,37 @@ export function registrar(ctx) {
       const shaNuevo = blobs.get(nuevo);
       if (shaLocal !== shaViejo) { pendientes.push(`${corto}: la Debian no tiene una copia id\u00e9ntica en ${CLASE_HEREDADA}/`); continue; }
       if (shaNuevo !== undefined && shaNuevo !== shaViejo) { pendientes.push(`${corto}: ya existe en ${CLASE_HEREDADA}/ con otro contenido`); continue; }
-      if (shaNuevo === undefined) entradas.push({ path: nuevo, mode: '100644', type: 'blob', sha: shaViejo });
-      entradas.push({ path: viejo, mode: '100644', type: 'blob', sha: null });
+      if (shaNuevo === undefined) await git(['mv', viejo, nuevo]);
+      else await git(['rm', '--quiet', viejo]); // el destino ya existe identico: basta quitar la ruta vieja
       movidos.push(corto);
     }
     if (!movidos.length) return { movidos, pendientes };
-    const tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: baseCommit.tree.sha, tree: entradas } });
-    const commit = await api(repo, '/git/commits', {
-      token, method: 'POST',
-      body: {
-        message: `Registros de velas: mudanza a ${CLASE_HEREDADA}/ (${movidos.join(', ')})`,
-        tree: tree.sha, parents: [ref.object.sha],
-        author: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
-        committer: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
-      },
-    });
-    await api(repo, `/git/refs/heads/${RAMA}`, { token, method: 'PATCH', body: { sha: commit.sha } }); // sin force
-    return { movidos, pendientes, commit: commit.sha };
+    const commit = await commitGit(`Registros de velas: mudanza a ${CLASE_HEREDADA}/ (${movidos.join(', ')})`);
+    await git(['push', 'origin', `HEAD:${RAMA}`], { token }); // sin force: un avance ajeno se rechaza y se reporta
+    return { movidos, pendientes, commit };
   }
 
-  async function leerBlob(repo,token,sha) {
-    const blob=await api(repo,`/git/blobs/${sha}`,{token});
-    const buf=Buffer.from(String(blob.content||''),'base64');
-    if(!buf.length||buf.length>MAX_BYTES||shaBlob(buf)!==sha)throw Error('El blob remoto no tiene el contenido o tamano esperado.');
-    return buf;
+  function relacion(local, remoto, rel) {
+    return compararSeries(JSON.parse(local), JSON.parse(remoto), mesDeRuta(rel));
   }
-  function relacion(local,remoto,rel) {
-    return compararSeries(JSON.parse(local),JSON.parse(remoto),mesDeRuta(rel));
-  }
-  async function planear(repo, token) {
-    const { mapa, heredados } = await remotos(repo, token);
+  async function planear() {
+    const { mapa, heredados } = await remotos();
     const subir = [], bajar = [], conflictos = [];
     const visto = new Map(mapa);
     let iguales = 0;
     for (const f of locales()) {
       const shaRemota = mapa.get(f.rel);
       if (shaRemota === undefined) { subir.push(f); continue; }
-      const local=fs.readFileSync(f.ruta);
+      const local = fs.readFileSync(f.ruta);
       if (shaBlob(local) === shaRemota) iguales++;
       else {
-        const remoto=await leerBlob(repo,token,shaRemota);
+        const remoto = await leerBlob(shaRemota);
         try {
-          const modo=relacion(local,remoto,f.rel);
-          if(modo==='ampliar')bajar.push({rel:f.rel,sha:shaRemota});
-          else if(modo==='conservar')subir.push(f);
+          const modo = relacion(local, remoto, f.rel);
+          if (modo === 'ampliar') bajar.push({ rel: f.rel, sha: shaRemota });
+          else if (modo === 'conservar') subir.push(f);
           else iguales++;
-        } catch {conflictos.push(f.rel);}
+        } catch { conflictos.push(f.rel); }
       }
       mapa.delete(f.rel);
     }
@@ -298,21 +305,21 @@ export function registrar(ctx) {
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
   // Baja sin pisar: tmp + enlace duro, el mismo criterio que el registro de velas.
-  async function bajarArchivos(repo, token, bajar, progreso=async()=>{}, verificar=()=>{}) {
+  async function bajarArchivos(bajar, progreso = async () => {}, verificar = () => {}) {
     const hechos = [], fallos = [];
     for (const b of bajar) {
       verificar();
       try {
-        const buf=await leerBlob(repo,token,b.sha);
-        const destino=path.join(dirBase(),b.rel.slice(PREFIJO.length+1));
-        if(!validarSerie(JSON.parse(buf),mesDeRuta(b.rel)).length)throw Error('No sincronizo un archivo mensual vacio.');
-        if(fs.existsSync(destino)) {
-          if(!fs.lstatSync(destino).isFile())throw Error('El destino no es un archivo normal.');
-          const previo=fs.readFileSync(destino);
-          const modo=relacion(previo,buf,b.rel);
-          if(modo==='ampliar')publicarSerie(destino,buf,previo);
+        const buf = await leerBlob(b.sha);
+        const destino = path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
+        if (!validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+        if (fs.existsSync(destino)) {
+          if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
+          const previo = fs.readFileSync(destino);
+          const modo = relacion(previo, buf, b.rel);
+          if (modo === 'ampliar') publicarSerie(destino, buf, previo);
           else continue; // iguales o la Debian tiene una extension mayor: nunca recortar
-        } else publicarSerie(destino,buf);
+        } else publicarSerie(destino, buf);
         hechos.push(b.rel);
         await progreso(`Descarga: ${hechos.length}/${bajar.length} archivo(s) copiados.`);
       } catch (e) { fallos.push(`${b.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`.slice(0, 160)); }
@@ -320,124 +327,75 @@ export function registrar(ctx) {
     return { hechos, fallos };
   }
 
-  // Sube en UN solo commit. Relee la punta de la rama justo antes: lo que mientras tanto aparezca en
-  // el repo con contenido distinto se omite y se reporta (del plan a la ejecucion nunca se pisa).
-  async function subirArchivos(repo, token, subir, progreso=async()=>{}, verificar=()=>{}) {
+  // Sube en UN solo commit desde el clon: copia los archivos al arbol de trabajo, add, commit y push
+  // sin force. Si la rama avanzo entre el fetch y el push (non-fast-forward), re-lee la punta,
+  // rearma la subida sobre lo ultimo (lo que mientras tanto aparezca con contenido distinto se omite
+  // y se reporta: del plan a la ejecucion nunca se pisa) y reintenta, acotado a INTENTOS_PUSH.
+  async function subirArchivos(token, subir, progreso = async () => {}, verificar = () => {}) {
     verificar();
-    const ref = await api(repo, `/git/ref/heads/${RAMA}`, { token });
-    const baseCommit = await api(repo, `/git/commits/${ref.object.sha}`, { token });
-    const arbol = await api(repo, `/git/trees/${baseCommit.tree.sha}?recursive=1`, { token });
-    if (arbol.truncated) throw new Error('el arbol del repo es demasiado grande para leerlo completo');
-    const actuales = new Map();
-    for (const e of arbol.tree || []) if (e.type === 'blob' && RUTA_OK.test(e.path)) actuales.set(e.path, e.sha);
-    const items = [], omitidos = [];
-    const punto = leerPunto(repo);
-    const enEstaPasada = new Set(subir.map((f) => f.rel));
-    for (const rel of Object.keys(punto.blobs)) if (!enEstaPasada.has(rel)) delete punto.blobs[rel]; // solo sirven los de esta subida
-    let guardados = 0;
-    for (const f of subir) {
-      verificar();
-      const buf = fs.readFileSync(f.ruta);
-      const shaLocal = shaBlob(buf);
-      const shaRemota = actuales.get(f.rel);
-      if (shaRemota === shaLocal) continue; // ya esta igual
-      try {
-        if(!validarSerie(JSON.parse(buf),mesDeRuta(f.rel)).length)throw Error('No sincronizo un archivo mensual vacio.');
-        if(shaRemota!==undefined) {
-          const remoto=await leerBlob(repo,token,shaRemota);
-          const modo=relacion(remoto,buf,f.rel);
-          if(modo!=='ampliar')continue; // remoto igual o mayor: no recortar
-        }
-      } catch(e) {omitidos.push(`${f.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`);continue;}
-      const previo = punto.blobs[f.rel];
-      if (previo && previo.contenido === shaLocal) {
-        items.push({ path: f.rel, mode: '100644', type: 'blob', sha: previo.blob }); // ya preparado en una pasada anterior
-      } else {
-        const blob = await api(repo, '/git/blobs', { token, method: 'POST', body: { content: buf.toString('base64'), encoding: 'base64' } });
-        items.push({ path: f.rel, mode: '100644', type: 'blob', sha: blob.sha });
-        punto.blobs[f.rel] = { contenido: shaLocal, blob: blob.sha };
-        if (++guardados % 25 === 0) guardarPunto(punto);
+    const omitidos = [];
+    for (let intento = 1; intento <= INTENTOS_PUSH; intento++) {
+      if (intento > 1) {
+        await traerPunta(token);
+        await progreso(`GitHub avanzo mientras subia; rearmo la subida sobre lo ultimo (intento ${intento} de ${INTENTOS_PUSH}).`);
       }
-      await progreso(`Subida: ${items.length}/${subir.length} archivo(s) preparados en GitHub; aun sin publicar el commit.`);
-    }
-    if (!items.length) { borrarPunto(); return { commit: null, subidos: [], omitidos }; }
-    verificar(); // frena antes de publicar el commit: blobs preparados no cuentan como subida
-    guardarPunto(punto);
-    await progreso(`Publicando commit con ${items.length} archivo(s); falta confirmar la rama.`);
-    // Crear el arbol es el paso donde GitHub agota su tiempo si lleva miles de entradas de una
-    // vez (su propio 502 lo sugiere: «consider building the tree incrementally»). Se construye POR
-    // LOTES encadenados con base_tree: cada lote parte del arbol anterior, asi los archivos fuera
-    // del lote (y ajenos al registro) se conservan y el mismo path se pisa. Si GitHub responde 5xx
-    // se reintenta ese lote dos veces con esperas prudentes; lo ya preparado queda en el punto de
-    // control. Un 422 (un blob anotado ya no existe) invalida el punto para que la proxima resuba.
-    const LOTE = 300;
-    let tree = { sha: baseCommit.tree.sha };
-    // Reanudar la cadena anotada en el punto de control: solo vale si la rama sigue en el mismo
-    // commit y cada entrada ya encadenada coincide con lo que toca subir ahora; si no, se descarta
-    // y se arma desde el arbol actual. Lo ya encadenado vive en GitHub, y el ref sin force sigue
-    // protegiendo cualquier cambio ajeno si la rama avanzo entretanto.
-    let restantes = items, aplicadas = {};
-    if (punto.arbol && punto.arbol.base === ref.object.sha) {
-      const hechas = punto.arbol.hechas || {};
-      const porRel = new Map(items.map((i) => [i.path, i.sha]));
-      if (Object.entries(hechas).every(([rel, sha]) => porRel.get(rel) === sha)) {
-        tree = { sha: punto.arbol.sha };
-        aplicadas = { ...hechas };
-        restantes = items.filter((i) => !(i.path in hechas));
-        if (restantes.length && Object.keys(hechas).length) await progreso(`Reanudo la publicacion del arbol: ya estaban ${Object.keys(hechas).length}/${items.length} entradas encadenadas.`);
-      }
-    }
-    const lotes = [];
-    for (let i = 0; i < restantes.length; i += LOTE) lotes.push(restantes.slice(i, i + LOTE));
-    for (let k = 0; k < lotes.length; k++) {
-      if (items.length > LOTE) await progreso(`Publicando el arbol por lotes: ${k + 1}/${lotes.length}.`);
-      for (let intento = 1; ; intento++) {
+      const { mapa: actuales } = await remotos();
+      const items = [];
+      omitidos.length = 0;
+      for (const f of subir) {
+        verificar();
+        const buf = fs.readFileSync(f.ruta);
+        const shaLocal = shaBlob(buf);
+        const shaRemota = actuales.get(f.rel);
+        if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          tree = await api(repo, '/git/trees', { token, method: 'POST', body: { base_tree: tree.sha, tree: lotes[k] } });
-          break;
-        } catch (e) {
-          if (e.status === 422) { borrarPunto(); throw e; }
-          if (e.status >= 500 && intento < 3) {
-            const espera = intento * 30000;
-            await progreso(`GitHub respondio ${e.status} al publicar el arbol; reintento en ${espera / 1000} s (intento ${intento + 1} de 3).`);
-            await esperar(espera);
-            verificar();
-            continue;
+          if (!validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+          if (shaRemota !== undefined) {
+            const remoto = await leerBlob(shaRemota);
+            const modo = relacion(remoto, buf, f.rel);
+            if (modo !== 'ampliar') continue; // remoto igual o mayor: no recortar
           }
-          throw e;
-        }
+        } catch (e) { omitidos.push(`${f.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`); continue; }
+        const destino = path.join(clonDir(), f.rel);
+        fs.mkdirSync(path.dirname(destino), { recursive: true });
+        fs.writeFileSync(destino, buf);
+        items.push(f.rel);
+        await progreso(`Subida: ${items.length}/${subir.length} archivo(s) copiados al clon; aun sin publicar el commit.`);
       }
-      for (const i of lotes[k]) aplicadas[i.path] = i.sha;
-      punto.arbol = { base: ref.object.sha, sha: tree.sha, hechas: aplicadas };
-      guardarPunto(punto);
+      if (!items.length) return { commit: null, subidos: [], omitidos };
+      verificar(); // frena antes de publicar el commit: copias en el clon no cuentan como subida
+      await progreso(`Publicando commit con ${items.length} archivo(s); falta confirmar la rama.`);
+      await git(['add', '--', ...items]);
+      const pendiente = String(await git(['status', '--porcelain', '--', ...items])).trim();
+      if (!pendiente) return { commit: null, subidos: [], omitidos }; // el arbol ya tenia ese contenido
+      const mensaje = `Registros de velas: ${items.map((i) => i.replace(`${PREFIJO}/`, '')).join(', ')}`;
+      const sha = await commitGit(mensaje);
+      try {
+        await git(['push', 'origin', `HEAD:${RAMA}`], { token }); // sin force: un avance ajeno se rechaza
+      } catch (e) {
+        if (e.sinPermiso) throw e;
+        if (intento < INTENTOS_PUSH && /non-fast-forward|fetch first|stale info|\[rejected\]/i.test(e.salidaGit || '')) continue;
+        throw e;
+      }
+      return { commit: sha, subidos: items, omitidos };
     }
-    const commit = await api(repo, '/git/commits', {
-      token, method: 'POST',
-      body: {
-        message: `Registros de velas: ${items.map((i) => i.path.replace(`${PREFIJO}/`, '')).join(', ')}`,
-        tree: tree.sha, parents: [ref.object.sha],
-        author: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
-        committer: { name: 'Osmancito', email: 'osmanvielma@gmail.com' },
-      },
-    });
-    await api(repo, `/git/refs/heads/${RAMA}`, { token, method: 'PATCH', body: { sha: commit.sha } }); // sin force: un avance ajeno se rechaza
-    borrarPunto();
-    return { commit: commit.sha, subidos: items.map((i) => i.path), omitidos };
+    throw new Error(`GitHub siguio avanzando durante ${INTENTOS_PUSH} intentos de publicar; no subi nada. La proxima pasada lo reintenta.`);
   }
 
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
   // pasada: mantiene la sincronizacion automatica configurada. No se
   // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
-  async function pasada(progreso=async()=>{}) {
+  async function pasada(progreso = async () => {}) {
     try { limpiarExcluidos(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
+    if (!(await hayGit())) return { error: 'La sincronizacion ahora trabaja con git y no lo encuentro instalado en este equipo (paquete git). No cambie nada; instalalo y repite.' };
     // stop o restart suben ctx.parada.n: la pasada frena entre archivos; lo ya copiado queda y nada se pisa.
     const parada = ctx.parada || { n: 0 };
     const marcaParada = parada.n;
     const verificar = () => { if (parada.n !== marcaParada) { const e = new Error('a pedido (stop o restart)'); e.detenida = true; throw e; } };
     const token = ctx.leerClave('.github-key');
-    // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego GitHub. Idempotente: sin heredados no hace nada.
+    // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego el repo. Idempotente: sin heredados no hace nada.
     const previo = [];
     let mudo = false;
     const mud = mudarLocalHeredado();
@@ -446,14 +404,17 @@ export function registrar(ctx) {
     if (mud.fallos.length) previo.push(`no pude mudar: ${mud.fallos.join('; ')}`);
     let plan;
     try {
-      plan = await planear(repo, token);
+      await asegurarClon(repo, token);
+      await traerPunta(token);
+      plan = await planear();
       if (plan.heredados.length) {
-        if (await puedeSubir(repo, token)) {
-          const r = await mudarRemotoHeredado(repo, token);
+        if (token) {
+          const r = await mudarRemotoHeredado(token);
           if (r.movidos.length) { mudo = true; previo.push(`renombr\u00e9 en GitHub ${r.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ (${r.movidos.join(', ')}) en el commit ${r.commit.slice(0, 7)}, mismo contenido`); }
           if (r.pendientes.length) previo.push(`heredados en GitHub sin tocar: ${r.pendientes.join('; ')}`);
-          plan = await planear(repo, token);
-        } else previo.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key o escritura en el repo`);
+          await traerPunta(token);
+          plan = await planear();
+        } else previo.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key`);
       }
       const ret = retirarLocalHeredado(plan.visto, plan.heredados);
       if (ret.retirados.length) { mudo = true; previo.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
@@ -469,22 +430,27 @@ export function registrar(ctx) {
     const notaConflicto = conflictos.length ? ` Conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}.` : '';
     const clave = conflictos.join(',');
     if (!subir.length && !bajar.length) return { cambios: mudo, hayPendiente: previo.length > 0 && !mudo, conflictos: clave, texto: `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}${aviso}` };
-    const subidaLista = subir.length > 0 && (await puedeSubir(repo, token));
+    const subidaLista = subir.length > 0 && !!token;
     const t0 = Date.now();
     const res = [], extra = [];
     let hizoAlgo = mudo;
     try {
       if (bajar.length) {
-        const baj = await bajarArchivos(repo, token, bajar, progreso, verificar);
+        const baj = await bajarArchivos(bajar, progreso, verificar);
         if (baj.hechos.length) hizoAlgo = true;
         res.push(`baj\u00e9 ${baj.hechos.length} (${lista(baj.hechos)})`);
         if (baj.fallos.length) extra.push(`no pude bajar: ${baj.fallos.join('; ')}`);
       }
       if (subir.length && subidaLista) {
-        const sub = await subirArchivos(repo, token, subir, progreso, verificar);
-        if (sub.commit) hizoAlgo = true;
-        res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
-        if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
+        try {
+          const sub = await subirArchivos(token, subir, progreso, verificar);
+          if (sub.commit) hizoAlgo = true;
+          res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
+          if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
+        } catch (e) {
+          if (e.sinPermiso) extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): el token de keys/.github-key no tiene escritura en este repo`);
+          else throw e;
+        }
       } else if (subir.length) {
         extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): falta keys/.github-key o el token no tiene escritura en este repo`);
       }

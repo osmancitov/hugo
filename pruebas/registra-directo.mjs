@@ -97,9 +97,9 @@ test('fallo de aviso pausa tras guardar avance sin repetir el mes al continuar',
  falla=false;await s.m.iniciar({continuar:true,event});assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(s.consultas.filter(x=>x[1]===octubre).length,1);
  },{aviso:async(_,t)=>{if(falla&&t.includes('velas guardadas'))throw Error('Slack simulado');}});
 });
-test('integracion real velas+activos+motor: lista separada por comas y progreso sin pulgares',async()=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-comando-'));const original=globalThis.fetch;let handler;const msgs=[];
- globalThis.fetch=async u=>{let j;const url=new URL(u);
+test('poda: lista de activos sueltos se rechaza con guia clara, sin consultar ni iniciar nada',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-comando-'));const original=globalThis.fetch;let handler;const msgs=[];let llamadas=0;
+ globalThis.fetch=async u=>{llamadas++;let j;const url=new URL(u);
   if(u.includes('exchangeInfo')) {const symbol=url.searchParams.get('symbol');j={symbols:[{symbol,status:'TRADING',quoteAsset:'USDT',baseAsset:symbol.slice(0,-4)}]};}
   else if(u.includes('get-products'))j={data:[{s:'NVDABUSDT',tags:['bStocks'],an:'NVIDIA (bStocks)'},{s:'SPCXBUSDT',tags:['bStocks'],an:'SpaceX (bStocks)'},...Array.from({length:100},(_,i)=>({s:'PRUEBA'+i}))]};
   else {const t=Number(url.searchParams.get('startTime'));const now=new Date();const m=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1);j=t===m?[vela(t)]:[];}
@@ -109,10 +109,11 @@ test('integracion real velas+activos+motor: lista separada por comas y progreso 
   const {registrar}=await import('../app/modulos/velas.mjs');
   registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(p,f)=>{if(String(p).includes('registr')&&!String(p).includes('descarta'))handler=f;}}));
   await handler(event,'registra stock nvda, spcx');
-  const j=leerEstado(path.join(root,'estado.json'));assert.equal(j.estado,'terminado');assert.deepEqual(j.codigos,['NVDA','SPCX']);assert.equal(j.conteo.guardados,2);assert.ok(msgs.some(m=>m.text.includes('NVIDIA')));assert.ok(msgs.some(m=>m.text.includes('SpaceX')));assert.ok(msgs.every(m=>m.channel===event.channel&&m.thread_ts===event.ts));
+  assert.equal(msgs.length,1);assert.ok(msgs[0].text.includes('Ya no registro activos sueltos a mano'),'rechazo claro');assert.ok(msgs[0].text.includes('registra stock todos'),'guia a la via vigente');assert.equal(msgs[0].channel,event.channel);
+  assert.equal(llamadas,0,'cero consultas al podar');assert.ok(!leerEstado(path.join(root,'estado.json')),'sin registro iniciado');
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
 });
-test('registra cripto EUR se detiene: el euro es fiat, no un cripto; USDT se conserva',async()=>{
+test('registra cripto EUR se detiene: poda rechaza activos sueltos antes de consultar (EUR como fiat sigue cubierto en el cotejo del universo)',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-fiat-'));const original=globalThis.fetch;let handler;const msgs=[];let llamadas=0;
  globalThis.fetch=async u=>{llamadas++;let j;const url=new URL(u);
   if(u.includes('exchangeInfo')) {const symbol=url.searchParams.get('symbol');j={symbols:[{symbol,status:'TRADING',quoteAsset:'USDT',baseAsset:symbol.slice(0,-4)}]};}
@@ -124,8 +125,7 @@ test('registra cripto EUR se detiene: el euro es fiat, no un cripto; USDT se con
   const {registrar}=await import('../app/modulos/velas.mjs');
   registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada'};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(p,f)=>{if(String(p).includes('registr')&&!String(p).includes('descarta'))handler=f;}}));
   await handler(event,'registra cripto EUR');
-  const j=leerEstado(path.join(root,'estado.json'));
-  assert.equal(j.estado,'pausado');assert.match(j.error,/moneda fiat/);assert.equal(llamadas,0);
-  assert.ok(!fs.existsSync(path.join(root,'velas')));assert.ok(msgs.some(m=>m.text.includes('Registro detenido en EUR')));
+  assert.equal(msgs.length,1);assert.ok(msgs[0].text.includes('Ya no registro activos sueltos a mano'));assert.equal(llamadas,0);
+  assert.ok(!fs.existsSync(path.join(root,'velas')));assert.ok(!leerEstado(path.join(root,'estado.json')));
  }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
 });

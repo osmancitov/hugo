@@ -1,13 +1,15 @@
 // node --test pruebas/sincronizar-automatica-reporte.mjs. La pasada automatica abre un solo mensaje
 // cuando hay trabajo, lo edita con el avance, lo renueva mas o menos cada minuto, muestra tiempo
 // restante aproximado cuando el ritmo permite estimarlo y cierra con el resultado. Sin trabajo, calla.
-// GitHub y Slack simulados, sin red; el reloj es falso para no esperar minutos reales.
+// Remoto git real por file:// (sin red) y Slack simulado; el reloj es falso y avanza con cada
+// llamada a Slack, como si cada tramo de la pasada tomara unos segundos.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { conectarCaja } from './caja.mjs';
+import { crearRemoto } from './git-remoto.mjs';
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
 const serie = JSON.stringify([vela(Date.UTC(2026, 10, 1)), vela(Date.UTC(2026, 10, 2))]);
@@ -19,39 +21,36 @@ function bancoDePruebas(archivos) {
     fs.mkdirSync(path.join(velas, clase, codigo), { recursive: true });
     fs.writeFileSync(path.join(velas, clase, codigo, `2611_${codigo}`), serie);
   }
+  const rem = crearRemoto();
   const llamadas = [];
+  let ahora = Date.UTC(2026, 10, 16, 12, 0, 0);
   const slack = { chat: {
     postMessage: async (m) => { llamadas.push({ tipo: 'post', ...m }); const ts = 'msg' + llamadas.length; llamadas[llamadas.length - 1].tsAsignado = ts; return { ts }; },
     update: async (m) => { llamadas.push({ tipo: 'update', ...m }); },
   } };
-  const originalFetch = globalThis.fetch;
   const originalAhora = Date.now;
-  let ahora = Date.UTC(2026, 10, 16, 12, 0, 0);
-  globalThis.fetch = async (u, opts = {}) => {
-    const p = new URL(u).pathname; let j = {};
-    ahora += 10000; // cada llamada a la API toma unos segundos
-    if (p.endsWith('/git/blobs') && opts.method === 'POST') ahora += 20000; // y subir un blob, media vida
-    if (p.endsWith('/git/ref/heads/main')) j = { object: { sha: 'c0' } };
-    else if (p.endsWith('/git/commits/c0')) j = { tree: { sha: 't0' } };
-    else if (p.endsWith('/git/trees/t0')) j = { tree: [] };
-    else if (p === '/repos/osman/repo') j = { permissions: { push: true } };
-    else if (p.endsWith('/git/blobs') && opts.method === 'POST') j = { sha: 'b' };
-    else if (p.endsWith('/git/trees') && opts.method === 'POST') j = { sha: 't1' };
-    else if (p.endsWith('/git/commits') && opts.method === 'POST') j = { sha: 'c1' };
-    else if (p.endsWith('/git/refs/heads/main') && opts.method === 'PATCH') j = {};
-    else throw new Error('llamada no prevista: ' + opts.method + ' ' + p);
-    return { ok: true, status: 200, json: async () => j };
-  };
   Date.now = () => ahora;
+  const ctx = conectarCaja({
+    conf: { HUGO_GITHUB: 'osman/repo', HUGO_VELAS_DIR: velas, HUGO_REPO_SYNC_URL: rem.url, HUGO_REPO_SYNC_DIR: path.join(root, 'clon') }, app: { client: slack }, botToken: 'x', canal: 'avisos',
+    activas: new Map(), parada: () => false, alIniciar: () => {}, comando: () => {}, leerClave: () => 'xoxb-simulado',
+  });
+  // Cada avance de la pasada toma un rato de trabajo: el reloj falso avanza con cada progreso
+  // reportado, aunque la edicion en Slack quede estrangulada por la cadencia del reporte.
+  const crearSyncOriginal = ctx.reporte.crearSync;
+  ctx.reporte.crearSync = async (o) => {
+    const r = await crearSyncOriginal(o);
+    const p = r.progreso.bind(r);
+    r.progreso = async (t) => { ahora += 30000; return p(t); };
+    return r;
+  };
   return {
     llamadas,
+    rem,
     avanzar: (ms) => { ahora += ms; },
-    ctx: conectarCaja({
-      conf: { HUGO_GITHUB: 'osman/repo', HUGO_VELAS_DIR: velas }, app: { client: slack }, botToken: 'x', canal: 'avisos',
-      activas: new Map(), parada: () => false, alIniciar: () => {}, comando: () => {}, leerClave: () => 'xoxb-simulado',
-    }),
+    ctx,
     restaurar: () => {
-      globalThis.fetch = originalFetch; Date.now = originalAhora;
+      Date.now = originalAhora;
+      rem.destruir();
       fs.rmSync(root, { recursive: true, force: true });
     },
   };
@@ -104,8 +103,7 @@ test('automatica: si el reporte falla en Slack, la copia termina igual', async (
     const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
     registrar(b.ctx);
     await b.ctx.automaticaSincronizacion();
-    // El fallo del reporte no interrumpe la pasada: los blobs se subieron (fetch los recibio).
-    // (Si hubiera abortado, fetch habria registrado menos llamadas de las necesarias.)
-    assert.ok(true);
+    // El fallo del reporte no interrumpe la pasada: los archivos subieron al remoto igual.
+    assert.ok(b.rem.arbol()['registros/velas-24h/cripto/A/2611_A'] && b.rem.arbol()['registros/velas-24h/cripto/B/2611_B'], 'subio aunque Slack fallo');
   } finally { b.restaurar(); }
 });

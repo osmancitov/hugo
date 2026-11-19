@@ -6,7 +6,7 @@
 // (aamm, como el nombre de los archivos). Sin «desde», el recorrido llega al primer mes vacio.
 import os from 'node:os';
 import path from 'node:path';
-import { resolverActivo, CLASES, CODIGO_OK } from './activos.mjs';
+import { resolverActivo, CLASES } from './activos.mjs';
 import { crearMotor, leerEstado } from './registro-motor.mjs';
 import { prepararUniverso } from './registro-universo.mjs';
 
@@ -42,7 +42,7 @@ export function registrar(ctx) {
       finally {cotejando=false;}
     }
     const clase=String(partes.shift()||'').toLowerCase();
-    if(!CLASES.includes(clase)) return avisar(event,'Indica la clase y uno o varios codigos: registra stock NVDA SPCX, o registra cripto BTC ETH. Para todo el universo en una orden: registra todo. Para retomar un trabajo pendiente: registra continuar.');
+    if(!CLASES.includes(clase)) return avisar(event,'Las ordenes de registro son: registra todo (universo completo, stock y cripto), registra stock todos / registra cripto todos (admite «desde AAMM» antes de «todos»), y registra continuar. Activos sueltos ya no se registran a mano: «pon al día» incorpora las altas del cotejo y solo pide los días que faltan. Para retomar un trabajo pendiente: registra continuar.');
     // «desde AAMM» solo vale al principio de la lista, antes de los codigos.
     let piso=null;
     if(partes.length && partes[0].toLowerCase()==='desde') {
@@ -66,11 +66,8 @@ export function registrar(ctx) {
       } catch(e) { return await avisar(event,`No inicie la actualizacion completa: ${e.message}`); }
       finally {cotejando=false;}
     }
-    if(partes.some(p=>p.toLowerCase()==='todos')) return avisar(event,'Usa todos sin mezclarlo con codigos: registra cripto todos, o registra stock todos.');
-    const codigos=partes.map(p=>p.toUpperCase());
-    if(!codigos.length || codigos.length>500 || codigos.some(c=>!CODIGO_OK.test(c))) return avisar(event,'Falta una lista valida de codigos (hasta 500, separados por espacios o comas). No inicie el registro.');
-    if(new Set(codigos).size!==codigos.length) return avisar(event,'Hay codigos repetidos en la lista. Quitalos para conservar un orden claro; no inicie el registro.');
-    return motor.iniciar({clase,codigos,event,piso});
+    if(partes.some(p=>p.toLowerCase()==='todos')) return avisar(event,'Usa todos sin mezclarlo con otros codigos: registra cripto todos, o registra stock todos.');
+    return avisar(event,'Ya no registro activos sueltos a mano (decisión del usuario, 18-nov-2026: con el inventario de cobertura, «pon al día» solo pide los días que faltan y el cotejo incorpora las altas). Usa: pon al día, registra todo, registra '+clase+' todos o registra continuar.');
   },{nombre:'registrar velas',delegable:true});
   // «pon al día»: mismo universo y motor que «registra todo», pero consulta solo lo pendiente y
   // comprueba en disco lo ya guardado. La revisión completa sigue siendo «registra todo».

@@ -9,6 +9,7 @@ import {crearMotor,leerEstado} from '../app/modulos/registro-motor.mjs';
 import {compararSeries,validarSerie,DIA} from '../app/modulos/registro-serie.mjs';
 import {registrar} from '../app/modulos/sincronizar-registros.mjs';
 import { conectarCaja } from './caja.mjs';
+import { crearRemoto } from './git-remoto.mjs';
 const noviembre=Date.UTC(2026,10,1),octubre=Date.UTC(2026,9,1);
 const v=t=>[t,'1','2','1','2','10',t+DIA-1,'10',3,'1','2','0'];
 const evento={channel:'simulado',ts:'raiz'};
@@ -36,40 +37,27 @@ test('rechaza vela abierta y cambio en dia ya registrado',()=>{
  const a=serie(3),b=serie(5);b[1][4]='99';assert.throws(()=>compararSeries(a,b,noviembre,noviembre+6*DIA),/Conflicto/);
  assert.equal(compararSeries(serie(5),serie(3),noviembre,noviembre+6*DIA),'conservar');
 });
-async function syncCaso({local,remoto,cambioRemoto,falloRef=false,rel='registros/velas-24h/stock/AA/2610_AA'}) {
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-sync-'));const p=path.join(root,rel.slice('registros/velas-24h/'.length));const original=globalThis.fetch;
- const blobs=new Map(),trees=new Map(),commits=new Map();let head='base',numero=0,lecturas=0;let arbol=new Map();const respuestas=[];
- const nuevoBlob=d=>{const b=Buffer.from(JSON.stringify(d));const id=sha(b);blobs.set(id,b);return id;};
- if(remoto)arbol.set(rel,nuevoBlob(remoto));trees.set('arbol-base',new Map(arbol));commits.set(head,{tree:{sha:'arbol-base'}});
+async function syncCaso({local,remoto,cambioRemoto,falloPush=false,rel='registros/velas-24h/stock/AA/2610_AA'}) {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-sync-'));const p=path.join(root,rel.slice('registros/velas-24h/'.length));
+ const rem=crearRemoto(remoto?{[rel]:JSON.stringify(remoto)}:{});
  if(local){fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,JSON.stringify(local));}
- globalThis.fetch=async(u,o={})=>{
-  const ruta=u.replace('https://api.github.com/repos/prop/repo','');const body=o.body?JSON.parse(o.body):null;let j;
-  if(ruta==='')j={permissions:{push:true}};
-  else if(ruta==='/git/ref/heads/main'){
-   lecturas++;if(cambioRemoto&&lecturas===2){head='ajeno';trees.set('arbol-ajeno',new Map([[rel,nuevoBlob(cambioRemoto)]]));commits.set(head,{tree:{sha:'arbol-ajeno'}});}
-   j={object:{sha:head}};
-  } else if(ruta.startsWith('/git/commits/')&&!body)j=commits.get(ruta.split('/').at(-1));
-  else if(ruta.startsWith('/git/trees/')&&!body){const tree=trees.get(ruta.split('/').at(-1).split('?')[0]);j={tree:[...tree].map(([path,sha])=>({path,sha,type:'blob'}))};}
-  else if(ruta.startsWith('/git/blobs/')&&!body){const id=ruta.split('/').at(-1);j={content:blobs.get(id).toString('base64')};}
-  else if(ruta==='/git/blobs'&&body){const b=Buffer.from(body.content,'base64');const id=sha(b);blobs.set(id,b);j={sha:id};}
-  else if(ruta==='/git/trees'&&body){const t=new Map(trees.get(body.base_tree));for(const x of body.tree)t.set(x.path,x.sha);const id='arbol-'+(++numero);trees.set(id,t);j={sha:id};}
-  else if(ruta==='/git/commits'&&body){const id='commit-'+(++numero);assert.equal(body.author.email,'osmanvielma@gmail.com');assert.equal(body.committer.email,'osmanvielma@gmail.com');commits.set(id,{tree:{sha:body.tree}});j={sha:id};}
-  else if(ruta==='/git/refs/heads/main'&&body){if(falloRef)return{ok:false,status:422};assert.equal(body.force,undefined);head=body.sha;j={object:{sha:head}};}
-  else throw Error('Ruta no simulada '+ruta);
-  return{ok:true,status:200,json:async()=>j};
- };
  try{
-  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_SYNC_MINUTOS:0},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(conectarCaja(ctx));const resultado=await ctx.pasadaSincronizacion();respuestas.push(resultado);
-  const remotoFinal=trees.get(commits.get(head).tree.sha).get(rel);
-  return {resultado,local:fs.existsSync(p)?JSON.parse(fs.readFileSync(p)):null,remoto:remotoFinal?JSON.parse(blobs.get(remotoFinal)):null};
- }finally{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});}
+  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_SYNC_MINUTOS:0,HUGO_REPO_SYNC_URL:rem.url,HUGO_REPO_SYNC_DIR:path.join(root,'clon')},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(conectarCaja(ctx));
+  let aplicado=false;
+  const gancho=async(t)=>{ // el avance ajeno (o el bloqueo) cae entre el fetch y el push, como una carrera real
+   if(t.startsWith('Publicando commit')&&!aplicado){aplicado=true;if(cambioRemoto)rem.avanceAjeno(rel,JSON.stringify(cambioRemoto));if(falloPush)rem.bloquearEscritura();}
+  };
+  const resultado=await ctx.pasadaSincronizacion(gancho);
+  const arbolFinal=rem.arbol();
+  return {resultado,rem,local:fs.existsSync(p)?JSON.parse(fs.readFileSync(p)):null,remoto:arbolFinal[rel]?JSON.parse(arbolFinal[rel]):null,commits:rem.commits()};
+ }finally{rem.destruir();fs.rmSync(root,{recursive:true,force:true});}
 }
 const oct=n=>Array.from({length:n},(_,i)=>v(octubre+i*DIA));
-test('sync sube ampliacion estricta en un commit sin modificar prefijo',async()=>{const r=await syncCaso({local:oct(5),remoto:oct(3)});assert.deepEqual(r.remoto,oct(5));assert.deepEqual(r.local,oct(5));assert.equal(r.resultado.error,undefined);});
+test('sync sube ampliacion estricta en un commit sin modificar prefijo',async()=>{const r=await syncCaso({local:oct(5),remoto:oct(3)});assert.deepEqual(r.remoto,oct(5));assert.deepEqual(r.local,oct(5));assert.equal(r.resultado.error,undefined);assert.ok(r.commits.some(c=>c.includes('<osmanvielma@gmail.com>')),'autor del commit: '+r.commits.join(' | '));});
 test('sync baja ampliacion estricta, nunca recorta',async()=>{const r=await syncCaso({local:oct(3),remoto:oct(5)});assert.deepEqual(r.remoto,oct(5));assert.deepEqual(r.local,oct(5));});
 test('sync conserva ambos ante cambio historico',async()=>{const malo=oct(5);malo[0][4]='99';const r=await syncCaso({local:oct(3),remoto:malo});assert.deepEqual(r.local,oct(3));assert.deepEqual(r.remoto,malo);assert.ok(r.resultado.conflictos);});
 test('sync relee remoto antes de subir; cambio divergente no se pisa',async()=>{const malo=oct(4);malo[0][4]='99';const r=await syncCaso({local:oct(5),remoto:oct(3),cambioRemoto:malo});assert.deepEqual(r.remoto,malo);assert.deepEqual(r.local,oct(5));});
-test('fallo del ref no cambia rama ni local',async()=>{const r=await syncCaso({local:oct(5),remoto:oct(3),falloRef:true});assert.deepEqual(r.remoto,oct(3));assert.deepEqual(r.local,oct(5));assert.ok(r.resultado.error);});
+test('push rechazado no cambia rama ni local',async()=>{const r=await syncCaso({local:oct(5),remoto:oct(3),falloPush:true});assert.deepEqual(r.remoto,oct(3));assert.deepEqual(r.local,oct(5));assert.ok(r.resultado.hayPendiente||r.resultado.error,'se reporta el freno: '+JSON.stringify(r.resultado));});
 const julio=Date.UTC(2026,6,1);
 const jul=n=>Array.from({length:n},(_,i)=>v(julio+i*DIA));
 test('piso ago-2026: un 2607 solo en GitHub NO baja',async()=>{

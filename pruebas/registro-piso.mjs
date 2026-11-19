@@ -126,7 +126,7 @@ test('avance con piso mal alineado se conserva; avance viejo sin piso sigue carg
   }, { datos: (t) => (t === octubre ? [vela(t)] : []) });
 });
 
-test('parseo de la orden: desde AAMM, codigos de 1 letra y Unicode; errores claros', async () => {
+test('parseo de la orden: activos sueltos rechazados (poda); errores de «desde» claros', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-piso-cmd-'));
   const original = globalThis.fetch;
   const ahoraReal = new Date();
@@ -151,19 +151,15 @@ test('parseo de la orden: desde AAMM, codigos de 1 letra y Unicode; errores clar
       app: { client: { chat: { postMessage: async (m) => { msgs.push(m.text); return { ts: 'simulada' }; }, update: async (m) => { msgs.push(m.text); return { ts: m.ts }; } } } },
       activas: new Map(), alIniciar: () => {}, comando: (p, f) => { if (String(p).includes('registr')&&!String(p).includes('descarta')) handler = f; },
     }));
-    await handler(event, `registra cripto desde ${aammActual} a, 牛来`);
-    const j = leerEstado(path.join(root, 'estado.json'));
-    assert.equal(j.estado, 'terminado'); assert.deepEqual(j.codigos, ['A', '牛来']); assert.equal(j.piso, mesActual);
-    assert.ok(fs.existsSync(path.join(root, `velas/cripto/A/${aammActual}_A`)));
-    assert.ok(fs.existsSync(path.join(root, `velas/cripto/牛来/${aammActual}_牛来`)));
+    await handler(event, 'registra cripto a, 牛来');
+    assert.ok(msgs.some((m) => m.includes('Ya no registro activos sueltos a mano')), 'activos sueltos: rechazo claro');
+    assert.ok(!fs.existsSync(path.join(root, 'estado.json')) || !leerEstado(path.join(root, 'estado.json')), 'no inicia registro');
     msgs.length = 0;
     await handler(event, 'registra cripto desde');
-    await handler(event, 'registra cripto desde 2613 BTC');
+    await handler(event, 'registra cripto desde 2613 todos');
     await handler(event, 'registra cripto BTC desde 2607');
-    await handler(event, `registra cripto desde ${aammSiguiente} BTC`);
     assert.ok(msgs.some((m) => m.includes('Tras «desde»')));
     assert.ok(msgs.some((m) => m.includes('solo va al principio')));
-    assert.ok(msgs.some((m) => m.includes('posterior al mes en curso')));
     assert.equal(msgs.filter((m) => m.includes('Tras «desde»')).length, 2); // sin mes y mes invalido
     assert.ok(!fs.existsSync(path.join(root, 'velas/cripto/BTC')));
   } finally { globalThis.fetch = original; fs.rmSync(root, { recursive: true, force: true }); }

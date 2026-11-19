@@ -8,6 +8,33 @@ process.env.HUGO_VELAS_DIR = '/tmp/hugo/registros/velas-24h';
 process.env.HUGO_GRAFICAS_DIR = '/tmp/hugo_sim/graficas2';
 fs.rmSync('/tmp/hugo_sim/graficas2', { recursive: true, force: true });
 
+// Datos sintéticos propios (la simulación no depende de registros reales): 90 días por activo,
+// agosto-noviembre 2026, con días verdes y rojos. Formato mensual AAMM_CODIGO, velas cerradas.
+{
+  const base = process.env.HUGO_VELAS_DIR;
+  for (const codigo of ['SPCX', 'INTW', 'AMD', 'MU', 'NVDA', 'SNDK']) {
+    const velas = [];
+    let precio = 50 + codigo.length * 7;
+    for (let i = 0; i < 300; i++) { // 15 ene - 10 nov 2026: 11 meses, suficiente para radiografías >100KB
+      const t = Date.UTC(2026, 0, 15 + i); // Date.UTC desborda el mes solo
+      const delta = ((i % 3 === 0 ? -1 : 1) * (1 + (i % 7))) / 8;
+      const cierre = +(precio + delta).toFixed(4);
+      velas.push([t, String(precio), String(Math.max(precio, cierre)), String(Math.min(precio, cierre)), String(cierre), '1000', t + 86400000 - 1, '1000', 3, '1', '2', '0']);
+      precio = cierre;
+    }
+    const dir = path.join(base, 'stock', codigo);
+    fs.mkdirSync(dir, { recursive: true });
+    const porMes = new Map();
+    for (const v of velas) {
+      const d = new Date(v[0]);
+      const aamm = String(d.getUTCFullYear()).slice(2) + String(d.getUTCMonth() + 1).padStart(2, '0');
+      if (!porMes.has(aamm)) porMes.set(aamm, []);
+      porMes.get(aamm).push(v);
+    }
+    for (const [aamm, mes] of porMes) fs.writeFileSync(path.join(dir, `${aamm}_${codigo}`), JSON.stringify(mes));
+  }
+}
+
 const mensajes = [], subidas = [], largoVisto = [];
 let alSubir = null;
 const ctx = {
