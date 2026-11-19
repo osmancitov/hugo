@@ -291,7 +291,7 @@ function vistaArbol(q) {
   hijos.appendChild(nFon);
   app.appendChild(nStocks);
   app.appendChild(nodoArbol('Cripto', CRIPTOS.length + ' activos', CRIPTOS, true));
-  app.appendChild(nodoArbol('Indicadores', INDICADORES.length + ' indicadores', INDICADORES));
+  app.appendChild(nodoArbol('Indicadores', INDICADORES.length + (INDICADORES.length === 1 ? ' indicador' : ' indicadores'), INDICADORES));
   if (!q) return;
   // La búsqueda localiza y resalta dentro del árbol, sin esconder los demás activos.
   const s = q.toLowerCase();
