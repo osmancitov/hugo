@@ -215,7 +215,6 @@ const nov1 = Date.UTC(2026, 10, 1);
 test('sincronizacion: una pasada normal sigue igual (regresion) y se anota como larga', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-sync-'));
   process.env.HUGO_VELAS_DIR = path.join(root, 'velas');
-  process.env.HUGO_SYNC_MINUTOS = '0';
   try {
     velasLocal(root, [['AA', '2611', nov1]]);
     let vistoLargo = false;
@@ -232,7 +231,7 @@ test('sincronizacion: una pasada normal sigue igual (regresion) y se anota como 
     assert.equal(ctx.activas.size, 0);
     rem.destruir();
   } finally {
-    delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
+    delete process.env.HUGO_VELAS_DIR;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
@@ -240,7 +239,6 @@ test('sincronizacion: una pasada normal sigue igual (regresion) y se anota como 
 test('sincronizacion: stop durante la subida frena antes de publicar el commit', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-sync-stop-'));
   process.env.HUGO_VELAS_DIR = path.join(root, 'velas');
-  process.env.HUGO_SYNC_MINUTOS = '0';
   try {
     velasLocal(root, [['AA', '2611', nov1], ['BB', '2611', nov1]]);
     const { ctx, rem } = ctxSync(root);
@@ -255,7 +253,7 @@ test('sincronizacion: stop durante la subida frena antes de publicar el commit',
     assert.deepEqual(Object.keys(rem.arbol()).filter((k) => k.includes('velas-24h')), []); // no publico nada
     rem.destruir();
   } finally {
-    delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
+    delete process.env.HUGO_VELAS_DIR;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
@@ -263,7 +261,6 @@ test('sincronizacion: stop durante la subida frena antes de publicar el commit',
 test('sincronizacion: stop durante la comparacion no cambia nada', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-sync-stop2-'));
   process.env.HUGO_VELAS_DIR = path.join(root, 'velas');
-  process.env.HUGO_SYNC_MINUTOS = '0';
   try {
     velasLocal(root, [['AA', '2611', nov1]]);
     const { ctx, rem } = ctxSync(root);
@@ -276,7 +273,7 @@ test('sincronizacion: stop durante la comparacion no cambia nada', async () => {
     assert.deepEqual(Object.keys(rem.arbol()).filter((k) => k.includes('velas-24h')), []); // no publico nada
     rem.destruir();
   } finally {
-    delete process.env.HUGO_VELAS_DIR; delete process.env.HUGO_SYNC_MINUTOS;
+    delete process.env.HUGO_VELAS_DIR;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

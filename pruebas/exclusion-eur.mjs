@@ -12,8 +12,9 @@ test('sync no baja EUR remoto ni resube EUR local; limpieza arranca aun con sync
  const rem=crearRemoto({'registros/velas-24h/cripto/EUR/2611_EUR':'[]'});
  const base=path.join(root,'velas'),dir=path.join(base,'cripto/EUR');fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'2611_EUR'),'[]');
  try {
- const ctx={conf:{HUGO_VELAS_DIR:base,HUGO_GRAFICAS_DIR:path.join(root,'graficas'),HUGO_GITHUB:'prop/repo',HUGO_SYNC_MINUTOS:0,HUGO_REPO_SYNC_URL:rem.url,HUGO_REPO_SYNC_DIR:path.join(root,'clon')},leerClave:()=>'',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:fn=>arranques.push(fn)};
- registrar(conectarCaja(ctx));assert.equal(arranques.length,1);await arranques[0]();assert.ok(!fs.existsSync(dir));
+ const ctx={conf:{HUGO_VELAS_DIR:base,HUGO_GRAFICAS_DIR:path.join(root,'graficas'),HUGO_GITHUB:'prop/repo',HUGO_REPO_SYNC_URL:rem.url,HUGO_REPO_SYNC_DIR:path.join(root,'clon')},leerClave:()=>'',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:fn=>arranques.push(fn)};
+ registrar(conectarCaja(ctx));assert.equal(arranques.length,2); // el segundo arranque solo programa la pasada de inicio; no se invoca
+ await arranques[0]();assert.ok(!fs.existsSync(dir));
  const r=await ctx.pasadaSincronizacion();assert.equal(r.error,undefined);assert.equal(r.cambios,false);assert.ok(!fs.existsSync(dir));
  assert.ok(rem.arbol()['registros/velas-24h/cripto/EUR/2611_EUR'],'EUR remoto intacto: ni bajo ni se toco');
  }finally{rem.destruir();fs.rmSync(root,{recursive:true,force:true});}

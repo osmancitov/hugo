@@ -529,8 +529,9 @@ export function registrar(ctx) {
     } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
   }, { nombre: 'sincronizar registros', delegable: true });
 
-  // Automatica: una pasada poco despues de arrancar y luego cada HUGO_SYNC_MINUTOS (60 por defecto;
-  // 0 la apaga). Cuando hay trabajo real (archivos por subir o bajar), abre un solo mensaje en el
+  // Automatica: una sola pasada poco despues de arrancar (decision del usuario, 19-nov-2026: se
+  // retira la repeticion periodica; queda la pasada de cada reinicio). Cuando hay trabajo real
+  // (archivos por subir o bajar), abre un solo mensaje en el
   // canal de avisos y lo va editando con el avance y el resultado, como el reporte manual. Cada
   // pasada anuncia «comprobando GitHub» al empezar y cierra con el resultado, aunque no haya nada
   // que copiar (decision del usuario, 18-nov-2026: el silencio no permite saber si arranco). Si el
@@ -605,12 +606,8 @@ export function registrar(ctx) {
       console.error('Sincronizacion automatica:', e.message);
     } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
   }
-  const minutos = Number(process.env.HUGO_SYNC_MINUTOS ?? ctx.conf.HUGO_SYNC_MINUTOS ?? 60);
-  if (Number.isFinite(minutos) && minutos >= 5) {
-    ctx.alIniciar(() => {
-      setTimeout(automatica, 90 * 1000).unref?.();
-      setInterval(automatica, minutos * 60 * 1000).unref?.();
-    });
-  }
+  ctx.alIniciar(() => {
+    setTimeout(automatica, 90 * 1000).unref?.();
+  });
   ctx.pasadaSincronizacion = pasada; ctx.automaticaSincronizacion = automatica; // para pruebas
 }

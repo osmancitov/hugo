@@ -42,7 +42,7 @@ async function syncCaso({local,remoto,cambioRemoto,falloPush=false,rel='registro
  const rem=crearRemoto(remoto?{[rel]:JSON.stringify(remoto)}:{});
  if(local){fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,JSON.stringify(local));}
  try{
-  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_SYNC_MINUTOS:0,HUGO_REPO_SYNC_URL:rem.url,HUGO_REPO_SYNC_DIR:path.join(root,'clon')},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(conectarCaja(ctx));
+  const ctx={conf:{HUGO_GITHUB:'prop/repo',HUGO_VELAS_DIR:root,HUGO_REPO_SYNC_URL:rem.url,HUGO_REPO_SYNC_DIR:path.join(root,'clon')},leerClave:()=> 'simulado',app:{client:{chat:{postMessage:async()=>{}}}},comando:()=>{},alIniciar:()=>{}};registrar(conectarCaja(ctx));
   let aplicado=false;
   const gancho=async(t)=>{ // el avance ajeno (o el bloqueo) cae entre el fetch y el push, como una carrera real
    if(t.startsWith('Publicando commit')&&!aplicado){aplicado=true;if(cambioRemoto)rem.avanceAjeno(rel,JSON.stringify(cambioRemoto));if(falloPush)rem.bloquearEscritura();}
