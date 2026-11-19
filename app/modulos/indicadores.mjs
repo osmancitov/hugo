@@ -19,15 +19,11 @@
 //   rótulo (verificado 19-nov-2026: misma serie, mismo valor).
 import fs from 'node:fs';
 import path from 'node:path';
+import ROTULOS from './indicadores-rotulos.mjs';
 
-// Rotulos visibles de cada serie: UNA sola definicion, en indicadores.json junto a este modulo
-// (decision del usuario, 19-nov-2026: el nombre se cambia en un solo sitio). La lee Hugo para
-// sus reportes y la lee el visor para el menu y los graficos; nadie mas escribe nombres a mano.
-// Si el archivo falta, se usa la clave tecnica de la serie.
-export const ROTULOS = (() => {
-  try { return JSON.parse(fs.readFileSync(new URL('./indicadores.json', import.meta.url), 'utf8')); }
-  catch { return {}; }
-})();
+// Los rotulos visibles de cada serie tienen UNA sola definicion (decision del usuario,
+// 19-nov-2026): indicadores-rotulos.mjs, la misma que importa el visor. Si falta la clave,
+// se usa la clave tecnica de la serie.
 const rotulo = (serie) => ROTULOS[serie] || serie;
 
 export const ARCHIVO_IND = /^\d{4}$/;

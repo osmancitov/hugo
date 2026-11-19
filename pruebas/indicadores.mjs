@@ -264,22 +264,34 @@ test('sincronizacion: un archivo de indicador nuevo en el remoto baja a la Debia
   } finally { rem.destruir(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('los rotulos de los indicadores tienen una sola fuente: app/modulos/indicadores.json', () => {
-  const rotulos = JSON.parse(fs.readFileSync(new URL('../app/modulos/indicadores.json', import.meta.url), 'utf8'));
+test('los rotulos de los indicadores tienen una sola fuente: app/modulos/indicadores-rotulos.mjs', async () => {
+  const { default: rotulos } = await import('../app/modulos/indicadores-rotulos.mjs');
   // Nombres finales decididos por el usuario (19-nov-2026).
   assert.equal(rotulos['feargreedchart-bolsa'], 'Fear & Greed Index (Stock)');
   assert.equal(rotulos['alternative-fear-greed'], 'Fear & Greed Index (Cripto)');
-  // El bot los lee de ahi, no los escribe a mano.
+  // El bot los importa de ahi, no los escribe a mano.
   const bot = fs.readFileSync(new URL('../app/modulos/indicadores.mjs', import.meta.url), 'utf8');
-  assert.match(bot, /indicadores\.json/);
+  assert.match(bot, /indicadores-rotulos\.mjs/);
   assert.doesNotMatch(bot, /etiqueta: '/);
-  // El visor (menu y graficos) los lee del mismo archivo, no los escribe a mano.
+  // El visor (menu y graficos) los importa del mismo archivo, no los escribe a mano.
   const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(visor, /indicadores\.json/);
+  assert.match(visor, /indicadores-rotulos\.mjs/);
   assert.doesNotMatch(visor, /nombre: 'Fear/);
+  // Viaja como .mjs: el instalador de GitHub copia los modulos .mjs, asi que llega a la Debian
+  // en cualquier «actualiza» (un .json quedaba fuera y los reportes caian a las claves tecnicas).
+  const g = await import('../app/modulos/github.mjs');
+  const arbol = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-repo-'));
+  try {
+    fs.mkdirSync(path.join(arbol, 'app', 'modulos'), { recursive: true });
+    fs.mkdirSync(path.join(arbol, 'manual'), { recursive: true });
+    for (const [rel, texto] of [['app/app.mjs', '// app'], ['app/modulos/indicadores-rotulos.mjs', 'export default {}'], ['manual/manual-hugo.md', '# m']]) {
+      fs.writeFileSync(path.join(arbol, rel), texto + '\n');
+    }
+    assert.ok(g.archivosDeRepo(arbol).includes('app/modulos/indicadores-rotulos.mjs'));
+  } finally { fs.rmSync(arbol, { recursive: true, force: true }); }
   // Y ningun otro modulo escribe un rotulo de indicador a mano.
   const dir = new URL('../app/modulos/', import.meta.url);
-  for (const n of fs.readdirSync(dir).filter((n) => n.endsWith('.mjs') && n !== 'indicadores.mjs')) {
+  for (const n of fs.readdirSync(dir).filter((n) => n.endsWith('.mjs') && !['indicadores.mjs', 'indicadores-rotulos.mjs'].includes(n))) {
     assert.doesNotMatch(fs.readFileSync(new URL(n, dir), 'utf8'), /Fear & Greed Index \(/, `${n} escribe un rotulo a mano`);
   }
 });
