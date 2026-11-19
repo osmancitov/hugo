@@ -221,7 +221,7 @@ const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa').sort((a, b) => (b.ca
 const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 // Indicadores (19-nov-2026): series diarias propias, fuera del catálogo de activos. No entran en
 // TODOS porque las rachas y las radiografías solo saben de velas; el buscador los suma aparte.
-const INDICADORES = [{ codigo: 'alternative-fear-greed', nombre: 'Fear & Greed (cripto)', tipo: 'índice', indicador: true }];
+const INDICADORES = [{ codigo: 'alternative-fear-greed', nombre: 'Fear & Greed Index', tipo: 'índice', indicador: true }];
 const clasifInd = (v) => v <= 24 ? 'Miedo extremo' : v <= 44 ? 'Miedo' : v <= 55 ? 'Neutral' : v <= 74 ? 'Codicia' : 'Codicia extrema';
 
 function fmtCap(v) {
@@ -235,6 +235,8 @@ function filaActivo(e, conCap) {
   const a = document.createElement('a');
   a.className = 'activo-fila';
   a.href = e.indicador ? '#/i/' + encodeURIComponent(e.codigo) : '#/a/' + e.clase + '/' + encodeURIComponent(e.codigo);
+  // Indicadores: una sola pieza de título (decisión del usuario, 19-nov-2026); sin código técnico a la vista.
+  if (e.indicador) { a.innerHTML = '<span class="cod"></span>'; a.querySelector('.cod').textContent = e.nombre; return a; }
   const lectura = e.lectura ? ` · ${e.lectura}` : '';
   const der = conCap && e.cap ? 'caps' : (e.tipo ? 'tipo' : '');
   a.innerHTML = `<span class="cod"></span><span class="nom"></span>` +
@@ -446,9 +448,8 @@ function vistaIndicador(codigo) {
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
   const h1 = document.createElement('h1');
-  h1.innerHTML = '<span class="cod"></span> <span class="nom"></span>';
-  h1.querySelector('.cod').textContent = e.codigo;
-  h1.querySelector('.nom').textContent = e.nombre;
+  h1.innerHTML = '<span class="cod"></span>';
+  h1.querySelector('.cod').textContent = e.nombre;
   ficha.appendChild(h1);
   const meta = document.createElement('div');
   meta.className = 'meta';
