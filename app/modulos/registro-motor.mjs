@@ -18,6 +18,35 @@ const yymm = (t) => new Date(t).toISOString().slice(2,7).replace('-','');
 const inicial = anterior(CERO);
 const dur = (t) => `${(t/1000).toFixed(2)} s`;
 
+// «pon al día»: la marca _primer-mes (AAMM) dice bajo qué mes una bajada completa llegó al mes
+// vacío; solo afirma que debajo no hay datos. La integridad la revalida cada corrida recorriendo
+// los meses en disco desde el mes en curso hasta esa marca.
+const MARCA = '_primer-mes';
+const rutaMarca = (dir) => path.join(dir, MARCA);
+function leerMarca(dir) {
+  try {
+    const m = fs.readFileSync(rutaMarca(dir), 'utf8').trim().match(/^(\d{2})(\d{2})$/);
+    if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return null;
+    return Date.UTC(2000 + Number(m[1]), Number(m[2]) - 1, 1);
+  } catch { return null; }
+}
+function escribirMarca(dir, aamm) {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const tmp = rutaMarca(dir) + '.tmp';
+  fs.writeFileSync(tmp, aamm + '\n', { mode: 0o600 });
+  fs.renameSync(tmp, rutaMarca(dir));
+}
+// Mes cerrado confiable en disco: serie válida según el contrato de siempre y con vela en el
+// último día del mes. No exige día 1 ni todos los días naturales (listados a mitad de mes y
+// días sin negociación son legítimos).
+function serieLocalCompleta(destino, mes, hasta) {
+  try {
+    const datos = JSON.parse(leerNormal(destino));
+    validarSerie(datos, mes, hasta);
+    return datos.length > 0 && datos[datos.length - 1][0] === siguiente(mes) - 86400000;
+  } catch { return false; }
+}
+
 function syncDir(dir) { const fd=fs.openSync(dir,'r'); try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); } }
 function escribirTemporal(destino, texto) {
   fs.mkdirSync(path.dirname(destino), {recursive:true, mode:0o700});
@@ -42,7 +71,8 @@ export function leerEstado(archivo) {
   if(j.version===1) {j.version=2;j.hasta=CERO;j.inicial=inicial;j.conteo.ampliados=0;} // reanuda el corte antiguo sin inventar dias
   if(j.siguientes==null) j.siguientes=[]; // los avances de una sola clase no la traen
   const estados=['en-curso','pausado','terminado'];
-  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0) || !Array.isArray(j.siguientes) || j.siguientes.length>CLASES.length || !j.siguientes.every(tramoValido) || (j.total!=null && (!Number.isInteger(j.total) || j.total<j.codigos.length))) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0) || (j.rapido!=null && typeof j.rapido!=='boolean') || !Array.isArray(j.siguientes) || j.siguientes.length>CLASES.length || !j.siguientes.every(tramoValido) || (j.total!=null && (!Number.isInteger(j.total) || j.total<j.codigos.length))) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  j.rapido=!!j.rapido;
   const enBorde=j.siguientes.length>0 && j.indice===j.codigos.length && (j.estado==='en-curso'||j.estado==='pausado');
   if (!enBorde && (j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
   return j;
@@ -78,6 +108,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         const res=await resolver(j.clase,codigo);
         if(!res.ok) throw new Error(res.motivo);
         await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}; corte UTC).`,{tipo:'activo'});
+        const dirActivo=path.join(base(),j.clase,codigo);
+        let pisoVerificado=j.rapido?leerMarca(dirActivo):null, confianza=true;
         let terminado=false;
         while(!terminado) {
           if(pedida(marca))throw errorParada();
@@ -91,6 +123,23 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(meses>=LIMITE) throw new Error(`Tope de seguridad: ${LIMITE} meses para ${codigo}; no doy su historial por terminado.`);
           const mes=j.mes;
           const destino=path.join(base(),j.clase,codigo,`${yymm(mes)}_${codigo}`);
+          if(j.rapido) {
+            // Piso verificado: debajo de la marca ya lo comprobó una bajada completa.
+            if(confianza && pisoVerificado && mes<pisoVerificado) {
+              j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
+              if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
+              await notificar(j,`${codigo}: verificado hasta ${etiqueta(pisoVerificado)}; lo anterior ya estaba comprobado. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Verificado hasta ${etiqueta(pisoVerificado)}. ${j.indice}/${j.codigos.length} activos.`});
+              continue;
+            }
+            // Mes cerrado con archivo local completo: se comprueba en disco, sin consulta.
+            // El mes en curso nunca se salta. Sin marca, la bajada valida en disco hasta el
+            // archivo más viejo y la primera consulta sin archivo fija la frontera.
+            if(confianza && mes!==j.inicial && fs.existsSync(destino) && serieLocalCompleta(destino,mes,j.hasta)) {
+              j.mes=anterior(mes);j.conteo.existentes++;
+              await notificar(j,`${codigo}, ${etiqueta(mes)}: comprobado en disco, sin consulta. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: comprobado en disco.`});
+              continue;
+            }
+          }
           activas.set(id,{que:`registrar ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now(),largo:true});
           await notificar(j,`Consulto ${codigo}, ${etiqueta(mes)} (${j.indice+1}/${j.codigos.length}; corte UTC).`,{tipo:'consulta'});
           const t=Date.now();
@@ -112,7 +161,15 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
               await notificar(j,`${codigo}: ${etiqueta(mes)} aun no tiene velas cerradas al corte. No doy su historial por terminado; sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: sin velas cerradas al corte; sigo atras.`});
               continue;
             }
+            // Hueco inesperado: vacío por encima del piso verificado. No se esconde ni se
+            // confía hacia abajo: se avisa y se sigue bajando con consultas hasta el vacío real.
+            if(j.rapido && confianza && pisoVerificado && mes>=pisoVerificado) {
+              confianza=false;j.mes=anterior(mes);
+              await notificar(j,`${codigo}: ${etiqueta(mes)} salio vacio por encima del piso verificado (${etiqueta(pisoVerificado)}); posible hueco. Sigo comprobando con consultas hasta ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: vacio inesperado sobre el piso; sigo comprobando.`});
+              continue;
+            }
             if(existe) throw new Error(`Archivo vacio existente: ${destino}. Lo conservo para revisar, no doy el activo por terminado.`);
+            try { escribirMarca(path.dirname(destino), yymm(siguiente(mes))); } catch(e) { console.error('No pude escribir la marca de primer mes:', e.message); }
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             await notificar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Historial terminado: ${etiqueta(mes)} sin velas. ${j.indice}/${j.codigos.length} activos.`});
@@ -147,7 +204,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       }
     } finally {activas.delete(id);}
   }
-  async function iniciar({clase,codigos,siguientes=[],event,piso=null,continuar=false,arranque=false}) {
+  async function iniciar({clase,codigos,siguientes=[],event,piso=null,continuar=false,arranque=false,rapido=false}) {
     if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
@@ -165,13 +222,13 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         if(!j || j.estado==='terminado') {await notificar(event,'No hay un registro pendiente que continuar.');return;}
       } else {
         if(j && j.estado!=='terminado') {
-          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos) && JSON.stringify(j.siguientes||[])===JSON.stringify(siguientes||[]) && (j.piso??null)===(piso??null);
+          const mismo=j.clase===clase && JSON.stringify(j.codigos)===JSON.stringify(codigos) && JSON.stringify(j.siguientes||[])===JSON.stringify(siguientes||[]) && (j.piso??null)===(piso??null) && !!j.rapido===!!rapido;
           if(!mismo) {await notificar(event,`Hay un registro pendiente en ${j.codigos[j.indice]}, ${etiqueta(j.mes)}. No lo sustituyo. Usa registra continuar.`);return;}
         } else {
           if(!Array.isArray(siguientes) || !siguientes.every(tramoValido)) {await notificar(event,'La lista de clases siguientes no es valida; no inicie el registro.');return;}
           const hasta=cierreUTC(ahora());
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
-          j={version:2,estado:'en-curso',clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
+          j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
         }
       }

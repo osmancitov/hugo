@@ -109,7 +109,7 @@ test('parseo de la orden: desde AAMM, codigos de 1 letra y Unicode; errores clar
     registrar(conectarCaja({
       conf: { HUGO_VELAS_DIR: path.join(root, 'velas'), HUGO_REGISTRO_ESTADO: path.join(root, 'estado.json') },
       app: { client: { chat: { postMessage: async (m) => { msgs.push(m.text); return { ts: 'simulada' }; }, update: async (m) => { msgs.push(m.text); return { ts: m.ts }; } } } },
-      activas: new Map(), alIniciar: () => {}, comando: (_, f) => (handler = f),
+      activas: new Map(), alIniciar: () => {}, comando: (p, f) => { if (String(p).includes('registr')) handler = f; },
     }));
     await handler(event, `registra cripto desde ${aammActual} a, 牛来`);
     const j = leerEstado(path.join(root, 'estado.json'));

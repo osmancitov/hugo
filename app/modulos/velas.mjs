@@ -71,6 +71,27 @@ export function registrar(ctx) {
     if(new Set(codigos).size!==codigos.length) return avisar(event,'Hay codigos repetidos en la lista. Quitalos para conservar un orden claro; no inicie el registro.');
     return motor.iniciar({clase,codigos,event,piso});
   },{nombre:'registrar velas',delegable:true});
+  // «pon al día»: mismo universo y motor que «registra todo», pero consulta solo lo pendiente y
+  // comprueba en disco lo ya guardado. La revisión completa sigue siendo «registra todo».
+  ctx.comando(/^\s*pon\s+al\s+d[ií]a\s*[.!?]*\s*$/i, async(event)=>{
+    if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');
+    cotejando=true;
+    try {
+      const pendiente=leerEstado(archivoEstado());
+      if(pendiente && pendiente.estado!=='terminado') return await avisar(event,'Hay un registro pendiente; no cambio su lista. Usa registra continuar.');
+      const archivo=path.join(path.dirname(archivoEstado()),'universo.json');
+      const tramos=[];
+      for(const clase of CLASES) {
+        const u=await prepararUniverso({clase,base:base(),archivo});
+        // El aviso aceptado de cada clase precede a guardar su catalogo y a descargar velas.
+        await avisar(event,u.texto);
+        await u.guardar();
+        tramos.push({clase,codigos:u.codigos});
+      }
+      return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,siguientes:tramos.slice(1),event,rapido:true});
+    } catch(e) { return await avisar(event,`No inicie la puesta al dia: ${e.message}`); }
+    finally {cotejando=false;}
+  },{nombre:'poner al dia los registros',delegable:true});
   // El trabajo nuevo solo nace por una orden. Al volver, continua uno ya aceptado.
   ctx.alIniciar(()=>{motor.iniciar({arranque:true}).catch(async e=>{
     console.error('Reanudar registra:',e.message);

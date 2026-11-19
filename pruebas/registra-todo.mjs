@@ -93,7 +93,7 @@ test('integracion del comando: «registra todo» coteja ambas clases, avisa y re
  };
  try{
   const {registrar}=await import('../app/modulos/velas.mjs');
-  registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada-'+msgs.length};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(_,f)=>handler=f}));
+  registrar(conectarCaja({conf:{HUGO_VELAS_DIR:path.join(root,'velas'),HUGO_REGISTRO_ESTADO:path.join(root,'estado.json')},app:{client:{chat:{postMessage:async m=>{msgs.push(m);return {ts:'simulada-'+msgs.length};},update:async m=>{msgs.push({...m,thread_ts:event.ts});return {ts:m.ts};}}}},activas:new Map(),alIniciar:()=>{},confirmar:()=>{throw Error('No debe pedir pulgar');},comando:(p,f)=>{if(String(p).includes('registr'))handler=f;}}));
   await handler(event,'registra todo BTC');
   assert.ok(msgs.some(m=>m.text.includes('no admite codigos')));
   msgs.length=0;
