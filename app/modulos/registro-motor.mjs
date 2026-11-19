@@ -56,8 +56,11 @@ const escribirVerificado = (dir, aamm) => escribirAamm(dir, VERIFICADO, aamm);
 // Al arrancar un registro nuevo: borra del disco local los archivos AAMM anteriores al piso
 // (siempre) y, solo la primera vez (marca _recorte-techo en la base), borra los archivos
 // posteriores a 2611 y recorta las velas posteriores al 17 dentro de los archivos de ese
-// mes. Avisa cuánto quitó. No toca _primer-mes, _verificado ni otros archivos. Un archivo
-// ilegible o intocable se conserva y se avisa por consola.
+// mes; si el recorte deja un noviembre sin velas (activos nuevos que solo tenían el 18),
+// borra el archivo para que el motor lo baje completo, y ese saneamiento de noviembre vacío
+// corre en todo arranque, con o sin marca. Avisa cuánto quitó. No toca _primer-mes,
+// _verificado ni otros archivos. Un archivo ilegible o intocable se conserva y se avisa por
+// consola.
 const TECHO_RECO = Date.UTC(2026,10,18); // exclusivo: la última vela conservada es la del 17-nov-2026
 const MARCA_RECO = '_recorte-techo';
 function limpiarFueraDelTramo(baseDir,clases) {
@@ -75,11 +78,17 @@ function limpiarFueraDelTramo(baseDir,clases) {
     if(!m)continue;
     const ruta=path.join(dir,f);
     if(m[1]<pisoAamm||(!techoHecho&&m[1]>techoAamm)){try{fs.rmSync(ruta);archivos++;}catch(e){console.error('No pude borrar',f,e.message);}continue;}
-    if(!techoHecho&&m[1]===techoAamm) {
+    if(m[1]===techoAamm) {
      let datos;try{datos=JSON.parse(leerNormal(ruta));}catch(e){console.error('No pude recortar',f,e.message);continue;}
      if(!Array.isArray(datos))continue;
+     // Un noviembre sin velas (el recorte dejó vacíos a los activos nuevos que solo tenían
+     // el 18) no es una serie registrada: se borra y el motor lo vuelve a bajar completo.
+     // Esto corre en TODO arranque, con o sin marca, para sanar los restos del recorte único.
+     if(datos.length===0){try{fs.rmSync(ruta);archivos++;}catch(e){console.error('No pude borrar',f,e.message);}continue;}
+     if(techoHecho)continue;
      const quedan=datos.filter(v=>!Array.isArray(v)||typeof v[0]!=='number'||v[0]<TECHO_RECO);
      if(quedan.length===datos.length)continue;
+     if(quedan.length===0){try{fs.rmSync(ruta);archivos++;}catch(e){console.error('No pude borrar',f,e.message);}continue;}
      try{const tmp=escribirTemporal(ruta,JSON.stringify(quedan)+'\n');fs.renameSync(tmp,ruta);syncDir(dir);velas+=datos.length-quedan.length;}catch(e){console.error('No pude recortar',f,e.message);}
     }
    }

@@ -76,11 +76,26 @@ test('peluqueada: borra archivos fuera del tramo ago a 17-nov y recorta velas po
   assert.ok(fs.existsSync(path.join(s.base, '_recorte-techo')), 'deja la marca del recorte único');
   // El techo NO es permanente: la vela del 18 que sume la puesta al día sobrevive al siguiente arranque.
   fs.writeFileSync(path.join(dir, '2611_AA'), JSON.stringify([vela(dia('2611', 16)), vela(dia('2611', 17)), vela(dia('2611', 18))]) + '\n');
+  // Saneamiento con marca: un noviembre vacío (resto del recorte en un activo nuevo) se borra para que el motor lo baje completo.
+  const dirBB = path.join(s.base, 'cripto/BB');
+  fs.mkdirSync(dirBB, { recursive: true });
+  fs.writeFileSync(path.join(dirBB, '2611_BB'), '[]\n');
   s.msgs.length = 0;
   await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: octubre });
   const nov2 = JSON.parse(fs.readFileSync(path.join(dir, '2611_AA'), 'utf8'));
   assert.deepEqual(nov2.map((v) => v[0]), [dia('2611', 16), dia('2611', 17), dia('2611', 18)], 'no vuelve a recortar el techo');
+  assert.ok(!fs.existsSync(path.join(dirBB, '2611_BB')), 'borra el noviembre vacío aunque la marca ya exista');
   assert.ok(!s.msgs.some((m) => m.includes('recortadas')), 'sin segundo recorte no hay segundo aviso de velas');
+}));
+
+test('peluqueada: un activo nuevo con solo velas posteriores al 17 pierde el archivo, no se queda vacío', async () => caso(async (s) => {
+  const dir = path.join(s.base, 'cripto/AA');
+  fs.mkdirSync(dir, { recursive: true });
+  const dia = (d) => Date.UTC(2026, 10, d);
+  fs.writeFileSync(path.join(dir, '2611_AA'), JSON.stringify([vela(dia(18))]) + '\n');
+  await s.m.iniciar({ clase: 'cripto', codigos: ['AA'], event, piso: octubre });
+  assert.ok(!fs.existsSync(path.join(dir, '2611_AA')), 'el recorte borra el archivo que dejaría sin velas');
+  assert.ok(s.msgs.some((m) => m.includes('Limpieza pedida por el usuario: 1 archivo(s)')));
 }));
 
 test('misma lista con otro piso no desplaza el trabajo pendiente; con el mismo lo retoma', async () => caso(async (s) => {
