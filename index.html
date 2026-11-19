@@ -394,8 +394,9 @@ async function cargarIndicador(codigo) {
 }
 
 // Línea diaria 0-100 sobre las cinco bandas oficiales del índice. Estática: no hay trazado animado.
-function graficoIndicador(ctx, puntos, e) {
+function graficoIndicador(ctx, puntos, e, hasta) {
   const n = puntos.length;
+  const k = hasta === undefined ? n : Math.min(hasta, n);
   const ALTO = LH + 32;
   const X = (i) => ML + (n === 1 ? PW / 2 : (i / (n - 1)) * PW);
   const Y = (v) => MT + ((100 - v) / 100) * PH;
@@ -449,15 +450,17 @@ function graficoIndicador(ctx, puntos, e) {
   // línea y puntos
   ctx.strokeStyle = BLUE; ctx.lineWidth = 2; ctx.lineJoin = 'round';
   ctx.beginPath();
-  for (let i = 0; i < n; i++) { const x = X(i), y = Y(puntos[i][1]); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  for (let i = 0; i < k; i++) { const x = X(i), y = Y(puntos[i][1]); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();
   ctx.fillStyle = BLUE;
-  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(X(i), Y(puntos[i][1]), 2.5, 0, 7); ctx.fill(); }
-  // último valor, con su clase
+  for (let i = 0; i < k; i++) { ctx.beginPath(); ctx.arc(X(i), Y(puntos[i][1]), 2.5, 0, 7); ctx.fill(); }
+  // último valor, con su clase (solo con la curva completa, como la radiografía)
   const uv = puntos[n - 1][1];
-  ctx.font = 'bold 15px ' + FUENTE;
-  ctx.fillStyle = '#e8eaed'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText(`${uv} · ${e.clasif(uv)}`, Math.min(X(n - 1) - 12, ML + PW), Math.max(Y(uv) - 16, MT + 8));
+  if (k >= n) {
+    ctx.font = 'bold 15px ' + FUENTE;
+    ctx.fillStyle = '#e8eaed'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${uv} · ${e.clasif(uv)}`, Math.min(X(n - 1) - 12, ML + PW), Math.max(Y(uv) - 16, MT + 8));
+  }
   // pie: la fuente va junto al gráfico, como piden los términos de Alternative.me
   const uf = new Date(puntos[n - 1][0]);
   const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
@@ -469,9 +472,10 @@ function graficoIndicador(ctx, puntos, e) {
 // El mismo índice en pantalla vertical, con el patrón de radiografiaVertical: los días
 // corren de arriba abajo con sus fechas a la izquierda y el valor 0-100 va en X, con
 // las bandas oficiales como franjas verticales. Mismos datos y mismas bandas, otro eje.
-function graficoIndicadorVertical(ctx, puntos, e, alto) {
+function graficoIndicadorVertical(ctx, puntos, e, alto, hasta) {
   const w = 700, left = 88, right = 612, top = 134, bottom = alto - 110;
   const n = puntos.length;
+  const k = hasta === undefined ? n : Math.min(hasta, n);
   const X = (v) => left + (v / 100) * (right - left);
   const Y = (i) => top + (i / (n - 1)) * (bottom - top);
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
@@ -522,13 +526,14 @@ function graficoIndicadorVertical(ctx, puntos, e, alto) {
   ctx.beginPath(); ctx.rect(left, top, right - left, bottom - top); ctx.clip();
   ctx.strokeStyle = BLUE; ctx.lineWidth = 3; ctx.lineJoin = 'round';
   ctx.beginPath();
-  for (let i = 0; i < n; i++) { const x = X(puntos[i][1]), y = Y(i); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  for (let i = 0; i < k; i++) { const x = X(puntos[i][1]), y = Y(i); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();
   ctx.fillStyle = BLUE;
-  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(X(puntos[i][1]), Y(i), 3.5, 0, 7); ctx.fill(); }
+  for (let i = 0; i < k; i++) { ctx.beginPath(); ctx.arc(X(puntos[i][1]), Y(i), 3.5, 0, 7); ctx.fill(); }
   ctx.restore();
-  // último valor, con su clase
+  // último valor, con su clase (solo con la curva completa)
   const uv = puntos[n - 1][1];
+  if (k >= n) {
   const textoUv = `${uv} · ${e.clasif(uv)}`;
   const derecha = X(uv) > (left + right) / 2;
   ctx.font = 'bold 22px ' + FUENTE;
@@ -537,6 +542,7 @@ function graficoIndicadorVertical(ctx, puntos, e, alto) {
   const tx = derecha ? Math.min(X(uv) - 14, right - 8) : Math.max(X(uv) + 14, left + 8);
   const ty = Math.max(Y(n - 1) - 26, top + 14);
   ctx.strokeText(textoUv, tx, ty); ctx.fillText(textoUv, tx, ty);
+  }
   // pie: la fuente va junto al gráfico, como piden los términos de Alternative.me
   const uf = new Date(puntos[n - 1][0]);
   const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
@@ -578,14 +584,25 @@ function vistaIndicador(codigo) {
     if (!caja.isConnected) return;
     // Las mismas reglas de presentación que las demás gráficas: en pantalla vertical
     // el índice se dibuja en vertical; la pieza común gira, reajusta y limpia igual.
+    const dibujarEn = (ctx, hasta) => {
+      const geometria = g.geometria;
+      if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto, hasta);
+      else graficoIndicador(ctx, puntos, e, hasta);
+    };
+    const traza = trazadoAnimado(caja, () => puntos.length, (hasta) => dibujarEn(g.ctx, hasta));
     const g = graficaAdaptable(caja, (vertical) => vertical
       ? { ancho: 700, alto: Math.max(1400, puntos.length * 18 + 320) }
       : { ancho: LW, alto: LH + 32 },
-    (ctx, geometria) => {
-      if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto);
-      else graficoIndicador(ctx, puntos, e);
-    });
-    g.redibujar();
+    () => traza.terminar(),
+    () => traza.cancelar());
+    traza.trazar();
+    const controles = document.createElement('div');
+    controles.className = 'controles-grafica';
+    const btn = document.createElement('button');
+    btn.className = 'boton'; btn.textContent = 'Repetir trazado';
+    btn.addEventListener('click', traza.trazar);
+    controles.append(btn);
+    pie.append(controles);
     const uf = new Date(puntos[puntos.length - 1][0]);
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
@@ -678,6 +695,33 @@ function graficaAdaptable(caja, geometriaPara, dibujar, alLimpiar) {
   };
   g.configurar();
   return g;
+}
+
+// Regla común del trazado: toda gráfica dibuja su curva en el mismo tiempo, repite igual
+// y respeta el movimiento reducido (dibuja el resultado completo, sin animar). Un solo
+// controlador y una sola duración; cada gráfica aporta solo su dibujo, dibujar(hasta),
+// donde hasta es el número de puntos ya trazados y sin él se dibuja completa.
+const DURACION_TRAZADO_MS = 2000;
+function trazadoAnimado(caja, total, dibujar) {
+  const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let animId = null;
+  const t = {};
+  t.cancelar = () => { if (animId) cancelAnimationFrame(animId); animId = null; };
+  t.terminar = () => { t.cancelar(); dibujar(); };
+  t.trazar = () => {
+    t.cancelar();
+    if (sinMovimiento) { t.terminar(); return; }
+    const t0 = performance.now();
+    const paso = (ahora) => {
+      if (!caja.isConnected) { animId = null; return; }
+      const p = Math.min(1, (ahora - t0) / DURACION_TRAZADO_MS);
+      const k = 1 + Math.floor(p * (total() - 1));
+      if (p < 1) { dibujar(k); animId = requestAnimationFrame(paso); }
+      else { dibujar(); animId = null; }
+    };
+    animId = requestAnimationFrame(paso);
+  };
+  return t;
 }
 
 function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
@@ -1019,8 +1063,7 @@ function vistaActivo(clase, codigo) {
       notaBase = `Trazada en vivo desde los registros publicados · ${completo ? 'registro completo' : 'últimos 3 meses'} · datos al ${fecha} (UTC)`;
     };
     usar(hayMas ? filasVentana : filas, !hayMas);
-    const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let limite = 5, animId = null;
+    let limite = 5;
     const dibujarEn = (destino, hasta) => {
       const geometria = g.geometria;
       if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
@@ -1033,31 +1076,15 @@ function vistaActivo(clase, codigo) {
         destino.fillText(pieDatos + limite + '%', geometria.ancho / 2, geometria.alto - 13);
       }
     };
-    const terminar = () => {
-      if (animId) cancelAnimationFrame(animId);
-      animId = null;
-      dibujarEn(g.ctx);
-    };
-    const trazar = () => {
-      if (animId) cancelAnimationFrame(animId);
-      if (sinMovimiento) { terminar(); return; }
-      const t0 = performance.now();
-      const paso = (t) => {
-        if (!caja.isConnected) { animId = null; return; }
-        const p = Math.min(1, (t - t0) / 2000);
-        const k = 1 + Math.floor(p * (d.rs.length - 1));
-        if (p < 1) { dibujarEn(g.ctx, k); animId = requestAnimationFrame(paso); }
-        else { dibujarEn(g.ctx); animId = null; }
-      };
-      animId = requestAnimationFrame(paso);
-    };
+    const traza = trazadoAnimado(caja, () => d.rs.length, (hasta) => dibujarEn(g.ctx, hasta));
+    const { terminar, trazar } = traza;
     // La pieza común gira el lienzo en pantallas verticales y reajusta al cambiar
     // el ancho; el dibujo cambia, no los datos ni la escala elegida.
     const g = graficaAdaptable(caja, (vertical) => vertical
       ? { ancho: 700, alto: Math.max(1400, d.rs.length * 18 + 320) }
       : { ancho: LW, alto: LH + 32 },
     () => terminar(),
-    () => { if (animId) cancelAnimationFrame(animId); animId = null; });
+    () => traza.cancelar());
     trazar();
     const controles = document.createElement('div');
     controles.className = 'controles-grafica';
