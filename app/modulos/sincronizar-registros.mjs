@@ -485,9 +485,10 @@ export function registrar(ctx) {
 
   // Automatica: una pasada poco despues de arrancar y luego cada HUGO_SYNC_MINUTOS (60 por defecto;
   // 0 la apaga). Cuando hay trabajo real (archivos por subir o bajar), abre un solo mensaje en el
-  // canal de avisos y lo va editando con el avance y el resultado, como el reporte manual. Si la
-  // pasada no tiene nada que copiar, calla como siempre: solo avisa cuando algo cambio, hay un
-  // conflicto nuevo o un error nuevo, y un error repetido se avisa una vez hasta que se arregle.
+  // canal de avisos y lo va editando con el avance y el resultado, como el reporte manual. Cada
+  // pasada anuncia «comprobando GitHub» al empezar y cierra con el resultado, aunque no haya nada
+  // que copiar (decision del usuario, 18-nov-2026: el silencio no permite saber si arranco). Si el
+  // reporte no pudo abrirse, el error repetido se avisa una vez hasta que se arregle.
   // Un fallo del propio reporte nunca interrumpe la copia.
   let ultimoAviso = '';
   async function automatica() {
@@ -502,7 +503,7 @@ export function registrar(ctx) {
       let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0, padre = null;
       const abrirReporte = async (texto) => {
         if (!padre) {
-          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Sincronizaci\u00f3n autom\u00e1tica de registros: empiezo una pasada con archivos por copiar; reporto el avance en este hilo.' });
+          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Sincronizaci\u00f3n autom\u00e1tica de registros: comprobando GitHub; reporto el resultado en este hilo.' });
         }
         reporte = await ctx.reporte.crearSync({ canal: ctx.canal, hilo: padre, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
         abiertoEn = Date.now();
@@ -522,7 +523,6 @@ export function registrar(ctx) {
         try {
           if (ociosa) return;
           if (!reporte) {
-            if (/^Comparacion lista: 0 por subir, 0 por bajar/.test(texto)) { ociosa = true; return; }
             if (!ctx.canal) { ociosa = true; return; }
             await abrirReporte(texto);
             return;
@@ -536,6 +536,11 @@ export function registrar(ctx) {
           await reporte.progreso(conEst);
         } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       };
+      // Aviso ANTES de clonar y comparar: sin esta señal no se distingue «en curso» de «no arranco».
+      if (ctx.canal) {
+        try { await abrirReporte('Comprobando GitHub\u2026'); }
+        catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
+      }
       const r = await pasada(progreso);
       let aviso = '';
       if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;

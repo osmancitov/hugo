@@ -1,6 +1,7 @@
-// node --test pruebas/sincronizar-automatica-reporte.mjs. La pasada automatica abre un solo mensaje
-// cuando hay trabajo, lo edita con el avance, lo renueva mas o menos cada minuto, muestra tiempo
-// restante aproximado cuando el ritmo permite estimarlo y cierra con el resultado. Sin trabajo, calla.
+// node --test pruebas/sincronizar-automatica-reporte.mjs. La pasada automatica anuncia
+// «comprobando GitHub» antes de empezar, edita ese reporte con el avance, lo renueva mas o menos
+// cada minuto, muestra tiempo restante aproximado cuando el ritmo permite estimarlo y cierra con
+// el resultado, aunque no haya nada que copiar (decision del usuario, 18-nov-2026).
 // Remoto git real por file:// (sin red) y Slack simulado; el reloj es falso y avanza con cada
 // llamada a Slack, como si cada tramo de la pasada tomara unos segundos.
 import { test } from 'node:test';
@@ -70,7 +71,7 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     assert.ok(posts.length >= 4 && posts.length <= 9, `mensajes abiertos: ${posts.length}`);
     // El primer mensaje avisa en el canal que empieza la pasada; los avances son respuestas en su hilo.
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
-    assert.ok(/empiezo una pasada con archivos por copiar/.test(posts[0].text), posts[0].text);
+    assert.ok(/comprobando GitHub/.test(posts[0].text), posts[0].text);
     assert.ok(posts.slice(1).every((p) => p.thread_ts === posts[0].tsAsignado), 'los avances cuelgan del aviso inicial');
     assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && p.text.startsWith('Sincronización automática de registros en curso.')));
     // A 30 s por archivo, tras el primero el ritmo permite estimar: alguna edicion muestra el tiempo aproximado.
@@ -86,13 +87,24 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
   } finally { b.restaurar(); }
 });
 
-test('automatica: sin nada que copiar, calla (ni un mensaje)', async () => {
+test('automatica: sin nada que copiar, anuncia la comprobacion y cierra con el resultado', async () => {
   const b = bancoDePruebas([]);
   try {
     const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
     registrar(b.ctx);
     await b.ctx.automaticaSincronizacion();
-    assert.equal(b.llamadas.length, 0, `no esperaba mensajes: ${JSON.stringify(b.llamadas)}`);
+    const posts = b.llamadas.filter((l) => l.tipo === 'post');
+    // La senal de arranque es lo primero que sale, antes de clonar y comparar: un aviso en el canal.
+    assert.equal(posts.length, 2, `mensajes abiertos: ${posts.length}`);
+    assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
+    assert.ok(/comprobando GitHub/.test(posts[0].text), posts[0].text);
+    assert.equal(posts[1].thread_ts, posts[0].tsAsignado, 'el reporte cuelga del aviso inicial');
+    assert.ok(/en curso\. Comprobando GitHub/.test(posts[1].text), posts[1].text);
+    // El cierre con el resultado se edita sobre ese mismo mensaje, aunque no hubiera nada que copiar.
+    const ultimo = b.llamadas.at(-1);
+    assert.equal(ultimo.tipo, 'update');
+    assert.equal(ultimo.ts, posts[1].tsAsignado, 'el resultado se edita sobre el mensaje del reporte');
+    assert.ok(/sin cambios; todo sigue igual\./.test(ultimo.text), ultimo.text);
   } finally { b.restaurar(); }
 });
 
