@@ -59,6 +59,7 @@ async function productoDe(simbolo, { web, fetchImpl }) {
 
 export const esBStock = (p) => !!p && Array.isArray(p.tags) && p.tags.includes('bStocks') && /bstocks\s*[)）]\s*$/i.test(String(p.an || ''));
 const limpiarNombre = (an) => String(an || '').replace(/\s*[(（]\s*bStocks\s*[)）]\s*$/i, '').trim();
+export { limpiarNombre };
 
 // Devuelve { ok: true, clase, codigo, simbolo, nombre? } o { ok: false, motivo }.
 export async function resolverActivo(clase, codigoEntrada, opciones = {}) {

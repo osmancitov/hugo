@@ -40,7 +40,7 @@ export async function prepararUniverso({clase,base,archivo,fetchImpl=fetch}) {
   const lista = xs => xs.length ? xs.join(', ') : 'ninguna';
   const texto = `Cotejo de ${clase} con Binance: ${actuales.length} activos elegibles.\nAltas: ${altas.length} (${lista(altas)}). Se incorporan a este lote.\nBajas nuevas: ${bajas.length} (${lista(bajas)}). Conservo sus historiales, no los actualizo.\nReactivados: ${reactivados.length} (${lista(reactivados)}).\nLos codigos excluidos permanecen fuera. Esta orden actualiza todo el universo de ${clase}; no opera activos.`;
   const siguiente = {version:1,clases:{...(previo?.clases||{}),[clase]:{comprobado:Date.now(),activos:actuales,retirados}}};
-  return {codigos:actuales,texto,guardar:async()=>{
+  return {codigos:actuales,nombres:u.nombres[clase],texto,guardar:async()=>{
     await fs.mkdir(path.dirname(archivo),{recursive:true});
     const tmp=archivo+'.tmp';await fs.writeFile(tmp,JSON.stringify(siguiente),{mode:0o600});await fs.rename(tmp,archivo);
   }};

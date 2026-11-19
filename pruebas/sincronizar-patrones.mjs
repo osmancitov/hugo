@@ -47,3 +47,30 @@ test('pasada sube cripto/A, cripto/牛来 y stock/AA en un solo commit; nombres 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('un fallo de git muestra su detalle (stderr) y oculta el token', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-syncerr-'));
+  const velas = path.join(root, 'velas');
+  fs.mkdirSync(velas, { recursive: true });
+  const envAntes = process.env.HUGO_VELAS_DIR;
+  process.env.HUGO_VELAS_DIR = velas;
+  try {
+    const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
+    const ctx = {
+      conf: { HUGO_GITHUB: 'osman/repo', HUGO_REPO_SYNC_URL: 'file:///no/existe-token-simulado/repo.git', HUGO_REPO_SYNC_DIR: path.join(root, 'clon') },
+      app: { client: {} }, botToken: 'x', canal: 'C',
+      parada: { n: 0 }, activas: new Map(), leerClave: () => 'token-simulado',
+      comando: () => {}, alIniciar: () => {},
+    };
+    registrar(conectarCaja(ctx));
+    const r = await ctx.pasadaSincronizacion();
+    assert.ok(r.error.includes('No pude comparar con GitHub'), r.error);
+    assert.ok(r.error.includes('Detalle git:'), 'el aviso trae el stderr de git: ' + r.error);
+    const detalle = r.error.split('Detalle git:')[1];
+    assert.ok(!detalle.includes('token-simulado'), 'el detalle no filtra el token: ' + detalle);
+    assert.ok(detalle.includes('***'), 'el token aparece redactado: ' + detalle);
+  } finally {
+    if (envAntes === undefined) delete process.env.HUGO_VELAS_DIR; else process.env.HUGO_VELAS_DIR = envAntes;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

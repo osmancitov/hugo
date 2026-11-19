@@ -87,3 +87,18 @@ test('fallo del post de cierre pausa; reanudar entrega la línea pendiente sin r
   const posts=s.calls.filter(x=>x.tipo==='post'&&x.text.startsWith('Activo '));assert.equal(posts.length,1);assert.ok(posts[0].text.includes('2611: 1 velas'));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('el cierre entregado no se repite al arrancar: avisoPendiente queda limpio tras el aviso final', async () => {
+ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-cierre-')), s = simulado(), estado = path.join(root, 'estado'), mes = Date.UTC(2026, 10, 1);
+ const opciones = { base: () => path.join(root, 'velas'), archivoEstado: () => estado, ahora: () => mes + 2 * 86400000, resolver: async () => ({ ok: true, simbolo: 'AA' }), fetchImpl: async (u) => { const t = Number(new URL(u).searchParams.get('startTime')); return { ok: true, status: 200, text: async () => JSON.stringify(t === mes ? [[mes, '1', '2', '1', '2', '10', mes + 86400000 - 1, '10', 3, '1', '2', '0']] : []) }; } };
+ const resumenes = () => s.calls.filter((x) => x.tipo === 'post' && String(x.text).startsWith('Registro terminado')).length;
+ try {
+  await crearMotor({ ...opciones, avisar: s.crear() }).iniciar({ clase: 'stock', codigos: ['AA'], event: { channel: 'canal', ts: 'hilo' } });
+  const j = leerEstado(estado);
+  assert.equal(j.estado, 'terminado');
+  assert.equal(j.avisoPendiente, undefined, 'el cierre exitoso limpia el aviso pendiente del ultimo activo');
+  assert.equal(resumenes(), 1);
+  await crearMotor({ ...opciones, avisar: s.crear() }).iniciar({ arranque: true });
+  assert.equal(resumenes(), 1, 'el siguiente arranque no reenvia el cierre');
+ } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

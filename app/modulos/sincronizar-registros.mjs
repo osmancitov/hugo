@@ -96,6 +96,7 @@ export function registrar(ctx) {
       const salida = `${e.stderr || ''} ${e.message || ''}`;
       if (/403|permission denied|authentication failed|could not read username|invalid username|not permitted/i.test(salida)) { const x = new Error('el token no tiene escritura en este repo o falta'); x.sinPermiso = true; throw x; }
       e.salidaGit = salida.slice(0, 400);
+      e.errorGit = String(e.stderr || '').replace(/\s+/g, ' ').trim().slice(0, 300);
       throw e;
     }
   }
@@ -422,7 +423,8 @@ export function registrar(ctx) {
       verificar();
     } catch (e) {
       if (e.detenida) return { detenida: true, hizoAlgo: mudo, texto: `Sincronizaci\u00f3n detenida a pedido durante la comparaci\u00f3n. No cambi\u00e9 nada m\u00e1s; la pr\u00f3xima pasada retoma lo que falte.${previo.length ? ` ${previo.join('. ')}.` : ''}` };
-      return { error: `No pude comparar con GitHub (${e.message}). No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo };
+      const detalle=(e.errorGit||'').split(token||'\u0000').join('***');
+      return { error: `No pude comparar con GitHub (${e.message}).${detalle?` Detalle git: ${detalle}.`:''} No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo };
     }
     const { subir, bajar, iguales, conflictos } = plan;
     await progreso(`Comparacion lista: ${subir.length} por subir, ${bajar.length} por bajar, ${iguales} iguales, ${conflictos.length} conflictos sin tocar.`);
@@ -456,7 +458,8 @@ export function registrar(ctx) {
       }
     } catch (e) {
       if (e.detenida) return { detenida: true, hizoAlgo, texto: 'Sincronizaci\u00f3n detenida a pedido. Lo ya copiado queda y nada se pis\u00f3 en ning\u00fan lado; la pr\u00f3xima pasada retoma lo que falte.' };
-      return { error: `La sincronizaci\u00f3n se detuvo: ${e.message} Lo ya copiado queda; nada se pis\u00f3 en ning\u00fan lado.`, hizoAlgo };
+      const detalle=(e.errorGit||'').split(token||'\u0000').join('***');
+      return { error: `La sincronizaci\u00f3n se detuvo: ${e.message}${detalle?` (detalle git: ${detalle})`:''} Lo ya copiado queda; nada se pis\u00f3 en ning\u00fan lado.`, hizoAlgo };
     }
     if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
     const segundos = ((Date.now() - t0) / 1000).toFixed(1);

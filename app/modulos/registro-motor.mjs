@@ -154,14 +154,16 @@ function leerNormal(archivo) {
   if (!fs.lstatSync(archivo).isFile()) throw new Error(`No es un archivo normal: ${archivo}`);
   return fs.readFileSync(archivo,'utf8');
 }
-const tramoValido=t=>t && CLASES.includes(t.clase) && Array.isArray(t.codigos) && t.codigos.length && t.codigos.length<=500 && !t.codigos.some(c=>!CODIGO_OK.test(c)) && new Set(t.codigos).size===t.codigos.length;
+const tramoValido=t=>t && CLASES.includes(t.clase) && Array.isArray(t.codigos) && t.codigos.length && t.codigos.length<=500 && !t.codigos.some(c=>!CODIGO_OK.test(c)) && new Set(t.codigos).size===t.codigos.length && nombresValidos(t.nombres,t.codigos);
+// Nombres del cotejo que originó el lote: objeto código→texto, opcional (avances viejos no lo traen).
+const nombresValidos=(n,cs)=>n==null||(typeof n==='object'&&!Array.isArray(n)&&Object.entries(n).every(([c,v])=>cs.includes(c)&&typeof v==='string'));
 export function leerEstado(archivo) {
   if (!fs.existsSync(archivo)) return null;
   const j=JSON.parse(leerNormal(archivo));
   if(j.version===1) {j.version=2;j.hasta=CERO;j.inicial=inicial;j.conteo.ampliados=0;} // reanuda el corte antiguo sin inventar dias
   if(j.siguientes==null) j.siguientes=[]; // los avances de una sola clase no la traen
   const estados=['en-curso','pausado','terminado'];
-  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0) || (j.rapido!=null && typeof j.rapido!=='boolean') || !Array.isArray(j.siguientes) || j.siguientes.length>CLASES.length || !j.siguientes.every(tramoValido) || (j.total!=null && (!Number.isInteger(j.total) || j.total<j.codigos.length))) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
+  if (j.version!==2 || !Number.isInteger(j.hasta) || j.hasta%86400000!==0 || !Number.isInteger(j.inicial) || j.inicial!==inicioMes(j.hasta-1) || !CLASES.includes(j.clase) || !Array.isArray(j.codigos) || !j.codigos.length || j.codigos.length>500 || j.codigos.some(c=>!CODIGO_OK.test(c)) || new Set(j.codigos).size!==j.codigos.length || !Number.isInteger(j.indice) || j.indice<0 || j.indice>j.codigos.length || !estados.includes(j.estado) || !Number.isInteger(j.mes) || j.mes>j.inicial || (j.inicial-j.mes)>241*32*86400000 || new Date(j.mes).getUTCDate()!==1 || j.mes%86400000!==0 || !(j.piso==null || (Number.isInteger(j.piso) && j.piso%86400000===0 && new Date(j.piso).getUTCDate()===1 && j.piso<=j.inicial && (j.inicial-j.piso)<=241*32*86400000)) || typeof j.channel!=='string' || !j.channel || typeof j.thread_ts!=='string' || !j.thread_ts || !j.conteo || ['guardados','existentes','activos','ampliados'].some(k=>!Number.isInteger(j.conteo[k])||j.conteo[k]<0) || (j.rapido!=null && typeof j.rapido!=='boolean') || !Array.isArray(j.siguientes) || j.siguientes.length>CLASES.length || !j.siguientes.every(tramoValido) || !nombresValidos(j.nombres,j.codigos) || (j.total!=null && (!Number.isInteger(j.total) || j.total<j.codigos.length))) throw new Error('El avance guardado no tiene un formato valido; se conserva sin tocar.');
   j.rapido=!!j.rapido;
   const enBorde=j.siguientes.length>0 && j.indice===j.codigos.length && (j.estado==='en-curso'||j.estado==='pausado');
   if (!enBorde && (j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
@@ -182,7 +184,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     if(j.version===2){if(['mes','fin-activo'].includes(meta?.tipo)&&salio!=='acumulado')delete j.avisoPendiente;guardar(j);}
   };
   const vaciarAviso=async j=>{if(j.avisoPendiente){const {text,meta}=j.avisoPendiente;await notificar(j,text,meta);}};
-  const avisarFin=async(j)=>{await notificar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);j.notificado=true;guardar(j);};
+  const avisarFin=async(j)=>{await notificar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);delete j.avisoPendiente;j.notificado=true;guardar(j);};
   async function correr(j) {
     const id='registro-historial';
     const marca=parada.n;
@@ -197,7 +199,12 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         if(pedida(marca))throw errorParada();
         const codigo=j.codigos[j.indice];
         activas.set(id,{que:`registrar ${codigo}, ${etiqueta(j.mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now(),largo:true});
-        const res=await resolver(j.clase,codigo);
+        // Nombres y símbolos ya validados por el cotejo que originó este lote: no se vuelve a
+        // pedir la ficha (exchangeInfo) de cada activo. Un avance sin nombres (anterior a esta
+        // versión) sigue resolviendo activo por activo como antes.
+        const res=j.nombres&&j.nombres[codigo]!=null
+          ? {ok:true,clase:j.clase,codigo,simbolo:`${codigo}${j.clase==='stock'?'B':''}USDT`,nombre:j.nombres[codigo]}
+          : await resolver(j.clase,codigo);
         if(!res.ok) throw new Error(res.motivo);
         await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}).`,{tipo:'activo'});
         const dirActivo=path.join(base(),j.clase,codigo);
@@ -328,7 +335,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       if(pedida(marca))throw errorParada();
       const tramo=j.siguientes.shift();
       await notificar(j,`Termine ${j.clase} (${j.codigos.length} activos). Sigo con ${tramo.clase}: ${tramo.codigos.length} activo(s), con el mismo corte UTC. ${resumen(j)}`);
-      j.clase=tramo.clase;j.codigos=tramo.codigos;j.indice=0;j.mes=j.inicial;j.reporte=null;guardar(j);
+      j.clase=tramo.clase;j.codigos=tramo.codigos;j.nombres=tramo.nombres||null;j.indice=0;j.mes=j.inicial;j.reporte=null;guardar(j);
       }
       await avisarFin(j);
     } catch(e) {
@@ -342,7 +349,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       }
     } finally {activas.delete(id);}
   }
-  async function iniciar({clase,codigos,siguientes=[],event,piso=null,continuar=false,arranque=false,rapido=false}) {
+  async function iniciar({clase,codigos,nombres=null,siguientes=[],event,piso=null,continuar=false,arranque=false,rapido=false}) {
     if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
@@ -366,7 +373,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(!Array.isArray(siguientes) || !siguientes.every(tramoValido)) {await notificar(event,'La lista de clases siguientes no es valida; no inicie el registro.');return;}
           const hasta=cierreUTC(ahora());
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
-          j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos]})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
+          j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,nombres:nombres||null,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos],nombres:t.nombres||null})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
           const limpia=limpiarFueraDelTramo(base(),[clase,...siguientes.map(t=>t.clase)]);
           if(limpia.archivos||limpia.velas) await notificar(event,`Limpieza pedida por el usuario: ${limpia.archivos} archivo(s) de velas anteriores a ${etiqueta(PISO_MINIMO)} o posteriores a noviembre de 2026 borrados del disco local${limpia.velas?` y ${limpia.velas} vela(s) de noviembre posteriores al 17 recortadas (recorte único para uniformar la base)`:''}. Lo anterior a agosto no se vuelve a buscar; la puesta al día completa desde el 18.`);

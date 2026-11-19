@@ -232,3 +232,28 @@ test('vacio inesperado sobre el piso apaga la confianza y la cobertura no avanza
   assert.ok(!fs.existsSync(path.join(b.root, 'velas/cripto/AAA/_verificado')), 'sin marca de verificado');
  } finally { b.fin(); }
 });
+
+test('los nombres del cotejo evitan resolver activo por activo; sin ellos se resuelve como antes', async () => {
+ const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-nombres-'));
+ try {
+  let resueltos = 0;
+  const opciones = {
+   base: () => path.join(raiz, 'velas'), archivoEstado: () => path.join(raiz, 'estado.json'),
+   resolver: async (clase, codigo) => { resueltos++; return { ok: true, clase, codigo, simbolo: codigo + 'USDT', nombre: codigo }; },
+   fetchImpl: async (u) => {
+    const inicio = Number(new URL(u).searchParams.get('startTime'));
+    const yymm = new Date(inicio).toISOString().slice(2, 7).replace('-', '');
+    const datos = yymm === '2611' ? diasDe('2611', DIECISIETE) : [];
+    return { ok: true, status: 200, text: async () => JSON.stringify(datos) };
+   },
+   avisar: async () => {}, ahora: () => AHORA,
+  };
+  await crearMotor(opciones).iniciar({ clase: 'cripto', codigos: ['AAA'], nombres: { AAA: 'AAA Token' }, event: evento, rapido: true });
+  assert.equal(resueltos, 0, 'con nombres del cotejo no hay resolucion por activo');
+  assert.equal(leerEstado(path.join(raiz, 'estado.json')).nombres.AAA, 'AAA Token');
+  fs.rmSync(path.join(raiz, 'estado.json'));
+  fs.rmSync(path.join(raiz, 'velas'), { recursive: true, force: true });
+  await crearMotor(opciones).iniciar({ clase: 'cripto', codigos: ['AAA'], event: evento, rapido: true });
+  assert.equal(resueltos, 1, 'un avance sin nombres resuelve activo por activo como antes');
+ } finally { fs.rmSync(raiz, { recursive: true, force: true }); }
+});

@@ -35,9 +35,9 @@ export function registrar(ctx) {
           // El aviso aceptado de cada clase precede a guardar su catalogo y a descargar velas.
           await avisar(event,u.texto);
           await u.guardar();
-          tramos.push({clase,codigos:u.codigos});
+          tramos.push({clase,codigos:u.codigos,nombres:u.nombres});
         }
-        return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,siguientes:tramos.slice(1),event});
+        return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,nombres:tramos[0].nombres,siguientes:tramos.slice(1),event});
       } catch(e) { return await avisar(event,`No inicie la actualizacion completa: ${e.message}`); }
       finally {cotejando=false;}
     }
@@ -62,7 +62,7 @@ export function registrar(ctx) {
         // El aviso aceptado precede a guardar el catalogo y a descargar velas.
         await avisar(event,u.texto);
         await u.guardar();
-        return await motor.iniciar({clase,codigos:u.codigos,event,piso});
+        return await motor.iniciar({clase,codigos:u.codigos,nombres:u.nombres,event,piso});
       } catch(e) { return await avisar(event,`No inicie la actualizacion completa: ${e.message}`); }
       finally {cotejando=false;}
     }
@@ -84,9 +84,9 @@ export function registrar(ctx) {
         // El aviso aceptado de cada clase precede a guardar su catalogo y a descargar velas.
         await avisar(event,u.texto);
         await u.guardar();
-        tramos.push({clase,codigos:u.codigos});
+        tramos.push({clase,codigos:u.codigos,nombres:u.nombres});
       }
-      return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,siguientes:tramos.slice(1),event,rapido:true});
+      return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,nombres:tramos[0].nombres,siguientes:tramos.slice(1),event,rapido:true});
     } catch(e) { return await avisar(event,`No inicie la puesta al dia: ${e.message}`); }
     finally {cotejando=false;}
   },{nombre:'poner al dia los registros',delegable:true});
