@@ -8,9 +8,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  SERIE, DIA, PISO_DIA, aammDe,
-  leerIndicador, escribirIndicador, relacionIndicador, actualizarIndicador,
+  SERIE, SERIES, DIA, PISO_DIA, aammDe,
+  leerIndicador, escribirIndicador, relacionIndicador, actualizarIndicador, actualizarIndicadores,
 } from '../app/modulos/indicadores.mjs';
+
+const BOLSA = 'feargreedchart-bolsa';
 import { registrar, fijarPasoIndicador } from '../app/modulos/sincronizar-registros.mjs';
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
@@ -28,6 +30,22 @@ const fetchFalso = (puntos, extra = {}) => async () => ({
     return extra.cuerpo || { data: puntos.map(([ts, v]) => ({ timestamp: String(ts / 1000), value: String(v), value_classification: 'x', time_until_update: '1' })) };
   },
 });
+
+// fetch falso de FearGreedChart: lista plana [{ date: 'YYYY-MM-DD', score: n }, ...]
+const fetchFalsoBolsa = (puntos, extra = {}) => async () => ({
+  ok: extra.ok !== false,
+  status: extra.status || 200,
+  json: async () => {
+    if (extra.jsonInvalido) throw new Error('json roto');
+    return extra.cuerpo !== undefined ? extra.cuerpo : puntos.map(([ts, v]) => ({ date: new Date(ts).toISOString().slice(0, 10), score: v }));
+  },
+});
+
+// Reparte por URL como haría la red: cada fuente recibe solo sus llamadas.
+const despachador = ({ cripto = [], bolsa = [], fallaCripto, fallaBolsa } = {}) => async (url) => {
+  if (String(url).includes('feargreedchart')) return fetchFalsoBolsa(bolsa, fallaBolsa || {})(url);
+  return fetchFalso(cripto, fallaCripto || {})(url);
+};
 
 test('leerIndicador: acepta una serie valida y rechaza cada forma mala', () => {
   assert.deepEqual(leerIndicador(jsonDe([d(1, 10), d(2, 20)])), [d(1, 10), d(2, 20)]);
@@ -117,6 +135,45 @@ test('actualizarIndicador: errores de la fuente son honestos y no escriben nada'
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('bolsa: solo se guarda un dia cuando su fecha ya paso en Nueva York (sesion cerrada)', async () => {
+  const dir = tmp('hugo-ind-bolsa-corte-');
+  const def = SERIES.find((s) => s.serie === BOLSA);
+  try {
+    const puntos = [[Date.UTC(2026, 10, 17), 36], [Date.UTC(2026, 10, 18), 29], [Date.UTC(2026, 10, 19), 33]];
+    // 19-nov 08:00 UTC = 03:00 en Nueva York: la entrada del 19 es la lectura viva y queda fuera.
+    const r1 = await actualizarIndicador({ dir, def, fetchImpl: fetchFalsoBolsa(puntos), ahora: () => Date.UTC(2026, 10, 19, 8) });
+    assert.equal(r1.nuevos, 2);
+    assert.deepEqual(leerIndicador(fs.readFileSync(path.join(dir, '2611'))), puntos.slice(0, 2));
+    // 20-nov 06:00 UTC = 01:00 en Nueva York: el 19 ya cerro y entra con su valor final.
+    const r2 = await actualizarIndicador({ dir, def, fetchImpl: fetchFalsoBolsa(puntos), ahora: () => Date.UTC(2026, 10, 20, 6) });
+    assert.equal(r2.nuevos, 1);
+    assert.deepEqual(leerIndicador(fs.readFileSync(path.join(dir, '2611'))), puntos);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('bolsa: los dias sin sesion quedan ausentes, nunca se rellenan', async () => {
+  const dir = tmp('hugo-ind-bolsa-huecos-');
+  const def = SERIES.find((s) => s.serie === BOLSA);
+  try {
+    // 13 y 14-nov-2026 son viernes y lunes; 15 y 16 son fin de semana sin lectura.
+    const puntos = [[Date.UTC(2026, 10, 13), 40], [Date.UTC(2026, 10, 16), 42]];
+    const r = await actualizarIndicador({ dir, def, fetchImpl: fetchFalsoBolsa(puntos), ahora: () => Date.UTC(2026, 10, 17, 12) });
+    assert.equal(r.nuevos, 2);
+    assert.deepEqual(leerIndicador(fs.readFileSync(path.join(dir, '2611'))), puntos);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('bolsa: una respuesta que no es la lista esperada se rechaza sin escribir', async () => {
+  const dir = tmp('hugo-ind-bolsa-err-');
+  const def = SERIES.find((s) => s.serie === BOLSA);
+  try {
+    await assert.rejects(
+      actualizarIndicador({ dir, def, fetchImpl: fetchFalsoBolsa([], { cuerpo: { raro: 1 } }), ahora: () => Date.UTC(2026, 10, 19, 8) }),
+      /FearGreedChart no trae la lista esperada/);
+    assert.deepEqual(fs.readdirSync(dir), []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 // --- Integracion con la sincronizacion (caja + remoto git simulados, como las demas pruebas) ---
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + DIA - 1, '10', 3, '1', '2', '0'];
@@ -145,32 +202,44 @@ function bancoInd() {
   };
 }
 
-test('sincronizacion: la pasada actualiza el indicador, lo sube en el mismo commit y lo anota en el cierre', async () => {
+test('sincronizacion: la pasada actualiza ambas series, las sube en el mismo commit y las anota en el cierre', async () => {
   const b = bancoInd();
   try {
-    const puntos = [[Date.UTC(2026, 10, 18), 12]];
-    fijarPasoIndicador(async ({ dir }) => actualizarIndicador({ dir, fetchImpl: fetchFalso(puntos), ahora: () => Date.UTC(2026, 10, 19, 8) }));
+    const cripto = [[Date.UTC(2026, 10, 18), 12]];
+    const bolsa = [[Date.UTC(2026, 10, 17), 36], [Date.UTC(2026, 10, 18), 29], [Date.UTC(2026, 10, 19), 33]];
+    fijarPasoIndicador(async ({ dirRaiz }) => actualizarIndicadores({ dirRaiz, fetchImpl: despachador({ cripto, bolsa }), ahora: () => Date.UTC(2026, 10, 19, 8) }));
     await b.ctx.automaticaSincronizacion();
     const arbol = b.rem.arbol();
-    assert.ok(arbol[`registros/${SERIE}/2611`], 'subio el archivo del indicador');
-    assert.deepEqual(JSON.parse(arbol[`registros/${SERIE}/2611`]), puntos);
+    assert.ok(arbol[`registros/${SERIE}/2611`], 'subio el archivo del cripto');
+    assert.deepEqual(JSON.parse(arbol[`registros/${SERIE}/2611`]), cripto);
+    // Bolsa: la entrada fechada con el dia en curso en Nueva York es la lectura viva y NO se guarda.
+    assert.deepEqual(JSON.parse(arbol[`registros/${BOLSA}/2611`]), bolsa.slice(0, 2), 'bolsa sin el valor vivo de hoy');
     assert.ok(arbol['registros/velas-24h/cripto/AAA/2611_AAA'], 'las velas subieron igual');
     const cierre = b.textos.join('\n');
     assert.match(cierre, /Fear & Greed cripto: 1 día\(s\) nuevo\(s\)/);
     assert.match(cierre, /último 2026-11-18 con valor 12/);
-    assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${SERIE}`)), 'el commit menciona la familia');
+    assert.match(cierre, /Fear & Greed bolsa: 2 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /último 2026-11-18 con valor 29/);
+    assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${SERIE}`)), 'el commit menciona el cripto');
+    assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${BOLSA}`)), 'el commit menciona la bolsa');
   } finally { b.restaurar(); }
 });
 
-test('sincronizacion: si la fuente del indicador falla, la pasada sigue con las velas y lo dice', async () => {
+test('sincronizacion: si una fuente falla, la otra serie y las velas siguen y el fallo se avisa', async () => {
   const b = bancoInd();
   try {
-    fijarPasoIndicador(async () => { throw new Error('alternative.me respondió HTTP 503; no guardo nada.'); });
+    const bolsa = [[Date.UTC(2026, 10, 18), 29]];
+    fijarPasoIndicador(async ({ dirRaiz }) => actualizarIndicadores({
+      dirRaiz, fetchImpl: despachador({ bolsa, fallaCripto: { ok: false, status: 503 } }), ahora: () => Date.UTC(2026, 10, 19, 8),
+    }));
     await b.ctx.automaticaSincronizacion();
     const arbol = b.rem.arbol();
     assert.ok(arbol['registros/velas-24h/cripto/AAA/2611_AAA'], 'las velas subieron pese al fallo');
-    assert.ok(!arbol[`registros/${SERIE}/2611`], 'no se invento indicador');
-    assert.match(b.textos.join('\n'), /Fear & Greed cripto sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
+    assert.ok(!arbol[`registros/${SERIE}/2611`], 'no se invento indicador cripto');
+    assert.ok(arbol[`registros/${BOLSA}/2611`], 'la bolsa subio pese al fallo del cripto');
+    const cierre = b.textos.join('\n');
+    assert.match(cierre, /Fear & Greed cripto sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
+    assert.match(cierre, /Fear & Greed bolsa: 1 día\(s\) nuevo\(s\)/);
   } finally { b.restaurar(); }
 });
 

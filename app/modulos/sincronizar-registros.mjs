@@ -40,7 +40,7 @@ import { promisify } from 'node:util';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
-import { SERIE, PREFIJO_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicador } from './indicadores.mjs';
+import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -69,8 +69,10 @@ export function fijarPasoIndicador(fn) { pasoIndicador = fn; }
 export function registrar(ctx) {
   const { app, botToken } = ctx;
   const dirBase = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
-  const dirInd = () => path.join(path.dirname(dirBase()), SERIE); // indicadores: carpeta hermana de velas-24h (19-nov-2026)
-  const pasoInd = () => (pasoIndicador || actualizarIndicador)({ dir: dirInd() });
+  // Indicadores: una carpeta hermana de velas-24h por serie, registros/<serie>/ (19-nov-2026).
+  const dirInd = (serie) => path.join(path.dirname(dirBase()), serie);
+  const serieDe = (rel) => rel.split('/')[1];
+  const pasoInd = () => (pasoIndicador || actualizarIndicadores)({ dirRaiz: path.dirname(dirBase()) });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
@@ -179,16 +181,18 @@ export function registrar(ctx) {
         }
       }
     }
-    // Indicadores (19-nov-2026): archivos mensuales bajo su carpeta hermana, misma forma de nombre.
-    let inds = [];
-    try { inds = fs.readdirSync(dirInd()); } catch { inds = []; }
-    for (const n of inds) {
-      if (!ARCHIVO_IND.test(n) || bajoPiso(n)) continue;
-      const ruta = path.join(dirInd(), n);
-      let st;
-      try { st = fs.lstatSync(ruta); } catch { continue; }
-      if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
-      lista.push({ rel: `${PREFIJO_IND}/${n}`, ruta, bytes: st.size });
+    // Indicadores (19-nov-2026): archivos mensuales bajo la carpeta hermana de cada serie.
+    for (const s of SERIES) {
+      let inds = [];
+      try { inds = fs.readdirSync(dirInd(s.serie)); } catch { inds = []; }
+      for (const n of inds) {
+        if (!ARCHIVO_IND.test(n) || bajoPiso(n)) continue;
+        const ruta = path.join(dirInd(s.serie), n);
+        let st;
+        try { st = fs.lstatSync(ruta); } catch { continue; }
+        if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
+        lista.push({ rel: `registros/${s.serie}/${n}`, ruta, bytes: st.size });
+      }
     }
     return lista;
   }
@@ -322,7 +326,7 @@ export function registrar(ctx) {
     return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
-  const corta = (rel) => rel.replace(`${PREFIJO}/`, '').replace(`${PREFIJO_IND}/`, '');
+  const corta = (rel) => RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
   const cortas = (l) => l.map((x) => corta(typeof x === 'string' ? x : x.rel));
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
@@ -334,7 +338,7 @@ export function registrar(ctx) {
       try {
         const buf = await leerBlob(b.sha);
         const esInd = RUTA_IND.test(b.rel);
-        const destino = esInd ? path.join(dirInd(), b.rel.slice(PREFIJO_IND.length + 1)) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
+        const destino = esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
         if (esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
         if (fs.existsSync(destino)) {
           if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
@@ -393,10 +397,12 @@ export function registrar(ctx) {
       const pendiente = String(await git(['status', '--porcelain', '--', ...items])).trim();
       if (!pendiente) return { commit: null, subidos: [], omitidos }; // el arbol ya tenia ese contenido
       const velas = items.filter((i) => !RUTA_IND.test(i)).map((i) => i.replace(`${PREFIJO}/`, ''));
-      const inds = items.filter((i) => RUTA_IND.test(i)).map((i) => i.replace(`${PREFIJO_IND}/`, ''));
       const partes = [];
       if (velas.length) partes.push(`Registros de velas: ${velas.join(', ')}`);
-      if (inds.length) partes.push(`Indicadores ${SERIE}: ${inds.join(', ')}`);
+      for (const s of SERIES) {
+        const meses = items.filter((i) => i.startsWith(`registros/${s.serie}/`)).map((i) => i.split('/').pop());
+        if (meses.length) partes.push(`Indicadores ${s.serie}: ${meses.join(', ')}`);
+      }
       const mensaje = partes.join(' · ');
       const sha = await commitGit(mensaje);
       try {
@@ -428,13 +434,17 @@ export function registrar(ctx) {
     const previo = [];
     let mudo = false;
     // Indicadores (decisión del usuario, 19-nov-2026): la pasada actualiza primero el histórico
-    // propio del Fear & Greed cripto; los archivos tocados entran en la comparación de abajo y se
-    // suben en el mismo commit. Un fallo de la fuente no detiene las velas: se avisa en el cierre.
+    // propio de cada serie; los archivos tocados entran en la comparación de abajo y se suben en
+    // el mismo commit. Un fallo de una fuente no detiene a las demás ni a las velas: se avisa.
     if (ind) {
       try {
         const rInd = await ind();
+        for (const s of (rInd.series || [])) {
+          if (s.error) previo.push(`indicador ${s.etiqueta} sin actualizar (${s.error}); sigo con las velas`);
+          else if (s.nuevos) { const u = s.dias[s.dias.length - 1]; previo.push(`indicador ${s.etiqueta}: ${s.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
+        }
         if (rInd.nuevos) { const u = rInd.dias[rInd.dias.length - 1]; previo.push(`indicador Fear & Greed cripto: ${rInd.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
-      } catch (e) { previo.push(`indicador Fear & Greed cripto sin actualizar (${e.message}); sigo con las velas`); }
+      } catch (e) { previo.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
     }
     const mud = mudarLocalHeredado();
     if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }

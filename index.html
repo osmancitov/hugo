@@ -219,10 +219,30 @@ function fichasExternas(e) {
 }
 const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
-// Indicadores (19-nov-2026): series diarias propias, fuera del catálogo de activos. No entran en
+// Indicadores (19-nov-2026): series diarias, fuera del catálogo de activos. No entran en
 // TODOS porque las rachas y las radiografías solo saben de velas; el buscador los suma aparte.
-const INDICADORES = [{ codigo: 'alternative-fear-greed', nombre: 'Fear & Greed Index', tipo: 'índice', indicador: true }];
-const clasifInd = (v) => v <= 24 ? 'Miedo extremo' : v <= 44 ? 'Miedo' : v <= 55 ? 'Neutral' : v <= 74 ? 'Codicia' : 'Codicia extrema';
+// Ventana uniforme: desde el piso del registro (1-ago-2026). Sin relleno: un día sin lectura
+// (fin de semana, festivo bursátil) simplemente no tiene punto (decisión del usuario, 19-nov-2026).
+const BANDAS_MIEDO = (b) => [
+  [b[3] + 0.5, 100, 'rgba(37,133,92,0.30)', 'Codicia extrema'],
+  [b[2] + 0.5, b[3] + 0.5, 'rgba(37,133,92,0.14)', 'Codicia'],
+  [b[1] + 0.5, b[2] + 0.5, 'rgba(139,147,161,0.16)', 'Neutral'],
+  [b[0] + 0.5, b[1] + 0.5, 'rgba(183,61,64,0.14)', 'Miedo'],
+  [0, b[0] + 0.5, 'rgba(183,61,64,0.30)', 'Miedo extremo'],
+];
+const clasifMiedo = (b) => (v) => v <= b[0] ? 'Miedo extremo' : v <= b[1] ? 'Miedo' : v <= b[2] ? 'Neutral' : v <= b[3] ? 'Codicia' : 'Codicia extrema';
+const INDICADORES = [
+  // Bolsa EE. UU. según FearGreedChart (VIX, momentum S&P 500, put/call, refugio y crédito).
+  // Sus zonas oficiales son 0-20/21-40/41-60/61-80/81-100. Solo días de sesión: el fin de
+  // semana y los festivos bursátiles no tienen lectura y quedan como hueco, no se rellenan.
+  { codigo: 'feargreedchart-bolsa', nombre: 'Fear & Greed Index (bolsa)', tipo: 'índice', indicador: true,
+    fuente: 'FearGreedChart.com', fuenteUrl: 'https://feargreedchart.com/',
+    bandas: BANDAS_MIEDO([20, 40, 60, 80]), clasif: clasifMiedo([20, 40, 60, 80]),
+    notaDias: 'solo días con sesión bursátil; un día sin sesión no tiene lectura' },
+  { codigo: 'alternative-fear-greed', nombre: 'Fear and Greed (Alternative)', tipo: 'índice', indicador: true,
+    fuente: 'Fear & Greed Index de Alternative.me',
+    bandas: BANDAS_MIEDO([24, 44, 55, 74]), clasif: clasifMiedo([24, 44, 55, 74]) },
+];
 
 function fmtCap(v) {
   if (v >= 1e12) return (v / 1e12).toFixed(2).replace('.', ',') + ' B';
@@ -352,8 +372,11 @@ function mesesIndicador() {
 async function cargarIndicador(codigo) {
   const clave = 'indicador/' + codigo;
   if (cacheRegistros.has(clave)) return cacheRegistros.get(clave);
+  const e = INDICADORES.find((x) => x.codigo === codigo);
+  if (!e) return [];
+  const base = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/' + e.codigo;
   const respuestas = await Promise.all(mesesIndicador().map((m) =>
-    fetch(`${RAW_IND}/${m}`).then((r) => (r.ok ? r.json() : []))));
+    fetch(`${base}/${m}`).then((r) => (r.ok ? r.json() : []))));
   const puntos = respuestas.flat().sort((a, b) => a[0] - b[0]);
   cacheRegistros.set(clave, puntos);
   return puntos;
@@ -365,15 +388,8 @@ function graficoIndicador(ctx, puntos, e) {
   const ALTO = LH + 32;
   const X = (i) => ML + (n === 1 ? PW / 2 : (i / (n - 1)) * PW);
   const Y = (v) => MT + ((100 - v) / 100) * PH;
-  const BANDAS = [
-    [74.5, 100, 'rgba(37,133,92,0.30)', 'Codicia extrema'],
-    [55.5, 74.5, 'rgba(37,133,92,0.14)', 'Codicia'],
-    [44.5, 55.5, 'rgba(139,147,161,0.16)', 'Neutral'],
-    [24.5, 44.5, 'rgba(183,61,64,0.14)', 'Miedo'],
-    [0, 24.5, 'rgba(183,61,64,0.30)', 'Miedo extremo'],
-  ];
   ctx.fillStyle = BG; ctx.fillRect(0, 0, LW, ALTO);
-  for (const [lo, hi, color, rotulo] of BANDAS) {
+  for (const [lo, hi, color, rotulo] of e.bandas) {
     ctx.fillStyle = color;
     ctx.fillRect(ML, Y(hi), PW, Y(lo) - Y(hi));
     ctx.fillStyle = 'rgba(201,204,211,0.6)';
@@ -430,13 +446,13 @@ function graficoIndicador(ctx, puntos, e) {
   const uv = puntos[n - 1][1];
   ctx.font = 'bold 15px ' + FUENTE;
   ctx.fillStyle = '#e8eaed'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText(`${uv} · ${clasifInd(uv)}`, Math.min(X(n - 1) - 12, ML + PW), Math.max(Y(uv) - 16, MT + 8));
+  ctx.fillText(`${uv} · ${e.clasif(uv)}`, Math.min(X(n - 1) - 12, ML + PW), Math.max(Y(uv) - 16, MT + 8));
   // pie: la fuente va junto al gráfico, como piden los términos de Alternative.me
   const uf = new Date(puntos[n - 1][0]);
   const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
   ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = '13px ' + FUENTE;
-  ctx.fillText(`Datos al ${fecha} (UTC) · Fuente: Fear & Greed Index de Alternative.me`, LW / 2, ALTO - 13);
+  ctx.fillText(`Datos al ${fecha} (UTC) · Fuente: ${e.fuente}`, LW / 2, ALTO - 13);
 }
 
 function vistaIndicador(codigo) {
@@ -475,7 +491,16 @@ function vistaIndicador(codigo) {
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
     nota.className = 'nota';
-    nota.textContent = `Trazada en vivo desde los registros publicados · datos al ${fecha} (UTC) · Fuente: Fear & Greed Index de Alternative.me`;
+    const origen = 'los registros publicados';
+    nota.append(`Trazada en vivo desde ${origen} · datos al ${fecha} (UTC)${e.notaDias ? ' · ' + e.notaDias : ''} · Fuente: `);
+    if (e.fuenteUrl) {
+      const enlace = document.createElement('a');
+      enlace.href = e.fuenteUrl;
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.textContent = e.fuente;
+      nota.append(enlace);
+    } else nota.append(e.fuente);
     pie.append(nota);
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').';
