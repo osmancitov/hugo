@@ -6,8 +6,16 @@
 //   hilo del comando; con canal va al canal de avisos. progreso edita como mucho cada `intervalo`;
 //   final espera el ritmo y deja el resultado en ese mismo mensaje.
 // - crearReporteSync: crearReporte con los textos propios de la sincronizacion.
-// - crearAvisador: el reporte del registro de velas: UN mensaje por activo que se va editando con
-//   sus meses (nunca un mensaje por consulta), con cola regulada entre publicaciones y ediciones.
+// - crearAvisador: el reporte del registro de velas: UN mensaje por activo, con todos sus meses
+//   acumulados (decisión del usuario, 18-nov-2026: «que reporte 1 vez por activo»). Meses y aviso
+//   de activo no tocan Slack: se acumulan en memoria y viajan en el avance. Cada cosa en su
+//   línea: titulo del activo, una línea por mes y una de cierre (decisión del usuario,
+//   18-nov-2026: «usa una línea para cada cosa», «sin tanta verbosidad»). El reporte NUNCA
+//   hace esperar al motor: los reportes se acumulan localmente y se vuelcan cada 5 segundos en
+//   UN envio por volcado (partido por activos completos solo si el lote supera el tamano
+//   seguro), sin pausa ni cola (decisión del usuario, 18-nov-2026: «acumular reportes local por
+//   5 segundos y después volcar»). Errores y aviso final salen garantizados y arrastran lo
+//   acumulado, para que ningún reporte quede sin salir.
 export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
  const hilo=event?event.thread_ts||event.ts:hiloOpt;
@@ -61,35 +69,49 @@ export function crearOjos({client,token}) {
 }
 
 export function crearAvisador({client,token,ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=1500}) {
- let cola=Promise.resolve(),ultimo=-Infinity;
+ let cola=Promise.resolve(),ultimo=-Infinity,pendientes=[],ultimoVuelco=ahora()-5000;
  const enviar=fn=>{
   const tarea=cola.then(async()=>{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);ultimo=ahora();return fn();});
   cola=tarea.catch(()=>{});return tarea;
  };
- const editar=async(j,r)=>{
-  const text=[r.titulo,`Corte UTC: ${new Date(j.hasta).toISOString()}. Solo velas cerradas.`,...Object.values(r.meses),r.fin||''].filter(Boolean).join('\n');
-  if(text.length>35000)throw Error('El reporte supera el tamano seguro; el avance se conserva.');
-  await enviar(()=>client.chat.update({token,channel:j.channel,ts:r.ts,text}));
+ const derecho=fn=>{const tarea=cola.then(fn);cola=tarea.catch(()=>{});return tarea;};
+ const volcar=async()=>{
+  ultimoVuelco=ahora();
+  if(!pendientes.length)return;
+  const destino={channel:pendientes[0].channel,thread_ts:pendientes[0].thread_ts};
+  const bloques=pendientes.splice(0).map(p=>p.text);
+  // Un envio por volcado: los activos del lote van juntos, cada uno identificado con sus
+  // lineas. Si el lote supera el tamano seguro, se parte por activos completos.
+  const paquetes=[];let actual='';
+  for(const b of bloques) {
+   if(actual&&actual.length+2+b.length>35000){paquetes.push(actual);actual=b;}
+   else actual=actual?actual+'\n\n'+b:b;
+  }
+  if(actual)paquetes.push(actual);
+  for(let i=0;i<paquetes.length;i++) {
+   try { await derecho(async()=>{await client.chat.postMessage({token,...destino,text:paquetes[i]});ultimo=ahora();}); }
+   catch(e) { pendientes.unshift(...paquetes.slice(i).map(text=>({...destino,text}))); throw e; }
+  }
  };
  return async(j,text,meta={})=>{
   if(meta.tipo==='consulta')return;
   if(meta.tipo==='activo') {
-   let r=j.reporte;
-   if(!r||r.indice!==j.indice||r.codigo!==j.codigos[j.indice]) {
-    r={indice:j.indice,codigo:j.codigos[j.indice],titulo:text,meses:{}};
-    const m=await enviar(()=>client.chat.postMessage({token,channel:j.channel,thread_ts:j.thread_ts||j.ts,text:`${text}\nCorte UTC: ${new Date(j.hasta).toISOString()}. Solo velas cerradas.`}));
-    if(!m?.ts)throw Error('Slack no devolvio referencia del reporte del activo.');
-    r.ts=m.ts;j.reporte=r;
-   } else await editar(j,r);
+   if(!j.reporte||j.reporte.indice!==j.indice||j.reporte.codigo!==j.codigos[j.indice]) j.reporte={indice:j.indice,codigo:j.codigos[j.indice],titulo:text,meses:{}};
    return;
   }
   if(meta.tipo==='mes'||meta.tipo==='fin-activo') {
    const r=j.reporte;
-   if(!r?.ts||!r.meses)throw Error('Falta la referencia del reporte del activo; no duplico el mensaje.');
-   if(meta.tipo==='mes')r.meses[String(meta.mes)]=meta.linea;
-   else r.fin=meta.linea;
-   await editar(j,r);return;
+   if(!r||!r.meses)throw Error('Falta el reporte del activo en memoria; no duplico el mensaje.');
+   if(meta.tipo==='mes'){r.meses[String(meta.mes)]=meta.linea;return;}
+   r.fin=meta.linea;
+   const cuerpo=[r.titulo,...Object.values(r.meses),r.fin].filter(Boolean).join('\n');
+   if(cuerpo.length>35000)throw Error('El reporte supera el tamano seguro; el avance se conserva.');
+   pendientes.push({channel:j.channel,thread_ts:j.thread_ts||j.ts,text:cuerpo});
+   if(ahora()-ultimoVuelco<5000)return 'acumulado'; // acumula local; el motor sigue sin esperar
+   await volcar();
+   return 'volcado';
   }
+  await volcar(); // errores y cierres arrastran lo acumulado: ningun reporte queda sin salir
   await enviar(()=>client.chat.postMessage({token,channel:j.channel,thread_ts:j.thread_ts||j.ts,text}));
  };
 }

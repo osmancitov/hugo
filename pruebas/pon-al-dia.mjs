@@ -48,8 +48,8 @@ test('sin marca: valida en disco, fija el piso con una consulta de frontera y es
   escribirMes(b.root, 'AAA', '2610', TREINTAYUNO); escribirMes(b.root, 'AAA', '2609', TREINTA);
   await corre(b);
   assert.deepEqual(b.llamadas, ['2611', '2608']); // mes en curso + frontera; 2610 y 2609 en disco
-  assert.ok(b.lineas.includes('2610: comprobado en disco.'));
-  assert.ok(b.lineas.includes('2609: comprobado en disco.'));
+  assert.ok(b.lineas.includes('2610: en disco.'));
+  assert.ok(b.lineas.includes('2609: en disco.'));
   assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_primer-mes'), 'utf8').trim(), '2609');
   assert.equal(leerEstado(path.join(b.root, 'estado.json')).estado, 'terminado');
  } finally { b.fin(); }
@@ -87,6 +87,7 @@ test('vacio inesperado sobre el piso: avisa el hueco y deja de confiar hacia aba
   await corre(b);
   assert.deepEqual(b.llamadas, ['2611', '2610', '2609', '2608']); // tras el hueco, todo se re-consulta
   assert.ok(b.lineas.some((l) => /vacio inesperado sobre el piso/.test(l)));
+  assert.ok(!fs.existsSync(path.join(b.root, 'velas/cripto/AAA/_verificado')), 'con hueco no se escribe la marca de verificado');
  } finally { b.fin(); }
 });
 
@@ -107,8 +108,26 @@ test('listado a mitad de mes: su primer mes empieza tarde y se acepta; el piso q
   escribirMes(b.root, 'AAA', '2610', Array.from({ length: 20 }, (_, i) => i + 12)); // 12..31
   await corre(b);
   assert.deepEqual(b.llamadas, ['2611', '2609']);
-  assert.ok(b.lineas.includes('2610: comprobado en disco.'));
+  assert.ok(b.lineas.includes('2610: en disco.'));
   assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_primer-mes'), 'utf8').trim(), '2610');
+ } finally { b.fin(); }
+});
+
+test('primera corrida escribe _verificado; la segunda confia y no recorre meses viejos', async () => {
+ const b = banco({ 2611: DIECISIETE, 2608: [] });
+ try {
+  escribirMes(b.root, 'AAA', '2610', TREINTAYUNO); escribirMes(b.root, 'AAA', '2609', TREINTA);
+  await corre(b);
+  assert.equal(fs.readFileSync(path.join(b.root, 'velas/cripto/AAA/_verificado'), 'utf8').trim(), '2610');
+  // Un mes viejo se daña entre corridas: la puesta al día confía y no lo toca; lo repara «registra todo».
+  const viejo = path.join(b.root, 'velas/cripto/AAA/2609_AAA');
+  fs.writeFileSync(viejo, '[["roto"]]');
+  b.llamadas.length = 0; b.lineas.length = 0;
+  await corre(b);
+  assert.deepEqual(b.llamadas, ['2611']);
+  assert.equal(fs.readFileSync(viejo, 'utf8'), '[["roto"]]', 'no re-valida ni repara lo ya verificado');
+  assert.ok(!b.lineas.some((l) => /en disco/.test(l)), 'no recorre meses confiables');
+  assert.ok(b.lineas.some((l) => l.startsWith('Verificado hasta octubre de 2026.')));
  } finally { b.fin(); }
 });
 

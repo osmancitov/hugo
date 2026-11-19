@@ -4,7 +4,7 @@ const TEXTO = [
   '`estado` - que hago y que confirmaciones espero.',
   '`estado del registro` - hasta que dia hay velas y ultima publicacion de datos.',
   '`registra todo` - todo el universo en una orden: stock y luego cripto (revision completa).',
-  '`pon al dia` - mismo universo consultando solo lo pendiente; lo guardado se comprueba en disco.',
+  '`pon al dia` - mismo universo consultando solo lo pendiente; confia en lo ya verificado.',
   '`registra continuar` - retomar un registro pausado.',
   '`descarta registro` - abandonar el avance pendiente sin borrar los datos guardados.',
   '`envia RUTA` - enviar un archivo al hilo.',

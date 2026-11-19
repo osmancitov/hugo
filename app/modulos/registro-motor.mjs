@@ -18,24 +18,32 @@ const yymm = (t) => new Date(t).toISOString().slice(2,7).replace('-','');
 const inicial = anterior(CERO);
 const dur = (t) => `${(t/1000).toFixed(2)} s`;
 
-// «pon al día»: la marca _primer-mes (AAMM) dice bajo qué mes una bajada completa llegó al mes
-// vacío; solo afirma que debajo no hay datos. La integridad la revalida cada corrida recorriendo
-// los meses en disco desde el mes en curso hasta esa marca.
+// «pon al día»: dos marcas por activo. _primer-mes (AAMM): bajo ese mes una bajada completa
+// llegó al mes vacío; debajo no hay datos. _verificado (AAMM): último mes cerrado ya verificado
+// por una corrida con confianza; los meses hasta ahí se confían y no se recorren de nuevo
+// (decisión del usuario, 18-nov-2026: la puesta al día revisa solo lo pendiente; la revisión
+// completa es «registra todo»). Sin _verificado (migración), valida en disco como antes y la
+// escribe al cerrar el activo. Solo se escribe junto a un _primer-mes existente.
 const MARCA = '_primer-mes';
-const rutaMarca = (dir) => path.join(dir, MARCA);
-function leerMarca(dir) {
+const VERIFICADO = '_verificado';
+function leerAamm(dir, nombre) {
   try {
-    const m = fs.readFileSync(rutaMarca(dir), 'utf8').trim().match(/^(\d{2})(\d{2})$/);
+    const m = fs.readFileSync(path.join(dir, nombre), 'utf8').trim().match(/^(\d{2})(\d{2})$/);
     if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return null;
     return Date.UTC(2000 + Number(m[1]), Number(m[2]) - 1, 1);
   } catch { return null; }
 }
-function escribirMarca(dir, aamm) {
+function escribirAamm(dir, nombre, aamm) {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  const tmp = rutaMarca(dir) + '.tmp';
+  const ruta = path.join(dir, nombre);
+  const tmp = ruta + '.tmp';
   fs.writeFileSync(tmp, aamm + '\n', { mode: 0o600 });
-  fs.renameSync(tmp, rutaMarca(dir));
+  fs.renameSync(tmp, ruta);
 }
+const leerMarca = (dir) => leerAamm(dir, MARCA);
+const escribirMarca = (dir, aamm) => escribirAamm(dir, MARCA, aamm);
+const leerVerificado = (dir) => leerAamm(dir, VERIFICADO);
+const escribirVerificado = (dir, aamm) => escribirAamm(dir, VERIFICADO, aamm);
 // Mes cerrado confiable en disco: serie válida según el contrato de siempre y con vela en el
 // último día del mes. No exige día 1 ni todos los días naturales (listados a mitad de mes y
 // días sin negociación son legítimos).
@@ -87,8 +95,9 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
   const guardar=(j)=>guardarEstado(archivoEstado(),j);
   const notificar=async(j,text,meta)=>{
     if(j.version===2 && ['mes','fin-activo'].includes(meta?.tipo)){j.avisoPendiente={text,meta};guardar(j);}
-    await avisar(j,text,meta);
-    if(j.version===2){if(['mes','fin-activo'].includes(meta?.tipo))delete j.avisoPendiente;guardar(j);}
+    const salio=await avisar(j,text,meta);
+    // Un fin-activo acumulado aun no salio: su aviso pendiente se conserva hasta el vuelco.
+    if(j.version===2){if(['mes','fin-activo'].includes(meta?.tipo)&&salio!=='acumulado')delete j.avisoPendiente;guardar(j);}
   };
   const vaciarAviso=async j=>{if(j.avisoPendiente){const {text,meta}=j.avisoPendiente;await notificar(j,text,meta);}};
   const avisarFin=async(j)=>{await notificar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);j.notificado=true;guardar(j);};
@@ -107,10 +116,16 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
         activas.set(id,{que:`registrar ${codigo}, ${etiqueta(j.mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now(),largo:true});
         const res=await resolver(j.clase,codigo);
         if(!res.ok) throw new Error(res.motivo);
-        await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}; corte UTC).`,{tipo:'activo'});
+        await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}).`,{tipo:'activo'});
         const dirActivo=path.join(base(),j.clase,codigo);
-        let pisoVerificado=j.rapido?leerMarca(dirActivo):null, confianza=true;
+        let pisoVerificado=j.rapido?leerMarca(dirActivo):null, verificado=j.rapido?leerVerificado(dirActivo):null, confianza=true;
         let terminado=false;
+        const finConfiable=async(limite)=>{
+          j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
+          if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
+          try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+          await notificar(j,`${codigo}: verificado hasta ${etiqueta(limite)}; lo anterior ya estaba comprobado. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Verificado hasta ${etiqueta(limite)}. ${j.indice}/${j.codigos.length} activos.`});
+        };
         while(!terminado) {
           if(pedida(marca))throw errorParada();
           if(j.piso!=null && j.mes<j.piso) {
@@ -124,19 +139,16 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           const mes=j.mes;
           const destino=path.join(base(),j.clase,codigo,`${yymm(mes)}_${codigo}`);
           if(j.rapido) {
+            // Meses ya verificados por una corrida anterior con confianza: se confían, no se recorren.
+            if(confianza && verificado!=null && mes<=verificado) { await finConfiable(verificado); continue; }
             // Piso verificado: debajo de la marca ya lo comprobó una bajada completa.
-            if(confianza && pisoVerificado && mes<pisoVerificado) {
-              j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
-              if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
-              await notificar(j,`${codigo}: verificado hasta ${etiqueta(pisoVerificado)}; lo anterior ya estaba comprobado. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Verificado hasta ${etiqueta(pisoVerificado)}. ${j.indice}/${j.codigos.length} activos.`});
-              continue;
-            }
+            if(confianza && pisoVerificado && mes<pisoVerificado) { await finConfiable(pisoVerificado); continue; }
             // Mes cerrado con archivo local completo: se comprueba en disco, sin consulta.
             // El mes en curso nunca se salta. Sin marca, la bajada valida en disco hasta el
             // archivo más viejo y la primera consulta sin archivo fija la frontera.
             if(confianza && mes!==j.inicial && fs.existsSync(destino) && serieLocalCompleta(destino,mes,j.hasta)) {
               j.mes=anterior(mes);j.conteo.existentes++;
-              await notificar(j,`${codigo}, ${etiqueta(mes)}: comprobado en disco, sin consulta. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: comprobado en disco.`});
+              await notificar(j,`${codigo}, ${etiqueta(mes)}: comprobado en disco, sin consulta. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: en disco.`});
               continue;
             }
           }
@@ -165,11 +177,14 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             // confía hacia abajo: se avisa y se sigue bajando con consultas hasta el vacío real.
             if(j.rapido && confianza && pisoVerificado && mes>=pisoVerificado) {
               confianza=false;j.mes=anterior(mes);
-              await notificar(j,`${codigo}: ${etiqueta(mes)} salio vacio por encima del piso verificado (${etiqueta(pisoVerificado)}); posible hueco. Sigo comprobando con consultas hasta ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: vacio inesperado sobre el piso; sigo comprobando.`});
+              await notificar(j,`${codigo}: ${etiqueta(mes)} salio vacio por encima del piso verificado (${etiqueta(pisoVerificado)}); posible hueco. Sigo comprobando con consultas hasta ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: vacio inesperado sobre el piso; sigo.`});
               continue;
             }
             if(existe) throw new Error(`Archivo vacio existente: ${destino}. Lo conservo para revisar, no doy el activo por terminado.`);
             try { escribirMarca(path.dirname(destino), yymm(siguiente(mes))); } catch(e) { console.error('No pude escribir la marca de primer mes:', e.message); }
+            // La bajada llegó al vacío con todo verificado (en rápido, solo si no hubo huecos):
+            // los meses hasta el último cerrado quedan confiables para la próxima puesta al día.
+            try { if(!j.rapido || confianza) escribirVerificado(path.dirname(destino), yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
             j.indice++;j.mes=j.inicial;j.conteo.activos++;terminado=true;
             if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
             await notificar(j,`${codigo}: ${etiqueta(mes)} sin velas. Historial terminado; ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Historial terminado: ${etiqueta(mes)} sin velas. ${j.indice}/${j.codigos.length} activos.`});
@@ -182,7 +197,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             const ndias=new Date(siguiente(mes)-1).getUTCDate();
             const dias=new Set(datos.map(v=>new Date(v[0]).getUTCDate()));
             const faltan=Array.from({length:ndias},(_,i)=>i+1).filter(n=>!dias.has(n));
-            await notificar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: ${datos.length} velas; ${modo==='ampliar'?'ampliado':existe?'comprobado':'guardado'}${faltan.length?'; parcial':' completo'}; consulta ${dur(consultaMs)}, disco ${dur(Date.now()-inicioGuardado)}.`});
+            await notificar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: ${datos.length} velas${faltan.length?'; parcial':''}${modo==='ampliar'?'; ampliado':existe?'':'; nuevo'}.`});
           }
         }
       }
