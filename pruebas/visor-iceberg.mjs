@@ -104,16 +104,14 @@ test('el visor registra un Iceberg por mercado y los dibuja por la pieza común,
   const dibujos = [visor.slice(visor.indexOf('function graficoIceberg(')), visor.slice(visor.indexOf('function graficoIcebergVertical('))];
   for (const d of dibujos) assert.match(d, /const k = hasta === undefined \? n : Math\.min\(hasta, n\)/);
   // Rectángulo normalizado (decisión del usuario, 20-nov-2026): cada día abarca el 100 % de
-  // los contados, la frontera reparte por proporción, sin línea añadida ni zona neutra, y cada
-  // color se atenúa solo hacia la frontera, con el tono pleno en el extremo.
+  // los contados, la frontera reparte por proporción, sin línea añadida ni zona neutra, con
+  // los dos colores sólidos de la casa (misma decisión: sin atenuaciones).
   for (const d of dibujos) {
     assert.match(d, /\/ \(sub \+ baj\)/);
-    assert.match(d, /ICEBERG_SUAVE_V/); assert.match(d, /ICEBERG_SUAVE_R/);
     assert.match(d, /GREEN_S/); assert.match(d, /RED_S/);
     assert.match(d, /if \(!total\) continue/);
+    assert.ok(!d.includes('Gradient'), 'sin degradados: colores sólidos');
   }
-  assert.equal(visor.match(/const ICEBERG_SUAVE_V = /g)?.length, 1);
-  assert.equal(visor.match(/const ICEBERG_SUAVE_R = /g)?.length, 1);
 });
 
 test('los rótulos visibles de los icebergs viven en la fuente única de rótulos', async () => {

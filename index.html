@@ -496,12 +496,9 @@ function graficoIndicador(ctx, puntos, e, hasta) {
 // Iceberg (decisión del usuario, 20-nov-2026): cada día es una barra completa, el 100 % de
 // los activos contados ese día (los que cerraron en alza más los que cerraron a la baja),
 // repartido en la frontera entre verde (arriba) y rojo (abajo): la frontera dibuja la
-// proporción. Cada color va del tono pleno en su extremo a uno atenuado junto a la frontera,
-// sin llegar a fusionarse. Un día sin contados (todas planas) queda vacío, sin inventar.
+// proporción. Colores sólidos rojo y verde (decisión del usuario, 20-nov-2026: sin
+// atenuaciones). Un día sin contados (todas planas) queda vacío, sin inventar.
 // Misma pieza común de trazado, rejilla de días y colores de la casa; hasta recorta igual.
-// Suavizado junto a la frontera: mitad de opacidad sobre el fondo, sin mezclar los tonos.
-const ICEBERG_SUAVE_V = 'rgba(37,133,92,0.5)';
-const ICEBERG_SUAVE_R = 'rgba(183,61,64,0.5)';
 function graficoIceberg(ctx, puntos, e, hasta) {
   const n = puntos.length;
   const k = hasta === undefined ? n : Math.min(hasta, n);
@@ -515,16 +512,8 @@ function graficoIceberg(ctx, puntos, e, hasta) {
     if (!total) continue;
     const frontera = MT + (sub / (sub + baj)) * PH;
     const x = X(i) - ancho / 2;
-    if (sub) {
-      const g = ctx.createLinearGradient(0, frontera, 0, MT);
-      g.addColorStop(0, ICEBERG_SUAVE_V); g.addColorStop(1, GREEN_S);
-      ctx.fillStyle = g; ctx.fillRect(x, MT, ancho, frontera - MT);
-    }
-    if (baj) {
-      const g = ctx.createLinearGradient(0, frontera, 0, MT + PH);
-      g.addColorStop(0, ICEBERG_SUAVE_R); g.addColorStop(1, RED_S);
-      ctx.fillStyle = g; ctx.fillRect(x, frontera, ancho, MT + PH - frontera);
-    }
+    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(x, MT, ancho, frontera - MT); }
+    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x, frontera, ancho, MT + PH - frontera); }
   }
   // rejilla de días y guías de proporción, por encima como en el Fear & Greed
   for (let i = 0; i < n; i++) {
@@ -664,16 +653,8 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
     if (!total) continue;
     const frontera = left + (baj / (sub + baj)) * (right - left);
     const y = Y(i) - grueso / 2;
-    if (baj) {
-      const g = ctx.createLinearGradient(left, 0, frontera, 0);
-      g.addColorStop(0, RED_S); g.addColorStop(1, ICEBERG_SUAVE_R);
-      ctx.fillStyle = g; ctx.fillRect(left, y, frontera - left, grueso);
-    }
-    if (sub) {
-      const g = ctx.createLinearGradient(frontera, 0, right, 0);
-      g.addColorStop(0, ICEBERG_SUAVE_V); g.addColorStop(1, GREEN_S);
-      ctx.fillStyle = g; ctx.fillRect(frontera, y, right - frontera, grueso);
-    }
+    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(left, y, frontera - left, grueso); }
+    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(frontera, y, right - frontera, grueso); }
   }
   // rejilla de días y fechas a la izquierda, como la radiografía vertical
   ctx.font = '20px ' + FUENTE; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
