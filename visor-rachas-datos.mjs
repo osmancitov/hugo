@@ -50,6 +50,19 @@ export function razonVariacion(filas) {
   }
   return { verde, roja, razon: roja > 0 ? verde / roja : verde > 0 ? Infinity : 0 };
 }
+// Cambios de dirección en el registro: cada vez que un día verde sigue a uno rojo o al
+// revés. Un día que cierra igual que abre no cuenta; el cómputo recorre las velas
+// publicadas del registro, igual que G/P.
+export function cambiosDireccion(filas) {
+  let cambios = 0, previa = 0;
+  for (const f of filas) {
+    const r = Number(f[4]) / Number(f[1]);
+    const s = r > 1 ? 1 : r < 1 ? -1 : 0;
+    if (s !== 0 && previa !== 0 && s !== previa) cambios++;
+    if (s !== 0) previa = s;
+  }
+  return cambios;
+}
 export function separar(resultados) {
   const validos = resultados.filter(x => x.datos);
   const fecha = validos.length ? Math.max(...validos.map(x => x.datos.fecha)) : null;

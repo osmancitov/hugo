@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion } from '../visor-rachas-datos.mjs';
+import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion, cambiosDireccion } from '../visor-rachas-datos.mjs';
 const t = Date.UTC(2026,10,1), corte = Date.UTC(2026,10,18);
 const vela = (i,o,c) => [t+i*DIA,String(o),String(Math.max(o,c)),String(Math.min(o,c)),String(c),'1',t+(i+1)*DIA-1,'1',1,'1','1','0'];
 test('racha usa apertura/cierre; su cambio real incluye cambios entre velas, sin sumar porcentajes',()=>{
@@ -61,6 +61,14 @@ test('equilibrio G/P: sin días rojos no tiene fin; sin días verdes vale 0; la 
  assert.equal(razonVariacion([vela(0,100,110)]).razon,Infinity);
  assert.equal(razonVariacion([vela(0,100,90)]).razon,0);
  assert.equal(razonVariacion([vela(0,100,100)]).razon,0);
+});
+test('cambios de dirección: cada cruce de color cuenta; la plana no existe para el conteo y el hueco tampoco',()=>{
+ assert.equal(cambiosDireccion([vela(0,100,110),vela(1,110,100),vela(2,100,105)]),2);
+ assert.equal(cambiosDireccion([vela(0,100,110),vela(1,110,115),vela(2,115,120)]),0);
+ assert.equal(cambiosDireccion([vela(0,100,110),vela(1,105,105),vela(2,105,100)]),1);
+ assert.equal(cambiosDireccion([vela(0,100,110),vela(2,110,100)]),1);
+ assert.equal(cambiosDireccion([vela(0,100,110),vela(2,110,120)]),0);
+ assert.equal(cambiosDireccion([vela(0,100,100),vela(1,100,101)]),0);
 });
 test('separa atrasados y errores, sin tratarlos como última jornada común',()=>{
  const s=separar([{datos:{fecha:t}},{datos:{fecha:t+DIA}},{error:'red'}]);

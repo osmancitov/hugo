@@ -1,8 +1,9 @@
-import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion } from './visor-rachas-datos.mjs';
+import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './visor-rachas-datos.mjs';
 const API = 'https://api.github.com/repos/osmancitov/hugo';
 const BASE = 'https://raw.githubusercontent.com/osmancitov/hugo';
 const fecha = t => new Date(t).toISOString().slice(0,10);
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct0 = n => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('es');
 const texto = (tag, valor, clase = '') => { const n = document.createElement(tag); n.textContent = valor; if (clase) n.className = clase; return n; };
 let pendiente, ultimo, revision = '', clase = 'todos', orden = 'gp', direccionRacha = 'todas';
 async function json(url) {
@@ -42,6 +43,7 @@ async function cargar(catalogo, progreso) {
         }
         const datos = resumir(filas, true);
         datos.gp = razonVariacion(filas).razon;
+        datos.cambios = cambiosDireccion(filas);
         resultados[i] = { activo: e, datos };
       } catch (err) { resultados[i] = { activo: e, error: err.message }; }
       progreso(++hechos, catalogo.length, e.codigo);
@@ -57,7 +59,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','G/P'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','G/P'],['cambios','Cambios ↓'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
@@ -85,6 +87,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio del registro.'));
   reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
   reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
+  reglas.append(texto('p','C: cambios de dirección en el registro: cada vez que un día verde sigue a uno rojo o al revés.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
@@ -97,7 +100,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
       const x=a.datos,y=b.datos;
       const total=(u,v)=>Number(u.limitada)-Number(v.limitada)||u.acumulado-v.acumulado;
       const gp=v=>v.gp===Infinity?Number.MAX_VALUE:Math.round(v.gp*100)/100; // un solo valor, a dos decimales, para ordenar y mostrar
-      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='rango'?y.rango-x.rango:orden==='rango-asc'?x.rango-y.rango:orden==='gp'?gp(y)-gp(x):total(x,y);
+      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='rango-asc'?x.rango-y.rango:orden==='gp'?gp(y)-gp(x):total(x,y);
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
@@ -108,18 +111,19 @@ export function montarRachas(contenedor, catalogo, consulta) {
     const link=texto('a',ultimo.revision.slice(0,7)); link.href='https://github.com/osmancitov/hugo/commit/'+ultimo.revision; link.target='_blank'; link.rel='noopener'; fuente.append(link);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of ['Activo','R %','Racha','A %','G/P']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of ['Activo','R %','Racha','A %','G/P','C']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
       const id=texto('td',''); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
-      const acum=texto('td',d.dias?pct(d.acumulado)+(d.limitada?' *':''):pct(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
+      const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
       if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; }
-      const rango=texto('td',d.rango.toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2}));
+      const rango=texto('td',Math.round(d.rango).toLocaleString('es'));
       const gp=texto('td',d.gp===Infinity?'∞':(Math.round(d.gp*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2}));
       if(d.gp===Infinity) gp.title='Sin días rojos en el registro: el equilibrio no tiene fin.';
-      r.append(id,rango,dias,acum,gp); body.append(r);
+      const cam=texto('td',String(d.cambios));
+      r.append(id,rango,dias,acum,gp,cam); body.append(r);
     }
     tabla.append(cab,body); caja.append(tabla); cuerpo.append(caja);
     if(!visibles.length) cuerpo.append(texto('p','Ningún activo coincide con los filtros.','vacio'));
