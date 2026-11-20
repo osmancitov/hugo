@@ -61,7 +61,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
-  const estado=texto('p','Leyendo registros publicados…','rachas-nota'); estado.setAttribute('role','status');
+  const estado=texto('p','Analizando los registros…','rachas-nota'); estado.setAttribute('role','status');
   let avanceNum=null, avanceBarra=null;
   function avanzar(n,total) {
     if(!estado.isConnected) return;
@@ -69,7 +69,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
       estado.className='rachas-cargando';
       avanceNum=texto('strong','','rachas-cargando-cifra');
       const barra=texto('span','','rachas-cargando-barra'); avanceBarra=texto('span',''); barra.append(avanceBarra);
-      estado.replaceChildren(document.createTextNode('Leyendo registros publicados: '), avanceNum, document.createTextNode(' activos de una misma revisión…'), barra);
+      estado.replaceChildren(document.createTextNode('Analizando los registros'), document.createElement('br'), avanceNum, document.createTextNode(' activos'), barra);
     }
     avanceNum.textContent=n+'/'+total;
     avanceBarra.style.width=(n/total*100)+'%';
