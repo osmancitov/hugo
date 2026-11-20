@@ -62,6 +62,19 @@ export function montarRachas(contenedor, catalogo, consulta) {
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Leyendo registros publicados…','rachas-nota'); estado.setAttribute('role','status');
+  let avanceNum=null, avanceBarra=null;
+  function avanzar(n,total) {
+    if(!estado.isConnected) return;
+    if(!avanceNum) {
+      estado.className='rachas-cargando';
+      avanceNum=texto('strong','','rachas-cargando-cifra');
+      const barra=texto('span','','rachas-cargando-barra'); avanceBarra=texto('span',''); barra.append(avanceBarra);
+      estado.replaceChildren(document.createTextNode('Leyendo registros publicados: '), avanceNum, document.createTextNode(' activos de una misma revisión…'), barra);
+    }
+    avanceNum.textContent=n+'/'+total;
+    avanceBarra.style.width=(n/total*100)+'%';
+  }
+  function finCarga() { avanceNum=avanceBarra=null; estado.className='rachas-nota'; }
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
@@ -86,6 +99,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
+    finCarga();
     estado.textContent=partes.fecha===null?'No hay datos comparables.':`Jornada de referencia: ${fecha(partes.fecha)} UTC · ${partes.comparables.length}/${todos.length} activos con esa vela · ${visibles.length} visibles.`;
     if (partes.fecha!==null && partes.fecha < ultimo.corte-DIA) estado.textContent+=' El registro está atrasado respecto al último día cerrado en UTC.';
     fuente.replaceChildren(document.createTextNode('Una sola revisión de registros: '));
@@ -118,9 +132,9 @@ export function montarRachas(contenedor, catalogo, consulta) {
     recargar.disabled=true;
     if(forzar) {ultimo=null;pendiente=null;cuerpo.replaceChildren();}
     try {
-      if(!pendiente) pendiente=cargar(catalogo,(n,total)=>{ if(estado.isConnected) estado.textContent=`Leyendo ${n}/${total} activos de una misma revisión…`; });
+      if(!pendiente) pendiente=cargar(catalogo,avanzar);
       ultimo=await pendiente; pintar();
-    } catch(err) {pendiente=null;estado.textContent='No pude completar la lectura: '+err.message+'. No se muestra un orden parcial como completo.';}
+    } catch(err) {pendiente=null;finCarga();estado.textContent='No pude completar la lectura: '+err.message+'. No se muestra un orden parcial como completo.';}
     finally {recargar.disabled=false;}
   }
   recargar.onclick=()=>iniciar(true); iniciar();
