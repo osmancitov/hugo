@@ -698,7 +698,7 @@ function graficaAdaptable(caja, geometriaPara, dibujar, alLimpiar) {
 // y respeta el movimiento reducido (dibuja el resultado completo, sin animar). Un solo
 // controlador y una sola duración; cada gráfica aporta solo su dibujo, dibujar(hasta),
 // donde hasta es el número de puntos ya trazados y sin él se dibuja completa.
-const DURACION_TRAZADO_MS = 1500;
+const DURACION_TRAZADO_MS = 1000; // decisión del usuario, 20-nov-2026: bajar el graficado a 1 segundo
 function trazadoAnimado(caja, total, dibujar) {
   const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let animId = null;
