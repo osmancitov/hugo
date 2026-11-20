@@ -26,6 +26,7 @@ function banco({ estado = estadoTerminado(Date.UTC(2026, 10, 21)), marca = null,
   const postes = [];
   const llamadas = [];
   const arranques = [];
+  let reloj = AHORA;
   const ctx = {
     canal: 'C', botToken: 'x',
     app: { client: { chat: { postMessage: async (m) => { postes.push(m); return { ts: `t${postes.length}` }; } } } },
@@ -34,13 +35,16 @@ function banco({ estado = estadoTerminado(Date.UTC(2026, 10, 21)), marca = null,
       crearSync: async () => ({ progreso: async () => {}, final: async (t) => { postes.push({ text: `FINAL: ${t}` }); } }),
     },
     registroArchivoEstado: () => path.join(root, 'estado.json'),
+    // reloj mutable: la ingesta gasta 90 s y la pasada 35 s, para medir la duración reportada
+
     ponerAlDiaDiaria: async () => {
       llamadas.push('ingesta');
+      reloj += 90000;
       if (estadoTrasIngesta) fs.writeFileSync(path.join(root, 'estado.json'), JSON.stringify(estadoTrasIngesta) + '\n');
     },
     registroOcupado: () => (ocupado.length > 1 ? ocupado.shift() : ocupado[0]),
-    correrPasada: async () => { llamadas.push('pasada'); return typeof pasada === 'function' ? pasada() : pasada; },
-    ahora: () => AHORA,
+    correrPasada: async () => { llamadas.push('pasada'); reloj += 35000; return typeof pasada === 'function' ? pasada() : pasada; },
+    ahora: () => reloj,
     esperar: async () => {},
     alIniciar: (fn) => arranques.push(fn),
   };
@@ -57,6 +61,7 @@ test('marca atrasada: ingesta, luego publicación, marca al día y reporte en un
     assert.equal(b.marcaEscrita(), OBJETIVO);
     assert.match(b.postes[0].text, /Puesta al día diaria \(programada\): registros hasta el 2026-11-20/);
     assert.ok(b.postes.some((p) => /FINAL: Publicación diaria\. Registros al día/.test(p.text)), 'cierre con el resumen de la pasada');
+    assert.ok(b.postes.some((p) => /\nDuración: 2 min 5 s\.$/.test(p.text)), 'el cierre reporta cuánto gastó (pedido del usuario, 20-nov-2026)');
   } finally { fs.rmSync(b.root, { recursive: true, force: true }); }
 });
 
@@ -102,6 +107,7 @@ test('cobertura parcial (corte a mitad de la ingesta): aviso propio, sin publica
     assert.deepEqual(b.llamadas, ['ingesta'], 'no publica con el registro corto');
     assert.equal(b.marcaEscrita(), null);
     assert.ok(b.postes.some((p) => /llega solo al 2026-11-18 y falta hasta el 2026-11-20 \(parcial\)/.test(p.text)), JSON.stringify(b.postes.map((p) => p.text)));
+    assert.ok(b.postes.some((p) => /\nDuración: 1 min 30 s\.$/.test(p.text)), 'el aviso de parcial también mide');
   } finally { fs.rmSync(b.root, { recursive: true, force: true }); }
 });
 

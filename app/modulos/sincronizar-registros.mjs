@@ -606,7 +606,7 @@ export function registrar(ctx) {
       const texto=`La sincronizacion se detuvo o no pude informar su resultado: ${e.message}. Lo ya copiado se conserva; revisa el estado antes de repetir.`;
       try {if(reporte)await reporte.final(texto);else await decir(event,texto);}catch(err){console.error('No pude informar sincronizacion:',err.message);}
     } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
-  }, { nombre: 'sincronizar registros', delegable: true });
+  }, { nombre: 'sincronizar registros' });
 
   // Automatica: una sola pasada poco despues de arrancar (decision del usuario, 19-nov-2026: se
   // retira la repeticion periodica; queda la pasada de cada reinicio). Cuando hay trabajo real

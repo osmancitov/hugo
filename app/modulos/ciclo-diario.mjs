@@ -14,6 +14,14 @@ import { guardarEstado, leerEstado } from './registro-motor.mjs';
 
 const DIA = 86400000;
 const MARGEN = 5 * 60 * 1000; // la vela diaria cierra a las 00:00 UTC; margen para que la fuente la tenga lista
+// Duración medida de la corrida (pedido del usuario, 20-nov-2026: que el reporte diga cuánto gastó).
+const dur = (ms) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? `${m} min ${s % 60} s` : `${m} min`;
+  return `${Math.floor(m / 60)} h ${m % 60} min`;
+};
 const TOPE_ESPERA_REGISTRO = 6 * 3600 * 1000; // otro registro en curso: se espera, no se interrumpe
 
 // Último día UTC cerrado con margen (su inicio). Antes del margen, el último cerrado es el anterior.
@@ -37,6 +45,7 @@ export function registrar(ctx) {
     const objetivo = ultimoCerrado(ahora());
     if (leerMarca() >= objetivo) return; // ya cubierto: nada que hacer
     enCurso = true;
+    const t0 = ahora();
     const fecha = new Date(objetivo).toISOString().slice(0, 10);
     let hilo = null;
     const avisar = async (texto) => {
@@ -50,17 +59,18 @@ export function registrar(ctx) {
       await ctx.ponerAlDiaDiaria({ channel: ctx.canal, thread_ts: hilo });
       const tope = ahora() + TOPE_ESPERA_REGISTRO;
       while (ctx.registroOcupado()) {
-        if (ahora() > tope) { await avisar('El registro sigue en curso; la publicación queda para la próxima corrida.'); return; }
+        if (ahora() > tope) { await avisar(`El registro sigue en curso; la publicación queda para la próxima corrida.\nDuración: ${dur(ahora() - t0)}.`); return; }
         await esperar(30000);
       }
       const est = leerEstado(ctx.registroArchivoEstado());
       const cubierto = est && est.estado === 'terminado' && est.hasta > objetivo;
       if (!cubierto) {
-        await avisar(!est
+        await avisar((!est
           ? 'No pude iniciar la puesta al día; reintento en la próxima corrida o al arrancar.'
           : est.estado !== 'terminado'
             ? `El registro quedó ${est.estado}${est.error ? `: ${est.error}` : ''}. Lo retomo en la próxima corrida o al arrancar; también sirve «registra continuar».`
-            : `El registro terminó pero llega solo al ${new Date(est.hasta - DIA).toISOString().slice(0, 10)} y falta hasta el ${fecha} (parcial). Lo retomo en la próxima corrida o al arrancar.`);
+            : `El registro terminó pero llega solo al ${new Date(est.hasta - DIA).toISOString().slice(0, 10)} y falta hasta el ${fecha} (parcial). Lo retomo en la próxima corrida o al arrancar.`)
+          + `\nDuración: ${dur(ahora() - t0)}.`);
         return; // sin marca: se reintenta
       }
       // 2) Publicación: la pasada con el guardia compartido; si la automática de arranque corre, espera.
@@ -73,7 +83,7 @@ export function registrar(ctx) {
         if (!r.error || !/en curso/.test(r.error)) break;
         await esperar(20000);
       }
-      const texto = `Publicación diaria. ${r.error || r.texto}`;
+      const texto = `Publicación diaria. ${r.error || r.texto}\nDuración: ${dur(ahora() - t0)}.`;
       if (reporte) await reporte.final(texto); else await avisar(texto);
       if (r.error) return; // sin marca: la próxima corrida o el arranque retoman
       guardarEstado(archivoMarca(), { ultimo: objetivo, cuando: new Date(ahora()).toISOString() });

@@ -22,12 +22,12 @@ export function registrar(ctx) {
     let pausado = null;
     try { pausado = ctx.registroPendiente ? ctx.registroPendiente() : null; } catch {}
     const l = [];
-    if (activas.length) l.push(`Estoy trabajando en: ${activas.map((a) => `${a.que} (desde hace ${dur(Date.now() - a.desde)})`).join('; ')}.`);
+    if (activas.length) l.push(`Estoy trabajando en:\n${activas.map((a) => `\u00b7 ${a.que} (desde hace ${dur(Date.now() - a.desde)})`).join('\n')}`);
     if (actualizando) l.push('Hay una actualizaci\u00f3n en curso o con su aviso pendiente.');
-    if (esperando.length) l.push(`Espero tu \u{1F44D} para: ${esperando.map((e) => `${e.que} (desde hace ${dur(Date.now() - e.desde)})`).join('; ')}. Sin respuesta en 10 minutos se descarta.`);
+    if (esperando.length) l.push(`Espero tu \u{1F44D} para:\n${esperando.map((e) => `\u00b7 ${e.que} (desde hace ${dur(Date.now() - e.desde)})`).join('\n')}\nSin respuesta en 10 minutos se descarta.`);
     if (pausado) l.push(`Tengo un registro pausado en ${pausado}: \`registra continuar\` lo retoma, \`descarta registro\` lo abandona (sin borrar los datos guardados).`);
     if (!activas.length && !actualizando && !esperando.length && !pausado) l.push('Libre: no hago nada y no espero ninguna instrucci\u00f3n.');
     l.push(`Llevo activo ${dur(Date.now() - ctx.desde)} desde el \u00faltimo arranque.`);
     await app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text: l.join('\n') });
-  }, { nombre: 'dar el estado', delegable: true });
+  }, { nombre: 'dar el estado' });
 }

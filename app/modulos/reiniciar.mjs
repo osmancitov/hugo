@@ -33,10 +33,10 @@ export function registrar(ctx) {
 
     // Reiniciar siempre pide el pulgar arriba del usuario; con trabajo largo, el pulgar tambien lo interrumpe.
     await ctx.confirmar({
-      channel: event.channel, thread_ts: hilo, user: event.user,
+      channel: event.channel, thread_ts: hilo, user: ctx.usuario,
       que: largos.length ? 'interrumpir el trabajo y reiniciar a Hugo' : 'reiniciar a Hugo',
       texto: largos.length
-        ? `Estoy haciendo: ${largos.map((a) => a.que).join('; ')}. \u00bfLo interrumpo y reinicio? Lo ya hecho se conserva.`
+        ? `Estoy haciendo:\n${largos.map((a) => `\u00b7 ${a.que}`).join('\n')}\n\u00bfLo interrumpo y reinicio? Lo ya hecho se conserva.`
         : '\u00bfReinicio a Hugo? Al volver publico el aviso de arranque en el canal.',
       alSi: async () => {
         if (!largos.length) return lanzarReinicio(false);

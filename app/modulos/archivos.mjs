@@ -106,7 +106,7 @@ export function registrar(ctx) {
     const dir = descargas();
     const lista = event.files.map((f) => `${limpio(f.name)} (${kb(f.size || 0)})`).join(', ');
     await ctx.confirmar({
-      channel: event.channel, thread_ts: event.thread_ts || event.ts, user: event.user,
+      channel: event.channel, thread_ts: event.thread_ts || event.ts, user: ctx.usuario,
       texto: `\u00bfGuardo en ${dir}: ${lista}?`, que: 'guardar archivos adjuntos',
       alSi: async () => {
         const ok = [], mal = [];
@@ -126,7 +126,7 @@ export function registrar(ctx) {
     if (r.error) return decir(event, r.error);
     const nombre = path.basename(r.ruta);
     await ctx.confirmar({
-      channel: event.channel, thread_ts: event.thread_ts || event.ts, user: event.user,
+      channel: event.channel, thread_ts: event.thread_ts || event.ts, user: ctx.usuario,
       texto: `\u00bfEnv\u00edo ${r.ruta} (${kb(fs.statSync(r.ruta).size)}) a este hilo?`, que: 'enviar un archivo',
       alSi: async () => {
         await app.client.filesUploadV2({

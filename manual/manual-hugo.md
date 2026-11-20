@@ -5,7 +5,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 ## En corto
 - Hugo es el bot de Slack de la Debian: tú le escribes una orden mencionándolo y él trabaja.
 - Las órdenes delicadas (borrar, guardar, enviar, actualizar, parar, reiniciar) solo se hacen con tu 👍. Las de trabajo (registrar velas, radiografías, sincronizar registros, consultar el estado) arrancan directo.
-- Mientras trabaja avisa: el registro y las radiografías reportan en el hilo de la orden; la sincronización automática anuncia «comprobando GitHub» al empezar cada pasada y cierra ese mismo reporte con el resultado, haya o no algo que copiar. El informe es un resumen breve y ordenado: solo qué cambió y los problemas, si los hay (decisión del usuario, 20-nov-2026); la lista técnica corrida ya no se muestra.
+- Mientras trabaja avisa: el registro y las radiografías reportan en el hilo de la orden; la sincronización automática anuncia «comprobando GitHub» al empezar cada pasada y cierra ese mismo reporte con el resultado, haya o no algo que copiar. El informe es un resumen breve y ordenado: solo qué cambió y los problemas, si los hay (decisión del usuario, 20-nov-2026); la lista técnica corrida ya no se muestra. Los reportes llevan un dato por línea, sin enumeraciones con comas (preferencia del usuario, 20-nov-2026).
 - Si Hugo se reinicia a la mitad de un trabajo, lo ya guardado se conserva: el registro y la sincronización retoman solos lo que falta, y una radiografía a medias se repite pidiéndola de nuevo. Un registro que difiera entre la Debian y GitHub nunca se pisa: Hugo avisa el conflicto.
 - El resto de este manual es la referencia completa: qué hace cada orden, cómo se actualiza y cómo se modifica.
 
@@ -13,7 +13,7 @@ Referencia del funcionamiento actual: qué hace, cómo se opera y cómo se modif
 Bot de Slack propio (Socket Mode, Node.js). Corre en la Debian como servicio de usuario `hugo.service` y es el puente entre Slack y esa máquina: recibe y envía archivos, borra hilos y se actualiza. Existe para quitarle trabajo al usuario: el asistente de IA y Hugo hacen el trabajo y el usuario decide con 👍.
 
 ## Comandos de Slack
-Se escriben mencionando `@Hugo`. Solo los da el usuario (`HUGO_USUARIO`); las excepciones son `actualiza`, `registra`, `pon al día`, `descarta registro`, `sincroniza registros`, `radiografía` y `estado`, que también puede pedir el asistente (`HUGO_DELEGADO`); `descarta registro` y las actualizaciones conservan el 👍 del usuario.
+Se escriben mencionando `@Hugo`. Cualquiera puede pedir cualquier comando (decisión del usuario, 20-nov-2026: los bots tienen sus comandos y ya; no hay lista de comandos delegables). Las órdenes que comprometen (actualizar, borrar, detener, reiniciar, guardar o enviar archivos, descartar el registro) piden confirmación y el 👍 que cuenta es siempre el del usuario (`HUGO_USUARIO`).
 
 | Orden | Qué hace |
 | --- | --- |
@@ -165,7 +165,7 @@ Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`res
 ## Cómo modificar Hugo
 1. Leer este manual antes de tocar nada. Cambiar el código en una copia del repositorio y actualizar este manual en el mismo cambio. El manual describe solo lo instalado.
 2. Reglas del código: Hugo es modular. Cada capacidad es un archivo de `app/modulos/` con `registrar(ctx)`; `app.mjs` solo arranca y conecta. La biblioteca compartida `activos` no tiene `registrar`: las importan los módulos que las usan. Lo que sirve para varias cosas es un solo módulo que los demás usan, sin copiar su lógica.
-3. Lo que ofrece `ctx` a un módulo: `comando(patron, fn, { delegable, nombre })`, `porDefecto(fn)`, `alIniciar(fn)`, `confirmar({...})` (la confirmación común), `activas` y `esperando()` (lo que ve `estado`), `parada` (la parada única que suben `stop` y `restart`; un trabajo largo la mira en cada paso y se anota en `activas` con `largo: true`), `lanzarInstalacion(...)` y `actualizacionEnCurso()`. Un comando nuevo no es delegable salvo decisión del usuario.
+3. Lo que ofrece `ctx` a un módulo: `comando(patron, fn, { nombre })`, `porDefecto(fn)`, `alIniciar(fn)`, `confirmar({...})` (la confirmación común), `activas` y `esperando()` (lo que ve `estado`), `parada` (la parada única que suben `stop` y `restart`; un trabajo largo la mira en cada paso y se anota en `activas` con `largo: true`), `lanzarInstalacion(...)` y `actualizacionEnCurso()`. Cualquiera puede pedir un comando nuevo; si compromete, su confirmación fija `user: ctx.usuario` (decisión del usuario, 20-nov-2026).
 4. Comprobar antes de publicar: `node --check` de cada archivo y una prueba con Slack simulado de lo que cambia, incluidos permisos (tercero y asistente) y el caso de fallo.
 5. Publicar en el repositorio de `HUGO_GITHUB` y aplicar con `@Hugo actualiza` (el usuario da el 👍).
 6. En el repositorio no va nada personal: ni claves, ni `config.env`, ni identificadores de Slack, ni rutas o datos del usuario. La configuración va en la plantilla. Todo commit lleva como autor y committer al usuario.

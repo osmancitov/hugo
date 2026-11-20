@@ -144,7 +144,7 @@ export function registrar(ctx) {
   ctx.comando(esActualizacion, async (event, _t, { delegado } = {}) => {
     if (event.files.length !== 1) return decir(event.channel, event.thread_ts || event.ts, 'Para actualizar adjunta un solo archivo.');
     await proponer(event, event.files[0], event.user, delegado);
-  }, { delegable: true });
+  });
 
   ctx.comando(esActualizarDelHilo, async (event, _t, { delegado } = {}) => {
     if (!event.thread_ts || event.thread_ts === event.ts) return decir(event.channel, event.ts, 'Escribe "actualiza hilo" dentro del hilo donde est\u00e1 el instalador adjunto, o adjunta el .sh a tu mensaje.');
@@ -164,7 +164,7 @@ export function registrar(ctx) {
     } catch (e) { return decir(event.channel, event.thread_ts, `No pude leer el hilo (${e.data?.error || e.message}); no apliqu\u00e9 nada.`); }
     if (!ultimo) return decir(event.channel, event.thread_ts, 'No encuentro un instalador .sh adjunto en este hilo. Adj\u00fantalo con tu mensaje.');
     await proponer(event, ultimo.f, ultimo.quien, delegado);
-  }, { delegable: true });
+  });
 
   // Al arrancar: si quedo un aviso sin dar (actualizacion que reinicio, o aviso que no salio), darlo ahora.
   ctx.alIniciar(async () => {

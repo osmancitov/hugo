@@ -149,7 +149,7 @@ export function registrar(ctx) {
       const err = new Error(sinClaves(e.message).slice(0, 200)); err.invalido = r.sha; throw err;
     }
   }
-  const resumenDe = (dif) => dif.map((d) => `${d.rel.replace(/^app\//, '')} (${d.estado})`).join(', ');
+  const resumenDe = (dif) => dif.map((d) => `\u00b7 ${d.rel.replace(/^app\//, '')} (${d.estado})`).join('\n'); // un archivo por línea (preferencia del usuario, 20-nov-2026)
 
   // La solicitud de aprobación, compartida por «actualiza» y por la detección al arrancar. El 👍 que
   // cuenta es siempre el del usuario. silenciarNo: la propuesta espontánea caduca sin mensaje (ya se
@@ -158,7 +158,7 @@ export function registrar(ctx) {
     const { sha, titulo, tmp, src, dif } = r;
     await ctx.confirmar({
       que: 'actualizar desde GitHub', channel, thread_ts: hilo, user: ctx.usuario, corta: true,
-      texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,
+      texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb?\nCambia:\n${resumenDe(dif)}`,
       alSi: async () => {
         try {
           const script = path.join(base(), `instalar-github-${sha.slice(0, 7)}.sh`);
@@ -193,7 +193,7 @@ export function registrar(ctx) {
       return decir(event.channel, hilo, `Comprobado: Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}). No cambi\u00e9 nada.`);
     }
     await proponer(repo, r, event.channel, hilo);
-  }, { delegable: true, nombre: 'comprobar GitHub' });
+  }, { nombre: 'comprobar GitHub' });
 
   // Al arrancar (despues del saludo con la fecha): comprueba GitHub y, si hay cambios, publica la
   // SOLICITUD de aprobacion directamente en el canal (decisión del usuario, 20-nov-2026: detectar →

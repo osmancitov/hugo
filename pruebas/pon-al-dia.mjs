@@ -147,10 +147,11 @@ test('piso fijo ago-2026: no consulta debajo aunque Binance tenga datos, cierra 
  } finally { b.fin(); }
 });
 
-test('la orden existe, es delegable y la ayuda la distingue de la revision completa', () => {
+test('la orden existe, ya sin marca delegable, y la ayuda la distingue de la revision completa', () => {
  const velas = fs.readFileSync(new URL('../app/modulos/velas.mjs', import.meta.url), 'utf8');
  assert.match(velas, /pon\\s\+al\\s\+d\[ií\]a/);
- assert.match(velas, /poner al dia los registros',delegable:true/);
+ assert.match(velas, /nombre:'poner al dia los registros'/);
+ assert.ok(!velas.includes('delegable'), 'sin marca delegable: cualquiera puede pedirla (decisión del usuario, 20-nov-2026)');
  assert.match(velas, /rapido:true/);
  const ayuda = fs.readFileSync(new URL('../app/modulos/ayuda.mjs', import.meta.url), 'utf8');
  assert.match(ayuda, /pon al dia/);

@@ -90,12 +90,14 @@ export function registrar(ctx) {
     }
     const { id } = await duenoDelToken();
     const c = clasificar(msgs, ctx.botUserId, id);
-    let texto = `\u00bfBorro este hilo? Tiene ${msgs.length} mensajes: ${c.hugo} de Hugo`;
-    if (id) texto += `, ${c.tuyos} tuyos (los puedo borrar)`;
-    if (c.otros) texto += `. ${c.otros} ${id ? 'son de otras personas o apps' : 'no son de Hugo y no tengo token de usuario v\u00e1lido'}: solo se borran si Slack lo permite`;
-    texto += c.otros ? '. Si alguno no se puede borrar, dejo el primer mensaje del hilo y te lo digo.' : '.';
+    // Un conteo por línea (preferencia del usuario, 20-nov-2026).
+    const partes = [`\u00bfBorro este hilo? Tiene ${msgs.length} mensajes:`, `\u00b7 ${c.hugo} de Hugo.`];
+    if (id) partes.push(`\u00b7 ${c.tuyos} tuyos (los puedo borrar).`);
+    if (c.otros) partes.push(`\u00b7 ${c.otros} ${id ? 'de otras personas o apps' : 'que no son de Hugo y no tengo token de usuario v\u00e1lido'}: solo se borran si Slack lo permite.`);
+    let texto = partes.join('\n');
+    if (c.otros) texto += '\nSi alguno no se puede borrar, dejo el primer mensaje del hilo y te lo digo.';
     await ctx.confirmar({
-      channel, thread_ts, user: event.user, texto, que: 'borrar un hilo', largo: true,
+      channel, thread_ts, user: ctx.usuario, texto, que: 'borrar un hilo', largo: true,
       alSi: async () => {
         let r;
         try { r = await borrar(channel, thread_ts); }

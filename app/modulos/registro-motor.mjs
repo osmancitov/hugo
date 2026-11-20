@@ -169,7 +169,8 @@ export function leerEstado(archivo) {
   if (!enBorde && (j.indice===j.codigos.length)!==(j.estado==='terminado')) throw new Error('Avance inconsistente; se conserva sin tocar.');
   return j;
 }
-function resumen(j) { const total=j.total||j.codigos.length; return `${j.conteo.activos}/${total} activos terminados; ${j.conteo.guardados} meses nuevos, ${j.conteo.existentes} existentes comprobados y ${j.conteo.ampliados||0} meses ampliados.`; }
+// Un dato por línea (preferencia del usuario, 20-nov-2026): las cifras no se amontonan con comas.
+function resumen(j) { const total=j.total||j.codigos.length; return [`${j.conteo.activos}/${total} activos terminados.`,`${j.conteo.guardados} meses nuevos.`,`${j.conteo.existentes} existentes comprobados.`,`${j.conteo.ampliados||0} meses ampliados.`].join('\n'); }
 
 export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map(), parada={n:0}, ahora=Date.now }) {
   let ocupado=false;
@@ -184,7 +185,8 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     if(j.version===2){if(['mes','fin-activo'].includes(meta?.tipo)&&salio!=='acumulado')delete j.avisoPendiente;guardar(j);}
   };
   const vaciarAviso=async j=>{if(j.avisoPendiente){const {text,meta}=j.avisoPendiente;await notificar(j,text,meta);}};
-  const avisarFin=async(j)=>{await notificar(j,`Registro terminado. ${resumen(j)} Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.`);delete j.avisoPendiente;j.notificado=true;guardar(j);};
+  // Cierre según el origen: en la corrida diaria la publicación va en el mismo ciclo; manual, queda para la pasada habitual.
+  const avisarFin=async(j)=>{const cierre=j.origen==='diaria'?'Sigo con la publicación de este ciclo.':'Los archivos locales quedan pendientes de la sincronizacion habitual con GitHub.';await notificar(j,`Registro terminado.\n${resumen(j)}\n${cierre}`);delete j.avisoPendiente;j.notificado=true;guardar(j);};
   async function correr(j) {
     const id='registro-historial';
     const marca=parada.n;
@@ -193,7 +195,14 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       j.estado='en-curso';delete j.error;guardar(j);
       const pisoEf=j.piso!=null?Math.max(j.piso,PISO_MINIMO):PISO_MINIMO;
       await vaciarAviso(j);
-      await notificar(j,`Registro en curso: ${j.clase}, ${j.codigos.length} activo(s)${j.siguientes.length?`, y luego ${j.siguientes.map(t=>t.clase).join(', ')}`:''}. Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}. Tramo: no bajo de ${etiqueta(pisoEf)}. Retomo en ${j.codigos[j.indice]||j.codigos[j.codigos.length-1]}, ${etiqueta(j.mes)}. ${resumen(j)}`);
+      await notificar(j,[
+        `Registro en curso: ${j.clase}, ${j.codigos.length} activo(s).`,
+        j.siguientes.length?`Después: ${j.siguientes.map(t=>t.clase).join(' y ')}.`:'',
+        `Corte: velas cerradas antes de ${new Date(j.hasta).toISOString()}.`,
+        `Tramo: no bajo de ${etiqueta(pisoEf)}.`,
+        `Retomo en ${j.codigos[j.indice]||j.codigos[j.codigos.length-1]}, ${etiqueta(j.mes)}.`,
+        resumen(j),
+      ].filter(Boolean).join('\n'));
       while(true) {
       while(j.indice<j.codigos.length) {
         if(pedida(marca))throw errorParada();
@@ -334,7 +343,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       if(!j.siguientes.length) break;
       if(pedida(marca))throw errorParada();
       const tramo=j.siguientes.shift();
-      await notificar(j,`Termine ${j.clase} (${j.codigos.length} activos). Sigo con ${tramo.clase}: ${tramo.codigos.length} activo(s), con el mismo corte UTC. ${resumen(j)}`);
+      await notificar(j,`Termine ${j.clase} (${j.codigos.length} activos).\nSigo con ${tramo.clase}: ${tramo.codigos.length} activo(s), con el mismo corte UTC.\n${resumen(j)}`);
       j.clase=tramo.clase;j.codigos=tramo.codigos;j.nombres=tramo.nombres||null;j.indice=0;j.mes=j.inicial;j.reporte=null;guardar(j);
       }
       await avisarFin(j);
@@ -343,7 +352,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       if(j.estado!=='terminado') {j.estado='pausado';j.error=String(e.message).slice(0,1000);}
       try{guardar(j);}catch(err){console.error('No pude guardar avance del registro:',err.message);}
       if(e.detenido) {
-        try{await notificar(j,`Registro detenido a pedido en ${j.codigos[j.indice]||'el aviso final'}, ${etiqueta(j.mes)}. Lo guardado se conserva y el avance queda listo: pide registra continuar para retomarlo. ${resumen(j)}`);}catch(err){console.error('No pude avisar del registro detenido:',err.message);}
+        try{await notificar(j,`Registro detenido a pedido en ${j.codigos[j.indice]||'el aviso final'}, ${etiqueta(j.mes)}.\nLo guardado se conserva y el avance queda listo: pide registra continuar para retomarlo.\n${resumen(j)}`);}catch(err){console.error('No pude avisar del registro detenido:',err.message);}
       } else {
         try{await notificar(j,`Registro detenido en ${j.codigos[j.indice]||'el aviso final'}, ${etiqueta(j.mes)}: ${e.message} Lo guardado se conserva. ${resumen(j)} Corrige la causa y pide registra continuar.`);}catch(err){console.error('No pude avisar del registro detenido:',err.message);}
       }

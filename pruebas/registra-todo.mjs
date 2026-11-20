@@ -34,8 +34,8 @@ test('una orden recorre stock y luego cripto, con un solo corte y un solo resume
  assert.deepEqual(j.conteo,{guardados:2,existentes:0,activos:2,ampliados:0});assert.equal(j.notificado,true);
  assert.equal(fs.readFileSync(path.join(s.base,'stock/AA/2610_AA'),'utf8'),JSON.stringify([vela(octubre)]));
  assert.equal(fs.readFileSync(path.join(s.base,'cripto/BTC/2610_BTC'),'utf8'),JSON.stringify([vela(octubre)]));
- assert.ok(s.msgs.some(m=>m.text.includes('Registro en curso: stock, 1 activo(s), y luego cripto')));
- assert.ok(s.msgs.some(m=>m.text.includes('Termine stock (1 activos). Sigo con cripto')));
+ assert.ok(s.msgs.some(m=>m.text.includes('Registro en curso: stock, 1 activo(s).')&&m.text.includes('Después: cripto.')));
+ assert.ok(s.msgs.some(m=>m.text.includes('Termine stock (1 activos).')&&m.text.includes('Sigo con cripto')));
  assert.ok(s.msgs.at(-1).text.includes('Registro terminado'));
  assert.ok(s.msgs.at(-1).text.includes('2/2 activos terminados'));
  // Un solo aviso final y reportes por activo: nada de un mensaje por consulta.

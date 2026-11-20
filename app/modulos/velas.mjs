@@ -68,7 +68,7 @@ export function registrar(ctx) {
     }
     if(partes.some(p=>p.toLowerCase()==='todos')) return avisar(event,'Usa todos sin mezclarlo con otros codigos: registra cripto todos, o registra stock todos.');
     return avisar(event,'Ya no registro activos sueltos a mano (decisión del usuario, 18-nov-2026: con el inventario de cobertura, «pon al día» solo pide los días que faltan y el cotejo incorpora las altas). Usa: pon al día, registra todo, registra '+clase+' todos o registra continuar.');
-  },{nombre:'registrar velas',delegable:true});
+  },{nombre:'registrar velas'});
   // «pon al día»: mismo universo y motor que «registra todo», pero consulta solo lo pendiente y
   // comprueba en disco lo ya guardado. La revisión completa sigue siendo «registra todo».
   // Puesta al dia compartida: la orden manual y la corrida diaria (ciclo-diario.mjs) usan la
@@ -98,7 +98,7 @@ export function registrar(ctx) {
     } catch(e) { return await avisar(event,`No inicie la puesta al dia: ${e.message}`); }
     finally {cotejando=false;}
   };
-  ctx.comando(/^\s*pon\s+al\s+d[ií]a\s*[.!?]*\s*$/i, (event)=>ponerAlDia(event),{nombre:'poner al dia los registros',delegable:true});
+  ctx.comando(/^\s*pon\s+al\s+d[ií]a\s*[.!?]*\s*$/i, (event)=>ponerAlDia(event),{nombre:'poner al dia los registros'});
   // Costuras para la corrida diaria (ciclo-diario.mjs).
   ctx.ponerAlDiaDiaria=(event)=>ponerAlDia(event,{diaria:true});
   ctx.registroOcupado=()=>motor.ocupado() || cotejando;
@@ -114,7 +114,7 @@ export function registrar(ctx) {
       alSi: async()=>{ const r=motor.descartar(); await avisar(event, r.ok?`Avance del registro descartado (${r.detalle}). Los datos guardados se conservan; el próximo registro arranca desde cero.`:r.error); },
       alNo: async()=>{ await avisar(event,'Sin respuesta: conservé el avance del registro.'); },
     });
-  },{nombre:'descartar el avance del registro', delegable:true});
+  },{nombre:'descartar el avance del registro'});
   // El trabajo nuevo solo nace por una orden. Al volver, continua uno ya aceptado.
   ctx.alIniciar(()=>{motor.iniciar({arranque:true}).catch(async e=>{
     console.error('Reanudar registra:',e.message);

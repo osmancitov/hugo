@@ -27,10 +27,10 @@ test('consulta commit solo en registros y distingue fallo HTTP',async()=>{
  assert.equal(fechaLocal(c.fecha),'2026-11-17 23:09:30 UTC-4');
  await assert.rejects(ultimaPublicacion('prop/repo',async()=>({ok:false,status:403})),/403/);
 });
-test('comando nuevo solo usuario, respuestas a su hilo aun sin GitHub',async()=>{
+test('comando nuevo sin marca de acceso, respuestas a su hilo aun sin GitHub',async()=>{
  const e=entorno(),comandos=[],mensajes=[];try{
  registrar({conf:{HUGO_VELAS_DIR:e.root},app:{client:{chat:{postMessage:async m=>mensajes.push(m)}}},comando:(patron,fn,opciones)=>comandos.push({patron,fn,opciones})});
- const c=comandos[0];assert.equal(!!c.opciones.delegable,false);assert.ok(c.patron.test('estado del registro'));assert.ok(c.patron.test('estado registro?'));assert.ok(!c.patron.test('estado'));
+ const c=comandos[0];assert.equal(c.opciones&&c.opciones.delegable,undefined,'sin marca delegable: cualquiera la pide (decisión del usuario, 20-nov-2026)');assert.ok(c.patron.test('estado del registro'));assert.ok(c.patron.test('estado registro?'));assert.ok(!c.patron.test('estado'));
  await c.fn({channel:'canal',ts:'raiz',thread_ts:'hilo'});assert.equal(mensajes[0].thread_ts,'hilo');assert.match(mensajes[0].text,/No pude verificar/);assert.match(mensajes[0].text,/no se guarda/);
  assert.ok(ayuda.TEXTO.length<2100);assert.match(ayuda.TEXTO,/estado del registro/);
  }finally{fs.rmSync(e.root,{recursive:true,force:true});}

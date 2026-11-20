@@ -57,7 +57,7 @@ test('sin avance o terminado: no hay nada que descartar', () => {
   assert.ok(fs.existsSync(b.estado), 'un avance terminado se conserva para su aviso');
  } finally { b.fin(); }
 });
-test('comando: delegable, pregunta con el detalle y solo el 👍 del usuario descarta', async () => {
+test('comando: cualquiera la pide, pregunta con el detalle y solo el 👍 del usuario descarta', async () => {
  const b = banco();
  const envV = process.env.HUGO_VELAS_DIR, envE = process.env.HUGO_REGISTRO_ESTADO;
  try {
@@ -74,7 +74,7 @@ test('comando: delegable, pregunta con el detalle y solo el 👍 del usuario des
    alIniciar: () => {},
   };
   registrar(ctx);
-  assert.equal(opciones.delegable, true, 'el asistente puede pedirla; el 👍 es del usuario');
+  assert.equal(opciones.delegable, undefined, 'ya no hay marca delegable: cualquiera la pide (decisión del usuario, 20-nov-2026)');
   await handler({ channel: 'c', ts: 'h' }, 'descarta registro');
   assert.equal(pregunta.user, 'U_USER', 'el 👍 que cuenta es el del usuario');
   assert.match(pregunta.texto, /BBB, septiembre de 2026/);

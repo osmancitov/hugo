@@ -519,5 +519,5 @@ export function registrar(ctx) {
     } finally {
       ctx.activas.delete(idAct);
     }
-  }, { nombre: 'dibujar radiograf\u00edas', delegable: true });
+  }, { nombre: 'dibujar radiograf\u00edas' });
 }

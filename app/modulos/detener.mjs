@@ -16,13 +16,13 @@ export function registrar(ctx) {
     if (!largos.length) {
       const esperando = ctx.esperando ? ctx.esperando() : [];
       return decir(esperando.length
-        ? `No estoy haciendo ning\u00fan trabajo que detener; solo espero tu \u{1F44D} para: ${esperando.map((e) => e.que).join('; ')}. Sin respuesta en 10 minutos se descarta solo.`
+        ? `No estoy haciendo ning\u00fan trabajo que detener; solo espero tu \u{1F44D} para:\n${esperando.map((e) => `\u00b7 ${e.que}`).join('\n')}\nSin respuesta en 10 minutos se descarta solo.`
         : 'No estoy haciendo ning\u00fan trabajo que detener.');
     }
     await ctx.confirmar({
-      channel: event.channel, thread_ts: hilo, user: event.user,
+      channel: event.channel, thread_ts: hilo, user: ctx.usuario,
       que: 'detener el trabajo en curso',
-      texto: `Estoy haciendo: ${largos.map((a) => a.que).join('; ')}. \u00bfLo detengo? Lo ya hecho se conserva.`,
+      texto: `Estoy haciendo:\n${largos.map((a) => `\u00b7 ${a.que}`).join('\n')}\n\u00bfLo detengo? Lo ya hecho se conserva.`,
       alSi: async () => {
         ctx.parada.n++;
         await decir('Detengo el trabajo en curso; cada trabajo avisa aqu\u00ed cuando haya parado.');

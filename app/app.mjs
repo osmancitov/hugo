@@ -34,8 +34,8 @@ try {
   }
 } catch {}
 const CANAL = process.env.HUGO_AVISO_CANAL || conf.HUGO_AVISO_CANAL;
-const USUARIO = process.env.HUGO_USUARIO || conf.HUGO_USUARIO || ''; // unica persona que puede dar ordenes (id de Slack)
-const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente: solo puede pedir los comandos marcados delegables; registra y sincroniza son directos, las actualizaciones las confirma USUARIO
+const USUARIO = process.env.HUGO_USUARIO || conf.HUGO_USUARIO || ''; // su 👍 es el que confirma las ordenes que lo piden (id de Slack)
+const DELEGADO = process.env.HUGO_DELEGADO || conf.HUGO_DELEGADO || ''; // id de Slack del asistente (lo usa actualizar para reconocer instaladores suyos)
 const botToken = leerClave('.bot-token');
 const appToken = leerClave('.app-token');
 if (!botToken || !appToken || !CANAL) {
@@ -56,8 +56,8 @@ const ctx = {
   botUserId: '',
   desde: Date.now(),
   activas, parada,
-  comandos: () => comandos.map((c) => ({ nombre: c.nombre, delegable: c.delegable })),
-  comando: (patron, fn, opciones = {}) => comandos.push({ patron, fn, delegable: !!opciones.delegable, nombre: opciones.nombre || '' }),   // patron: regex sobre el texto, o funcion (texto, evento) => bool
+  comandos: () => comandos.map((c) => ({ nombre: c.nombre })),
+  comando: (patron, fn, opciones = {}) => comandos.push({ patron, fn, nombre: opciones.nombre || '' }),   // patron: regex sobre el texto, o funcion (texto, evento) => bool
   porDefecto: (fn) => { ctx._defecto = fn; },               // si ningun comando coincide
   alIniciar: (fn) => alIniciar.push(fn),
   alMencionar: (fn) => alMencionar.push(fn),               // completa el evento antes de buscar el comando
@@ -85,10 +85,10 @@ app.event('app_mention', async ({ event }) => {
     for (const fn of alMencionar) { try { await fn(event); } catch (e) { console.error('Completar mencion:', e.data?.error || e.message); } }
     const c = comandos.find((x) => (typeof x.patron === 'function' ? x.patron(texto, event) : x.patron.test(texto)));
     if (c) {
-      // Ordenes (borrar, guardar, servir, actualizar): solo la persona definida en HUGO_USUARIO. Sin definir, nadie.
-      // Excepcion explicita: HUGO_DELEGADO (el asistente) puede pedir SOLO los comandos marcados delegables; registra y sincroniza son directos, actualizar conserva el pulgar de HUGO_USUARIO.
-      const delegado = !!USUARIO && !!DELEGADO && event.user === DELEGADO && c.delegable;
-      if (!USUARIO || (event.user !== USUARIO && !delegado)) { console.error(`Orden ignorada: usuario ${event.user || '?'} no autorizado`); return; }
+      // Cualquiera puede pedir cualquier comando (decisión del usuario, 20-nov-2026: los bots
+      // tienen sus comandos y ya). Las ordenes que comprometen piden confirmación y el 👍 que
+      // cuenta es siempre el de HUGO_USUARIO (lo fija cada módulo con user: ctx.usuario).
+      const delegado = !!DELEGADO && event.user === DELEGADO;
       try { event.ojos = await ojos.anunciar(event); } catch (e) { console.error('Ojitos:', e.data?.error || e.message); }
       const idAct = `${Date.now()}-${Math.random()}`;
       activas.set(idAct, { que: c.nombre || 'atender una orden', desde: Date.now() });

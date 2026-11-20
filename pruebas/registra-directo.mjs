@@ -76,11 +76,11 @@ test('reanudacion tras SIGKILL antes/despues de enlace y avance, sin perder ni p
 });
 test('integracion del comando: lista, datos faltantes, duplicados, orden directa y control de acceso intacto',async()=>{
  const {registrar}=await import('../app/modulos/velas.mjs');let handler,patron;const msgs=[];const init=[];
- registrar(conectarCaja({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{if(String(p).includes('registr')&&!String(p).includes('descarta')){handler=f;patron=p;}assert.equal(o.delegable,true);},alIniciar:f=>init.push(f),activas:new Map()}));
+ registrar(conectarCaja({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{if(String(p).includes('registr')&&!String(p).includes('descarta')){handler=f;patron=p;}assert.equal(o&&o.delegable,undefined);},alIniciar:f=>init.push(f),activas:new Map()}));
  assert.ok(patron.test('registra stock AA BB'));
  for(const x of ['registra AA','registra stock','registra stock AA AA'])await handler(event,x);
  assert.equal(msgs.length,3);assert.ok(msgs.every(m=>!m.includes('👍')));
- const app=fs.readFileSync(new URL('../app/app.mjs',import.meta.url),'utf8');assert.match(app,/event.user !== USUARIO && !delegado/);
+ const app=fs.readFileSync(new URL('../app/app.mjs',import.meta.url),'utf8');assert.ok(!app.includes('Orden ignorada'),'cualquiera puede pedir cualquier comando (decisión del usuario, 20-nov-2026)');assert.ok(!app.includes('delegable'));
  for(const f of ['github.mjs','actualizar.mjs','archivos.mjs','borrar-hilo.mjs'])assert.match(fs.readFileSync(new URL('../app/modulos/'+f,import.meta.url),'utf8'),/ctx.confirmar/);
 });
 
