@@ -493,63 +493,67 @@ function graficoIndicador(ctx, puntos, e, hasta) {
 // El mismo índice en pantalla vertical, con el patrón de radiografiaVertical: los días
 // corren de arriba abajo con sus fechas a la izquierda y el valor 0-100 va en X, con
 // las bandas oficiales como franjas verticales. Mismos datos y mismas bandas, otro eje.
-// Iceberg (decisión del usuario, 20-nov-2026): una barra por día con su trozo verde (activos
-// que cerraron en alza) sobre el cero y su trozo rojo (a la baja) bajo el cero. Misma pieza
-// común de trazado, rejilla de días y colores de la casa; hasta recorta como en las demás.
+// Iceberg (decisión del usuario, 20-nov-2026): cada día es una barra completa, el 100 % de
+// los activos contados ese día (los que cerraron en alza más los que cerraron a la baja),
+// repartido en la frontera entre verde (arriba) y rojo (abajo): la frontera dibuja la
+// proporción. Cada color va del tono pleno en su extremo a uno atenuado junto a la frontera,
+// sin llegar a fusionarse. Un día sin contados (todas planas) queda vacío, sin inventar.
+// Misma pieza común de trazado, rejilla de días y colores de la casa; hasta recorta igual.
+// Suavizado junto a la frontera: mitad de opacidad sobre el fondo, sin mezclar los tonos.
+const ICEBERG_SUAVE_V = 'rgba(37,133,92,0.5)';
+const ICEBERG_SUAVE_R = 'rgba(183,61,64,0.5)';
 function graficoIceberg(ctx, puntos, e, hasta) {
   const n = puntos.length;
   const k = hasta === undefined ? n : Math.min(hasta, n);
   const ALTO = LH + 32;
-  const techo = Math.max(50, Math.ceil(Math.max(...puntos.map((p) => Math.max(p[1], p[2]))) / 50) * 50);
   const X = (i) => ML + (n === 1 ? PW / 2 : (i / (n - 1)) * PW);
-  const Y0 = MT + PH / 2;
-  const Y = (v) => Y0 - (v / techo) * (PH / 2);
   ctx.fillStyle = BG; ctx.fillRect(0, 0, LW, ALTO);
-  // rejilla de días, como la radiografía y los otros indicadores
+  // barras completas: verde desde arriba hasta la frontera, rojo desde la frontera abajo
+  const ancho = n === 1 ? PW : Math.max(1, PW / (n - 1));
+  for (let i = 0; i < k; i++) {
+    const sub = puntos[i][1], baj = puntos[i][2], total = sub + baj;
+    if (!total) continue;
+    const frontera = MT + (sub / (sub + baj)) * PH;
+    const x = X(i) - ancho / 2;
+    if (sub) {
+      const g = ctx.createLinearGradient(0, frontera, 0, MT);
+      g.addColorStop(0, ICEBERG_SUAVE_V); g.addColorStop(1, GREEN_S);
+      ctx.fillStyle = g; ctx.fillRect(x, MT, ancho, frontera - MT);
+    }
+    if (baj) {
+      const g = ctx.createLinearGradient(0, frontera, 0, MT + PH);
+      g.addColorStop(0, ICEBERG_SUAVE_R); g.addColorStop(1, RED_S);
+      ctx.fillStyle = g; ctx.fillRect(x, frontera, ancho, MT + PH - frontera);
+    }
+  }
+  // rejilla de días y guías de proporción, por encima como en el Fear & Greed
   for (let i = 0; i < n; i++) {
     const dia = new Date(puntos[i][0]).getUTCDate();
     ctx.strokeStyle = dia === 1 ? GRID_1 : dia === 15 ? GRID_15 : GRID_D;
     ctx.lineWidth = dia === 1 || dia === 15 ? 1.44 : 0.72;
     ctx.beginPath(); ctx.moveTo(X(i), MT); ctx.lineTo(X(i), MT + PH); ctx.stroke();
   }
-  // guías a media altura y línea de cero, la "línea de flotación" del iceberg
-  ctx.strokeStyle = GRID_D; ctx.lineWidth = 0.72;
-  for (const v of [Y(techo / 2), Y0 + (Y0 - Y(techo / 2))]) { ctx.beginPath(); ctx.moveTo(ML, v); ctx.lineTo(ML + PW, v); ctx.stroke(); }
+  for (const p of [0.25, 0.75]) {
+    ctx.strokeStyle = GRID_D; ctx.lineWidth = 0.72;
+    ctx.beginPath(); ctx.moveTo(ML, MT + p * PH); ctx.lineTo(ML + PW, MT + p * PH); ctx.stroke();
+  }
   ctx.strokeStyle = ZERO; ctx.lineWidth = 1.44;
-  ctx.beginPath(); ctx.moveTo(ML, Y0); ctx.lineTo(ML + PW, Y0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ML, MT + PH / 2); ctx.lineTo(ML + PW, MT + PH / 2); ctx.stroke();
   ctx.strokeStyle = MARCO; ctx.lineWidth = 1.44; ctx.strokeRect(ML, MT, PW, PH);
-  // ejes: magnitudes a un lado y otro del cero, fechas abajo
+  // fechas abajo
   ctx.fillStyle = TICK; ctx.font = '10.5px ' + FUENTE;
-  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText(String(techo), ML - 8, Y(techo));
-  ctx.fillText(String(Math.round(techo / 2)), ML - 8, Y(techo / 2));
-  ctx.fillText('0', ML - 8, Y0);
-  ctx.fillText(String(Math.round(techo / 2)), ML - 8, Y0 + (Y0 - Y(techo / 2)));
-  ctx.fillText(String(techo), ML - 8, Y0 + (Y0 - Y(techo)));
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (let i = 0; i < n; i++) {
     const f = new Date(puntos[i][0]), dia = f.getUTCDate();
     if (dia === 1 || dia === 15)
       ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_ES[f.getUTCMonth()]}`, X(i), MT + PH + 8);
   }
-  ctx.save();
-  ctx.translate(20, MT + PH / 2); ctx.rotate(-Math.PI / 2);
-  ctx.font = '12px ' + FUENTE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('Activos por día', 0, 0);
-  ctx.restore();
   // títulos
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
   ctx.fillText(`${e.nombre} · activos al alza y a la baja por día`, LW / 2, 15);
   ctx.fillStyle = TICK; ctx.font = '11px ' + FUENTE;
-  ctx.fillText(`verde = cerraron en alza · rojo = a la baja · ${n} días`, LW / 2, 40);
-  // barras: verde sobre el cero, rojo bajo el cero
-  const ancho = Math.max(1, (PW / n) * 0.66);
-  for (let i = 0; i < k; i++) {
-    const x = X(i), sub = puntos[i][1], baj = puntos[i][2];
-    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(x - ancho / 2, Y(sub), ancho, Y0 - Y(sub)); }
-    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x - ancho / 2, Y0, ancho, (baj / techo) * (PH / 2)); }
-  }
+  ctx.fillText(`cada día es el 100 % de los que subieron o bajaron · verde = al alza · rojo = a la baja · ${n} días`, LW / 2, 40);
   // el último día, al completar el trazado
   if (k >= n) {
     const uf = new Date(puntos[n - 1][0]);
@@ -645,9 +649,6 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   const w = 700, left = 88, right = 612, top = 134, bottom = alto - 110;
   const n = puntos.length;
   const k = hasta === undefined ? n : Math.min(hasta, n);
-  const techo = Math.max(50, Math.ceil(Math.max(...puntos.map((p) => Math.max(p[1], p[2]))) / 50) * 50);
-  const X0 = (left + right) / 2;
-  const X = (v) => X0 + (v / techo) * ((right - left) / 2);
   const Y = (i) => top + (n === 1 ? (bottom - top) / 2 : (i / (n - 1)) * (bottom - top));
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   // títulos
@@ -655,7 +656,25 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
   ctx.fillText(`${e.nombre} · activos al alza y a la baja`, w / 2, 26);
   ctx.fillStyle = TICK; ctx.font = '18px ' + FUENTE;
-  ctx.fillText(`verde = cerraron en alza · rojo = a la baja · ${n} días`, w / 2, 58);
+  ctx.fillText(`cada día es el 100 % de los que subieron o bajaron · ${n} días`, w / 2, 58);
+  // barras completas: rojo desde la izquierda hasta la frontera, verde hasta la derecha
+  const grueso = n === 1 ? (bottom - top) : Math.max(1, (bottom - top) / (n - 1));
+  for (let i = 0; i < k; i++) {
+    const sub = puntos[i][1], baj = puntos[i][2], total = sub + baj;
+    if (!total) continue;
+    const frontera = left + (baj / (sub + baj)) * (right - left);
+    const y = Y(i) - grueso / 2;
+    if (baj) {
+      const g = ctx.createLinearGradient(left, 0, frontera, 0);
+      g.addColorStop(0, RED_S); g.addColorStop(1, ICEBERG_SUAVE_R);
+      ctx.fillStyle = g; ctx.fillRect(left, y, frontera - left, grueso);
+    }
+    if (sub) {
+      const g = ctx.createLinearGradient(frontera, 0, right, 0);
+      g.addColorStop(0, ICEBERG_SUAVE_V); g.addColorStop(1, GREEN_S);
+      ctx.fillStyle = g; ctx.fillRect(frontera, y, right - frontera, grueso);
+    }
+  }
   // rejilla de días y fechas a la izquierda, como la radiografía vertical
   ctx.font = '20px ' + FUENTE; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   for (let i = 0; i < n; i++) {
@@ -668,24 +687,14 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
       if (!cerca) { ctx.fillStyle = TICK; ctx.fillText(String(dia).padStart(2, '0') + ' ' + MESES_ES[f.getUTCMonth()], left - 14, Y(i)); }
     }
   }
-  // magnitudes a ambos lados del cero, con su rejilla vertical
-  ctx.font = '20px ' + FUENTE; ctx.textAlign = 'center';
-  for (const v of [-techo, -Math.round(techo / 2), 0, Math.round(techo / 2), techo]) {
-    const x = X(v);
-    ctx.strokeStyle = v === 0 ? ZERO : Math.abs(v) === techo ? MARCO : GRID_D;
-    ctx.lineWidth = v === 0 || Math.abs(v) === techo ? 1.5 : 1;
+  // guías de proporción: la central es la paridad
+  for (const p of [0.25, 0.5, 0.75]) {
+    const x = left + p * (right - left);
+    ctx.strokeStyle = p === 0.5 ? ZERO : GRID_D;
+    ctx.lineWidth = p === 0.5 ? 1.5 : 1;
     ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-    ctx.fillStyle = TICK; ctx.fillText(String(Math.abs(v)), x, top - 23);
-    ctx.fillText(String(Math.abs(v)), x, bottom + 26);
   }
   ctx.strokeStyle = MARCO; ctx.lineWidth = 1.5; ctx.strokeRect(left, top, right - left, bottom - top);
-  // barras horizontales: verde a la derecha del cero, rojo a la izquierda
-  const grueso = Math.max(1, ((bottom - top) / n) * 0.66);
-  for (let i = 0; i < k; i++) {
-    const y = Y(i), sub = puntos[i][1], baj = puntos[i][2];
-    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(X0, y - grueso / 2, X(sub) - X0, grueso); }
-    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(X(-baj), y - grueso / 2, X0 - X(-baj), grueso); }
-  }
   // el último día, al completar el trazado
   if (k >= n) {
     const uf = new Date(puntos[n - 1][0]);
