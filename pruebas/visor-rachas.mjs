@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion, cambiosDireccion } from '../app/modulos/visor-rachas-datos.mjs';
+import { puestosDelDia, resultadoDesdeLectura, mesesVentana, ventanaDelDia } from '../visor-rachas.mjs';
 const t = Date.UTC(2026,10,1), corte = Date.UTC(2026,10,18);
 const vela = (i,o,c) => [t+i*DIA,String(o),String(Math.max(o,c)),String(Math.min(o,c)),String(c),'1',t+(i+1)*DIA-1,'1',1,'1','1','0'];
 test('racha usa apertura/cierre; su cambio real incluye cambios entre velas, sin sumar porcentajes',()=>{
@@ -105,4 +106,34 @@ test('todos los registros del catálogo real se validan y resumen sin alterar ar
    resultados.push({activo:e,datos:r});
  }
  assert.equal(resultados.length,catalogo.stock.length+catalogo.cripto.length); assert.ok(separar(resultados).comparables.length>0);
+});
+
+
+test('puestos del día: el archivo de ranking manda; sin archivo se deriva con la misma regla',()=>{
+ const c=corteUTC()-DIA;
+ const archivo=puestosDelDia([['BBB',-3],['AAA',1]],{},{});
+ assert.equal(archivo.get('BBB'),1); assert.equal(archivo.get('AAA'),2);
+ const activos={X:{fecha:c,variacion:1},Y:{fecha:c,variacion:-2},Z:{fecha:c,variacion:1},W:{fecha:c-DIA,variacion:9}};
+ const derivado=puestosDelDia(null,activos,c);
+ assert.equal(derivado.get('Y'),1); // la mayor caída primero
+ assert.equal(derivado.get('X'),2); assert.equal(derivado.get('Z'),3); // empate exacto: por código
+ assert.ok(!derivado.has('W')); // sin vela ese día no ocupa puesto
+});
+test('resultado desde la lectura: gp null es infinito, falta es error de ventana, puesto incluido',()=>{
+ const c=corteUTC()-DIA;
+ const pre={corte:c,ventana:{inicio:c-89*DIA,fin:c},activos:{AAA:{fecha:c,dias:2,direccion:1,acumulado:3,limitada:false,motivo:'',rango:1,variacion:1,gp:null,cambios:4}}};
+ const ok=resultadoDesdeLectura({codigo:'AAA',clase:'stock'},pre,new Map([['AAA',7]]));
+ assert.equal(ok.datos.gp,Infinity); assert.equal(ok.datos.puesto,7);
+ const falta=resultadoDesdeLectura({codigo:'ZZZ',clase:'stock'},pre,new Map());
+ assert.equal(falta.error,'Sin lectura en la ventana'); assert.ok(!falta.datos);
+});
+test('la ventana del día: fin es el último día UTC cerrado e inicio cuenta 90 días con ambos extremos',()=>{
+ const v=ventanaDelDia();
+ assert.equal(v.fin,corteUTC()-DIA); assert.equal(v.inicio,v.fin-89*DIA); // hoy no toca el piso
+ assert.deepEqual(mesesVentana(Date.UTC(2026,7,22),Date.UTC(2026,10,19)),['2608','2609','2610','2611']);
+});
+test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el árbol de GitHub',()=>{
+ const src=fs.readFileSync(new URL('../visor-rachas.mjs',import.meta.url),'utf8');
+ for(const marca of ['registros/pre-calculado/','lectura-dia-90d','ranking-24h','Activos analizados','Sin lectura en la ventana']) assert.ok(src.includes(marca),marca);
+ assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
 });

@@ -1,95 +1,192 @@
 import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './app/modulos/visor-rachas-datos.mjs';
-const API = 'https://api.github.com/repos/osmancitov/hugo';
-const BASE = 'https://raw.githubusercontent.com/osmancitov/hugo';
-const fecha = t => new Date(t).toISOString().slice(0,10);
+const RAW = 'https://raw.githubusercontent.com/osmancitov/hugo/main';
+const PISO_TS = Date.UTC(2026, 7, 1); // el mismo piso del registro que usa el bot (PISO_DIA)
+const aammdd = (ts) => new Date(ts).toISOString().slice(2, 10).replace(/-/g, '');
+const aamm = (ts) => aammdd(ts).slice(0, 4);
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const fecha = t => new Date(t).toISOString().slice(0, 10);
+const fechaCorta = t => { const f = new Date(t); return f.getUTCDate() + ' ' + MESES[f.getUTCMonth()]; };
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct0 = n => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('es');
 const texto = (tag, valor, clase = '') => { const n = document.createElement(tag); n.textContent = valor; if (clase) n.className = clase; return n; };
-let pendiente, ultimo, revision = '', clase = 'todos', orden = 'gp', direccionRacha = 'todas';
+let pendiente, ultimo, clase = 'todos', orden = 'gp', direccionRacha = 'todas';
 async function json(url) {
   const r = await fetch(url, { signal: AbortSignal.timeout(25000), cache: 'no-cache' });
   if (!r.ok) throw Error('No se pudo leer GitHub (HTTP ' + r.status + ')');
   return r.json();
 }
+
+// La Lectura del día y el ranking de la jornada los calcula Hugo una vez al día dentro de la
+// sincronización (decisión del usuario, 20-nov-2026): un archivo por día y mercado en
+// registros/pre-calculado/<mercado>/lectura-dia-90d/ y registros/ranking-24h/<mercado>/.
+// Se pide el del último día cerrado y, si la pasada aún no lo subió, el de hasta dos días
+// antes; sin archivo, el visor calcula la misma ventana desde los registros (ver cargar).
+export function ventanaDelDia(cantidad = 90) {
+  const fin = corteUTC() - DIA;
+  return { inicio: Math.max(fin - (cantidad - 1) * DIA, PISO_TS), fin, cantidad, unidad: 'd' };
+}
+async function leerLecturaPre(mercado) {
+  for (let d = 0; d <= 2; d++) {
+    const fin = corteUTC() - DIA - d * DIA;
+    const r = await fetch(`${RAW}/registros/pre-calculado/${mercado}/lectura-dia-90d/${aammdd(fin)}_lectura-dia`, { cache: 'no-cache' });
+    if (r.ok) { const pre = await r.json(); if (pre && pre.activos && pre.ventana) return pre; }
+  }
+  return null;
+}
+async function leerRankingPre(mercado, fin) {
+  const r = await fetch(`${RAW}/registros/ranking-24h/${mercado}/${aammdd(fin)}_ranking-24h`, { cache: 'no-cache' });
+  return r.ok ? r.json() : null;
+}
+
+// Posición única por activo (decisión del usuario, 20-nov-2026: «tiene que ser posición única,
+// no puede haber ambigüedad»): el puesto es el lugar en la lista del día, de la mayor caída a
+// la mayor subida, y un empate exacto en la variación se ordena por código. Sale del archivo
+// de ranking y, si falta, se deriva de la misma lectura con la misma regla.
+export function puestosDelDia(ranking, activos, corte) {
+  const puestos = new Map();
+  if (Array.isArray(ranking) && ranking.length) {
+    ranking.forEach((f, i) => puestos.set(f[0], i + 1));
+    return puestos;
+  }
+  const delDia = Object.entries(activos).filter(([, d]) => d.fecha === corte);
+  delDia.sort((a, b) => a[1].variacion - b[1].variacion || (a[0] < b[0] ? -1 : 1));
+  delDia.forEach(([cod], i) => puestos.set(cod, i + 1));
+  return puestos;
+}
+export function resultadoDesdeLectura(activo, pre, puestos) {
+  const d = pre.activos[activo.codigo];
+  if (!d) return { activo, error: 'Sin lectura en la ventana' };
+  return { activo, datos: { ...d, gp: d.gp === null ? Infinity : d.gp, puesto: puestos.get(activo.codigo) ?? null } };
+}
+
+// Meses aamm que toca una ventana, para el repliegue: solo se piden esos archivos por activo.
+export function mesesVentana(inicio, fin) {
+  const out = [];
+  let t = Date.UTC(new Date(inicio).getUTCFullYear(), new Date(inicio).getUTCMonth(), 1);
+  while (t <= fin) { out.push(aamm(t)); t = Date.UTC(new Date(t).getUTCFullYear(), new Date(t).getUTCMonth() + 1, 1); }
+  return out;
+}
+
 async function cargar(catalogo, progreso) {
   const corte = corteUTC();
-  const commit = await json(API + '/commits/main');
-  if (!/^[0-9a-f]{40}$/.test(commit.sha)) throw Error('Revisión de GitHub no válida');
-  revision = commit.sha;
-  const arbol = await json(API + '/git/trees/' + revision + '?recursive=1');
-  if (arbol.truncated || !Array.isArray(arbol.tree)) throw Error('No se pudo leer el inventario completo');
-  const meses = new Map();
-  for (const f of arbol.tree) {
-    const m = f.path.match(/^registros\/velas-24h\/(stock|cripto)\/([\p{L}\p{N}]{1,15})\/(\d{4})_([\p{L}\p{N}]{1,15})$/u);
-    if (f.type !== 'blob' || !m || m[2] !== m[4]) continue;
-    const k = m[1] + '/' + m[2];
-    if (!meses.has(k)) meses.set(k, []);
-    meses.get(k).push(m[3]);
-  }
-  let cursor = 0, hechos = 0;
   const resultados = new Array(catalogo.length);
-  async function trabajador() {
-    while (cursor < catalogo.length) {
-      const i = cursor++, e = catalogo[i];
-      try {
-        const lista = (meses.get(e.clase + '/' + e.codigo) || []).sort().reverse();
-        if (!lista.length) throw Error('Sin registros publicados');
-        // Todos los meses del registro: el equilibrio G/P cubre el período completo, como la radiografía.
-        let filas = [];
-        for (const mes of lista) {
-          const url = BASE + '/' + revision + '/registros/velas-24h/' + e.clase + '/' + encodeURIComponent(e.codigo) + '/' + mes + '_' + encodeURIComponent(e.codigo);
-          const nuevas = validarMes(await json(url), mes, corte);
-          filas = nuevas.concat(filas);
-        }
-        const datos = resumir(filas, true);
-        datos.gp = razonVariacion(filas).razon;
-        datos.cambios = cambiosDireccion(filas);
-        resultados[i] = { activo: e, datos };
-      } catch (err) { resultados[i] = { activo: e, error: err.message }; }
-      progreso(++hechos, catalogo.length, e.codigo);
+  const origen = {}, ventanaPorMercado = {};
+  await Promise.all(['stock', 'cripto'].map(async (mercado) => {
+    const indices = [];
+    catalogo.forEach((e, i) => { if (e.clase === mercado) indices.push(i); });
+    if (!indices.length) return;
+    const pre = await leerLecturaPre(mercado).catch(() => null);
+    if (pre) {
+      ventanaPorMercado[mercado] = pre.ventana;
+      const ranking = await leerRankingPre(mercado, pre.corte).catch(() => null);
+      const puestos = puestosDelDia(ranking, pre.activos, pre.corte);
+      for (const i of indices) resultados[i] = resultadoDesdeLectura(catalogo[i], pre, puestos);
+      origen[mercado] = 'archivo';
+      return;
     }
-  }
-  await Promise.all(Array.from({length: 6}, trabajador));
-  return { resultados, corte, revision };
+    // Repliegue honesto: la misma ventana de 90 días, calculada en la visita desde los meses
+    // que la tocan; no se recorre el registro completo ni se muestra otra definición.
+    const ventana = ventanaDelDia();
+    const { inicio, fin } = ventana;
+    ventanaPorMercado[mercado] = ventana;
+    const meses = mesesVentana(inicio, fin);
+    const porCodigo = {};
+    let cursor = 0, hechos = 0;
+    async function trabajador() {
+      while (cursor < indices.length) {
+        const i = indices[cursor++], e = catalogo[i];
+        try {
+          let filas = [];
+          for (const mes of meses) {
+            try {
+              filas.push(...validarMes(await json(`${RAW}/registros/velas-24h/${mercado}/${encodeURIComponent(e.codigo)}/${mes}_${encodeURIComponent(e.codigo)}`), mes, corte));
+            } catch { /* mes ausente o inválido: el hueco queda, no se rellena */ }
+          }
+          filas = filas.filter((f) => f[0] >= inicio && f[0] <= fin).sort((a, b) => a[0] - b[0]);
+          if (!filas.length) throw Error('Sin lectura en la ventana');
+          const datos = resumir(filas);
+          datos.gp = razonVariacion(filas).razon;
+          datos.cambios = cambiosDireccion(filas);
+          resultados[i] = { activo: e, datos };
+          porCodigo[e.codigo] = datos;
+        } catch (err) { resultados[i] = { activo: e, error: err.message }; }
+        progreso(++hechos, indices.length, e.codigo);
+      }
+    }
+    await Promise.all(Array.from({ length: 6 }, trabajador));
+    const puestos = puestosDelDia(null, porCodigo, fin);
+    for (const i of indices) if (resultados[i].datos) resultados[i].datos.puesto = puestos.get(catalogo[i].codigo) ?? null;
+    origen[mercado] = 'visor';
+  }));
+  return { resultados, corte, origen, ventanaPorMercado };
 }
+
+function textoFuente(origen) {
+  const nombre = { stock: 'Stocks', cripto: 'Cripto' };
+  const parte = (m) => origen[m] === 'archivo' ? null : `${nombre[m]}: calculada por el visor (archivo del día aún no publicado)`;
+  const notas = ['stock', 'cripto'].map(parte).filter(Boolean);
+  if (!notas.length) return 'Lectura del día precalculada por Hugo en la sincronización diaria.';
+  if (notas.length === 2) return 'Lectura calculada por el visor desde los registros: los archivos del día aún no están publicados.';
+  return 'Lectura del día. ' + notas[0] + '.';
+}
+
 export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null) {
   if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
   const titulo = texto('h2', 'Variación y rachas');
-  const nota = texto('p', 'Última vela diaria cerrada publicada, no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
+  const nota = texto('p', 'Lectura del día sobre la ventana de 90 días terminada en la última vela cerrada; no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
   const controles = texto('div', '', 'rachas-controles');
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   if (mercado) selector.hidden = true;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','G/P'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','G/P'],['ranking','Ranking del día'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Preparando la lectura…','rachas-nota'); estado.setAttribute('role','status');
   let avanceNum=null, avanceBarra=null, avanceCod=null;
-  function avanzar(n,total,codigo) {
+  function avanzar(n,total,codigo,leyenda='Analizando los registros') {
     if(!estado.isConnected) return;
     if(!avanceNum) {
       estado.className='rachas-cargando';
       avanceNum=texto('strong','','rachas-cargando-cifra');
       avanceCod=document.createTextNode('');
       const barra=texto('span','','rachas-cargando-barra'); avanceBarra=texto('span',''); barra.append(avanceBarra);
-      estado.replaceChildren(document.createTextNode('Analizando los registros'), document.createElement('br'), avanceNum, document.createTextNode(' activos'), avanceCod, barra);
+      estado.replaceChildren(document.createTextNode(leyenda), document.createElement('br'), avanceNum, document.createTextNode(' activos'), avanceCod, barra);
     }
     avanceNum.textContent=n+'/'+total;
     avanceCod.textContent=codigo?' · '+codigo:'';
     avanceBarra.style.width=(n/total*100)+'%';
   }
   function finCarga() { avanceNum=avanceBarra=avanceCod=null; estado.className='rachas-nota'; }
+  // Repaso de presentación (decisión del usuario, 20-nov-2026): la lectura ya viene analizada
+  // por Hugo, así que el visor muestra todos los códigos en unos 5 segundos con el aviso
+  // «analizados» en lugar de repetir el análisis en vivo.
+  function repasar(lista) {
+    const codigos = lista.map((x) => x.activo.codigo);
+    return new Promise((listo) => {
+      if (!codigos.length) return listo();
+      const t0 = Date.now();
+      const pasos = Math.max(1, Math.ceil(codigos.length / 90)); // ~90 pasos de 55 ms ≈ 5 s
+      let k = 0;
+      const reloj = setInterval(() => {
+        k = Math.min(codigos.length, k + pasos);
+        avanzar(k, codigos.length, codigos[k - 1], 'Activos analizados');
+        if (k >= codigos.length || Date.now() - t0 >= 5000) { clearInterval(reloj); listo(); }
+      }, 55);
+    });
+  }
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
+  reglas.append(texto('p','Lectura del día: Hugo deja calculadas estas métricas cada día sobre la ventana de 90 días y el visor las presenta con un repaso de segundos. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
   reglas.append(texto('p','Activo: el código del activo; su fila abre su gráfica habitual.'));
   reglas.append(texto('p','R %: rango del día, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
-  reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio del registro.'));
+  reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio de la ventana.'));
   reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
-  reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
-  reglas.append(texto('p','C: cambios de dirección en el registro: cada vez que un día verde sigue a uno rojo o al revés.'));
+  reglas.append(texto('p','G/P: la razón de variación sobre la ventana de la lectura: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
+  reglas.append(texto('p','C: cambios de dirección en la ventana: cada vez que un día verde sigue a uno rojo o al revés.'));
+  reglas.append(texto('p','Ranking del día: posición única por variación de la jornada (cierre frente a apertura), de la mayor caída a la mayor subida; un empate exacto se ordena por código.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
   contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
@@ -103,18 +200,18 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       const x=a.datos,y=b.datos;
       const total=(u,v)=>Number(u.limitada)-Number(v.limitada)||u.acumulado-v.acumulado;
       const gp=v=>v.gp===Infinity?Number.MAX_VALUE:Math.round(v.gp*100)/100; // un solo valor, a dos decimales, para ordenar y mostrar
-      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='gp'?gp(y)-gp(x):total(x,y);
+      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='ranking'?(x.puesto??Number.MAX_VALUE)-(y.puesto??Number.MAX_VALUE):orden==='gp'?gp(y)-gp(x):total(x,y);
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
     finCarga();
-    estado.textContent=partes.fecha===null?'No hay datos comparables.':`Jornada de referencia: ${fecha(partes.fecha)} UTC · ${partes.comparables.length}/${todos.length} activos con esa vela · ${visibles.length} visibles.`;
+    const v=ultimo.ventanaPorMercado[clase]||ultimo.ventanaPorMercado.stock||ultimo.ventanaPorMercado.cripto;
+    estado.textContent=partes.fecha===null?'No hay datos comparables.':`Jornada de referencia: ${fecha(partes.fecha)} UTC · ventana ${fechaCorta(v.inicio)} → ${fechaCorta(v.fin)} · ${partes.comparables.length}/${todos.length} activos con esa vela · ${visibles.length} visibles.`;
     if (partes.fecha!==null && partes.fecha < ultimo.corte-DIA) estado.textContent+=' El registro está atrasado respecto al último día cerrado en UTC.';
-    fuente.replaceChildren(document.createTextNode('Una sola revisión de registros: '));
-    const link=texto('a',ultimo.revision.slice(0,7)); link.href='https://github.com/osmancitov/hugo/commit/'+ultimo.revision; link.target='_blank'; link.rel='noopener'; fuente.append(link);
+    fuente.textContent=textoFuente(ultimo.origen);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of ['Activo','R %','Racha','A %','G/P','C']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','C']:['Activo','R %','Racha','A %','G/P','C'])) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
@@ -124,8 +221,9 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; }
       const rango=texto('td',Math.round(d.rango).toLocaleString('es'));
       const gp=texto('td',d.gp===Infinity?'∞':(Math.round(d.gp*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2}));
-      if(d.gp===Infinity) gp.title='Sin días rojos en el registro: el equilibrio no tiene fin.';
+      if(d.gp===Infinity) gp.title='Sin días rojos en la ventana: el equilibrio no tiene fin.';
       const cam=texto('td',String(d.cambios));
+      if(orden==='ranking') r.append(texto('td',d.puesto==null?'—':String(d.puesto)));
       r.append(id,rango,dias,acum,gp,cam); body.append(r);
     }
     tabla.append(cab,body); caja.append(tabla); cuerpo.append(caja);
@@ -142,7 +240,13 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
     if(forzar) {ultimo=null;pendiente=null;cuerpo.replaceChildren();}
     try {
       if(!pendiente) pendiente=cargar(catalogo,avanzar);
-      ultimo=await pendiente; pintar();
+      ultimo=await pendiente;
+      // El repaso solo aplica a la lectura ya calculada; el repliegue en vivo ya mostró su avance.
+      if (ultimo.origen[clase]==='archivo'||(clase==='todos'&&(ultimo.origen.stock==='archivo'||ultimo.origen.cripto==='archivo'))) {
+        finCarga(); estado.textContent='';
+        await repasar(ultimo.resultados.filter(x=>clase==='todos'||x.activo.clase===clase));
+      }
+      pintar();
     } catch(err) {pendiente=null;finCarga();estado.textContent='No pude completar la lectura: '+err.message+'. No se muestra un orden parcial como completo.';}
     finally {recargar.disabled=false;}
   }
