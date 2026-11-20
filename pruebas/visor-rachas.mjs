@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DIA, validarMes, resumir, separar, corteUTC } from '../visor-rachas-datos.mjs';
+import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion } from '../visor-rachas-datos.mjs';
 const t = Date.UTC(2026,10,1), corte = Date.UTC(2026,10,18);
 const vela = (i,o,c) => [t+i*DIA,String(o),String(Math.max(o,c)),String(Math.min(o,c)),String(c),'1',t+(i+1)*DIA-1,'1',1,'1','1','0'];
 test('racha usa apertura/cierre; su cambio real incluye cambios entre velas, sin sumar porcentajes',()=>{
@@ -53,6 +53,15 @@ test('rechaza duplicados entre meses y filas desordenadas',()=>{
  assert.throws(()=>resumir([vela(0,100,90),vela(0,100,90)]));
  assert.throws(()=>resumir([vela(1,100,90),vela(0,100,90)]));
 });
+test('equilibrio G/P: áreas por vela (cierre frente a apertura) y su cociente, como la radiografía',()=>{
+ const r=razonVariacion([vela(0,100,110),vela(1,200,180),vela(2,100,100)]);
+ assert.ok(Math.abs(r.verde-10)<1e-10); assert.ok(Math.abs(r.roja-10)<1e-10); assert.ok(Math.abs(r.razon-1)<1e-10);
+});
+test('equilibrio G/P: sin días rojos no tiene fin; sin días verdes vale 0; la vela plana no cuenta',()=>{
+ assert.equal(razonVariacion([vela(0,100,110)]).razon,Infinity);
+ assert.equal(razonVariacion([vela(0,100,90)]).razon,0);
+ assert.equal(razonVariacion([vela(0,100,100)]).razon,0);
+});
 test('separa atrasados y errores, sin tratarlos como última jornada común',()=>{
  const s=separar([{datos:{fecha:t}},{datos:{fecha:t+DIA}},{error:'red'}]);
  assert.equal(s.fecha,t+DIA); assert.equal(s.comparables.length,1); assert.equal(s.atrasados.length,1); assert.equal(s.errores.length,1);
@@ -79,6 +88,12 @@ test('todos los registros del catálogo real se validan y resumen sin alterar ar
    assert.equal(r.direccion,sentido,e.codigo);
    assert.equal(r.dias,n,e.codigo); assert.ok(Math.abs(r.acumulado-esperado)<1e-8,e.codigo);
    assert.ok(Math.abs(r.rango-(Number(filas.at(-1)[2])-Number(filas.at(-1)[3]))/Number(filas.at(-1)[1])*100)<1e-8,e.codigo);
+   // Oráculo del equilibrio G/P: áreas por signo de la variación de cada vela.
+   let av=0,ar=0;
+   for(const f of filas){const rv=(Number(f[4])/Number(f[1])-1)*100; if(rv>0)av+=rv; else if(rv<0)ar-=rv;}
+   const rz=razonVariacion(filas);
+   assert.ok(Math.abs(rz.verde-av)<1e-8&&Math.abs(rz.roja-ar)<1e-8,e.codigo);
+   assert.ok(ar>0?Math.abs(rz.razon-av/ar)<1e-8:(av>0?rz.razon===Infinity:rz.razon===0),e.codigo);
    resultados.push({activo:e,datos:r});
  }
  assert.equal(resultados.length,catalogo.stock.length+catalogo.cripto.length); assert.ok(separar(resultados).comparables.length>0);

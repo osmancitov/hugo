@@ -38,6 +38,18 @@ export function resumir(filas, inicioConocido = false) {
   }
   return { fecha: ultima[0], variacion, rango, dias, direccion, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
 }
+// Equilibrio G/P: la razón de variación de la radiografía (md/radiografia-de-variacion.md),
+// calculada igual y sobre el mismo período: todo el registro del activo. La variación de cada
+// vela es la de su cierre frente a su apertura, como en la gráfica. Un día que cierra igual
+// que abre no cuenta. Sin días rojos no hay división posible (Infinity); sin días verdes, 0.
+export function razonVariacion(filas) {
+  let verde = 0, roja = 0;
+  for (const f of filas) {
+    const r = (Number(f[4]) / Number(f[1]) - 1) * 100;
+    if (r > 0) verde += r; else if (r < 0) roja -= r;
+  }
+  return { verde, roja, razon: roja > 0 ? verde / roja : verde > 0 ? Infinity : 0 };
+}
 export function separar(resultados) {
   const validos = resultados.filter(x => x.datos);
   const fecha = validos.length ? Math.max(...validos.map(x => x.datos.fecha)) : null;
