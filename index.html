@@ -50,7 +50,7 @@ a:hover { text-decoration: underline; }
   font-size: .9rem;
   padding: .4rem .6rem;
   border-radius: 4px;
-  max-width: 22rem;
+  max-width: 17rem;
   margin-bottom: .9rem;
 }
 #buscar:focus { outline: 1px solid var(--oro); }
@@ -138,6 +138,7 @@ a.tit-link:hover { text-decoration: none; }
 #rotulo-mercado { font-family:'Cinzel','Lora',serif; font-weight:600; font-size:1.15rem; letter-spacing:.06em; color:var(--oro); margin:.1rem 0 .6rem; }
 .rachas-nota { color:var(--tenue); font-size:.85rem; line-height:1.6; margin:.65rem 0; }
 .rachas-controles { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; margin:1rem 0; }
+.rachas-controles #buscar { margin-bottom:0; }
 .rachas-controles select { font:inherit; color:var(--texto); background:var(--panel); border:1px solid var(--borde); border-radius:3px; padding:.4rem; max-width:100%; }
 .rachas-controles label { font-size:.85rem; display:flex; align-items:center; gap:.4rem; }
 .rachas-controles button:disabled { opacity:.5; cursor:wait; }
@@ -203,6 +204,7 @@ const PW = LW - ML - MR, PH = LH - MT - MB;
 
 const $ = (sel) => document.querySelector(sel);
 const app = $('#app');
+const elBuscar = $('#buscar'); // pieza única: se reubica en cada vista, nunca se duplica
 
 // Lugar de la lista guardado al entrar en un activo, para que «volver» regrese ahí.
 let estadoLista = null;
@@ -216,7 +218,7 @@ app.addEventListener('click', (ev) => {
   estadoLista = { abiertos, y: window.scrollY };
   origenLista = location.hash.endsWith('/rachas') ? (location.hash.startsWith('#/cripto') ? '#/cripto/rachas' : '#/stock/rachas') : (location.hash.startsWith('#/cripto') ? '#/cripto' : '#/stock');
   // Entrar a un activo limpia la casilla de búsqueda.
-  $('#buscar').value = '';
+  elBuscar.value = '';
 });
 
 /* ---------- catálogo ---------- */
@@ -343,6 +345,7 @@ function nodoArbol(titulo, cuenta, lista, conCap) {
 // mercado, una sola maquinaria): solo su rama y sus indicadores; la búsqueda se limita a él.
 function vistaArbol(q, mercado) {
   app.innerHTML = '';
+  app.append(elBuscar);
   if (mercado === 'stock') {
     const nEmp = nodoArbol('Empresas', EMPRESAS.length + ' activos', EMPRESAS, true);
     nEmp.querySelector('.hijos').prepend(cabCaps());
@@ -1329,7 +1332,7 @@ async function ruta() {
   const fuera = Boolean(m || mi);
   document.querySelector('.vistas').hidden = fuera;
   document.querySelector('.mercados').hidden = fuera;
-  document.getElementById('buscar').hidden = fuera;
+  elBuscar.hidden = fuera;
   const rotuloMercado = document.getElementById('rotulo-mercado');
   rotuloMercado.hidden = fuera;
   rotuloMercado.textContent = mercado === 'stock' ? 'Stocks' : 'Cripto';
@@ -1350,13 +1353,13 @@ async function ruta() {
     const seccion = document.createElement('section'); app.append(seccion);
     // Una sola lectura cubre los 515 activos y sirve a ambos espacios en la visita: el mercado
     // solo fija la clase mostrada (decisión del usuario, 20-nov-2026), como antes el selector de clase.
-    actualizarRachas = montarRachas(seccion, TODOS, () => $('#buscar').value.trim(), mercado);
+    actualizarRachas = montarRachas(seccion, TODOS, () => elBuscar.value.trim(), mercado, elBuscar);
     if (guardado) requestAnimationFrame(() => window.scrollTo(0, guardado.y));
   }
   else {
     const guardado = estadoLista;
     estadoLista = null;
-    vistaArbol($('#buscar').value.trim(), mercado);
+    vistaArbol(elBuscar.value.trim(), mercado);
     // «Volver» recupera las ramas abiertas y el punto exacto de la lista (la búsqueda quedó limpia al entrar).
     if (guardado) {
       for (const n of app.querySelectorAll('.nodo')) {
@@ -1367,11 +1370,11 @@ async function ruta() {
     }
   }
 }
-$('#buscar').addEventListener('input', () => {
+elBuscar.addEventListener('input', () => {
   estadoLista = null;
   if (/^#\/(a|i)\//.test(location.hash)) {
     // Buscar desde una vista vuelve al catálogo como localizador; vaciar la casilla no saca de la vista.
-    if ($('#buscar').value.trim()) location.hash = '#/';
+    if (elBuscar.value.trim()) location.hash = '#/';
     return;
   }
   if (location.hash.endsWith('/rachas')) { actualizarRachas(); return; }
@@ -1380,7 +1383,7 @@ $('#buscar').addEventListener('input', () => {
 // Volver al inicio desde el título limpia la búsqueda y muestra el catálogo completo.
 document.querySelector('.tit-link').addEventListener('click', () => {
   estadoLista = null;
-  $('#buscar').value = '';
+  elBuscar.value = '';
   if (location.hash === '' || location.hash === '#/') ruta();
 });
 window.addEventListener('hashchange', ruta);

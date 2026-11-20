@@ -52,7 +52,7 @@ async function cargar(catalogo, progreso) {
   await Promise.all(Array.from({length: 6}, trabajador));
   return { resultados, corte, revision };
 }
-export function montarRachas(contenedor, catalogo, consulta, mercado = null) {
+export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null) {
   if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
   const titulo = texto('h2', 'Variación y rachas');
   const nota = texto('p', 'Última vela diaria cerrada publicada, no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
@@ -91,6 +91,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null) {
   reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
   reglas.append(texto('p','C: cambios de dirección en el registro: cada vez que un día verde sigue a uno rojo o al revés.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
+  if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
   contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
     if (!ultimo || !contenedor.isConnected) return;
