@@ -80,6 +80,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
   reglas.append(texto('p','Cada fila usa la última vela diaria cerrada (día UTC, como en la gráfica). Racha es cuántos días seguidos lleva cerrando en la misma dirección: «3» son tres días seguidos cerrando por encima de su apertura; el sentido lo dan el color y el signo de la variación acumulada. Un día que cierra igual que abre no cuenta y deja la racha en 0.'));
   reglas.append(texto('p','Variación acumulada es cuánto cambió el precio durante esa racha, desde la apertura del primer día hasta el cierre del último, con su signo. Si la racha es de un solo día, es la variación de ese día. Ejemplo: racha «2» con −11,98 % significa que en dos días seguidos a la baja el precio cayó en total casi un 12 %. Puede salir con signo contrario al de las velas, porque cuenta también los saltos entre el cierre de un día y la apertura del siguiente.'));
+  reglas.append(texto('p','En la tabla: Rango % es el rango del día, R la racha, A % la variación acumulada y G/P el equilibrio G/P.'));
   reglas.append(texto('p','Equilibrio G/P es la razón de variación de la radiografía, calculada igual y sobre el mismo período: todo el registro del activo. Es lo acumulado en días verdes dividido entre la magnitud de lo acumulado en días rojos: 1,02 dice que por cada punto acumulado a la baja hubo 1,02 al alza. Sin días rojos no hay división posible y el activo ordena primero; sin días verdes, vale 0.'));
   reglas.append(texto('p','Rango del día mide la amplitud de esa última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura. No dice qué ocurrió primero.'));
   reglas.append(texto('p','≥ y * indican que la racha pudo ser más larga: se corta por un hueco en los datos o por el inicio del registro, y solo se muestra lo observado. No se rellenan huecos. Los datos atrasados y los errores quedan fuera del orden principal.'));
@@ -106,7 +107,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
     const link=texto('a',ultimo.revision.slice(0,7)); link.href='https://github.com/osmancitov/hugo/commit/'+ultimo.revision; link.target='_blank'; link.rel='noopener'; fuente.append(link);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of ['Activo','Rango %','Racha','Acum. %','G/P']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of ['Activo','Rango %','R','A %','G/P']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
