@@ -59,7 +59,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','G/P'],['cambios','Cambios ↓'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','G/P'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
@@ -100,7 +100,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
       const x=a.datos,y=b.datos;
       const total=(u,v)=>Number(u.limitada)-Number(v.limitada)||u.acumulado-v.acumulado;
       const gp=v=>v.gp===Infinity?Number.MAX_VALUE:Math.round(v.gp*100)/100; // un solo valor, a dos decimales, para ordenar y mostrar
-      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='rango-asc'?x.rango-y.rango:orden==='gp'?gp(y)-gp(x):total(x,y);
+      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='gp'?gp(y)-gp(x):total(x,y);
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
