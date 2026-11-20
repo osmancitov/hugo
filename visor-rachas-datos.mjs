@@ -30,11 +30,11 @@ export function resumir(filas, inicioConocido = false) {
   let dias = 0, primeraApertura = Number(ultima[1]), motivo = '', siguiente = ultima[0] + DIA;
   if (direccion !== 0) for (let i = filas.length - 1; i >= 0; i--) {
     const f = filas[i];
-    if (f[0] !== siguiente - DIA) { motivo = 'hueco en los días registrados'; break; }
+    if (f[0] !== siguiente - DIA) { motivo = 'hueco en el registro'; break; }
     const ratio = Number(f[4]) / Number(f[1]);
     if (ratio === 1 || (ratio > 1 ? 1 : -1) !== direccion) break;
     dias++; primeraApertura = Number(f[1]); siguiente = f[0];
-    if (i === 0) motivo = inicioConocido ? 'inicio del registro disponible' : 'faltan meses anteriores';
+    if (i === 0) motivo = inicioConocido ? 'inicio del registro' : 'faltan meses anteriores';
   }
   return { fecha: ultima[0], variacion, rango, dias, direccion, acumulado: dias ? (Number(ultima[4]) / primeraApertura - 1) * 100 : 0, limitada: Boolean(motivo), motivo };
 }
