@@ -44,7 +44,7 @@ async function cargar(catalogo, progreso) {
         datos.gp = razonVariacion(filas).razon;
         resultados[i] = { activo: e, datos };
       } catch (err) { resultados[i] = { activo: e, error: err.message }; }
-      progreso(++hechos, catalogo.length);
+      progreso(++hechos, catalogo.length, e.codigo);
     }
   }
   await Promise.all(Array.from({length: 6}, trabajador));
@@ -62,19 +62,21 @@ export function montarRachas(contenedor, catalogo, consulta) {
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Preparando la lectura…','rachas-nota'); estado.setAttribute('role','status');
-  let avanceNum=null, avanceBarra=null;
-  function avanzar(n,total) {
+  let avanceNum=null, avanceBarra=null, avanceCod=null;
+  function avanzar(n,total,codigo) {
     if(!estado.isConnected) return;
     if(!avanceNum) {
       estado.className='rachas-cargando';
       avanceNum=texto('strong','','rachas-cargando-cifra');
+      avanceCod=document.createTextNode('');
       const barra=texto('span','','rachas-cargando-barra'); avanceBarra=texto('span',''); barra.append(avanceBarra);
-      estado.replaceChildren(document.createTextNode('Analizando los registros'), document.createElement('br'), avanceNum, document.createTextNode(' activos'), barra);
+      estado.replaceChildren(document.createTextNode('Analizando los registros'), document.createElement('br'), avanceNum, document.createTextNode(' activos'), avanceCod, barra);
     }
     avanceNum.textContent=n+'/'+total;
+    avanceCod.textContent=codigo?' · '+codigo:'';
     avanceBarra.style.width=(n/total*100)+'%';
   }
-  function finCarga() { avanceNum=avanceBarra=null; estado.className='rachas-nota'; }
+  function finCarga() { avanceNum=avanceBarra=avanceCod=null; estado.className='rachas-nota'; }
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
