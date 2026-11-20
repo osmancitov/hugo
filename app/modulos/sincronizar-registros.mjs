@@ -46,6 +46,7 @@ import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos } from './pre-calculado.mjs';
+import { esRutaCatalogo, dirCatalogo, actualizarCatalogos } from './catalogo.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -72,6 +73,8 @@ let pasoIndicador = null;
 export function fijarPasoIndicador(fn) { pasoIndicador = fn; }
 let pasoPreCalculo = null;
 export function fijarPasoPreCalculo(fn) { pasoPreCalculo = fn; }
+let pasoCatalogo = null;
+export function fijarPasoCatalogo(fn) { pasoCatalogo = fn; }
 
 export function registrar(ctx) {
   const { app, botToken } = ctx;
@@ -81,6 +84,7 @@ export function registrar(ctx) {
   const serieDe = (rel) => rel.split('/')[1];
   const pasoInd = () => (pasoIndicador || actualizarIndicadores)({ dirRaiz: path.dirname(dirBase()) });
   const pasoPre = () => (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
+  const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()) });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
@@ -159,6 +163,7 @@ export function registrar(ctx) {
       if (RUTA_OK.test(p) && !(p.split('/')[2] === 'cripto' && EXCLUIDOS.has(p.split('/')[3]))) { mapa.set(p, sha); blobs.set(p, sha); }
       else if (RUTA_IND.test(p)) { mapa.set(p, sha); blobs.set(p, sha); } // indicadores: misma comparación por huella
       else if (esRutaPre(p)) { mapa.set(p, sha); blobs.set(p, sha); } // pre-cálculos: comparación por huella; distinto es conflicto
+      else if (esRutaCatalogo(p)) { mapa.set(p, sha); blobs.set(p, sha); } // catálogo: archivo vivo; lo regenera la pasada y el local gana
       else if (RUTA_HEREDADA.test(p)) { heredados.push(p); blobs.set(p, sha); } // ruta anterior sin clase: no se sincroniza, solo se muda
     }
     return { mapa, heredados, blobs };
@@ -205,6 +210,17 @@ export function registrar(ctx) {
     }
     // Pre-cálculos (20-nov-2026): archivos por día bajo pre-calculado/ y ranking-24h/.
     lista.push(...localesPre(path.dirname(dirBase())));
+    // Catálogo por mercado (20-nov-2026): archivo vivo que genera la pasada; entra en la comparación.
+    try {
+      for (const n of fs.readdirSync(dirCatalogo(path.dirname(dirBase())))) {
+        if (!CLASES.includes(n)) continue;
+        const ruta = path.join(dirCatalogo(path.dirname(dirBase())), n);
+        let st;
+        try { st = fs.lstatSync(ruta); } catch { continue; }
+        if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
+        lista.push({ rel: `registros/catalogo/${n}`, ruta, bytes: st.size });
+      }
+    } catch {}
     return lista;
   }
 
@@ -321,6 +337,7 @@ export function registrar(ctx) {
       if (shaBlob(local) === shaRemota) iguales++;
       else {
         if (esRutaPre(f.rel)) { conflictos.push(f.rel); mapa.delete(f.rel); continue; } // un pre-cálculo distinto ya publicado no se pisa
+        if (esRutaCatalogo(f.rel)) { subir.push(f); mapa.delete(f.rel); continue; } // el catálogo se regenera en cada pasada: el local gana
         const remoto = await leerBlob(shaRemota);
         try {
           const modo = RUTA_IND.test(f.rel) ? relacionIndicador(leerIndicador(local), leerIndicador(remoto)) : relacion(local, remoto, f.rel);
@@ -338,7 +355,7 @@ export function registrar(ctx) {
     return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
-  const corta = (rel) => esRutaPre(rel) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
+  const corta = (rel) => (esRutaPre(rel) || esRutaCatalogo(rel)) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
   const cortas = (l) => l.map((x) => corta(typeof x === 'string' ? x : x.rel));
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
@@ -436,7 +453,7 @@ export function registrar(ctx) {
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
   // pasada: mantiene la sincronizacion automatica configurada. No se
   // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
-  async function pasada(progreso = async () => {}, { ind, pre } = {}) {
+  async function pasada(progreso = async () => {}, { ind, pre, cat } = {}) {
     try { limpiarExcluidos(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
@@ -473,6 +490,18 @@ export function registrar(ctx) {
           else previo.push(`pre-cálculo ${l.calculo} ${l.mercado} ${l.periodo}: ${l.estado}`);
         }
       } catch (e) { previo.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
+    }
+    // Catálogo por mercado (decisión del usuario, 20-nov-2026): tras los pre-cálculos y antes de
+    // la comparación, para que suba en el mismo commit. Si un alta no tiene información curada,
+    // el reporte pide completarla; el activo aparece igual por su código y su nombre.
+    if (cat) {
+      try {
+        const rCat = await cat();
+        for (const l of (rCat.lineas || [])) {
+          if (l.estado === 'error') previo.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
+          else previo.push(`catálogo ${l.mercado}: ${l.estado}, ${l.periodo}${l.sinInfo && l.sinInfo.length ? `; falta información curada de ${l.sinInfo.join(', ')}` : ''}`);
+        }
+      } catch (e) { previo.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
     }
     const mud = mudarLocalHeredado();
     if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
@@ -550,7 +579,7 @@ export function registrar(ctx) {
     let reporte;
     try {
       reporte=await ctx.reporte.crearSync({event});
-      const r = await pasada(reporte.progreso, { ind: pasoInd, pre: pasoPre });
+      const r = await pasada(reporte.progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
       await reporte.final(r.error || r.texto);
     } catch (e) {
       const texto=`La sincronizacion se detuvo o no pude informar su resultado: ${e.message}. Lo ya copiado se conserva; revisa el estado antes de repetir.`;
@@ -617,7 +646,7 @@ export function registrar(ctx) {
         try { await abrirReporte('Comprobando GitHub\u2026'); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
-      const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre });
+      const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
       let aviso = '';
       if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
       else if (r.detenida) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros detenida a pedido. Lo ya copiado queda; la pr\u00f3xima pasada retoma lo que falte.`;

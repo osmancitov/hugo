@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { registrar } from '../app/modulos/sincronizar-registros.mjs';
+import { registrar, fijarPasoCatalogo } from '../app/modulos/sincronizar-registros.mjs';
+fijarPasoCatalogo(async () => ({ lineas: [] })); // el paso de catálogo consulta la red; aquí se anula
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
 test('sync no baja EUR remoto ni resube EUR local; limpieza arranca aun con sync apagada',async()=>{

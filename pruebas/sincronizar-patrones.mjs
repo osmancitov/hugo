@@ -1,3 +1,5 @@
+import { fijarPasoCatalogo } from '../app/modulos/sincronizar-registros.mjs';
+fijarPasoCatalogo(async () => ({ lineas: [] })); // el paso de catálogo consulta la red; aquí se anula
 // node --test pruebas/sincronizar-patrones.mjs. La sincronizacion acepta codigos de 1 letra y
 // Unicode en las rutas del registro (la misma forma que CODIGO_OK). Remoto git real por file://, sin red.
 import { test } from 'node:test';

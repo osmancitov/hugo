@@ -227,9 +227,34 @@ app.addEventListener('click', (ev) => {
 });
 
 /* ---------- catálogo ---------- */
+// Catálogo vivo (decisión del usuario, 20-nov-2026): la cobertura la publica la sincronización en
+// registros/catalogo/<mercado> (códigos y meses del registro, nombre del cotejo de Binance, tipo curado).
+// El CATALOGO incrustado queda como capa de metadatos curados (cap, ficha EDGAR) y como respaldo
+// completo si el archivo publicado no se puede leer. Lo que falte se muestra como faltante.
+const RAW_CAT = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/catalogo';
+async function cargarCatalogoPublicado() {
+  const pares = await Promise.all(['stock', 'cripto'].map(async (m) => {
+    const r = await fetch(`${RAW_CAT}/${m}`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    if (!j || j.mercado !== m || !Array.isArray(j.activos)) throw new Error('forma');
+    return [m, j.activos];
+  }));
+  const curado = { stock: new Map(CATALOGO.stock.map((e) => [e.codigo, e])), cripto: new Map(CATALOGO.cripto.map((e) => [e.codigo, e])) };
+  const vivo = {};
+  for (const [m, activos] of pares) {
+    vivo[m] = activos.map((e) => {
+      const c = curado[m].get(e.codigo) || {};
+      if (!e || typeof e.codigo !== 'string' || !Array.isArray(e.meses)) return null;
+      return { ...e, nombre: c.nombre || e.nombre || e.codigo, tipo: c.tipo || e.tipo, cap: c.cap, cap_sub: c.cap_sub, cap_fecha: c.cap_fecha, edgar: c.edgar, edgar_titulo: c.edgar_titulo };
+    }).filter(Boolean);
+  }
+  return vivo;
+}
+const CATALOGO_VIVO = await cargarCatalogoPublicado().catch(() => null) || CATALOGO;
 const TODOS = [];
-const CRIPTOS = CATALOGO.cripto.map((e) => ({ ...e, clase: 'cripto' })).sort((a, b) => (b.cap || 0) - (a.cap || 0));
-const STOCKS = CATALOGO.stock.map((e) => ({ ...e, clase: 'stock' }));
+const CRIPTOS = CATALOGO_VIVO.cripto.map((e) => ({ ...e, clase: 'cripto' })).sort((a, b) => (b.cap || 0) - (a.cap || 0));
+const STOCKS = CATALOGO_VIVO.stock.map((e) => ({ ...e, clase: 'stock' }));
 for (const e of CRIPTOS) TODOS.push(e);
 for (const e of STOCKS) TODOS.push(e);
 // Fichas de Stock Analysis y TipRanks: solo para los códigos cuyo destino se comprobó el 18-nov-2026 (cargan y el título coincide con el activo).

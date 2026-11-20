@@ -7,7 +7,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {crearMotor,leerEstado} from '../app/modulos/registro-motor.mjs';
 import {compararSeries,validarSerie,DIA} from '../app/modulos/registro-serie.mjs';
-import {registrar} from '../app/modulos/sincronizar-registros.mjs';
+import {registrar, fijarPasoCatalogo} from '../app/modulos/sincronizar-registros.mjs';
+fijarPasoCatalogo(async () => ({ lineas: [] })); // el paso de catálogo consulta la red; aquí se anula
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
 const noviembre=Date.UTC(2026,10,1),octubre=Date.UTC(2026,9,1);

@@ -1,0 +1,1169 @@
+{
+ "mercado": "stock",
+ "activos": [
+  {
+   "codigo": "AAOI",
+   "nombre": "Applied Optoelectronics",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AAPL",
+   "nombre": "Apple",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ADBE",
+   "nombre": "Adobe",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AGPU",
+   "nombre": "Axe Compute",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ALAB",
+   "nombre": "Astera Labs",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AMAT",
+   "nombre": "Applied Materials",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AMC",
+   "nombre": "AMC Entertainment Holdings",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AMD",
+   "nombre": "Advanced Micro Devices",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AMZN",
+   "nombre": "Amazon",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ANT",
+   "nombre": "Anthropic",
+   "tipo": "empresa",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "APP",
+   "nombre": "Applovin Corp",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ARM",
+   "nombre": "Arm Holdings",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ASML",
+   "nombre": "ASML Holding",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ASTS",
+   "nombre": "AST SpaceMobile",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AVGO",
+   "nombre": "Broadcom",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "AXTI",
+   "nombre": "AXT",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BABA",
+   "nombre": "Alibaba",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BB",
+   "nombre": "Blackberry",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BE",
+   "nombre": "Bloom Energy",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BMNR",
+   "nombre": "BitMine Immersion Technologies",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BNC",
+   "nombre": "BNB Standard Corporation",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BOT",
+   "nombre": "RoboStrategy Inc",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BRKB",
+   "nombre": "Berkshire Hathaway",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "BSP",
+   "nombre": "Bending Spoons",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CBRS",
+   "nombre": "Cerebras",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "COHR",
+   "nombre": "Coherent",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "COIN",
+   "nombre": "Coinbase",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CRCL",
+   "nombre": "Circle Internet Group",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CRDO",
+   "nombre": "Credo Technology",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CRM",
+   "nombre": "Salesforce",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CRWD",
+   "nombre": "CrowdStrike",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CRWV",
+   "nombre": "CoreWeave",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "CYPH",
+   "nombre": "Cypherpunk Technologies",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "DELL",
+   "nombre": "Dell",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "DJT",
+   "nombre": "Trump Media & Technology Group",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "DRAM",
+   "nombre": "Roundhill Memory ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "EWJ",
+   "nombre": "iShares MSCI Japan ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "EWT",
+   "nombre": "iShares MSCI Taiwan ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "EWY",
+   "nombre": "iShares MSCI South Korea ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "EWZ",
+   "nombre": "iShares MSCI Brazil ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "EWZS",
+   "nombre": "iShares MSCI Brazil Small-Cap ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "FLNC",
+   "nombre": "Fluence Energy",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "FWDI",
+   "nombre": "Forward Industries",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GEV",
+   "nombre": "GE Vernova Inc",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GLW",
+   "nombre": "Corning",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GME",
+   "nombre": "GameStop",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GOOGL",
+   "nombre": "Alphabet",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GPRO",
+   "nombre": "GoPro",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "GS",
+   "nombre": "Goldman Sachs",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "HIMS",
+   "nombre": "Hims & Hers",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "HOOD",
+   "nombre": "Robinhood",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "HPE",
+   "nombre": "Hewlett Packard",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "IBM",
+   "nombre": "IBM",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "INTC",
+   "nombre": "Intel",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "INTW",
+   "nombre": "GraniteShares 2X Long INTC ETF",
+   "tipo": "fondo ETF apalancado 2×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "IREN",
+   "nombre": "IREN Limited",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "IWM",
+   "nombre": "iShares Russell 2000 ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "JPM",
+   "nombre": "JPMorgan Chase",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "KORU",
+   "nombre": "South Korea Bull 3X ETF",
+   "tipo": "fondo ETF apalancado 3×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "KSTR",
+   "nombre": "KraneShares STAR Market 50 ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "LITE",
+   "nombre": "Lumentum",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "LLY",
+   "nombre": "Eli Lilly",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MDB",
+   "nombre": "Mongodb",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MELI",
+   "nombre": "MercadoLibre",
+   "tipo": "empresa",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "META",
+   "nombre": "Meta",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MRNA",
+   "nombre": "Moderna",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MRVL",
+   "nombre": "Marvell Technology",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MSFT",
+   "nombre": "Microsoft",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MSTR",
+   "nombre": "Strategy",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MU",
+   "nombre": "Micron Technology",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MUU",
+   "nombre": "Direxion MU Bull 2X ETF",
+   "tipo": "fondo ETF apalancado 2×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "MVLL",
+   "nombre": "GraniteShares 2X Long MRVL ETF",
+   "tipo": "fondo ETF apalancado 2×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "NBIS",
+   "nombre": "Nebius",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "NFLX",
+   "nombre": "Netflix",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "NOK",
+   "nombre": "Nokia",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "NU",
+   "nombre": "Nu Holdings",
+   "tipo": "empresa",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
+   "codigo": "NVDA",
+   "nombre": "NVIDIA",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ORCL",
+   "nombre": "Oracle",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "PDD",
+   "nombre": "PDD Holdings",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "PENG",
+   "nombre": "Penguin Solutions",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "PLTR",
+   "nombre": "Palantir",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "PYPL",
+   "nombre": "Paypal",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "QCOM",
+   "nombre": "Qualcomm",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "QNT",
+   "nombre": "Quantinuum",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "QQQ",
+   "nombre": "Invesco QQQ Trust",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "RDDT",
+   "nombre": "Reddit",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "RKLB",
+   "nombre": "Rocket Lab",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SECZ",
+   "nombre": "Securitize",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SHAZ",
+   "nombre": "SharonAI",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SKDD",
+   "nombre": "GraniteShares 2x Short SK Hynix Daily ETF",
+   "tipo": "fondo ETF inverso 2×",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SKHY",
+   "nombre": "SK Hynix",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SKUU",
+   "nombre": "GraniteShares 2x Long SK Hynix Daily ETF",
+   "tipo": "fondo ETF apalancado 2×",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SMCI",
+   "nombre": "Super Micro Computer",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SMH",
+   "nombre": "VanEck Semiconductor ETF",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SNDK",
+   "nombre": "SanDisk",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SNXX",
+   "nombre": "Tradr 2X Long SNDK ETF",
+   "tipo": "fondo ETF apalancado 2×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SOXL",
+   "nombre": "Semicon Bull 3X ETF",
+   "tipo": "fondo ETF apalancado 3×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SOXS",
+   "nombre": "Direxion Semiconductor Bear 3X ETF",
+   "tipo": "fondo ETF inverso 3×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SPCX",
+   "nombre": "SpaceX",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SPY",
+   "nombre": "SPDR S&P 500 ETF Trust",
+   "tipo": "fondo ETF",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SQQQ",
+   "nombre": "ProShares UltraPro Short QQQ",
+   "tipo": "fondo ETF inverso 3×",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "STX",
+   "nombre": "Seagate",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "TMF",
+   "nombre": "Direxion Daily 20 Year Treasury Bull 3X ETF",
+   "tipo": "fondo ETF apalancado 3×",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "TQQQ",
+   "nombre": "ProShares UltraPro QQQ",
+   "tipo": "fondo ETF apalancado 3×",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "TSLA",
+   "nombre": "Tesla",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "TSM",
+   "nombre": "TSMC",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "USAR",
+   "nombre": "USA Rare Earth",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "USDE",
+   "nombre": "StablecoinX",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "UVXY",
+   "nombre": "ProShares Ultra VIX Short-Term Futures ETF",
+   "tipo": "fondo ETF apalancado 1.5×",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "VST",
+   "nombre": "Vistra Corp",
+   "tipo": "empresa",
+   "meses": [
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "WDC",
+   "nombre": "Western Digital",
+   "tipo": "empresa",
+   "meses": [
+    "2608",
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "WEN",
+   "nombre": "Wendy's",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ZM",
+   "nombre": "Zoom",
+   "tipo": "empresa",
+   "meses": [
+    "2609",
+    "2610",
+    "2611"
+   ]
+  }
+ ]
+}

@@ -8,9 +8,10 @@ import path from 'node:path';
 import { crearMotor, leerEstado } from '../app/modulos/registro-motor.mjs';
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
-import { fijarPasoIndicador } from '../app/modulos/sincronizar-registros.mjs';
+import { fijarPasoIndicador, fijarPasoCatalogo } from '../app/modulos/sincronizar-registros.mjs';
 // Estas pruebas miden parada y regresiones de la pasada, no indicadores: paso anulado, sin red.
 fijarPasoIndicador(async () => ({ nuevos: 0, dias: [], archivos: [] }));
+fijarPasoCatalogo(async () => ({ lineas: [] })); // el paso de catálogo consulta la red; aquí se anula
 
 const event = { channel: 'C', ts: '100', thread_ts: '100', user: 'U1' };
 

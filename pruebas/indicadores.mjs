@@ -13,7 +13,8 @@ import {
 } from '../app/modulos/indicadores.mjs';
 
 const BOLSA = 'feargreedchart-bolsa';
-import { registrar, fijarPasoIndicador } from '../app/modulos/sincronizar-registros.mjs';
+import { registrar, fijarPasoIndicador, fijarPasoCatalogo } from '../app/modulos/sincronizar-registros.mjs';
+fijarPasoCatalogo(async () => ({ lineas: [] })); // el paso de catálogo consulta la red; aquí se anula
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
 

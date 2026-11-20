@@ -39,7 +39,7 @@ const ex = promisify(execFile);
 // Apalancamiento/inverso: nombre oficial del fondo; TQQQ 3x, SQQQ -3x y UVXY 1.5x confirmados con
 // el emisor (proshares.com). Un activo nuevo que no esté aquí: nombre en vivo de Binance y tipo
 // SOLO si el propio nombre lo declara; si no, la gráfica sale sin tipo (nunca se inventa).
-const ACTIVOS_INFO = {
+export const ACTIVOS_INFO = {
   AAOI: ["Applied Optoelectronics", "empresa"],
   AAPL: ["Apple", "empresa"],
   ADBE: ["Adobe", "empresa"],
@@ -49,6 +49,7 @@ const ACTIVOS_INFO = {
   AMC: ["AMC Entertainment Holdings", "empresa"],
   AMD: ["Advanced Micro Devices", "empresa"],
   AMZN: ["Amazon", "empresa"],
+  ANT: ["Anthropic", "empresa"],
   APP: ["Applovin Corp", "empresa"],
   ARM: ["Arm Holdings", "empresa"],
   ASML: ["ASML Holding", "empresa"],
