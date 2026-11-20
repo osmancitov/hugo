@@ -47,10 +47,11 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--borde);
   color: var(--texto);
   font-family: inherit;
-  font-size: 1rem;
-  padding: .55rem .7rem;
+  font-size: .9rem;
+  padding: .4rem .6rem;
   border-radius: 4px;
-  margin-bottom: 1.1rem;
+  max-width: 22rem;
+  margin-bottom: .9rem;
 }
 #buscar:focus { outline: 1px solid var(--oro); }
 
@@ -125,10 +126,16 @@ a.tit-link:hover { text-decoration: none; }
 
 .vistas, .mercados { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
 .mercados { margin-bottom:.55rem; }
-.vistas[hidden], .mercados[hidden], #buscar[hidden] { display:none; }
-.vistas a, .mercados a { border:1px solid var(--borde); border-radius:3px; padding:.45rem .65rem; font-size:.9rem; }
+.vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
+.vistas a, .mercados a { border:1px solid var(--borde); border-radius:3px; }
+/* Dos niveles (decisión del usuario, 20-nov-2026): el mercado es el modo principal y va destacado;
+   la vista (Capitalización / Variación) es secundaria y no compite con él. */
+.mercados a { font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); border-color:var(--oro); }
+.mercados a.actual { background:var(--oro); color:var(--tinta); }
+.vistas a { font-size:.8rem; padding:.3rem .6rem; color:var(--tenue); }
 .vistas a:hover, .mercados a:hover { border-color:var(--oro); }
-.vistas a.actual, .mercados a.actual { border-color:var(--oro); color:var(--oro); }
+.vistas a.actual { border-color:var(--oro); color:var(--oro); }
+#rotulo-mercado { font-family:'Cinzel','Lora',serif; font-weight:600; font-size:1.15rem; letter-spacing:.06em; color:var(--oro); margin:.1rem 0 .6rem; }
 .rachas-nota { color:var(--tenue); font-size:.85rem; line-height:1.6; margin:.65rem 0; }
 .rachas-controles { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; margin:1rem 0; }
 .rachas-controles select { font:inherit; color:var(--texto); background:var(--panel); border:1px solid var(--borde); border-radius:3px; padding:.4rem; max-width:100%; }
@@ -163,6 +170,7 @@ a.tit-link:hover { text-decoration: none; }
 </header>
 <nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a></nav>
 <nav class="vistas" aria-label="Vistas del mercado"><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
+<h2 id="rotulo-mercado">Stocks</h2>
 <input id="buscar" type="search" placeholder="Buscar por código o nombre…" autocomplete="off">
 <main id="app"></main>
 <script>
@@ -342,7 +350,7 @@ function vistaArbol(q, mercado) {
     nFon.querySelector('.hijos').prepend(cabCaps());
     app.append(nEmp, nFon);
   } else {
-    app.appendChild(nodoArbol('Cripto', CRIPTOS.length + ' activos', CRIPTOS, true));
+    app.appendChild(nodoArbol('Token', CRIPTOS.length + ' activos', CRIPTOS, true));
   }
   const inds = INDICADORES.filter((e) => e.mercado === mercado);
   app.appendChild(nodoArbol('Indicadores', inds.length + (inds.length === 1 ? ' indicador' : ' indicadores'), inds));
@@ -1322,6 +1330,9 @@ async function ruta() {
   document.querySelector('.vistas').hidden = fuera;
   document.querySelector('.mercados').hidden = fuera;
   document.getElementById('buscar').hidden = fuera;
+  const rotuloMercado = document.getElementById('rotulo-mercado');
+  rotuloMercado.hidden = fuera;
+  rotuloMercado.textContent = mercado === 'stock' ? 'Stocks' : 'Cripto';
   document.getElementById('mercado-stock').classList.toggle('actual', !fuera && mercado === 'stock');
   document.getElementById('mercado-cripto').classList.toggle('actual', !fuera && mercado === 'cripto');
   const otro = mercado === 'stock' ? 'cripto' : 'stock';
