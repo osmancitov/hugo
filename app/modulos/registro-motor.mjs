@@ -349,7 +349,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       }
     } finally {activas.delete(id);}
   }
-  async function iniciar({clase,codigos,nombres=null,siguientes=[],event,piso=null,continuar=false,arranque=false,rapido=false}) {
+  async function iniciar({clase,codigos,nombres=null,siguientes=[],event,piso=null,continuar=false,arranque=false,rapido=false,origen=null}) {
     if(ocupado) {if(!arranque)await notificar(event,'Ya estoy registrando un historial; no inicio otro.');return;}
     ocupado=true;
     try {
@@ -373,7 +373,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           if(!Array.isArray(siguientes) || !siguientes.every(tramoValido)) {await notificar(event,'La lista de clases siguientes no es valida; no inicie el registro.');return;}
           const hasta=cierreUTC(ahora());
           if(piso!=null && piso>inicioMes(hasta-1)) {await notificar(event,'El mes de inicio pedido es posterior al mes en curso del corte; no inicie el registro.');return;}
-          j={version:2,estado:'en-curso',rapido:!!rapido,clase,codigos,nombres:nombres||null,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos],nombres:t.nombres||null})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
+          j={version:2,estado:'en-curso',rapido:!!rapido,origen,clase,codigos,nombres:nombres||null,siguientes:siguientes.map(t=>({clase:t.clase,codigos:[...t.codigos],nombres:t.nombres||null})),total:codigos.length+siguientes.reduce((n,t)=>n+t.codigos.length,0),piso:piso??null,indice:0,hasta,inicial:inicioMes(hasta-1),mes:inicioMes(hasta-1),channel:event.channel,thread_ts:event.thread_ts||event.ts,conteo:{guardados:0,existentes:0,activos:0,ampliados:0},notificado:false};
           guardar(j); // antes de consultar o guardar el primer mes
           const limpia=limpiarFueraDelTramo(base(),[clase,...siguientes.map(t=>t.clase)]);
           if(limpia.archivos||limpia.velas) await notificar(event,`Limpieza pedida por el usuario: ${limpia.archivos} archivo(s) de velas anteriores a ${etiqueta(PISO_MINIMO)} o posteriores a noviembre de 2026 borrados del disco local${limpia.velas?` y ${limpia.velas} vela(s) de noviembre posteriores al 17 recortadas (recorte único para uniformar la base)`:''}. Lo anterior a agosto no se vuelve a buscar; la puesta al día completa desde el 18.`);
@@ -411,5 +411,5 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
     fs.rmSync(archivoEstado(), {force:true});
     return {ok:true, detalle};
   }
-  return {iniciar, pendiente, pendienteDescarte, descartar};
+  return {iniciar, pendiente, pendienteDescarte, descartar, ocupado: () => ocupado};
 }

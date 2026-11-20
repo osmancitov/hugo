@@ -1,4 +1,6 @@
-// Modulo saludo: aviso al arrancar (fecha y hora) y respuesta a una mencion sin orden reconocida (dice que no la reconoce y apunta a ayuda).
+// Modulo saludo: aviso al arrancar (fecha y hora), respuesta a «hola» (decision del usuario,
+// 20-nov-2026: «Hola, me llamo Hugo») y respuesta a una mencion sin orden reconocida.
+export const RESPUESTA_HOLA = 'Hola, me llamo Hugo';
 // Aviso de arranque: instante del arranque en UTC-4 (Caracas, sin cambio de horario), formato "Sat Nov 14 - 10:20 PM".
 const DIAS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -10,6 +12,9 @@ export const horaArranque = (ms = Date.now()) => {
 
 export function registrar(ctx) {
   const { app, botToken, canal } = ctx;
+  ctx.comando(/^\s*hola\s*[.!?]*\s*$/i, async (event) => {
+    await app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text: RESPUESTA_HOLA });
+  }, { nombre: 'responder hola' });
   ctx.porDefecto(async (event) => {
     await app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text: 'No reconozco esa orden. Escribe @Hugo ayuda para ver las que entiendo.' });
   });

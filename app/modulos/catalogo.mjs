@@ -23,6 +23,23 @@ const RUTA_CATALOGO = /^registros\/catalogo\/(?:stock|cripto)$/;
 export const esRutaCatalogo = (rel) => RUTA_CATALOGO.test(rel);
 export const dirCatalogo = (dirRaiz) => path.join(dirRaiz, 'catalogo');
 
+// Validación de un catálogo leído de disco (lo usa la sincronización al subir o bajar): la misma
+// forma que escribirCatalogo exige. Devuelve el número de activos.
+export function validarCatalogo(buf) {
+  let j;
+  try { j = JSON.parse(String(buf)); } catch { throw Error('Catálogo ilegible.'); }
+  if (!j || typeof j !== 'object' || Array.isArray(j) || !CLASES.includes(j.mercado) || typeof j.generado !== 'string' || !Array.isArray(j.activos)) {
+    throw Error('Catálogo con forma inesperada.');
+  }
+  for (const e of j.activos) {
+    if (!e || !ACTIVO_OK.test(e.codigo || '') || typeof e.nombre !== 'string' || !e.nombre
+      || !Array.isArray(e.meses) || !e.meses.length || e.meses.some((m) => !MES_OK.test(m))) {
+      throw Error('Entrada de catálogo inválida.');
+    }
+  }
+  return j.activos.length;
+}
+
 // Capa curada del visor: el CATALOGO incrustado en index.html es un literal JSON en una línea.
 // De ella salen nombres y tipos curados que el bot no tiene (sobre todo cripto).
 export function capaCuradaDesdeIndex(html) {

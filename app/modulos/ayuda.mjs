@@ -12,6 +12,7 @@ const TEXTO = [
   '`actualiza` - instalar la version de GitHub.',
   '`stop` - detener el trabajo en curso.',
   '`restart` o `reiniciar` - reiniciar Hugo.',
+  '`hola` - saludar.',
   '`ayuda` o `comandos` - mostrar esta lista.',
   'Borrar, guardar, enviar, actualizar, parar y reiniciar piden tu pulgar arriba. Registrar, dibujar, sincronizar y consultar no. Los permisos de cada orden no cambian.',
 ].join('\n');

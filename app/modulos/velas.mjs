@@ -71,12 +71,20 @@ export function registrar(ctx) {
   },{nombre:'registrar velas',delegable:true});
   // «pon al día»: mismo universo y motor que «registra todo», pero consulta solo lo pendiente y
   // comprueba en disco lo ya guardado. La revisión completa sigue siendo «registra todo».
-  ctx.comando(/^\s*pon\s+al\s+d[ií]a\s*[.!?]*\s*$/i, async(event)=>{
+  // Puesta al dia compartida: la orden manual y la corrida diaria (ciclo-diario.mjs) usan la
+  // misma via. Con diaria:true, un trabajo interrumpido DE LA PROPIA corrida (origen 'diaria')
+  // se retoma en vez de bloquear; un trabajo pedido a mano no se toca.
+  const ponerAlDia=async(event,{diaria=false}={})=>{
     if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');
+    const pendiente=leerEstado(archivoEstado());
+    if(pendiente && pendiente.estado!=='terminado') {
+      if(diaria && pendiente.origen==='diaria') return motor.iniciar({event,continuar:true});
+      return avisar(event, diaria
+        ? 'Hay un registro pendiente pedido a mano; no lo toco. La puesta al día diaria sigue cuando termine.'
+        : 'Hay un registro pendiente; no cambio su lista. Usa registra continuar.');
+    }
     cotejando=true;
     try {
-      const pendiente=leerEstado(archivoEstado());
-      if(pendiente && pendiente.estado!=='terminado') return await avisar(event,'Hay un registro pendiente; no cambio su lista. Usa registra continuar.');
       const archivo=path.join(path.dirname(archivoEstado()),'universo.json');
       const tramos=[];
       for(const clase of CLASES) {
@@ -86,10 +94,15 @@ export function registrar(ctx) {
         await u.guardar();
         tramos.push({clase,codigos:u.codigos,nombres:u.nombres});
       }
-      return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,nombres:tramos[0].nombres,siguientes:tramos.slice(1),event,rapido:true});
+      return await motor.iniciar({clase:tramos[0].clase,codigos:tramos[0].codigos,nombres:tramos[0].nombres,siguientes:tramos.slice(1),event,rapido:true,origen:diaria?'diaria':null});
     } catch(e) { return await avisar(event,`No inicie la puesta al dia: ${e.message}`); }
     finally {cotejando=false;}
-  },{nombre:'poner al dia los registros',delegable:true});
+  };
+  ctx.comando(/^\s*pon\s+al\s+d[ií]a\s*[.!?]*\s*$/i, (event)=>ponerAlDia(event),{nombre:'poner al dia los registros',delegable:true});
+  // Costuras para la corrida diaria (ciclo-diario.mjs).
+  ctx.ponerAlDiaDiaria=(event)=>ponerAlDia(event,{diaria:true});
+  ctx.registroOcupado=()=>motor.ocupado() || cotejando;
+  ctx.registroArchivoEstado=archivoEstado;
   // «descarta registro»: abandona el avance pendiente (pausado o detenido) sin borrar ningún
   // dato guardado; el próximo registro arranca desde cero. Acción destructiva: pide el 👍 del usuario.
   ctx.comando(/^\s*descarta\s+registro\s*[.!?]*\s*$/i, async(event)=>{

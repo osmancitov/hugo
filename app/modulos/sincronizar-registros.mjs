@@ -46,7 +46,7 @@ import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos } from './pre-calculado.mjs';
-import { esRutaCatalogo, dirCatalogo, actualizarCatalogos } from './catalogo.mjs';
+import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -368,7 +368,7 @@ export function registrar(ctx) {
         const buf = await leerBlob(b.sha);
         const esInd = RUTA_IND.test(b.rel), esPre = esRutaPre(b.rel);
         const destino = esPre ? destinoPre(path.dirname(dirBase()), b.rel) : esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
-        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : esRutaCatalogo(b.rel) ? !validarCatalogo(buf) : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
         if (fs.existsSync(destino)) {
           if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
           const previo = fs.readFileSync(destino);
@@ -407,9 +407,9 @@ export function registrar(ctx) {
         const shaRemota = actuales.get(f.rel);
         if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel);
-          if (esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
-          if (shaRemota !== undefined) {
+          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel);
+          if (esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+          if (shaRemota !== undefined && !esCat) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
             if (esPre) continue; // ya publicado con otro contenido: un pre-cálculo no se pisa (lo anota el plan como conflicto)
             const remoto = await leerBlob(shaRemota);
             const modo = esInd ? relacionIndicador(leerIndicador(remoto), leerIndicador(buf)) : relacion(remoto, buf, f.rel);
@@ -464,7 +464,13 @@ export function registrar(ctx) {
     const verificar = () => { if (parada.n !== marcaParada) { const e = new Error('a pedido (stop o restart)'); e.detenida = true; throw e; } };
     const token = ctx.leerClave('.github-key');
     // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego el repo. Idempotente: sin heredados no hace nada.
-    const previo = [];
+    // Informe (decisión del usuario, 20-nov-2026): resumen breve y ordenado — solo lo que cambió y
+    // los problemas; los «igual» y la lista corrida técnica no se muestran. Las escrituras locales
+    // de pre-cálculos y catálogo son candidatas: cambian de verdad solo si la comparación las sube.
+    const novedades = [];
+    const problemas = [];
+    const candidatos = [];
+    const cola = () => { const t = [...novedades, ...problemas, ...candidatos.map((c) => c.frase)]; return t.length ? ` ${t.join('. ')}.` : ''; };
     let mudo = false;
     // Indicadores (decisión del usuario, 19-nov-2026): la pasada actualiza primero el histórico
     // propio de cada serie; los archivos tocados entran en la comparación de abajo y se suben en
@@ -473,10 +479,10 @@ export function registrar(ctx) {
       try {
         const rInd = await ind();
         for (const s of (rInd.series || [])) {
-          if (s.error) previo.push(`indicador ${s.etiqueta} sin actualizar (${s.error}); sigo con las velas`);
-          else if (s.nuevos) { const u = s.dias[s.dias.length - 1]; previo.push(`indicador ${s.etiqueta}: ${s.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
+          if (s.error) problemas.push(`indicador ${s.etiqueta} sin actualizar (${s.error}); sigo con las velas`);
+          else if (s.nuevos) { const u = s.dias[s.dias.length - 1]; novedades.push(`indicador ${s.etiqueta}: ${s.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
         }
-      } catch (e) { previo.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
+      } catch (e) { problemas.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
     }
     // Pre-cálculos (decisión del usuario, 20-nov-2026): tras las velas y los indicadores, antes de
     // la comparación: los archivos del día entran en la comparación y suben en el mismo commit, así
@@ -486,15 +492,15 @@ export function registrar(ctx) {
       try {
         const rPre = await pre();
         for (const l of (rPre.lineas || [])) {
-          if (l.estado === 'error') previo.push(`pre-cálculo ${l.calculo} ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
-          else previo.push(`pre-cálculo ${l.calculo} ${l.mercado} ${l.periodo}: ${l.estado}`);
+          if (l.estado === 'error') problemas.push(`pre-cálculo ${l.calculo} ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
+          else if (l.estado === 'escrito') candidatos.push({ rel: `registros/${l.archivo}`, frase: `pre-cálculo ${l.calculo} ${l.mercado} ${l.periodo}` });
         }
-      } catch (e) { previo.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
+      } catch (e) { problemas.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
     }
     const mud = mudarLocalHeredado();
-    if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
-    if (mud.conflictos.length) previo.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
-    if (mud.fallos.length) previo.push(`no pude mudar: ${mud.fallos.join('; ')}`);
+    if (mud.movidos.length) { mudo = true; novedades.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
+    if (mud.conflictos.length) problemas.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
+    if (mud.fallos.length) problemas.push(`no pude mudar: ${mud.fallos.join('; ')}`);
     let plan;
     try {
       await asegurarClon(repo, token);
@@ -507,69 +513,83 @@ export function registrar(ctx) {
         try {
           const rCat = await cat();
           for (const l of (rCat.lineas || [])) {
-            if (l.estado === 'error') previo.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
-            else previo.push(`catálogo ${l.mercado}: ${l.estado}, ${l.periodo}${l.sinInfo && l.sinInfo.length ? `; falta información curada de ${l.sinInfo.join(', ')}` : ''}${l.aviso ? `; ${l.aviso}` : ''}`);
+            if (l.estado === 'error') { problemas.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`); continue; }
+            if (l.estado === 'escrito') candidatos.push({ rel: `registros/catalogo/${l.mercado}`, frase: `catálogo ${l.mercado} (${l.periodo})` });
+            if (l.sinInfo && l.sinInfo.length) problemas.push(`catálogo ${l.mercado}: falta información curada de ${l.sinInfo.join(', ')}`);
+            if (l.aviso) problemas.push(`catálogo ${l.mercado}: ${l.aviso}`);
           }
-        } catch (e) { previo.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
+        } catch (e) { problemas.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
       }
       plan = await planear();
       if (plan.heredados.length) {
         if (token) {
           const r = await mudarRemotoHeredado(token);
-          if (r.movidos.length) { mudo = true; previo.push(`renombr\u00e9 en GitHub ${r.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ (${r.movidos.join(', ')}) en el commit ${r.commit.slice(0, 7)}, mismo contenido`); }
-          if (r.pendientes.length) previo.push(`heredados en GitHub sin tocar: ${r.pendientes.join('; ')}`);
+          if (r.movidos.length) { mudo = true; novedades.push(`renombr\u00e9 en GitHub ${r.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ (${r.movidos.join(', ')}) en el commit ${r.commit.slice(0, 7)}, mismo contenido`); }
+          if (r.pendientes.length) problemas.push(`heredados en GitHub sin tocar: ${r.pendientes.join('; ')}`);
           await traerPunta(token);
           plan = await planear();
-        } else previo.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key`);
+        } else problemas.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key`);
       }
       const ret = retirarLocalHeredado(plan.visto, plan.heredados);
-      if (ret.retirados.length) { mudo = true; previo.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
-      if (ret.conservados.length) previo.push(`originales conservados (GitHub aun no confirma la ruta nueva): ${ret.conservados.join(', ')}`);
+      if (ret.retirados.length) { mudo = true; novedades.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
+      if (ret.conservados.length) problemas.push(`originales conservados (GitHub aun no confirma la ruta nueva): ${ret.conservados.join(', ')}`);
       verificar();
     } catch (e) {
-      if (e.detenida) return { detenida: true, hizoAlgo: mudo, texto: `Sincronizaci\u00f3n detenida a pedido durante la comparaci\u00f3n. No cambi\u00e9 nada m\u00e1s; la pr\u00f3xima pasada retoma lo que falte.${previo.length ? ` ${previo.join('. ')}.` : ''}` };
+      if (e.detenida) return { detenida: true, hizoAlgo: mudo, texto: `Sincronizaci\u00f3n detenida a pedido durante la comparaci\u00f3n. No cambi\u00e9 nada m\u00e1s; la pr\u00f3xima pasada retoma lo que falte.${cola()}` };
       const detalle=(e.errorGit||'').split(token||'\u0000').join('***');
-      return { error: `No pude comparar con GitHub (${e.message}).${detalle?` Detalle git: ${detalle}.`:''} No cambi\u00e9 nada m\u00e1s.${previo.length ? ` ${previo.join('. ')}.` : ''}`, hizoAlgo: mudo };
+      return { error: `No pude comparar con GitHub (${e.message}).${detalle?` Detalle git: ${detalle}.`:''} No cambi\u00e9 nada m\u00e1s.${cola()}`, hizoAlgo: mudo };
     }
     const { subir, bajar, iguales, conflictos } = plan;
     await progreso(`Comparacion lista: ${subir.length} por subir, ${bajar.length} por bajar, ${iguales} iguales, ${conflictos.length} conflictos sin tocar.`);
-    const aviso = previo.length ? ` ${previo.join('. ')}.` : '';
-    const notaConflicto = conflictos.length ? ` Conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}.` : '';
+    // Un escrito local solo es cambio si la comparación lo manda subir; idéntico al remoto calla.
+    const subenRel = new Set(subir.map((f) => f.rel));
+    for (const c of candidatos) if (subenRel.has(c.rel)) novedades.push(c.frase);
+    const cubiertos = new Set(candidatos.map((c) => c.rel));
+    const velasSuben = subir.filter((f) => f.rel.startsWith(`${PREFIJO}/`));
+    if (velasSuben.length) novedades.push(`velas ${[...new Set(velasSuben.map((f) => f.rel.split('/')[2]))].join(' y ')}: ${velasSuben.length} archivo(s)`);
+    for (const f of subir) if (!f.rel.startsWith(`${PREFIJO}/`) && !cubiertos.has(f.rel)) novedades.push(`dato ${f.rel.replace(/^registros\//, '')}`);
+    if (conflictos.length) problemas.push(`conflicto${conflictos.length > 1 ? 's' : ''} sin tocar (mismo mes, contenido distinto): ${lista(conflictos)}`);
     const clave = conflictos.join(',');
-    if (!subir.length && !bajar.length) return { cambios: mudo, hayPendiente: previo.length > 0 && !mudo, conflictos: clave, texto: `Registros ya sincronizados con ${repo}: ${iguales} archivo(s) iguales.${notaConflicto}${aviso}` };
+    const conProblemas = (base) => problemas.length ? `${base}\nProblemas:\n${problemas.map((p) => `\u00b7 ${p}.`).join('\n')}` : base;
+    if (!subir.length && !bajar.length) {
+      // Legibilidad (preferencia del usuario, 20-nov-2026): un cambio por línea, no una lista con comas.
+      const base = novedades.length
+        ? `Registros al día (${iguales} iguales).\nCambios:\n${novedades.map((n) => `\u00b7 ${n}.`).join('\n')}`
+        : `Registros al día: ${iguales} archivos iguales, sin cambios.`;
+      return { cambios: mudo, hayPendiente: problemas.length > 0, conflictos: clave, texto: conProblemas(base) };
+    }
     const subidaLista = subir.length > 0 && !!token;
     const t0 = Date.now();
-    const res = [], extra = [];
+    const res = [];
     let hizoAlgo = mudo;
     try {
       if (bajar.length) {
         const baj = await bajarArchivos(bajar, progreso, verificar);
         if (baj.hechos.length) hizoAlgo = true;
-        res.push(`baj\u00e9 ${baj.hechos.length} (${lista(baj.hechos)})`);
-        if (baj.fallos.length) extra.push(`no pude bajar: ${baj.fallos.join('; ')}`);
+        res.push(`baj\u00e9 ${baj.hechos.length} archivo(s)`);
+        if (baj.fallos.length) problemas.push(`no pude bajar: ${baj.fallos.join('; ')}`);
       }
       if (subir.length && subidaLista) {
         try {
           const sub = await subirArchivos(token, subir, progreso, verificar);
           if (sub.commit) hizoAlgo = true;
-          res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} (${lista(sub.subidos)}) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
-          if (sub.omitidos.length) extra.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
+          res.push(sub.commit ? `sub\u00ed ${sub.subidos.length} archivo(s) en el commit ${sub.commit.slice(0, 7)}` : 'no sub\u00ed nada');
+          if (sub.omitidos.length) problemas.push(`no sub\u00ed: ${sub.omitidos.join('; ')}`);
         } catch (e) {
-          if (e.sinPermiso) extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): el token de keys/.github-key no tiene escritura en este repo`);
+          if (e.sinPermiso) problemas.push(`pendientes de subir ${subir.length} (${lista(subir)}): el token de keys/.github-key no tiene escritura en este repo`);
           else throw e;
         }
       } else if (subir.length) {
-        extra.push(`pendientes de subir ${subir.length} (${lista(subir)}): falta keys/.github-key o el token no tiene escritura en este repo`);
+        problemas.push(`pendientes de subir ${subir.length} (${lista(subir)}): falta keys/.github-key o el token no tiene escritura en este repo`);
       }
     } catch (e) {
       if (e.detenida) return { detenida: true, hizoAlgo, texto: 'Sincronizaci\u00f3n detenida a pedido. Lo ya copiado queda y nada se pis\u00f3 en ning\u00fan lado; la pr\u00f3xima pasada retoma lo que falte.' };
       const detalle=(e.errorGit||'').split(token||'\u0000').join('***');
       return { error: `La sincronizaci\u00f3n se detuvo: ${e.message}${detalle?` (detalle git: ${detalle})`:''} Lo ya copiado queda; nada se pis\u00f3 en ning\u00fan lado.`, hizoAlgo };
     }
-    if (conflictos.length) extra.push(`conflictos sin tocar: ${lista(conflictos)}`);
     const segundos = ((Date.now() - t0) / 1000).toFixed(1);
-    res.push(`iguales: ${iguales}`);
-    return { cambios: hizoAlgo, conflictos: clave, hayPendiente: extra.length > 0, texto: `Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${extra.length ? ` ${extra.join('. ')}.` : ''}${aviso}` };
+    const cambiosTxt = novedades.length ? `\nCambios:\n${novedades.map((n) => `\u00b7 ${n}.`).join('\n')}` : '';
+    return { cambios: hizoAlgo, conflictos: clave, hayPendiente: problemas.length > 0, texto: conProblemas(`Sincronizaci\u00f3n lista en ${segundos} s: ${res.join(', ')}.${cambiosTxt}`) };
   }
 
   // Orden manual: corre una pasada ya, sin 👍, y contesta en el hilo.
@@ -669,4 +689,13 @@ export function registrar(ctx) {
     setTimeout(automatica, 90 * 1000).unref?.();
   });
   ctx.pasadaSincronizacion = pasada; ctx.automaticaSincronizacion = automatica; // para pruebas
+  // Costuras para la corrida diaria (ciclo-diario.mjs): pasada completa con el guardia compartido.
+  ctx.sincronizacionEnCurso = () => enCurso;
+  ctx.correrPasada = async (progreso = async () => {}) => {
+    if (enCurso) return { error: 'Ya hay una sincronización de registros en curso.' };
+    enCurso = true;
+    ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
+    try { return await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat }); }
+    finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
+  };
 }
