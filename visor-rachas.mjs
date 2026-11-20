@@ -211,11 +211,11 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
     fuente.textContent=textoFuente(ultimo.origen);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','C']:['Activo','R %','Racha','A %','G/P','C'])) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','C']:['Activo','R %','Racha','A %','G/P','C'])) { const th=texto('th',t); th.scope='col'; if(t==='Activo') th.className='col-activo'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
-      const id=texto('td',''); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
+      const id=texto('td','','col-activo'); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
       const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
       if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; }
