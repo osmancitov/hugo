@@ -20,7 +20,11 @@
 // o sin escritura, la bajada funciona igual (el repo es publico) y la subida queda pendiente, avisando.
 // Sin confirmacion, dentro de la sincronizacion autorizada. Las series mensuales solo crecen
 // cuando todo el prefijo es identico y las velas nuevas ya cerraron en UTC; nunca cambian dias previos. Solo toca rutas registros/velas-24h/<clase>/<ACTIVO>/yymm_ACTIVO (clase: stock o
-// cripto, la misma lista que usa el registro); ninguna otra carpeta, en ningun sentido.
+// cripto, la misma lista que usa el registro) y, desde el 20-nov-2026 (decision del usuario), los
+// pre-calculos: registros/pre-calculado/<clase>/<calculo>-<duracion>/<archivo> y
+// registros/ranking-24h/<clase>/<AAMMDD>_ranking-24h. Los pre-calculos son archivos de un dia:
+// se crean una vez y no cambian; contenido distinto en los dos lados es conflicto y no se toca
+// (nunca se pisa, en ningun sentido). Ninguna otra carpeta, en ningun sentido.
 // Piso fijo del registro (decision del usuario, 18-nov-2026): nada anterior al 1-ago-2026 se
 // sincroniza en NINGUN sentido — los archivos AAMM anteriores ni bajan del repo ni suben de
 // la Debian; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
@@ -41,6 +45,7 @@ import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
+import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos } from './pre-calculado.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -65,6 +70,8 @@ const shaBlob = (buf) => crypto.createHash('sha1').update(Buffer.concat([Buffer.
 // y el paso es actualizarIndicador real. Cada archivo de pruebas corre en su propio proceso.
 let pasoIndicador = null;
 export function fijarPasoIndicador(fn) { pasoIndicador = fn; }
+let pasoPreCalculo = null;
+export function fijarPasoPreCalculo(fn) { pasoPreCalculo = fn; }
 
 export function registrar(ctx) {
   const { app, botToken } = ctx;
@@ -73,6 +80,7 @@ export function registrar(ctx) {
   const dirInd = (serie) => path.join(path.dirname(dirBase()), serie);
   const serieDe = (rel) => rel.split('/')[1];
   const pasoInd = () => (pasoIndicador || actualizarIndicadores)({ dirRaiz: path.dirname(dirBase()) });
+  const pasoPre = () => (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
@@ -150,6 +158,7 @@ export function registrar(ctx) {
       if (bajoPiso(nombre)) continue; // piso fijo: lo anterior a ago-2026 no baja ni se muda
       if (RUTA_OK.test(p) && !(p.split('/')[2] === 'cripto' && EXCLUIDOS.has(p.split('/')[3]))) { mapa.set(p, sha); blobs.set(p, sha); }
       else if (RUTA_IND.test(p)) { mapa.set(p, sha); blobs.set(p, sha); } // indicadores: misma comparación por huella
+      else if (esRutaPre(p)) { mapa.set(p, sha); blobs.set(p, sha); } // pre-cálculos: comparación por huella; distinto es conflicto
       else if (RUTA_HEREDADA.test(p)) { heredados.push(p); blobs.set(p, sha); } // ruta anterior sin clase: no se sincroniza, solo se muda
     }
     return { mapa, heredados, blobs };
@@ -194,6 +203,8 @@ export function registrar(ctx) {
         lista.push({ rel: `registros/${s.serie}/${n}`, ruta, bytes: st.size });
       }
     }
+    // Pre-cálculos (20-nov-2026): archivos por día bajo pre-calculado/ y ranking-24h/.
+    lista.push(...localesPre(path.dirname(dirBase())));
     return lista;
   }
 
@@ -309,6 +320,7 @@ export function registrar(ctx) {
       const local = fs.readFileSync(f.ruta);
       if (shaBlob(local) === shaRemota) iguales++;
       else {
+        if (esRutaPre(f.rel)) { conflictos.push(f.rel); mapa.delete(f.rel); continue; } // un pre-cálculo distinto ya publicado no se pisa
         const remoto = await leerBlob(shaRemota);
         try {
           const modo = RUTA_IND.test(f.rel) ? relacionIndicador(leerIndicador(local), leerIndicador(remoto)) : relacion(local, remoto, f.rel);
@@ -326,7 +338,7 @@ export function registrar(ctx) {
     return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
-  const corta = (rel) => RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
+  const corta = (rel) => esRutaPre(rel) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
   const cortas = (l) => l.map((x) => corta(typeof x === 'string' ? x : x.rel));
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
@@ -337,16 +349,18 @@ export function registrar(ctx) {
       verificar();
       try {
         const buf = await leerBlob(b.sha);
-        const esInd = RUTA_IND.test(b.rel);
-        const destino = esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
-        if (esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+        const esInd = RUTA_IND.test(b.rel), esPre = esRutaPre(b.rel);
+        const destino = esPre ? destinoPre(path.dirname(dirBase()), b.rel) : esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
+        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
         if (fs.existsSync(destino)) {
           if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
           const previo = fs.readFileSync(destino);
+          if (esPre) { if (!previo.equals(buf)) throw Error('Hay un pre-cálculo local distinto; no lo piso.'); continue; }
           const modo = esInd ? relacionIndicador(leerIndicador(previo), leerIndicador(buf)) : relacion(previo, buf, b.rel);
           if (modo === 'ampliar') { if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf, previo); }
           else continue; // iguales o la Debian tiene una extension mayor: nunca recortar
-        } else if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf);
+        } else if (esPre) { fs.mkdirSync(path.dirname(destino), { recursive: true }); fs.writeFileSync(destino, buf); }
+        else if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf);
         hechos.push(b.rel);
         await progreso(`Descarga: ${hechos.length}/${bajar.length} archivo(s) copiados.`);
       } catch (e) { fallos.push(`${b.rel.replace(`${PREFIJO}/`, '')}: ${e.message}`.slice(0, 160)); }
@@ -376,9 +390,10 @@ export function registrar(ctx) {
         const shaRemota = actuales.get(f.rel);
         if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          const esInd = RUTA_IND.test(f.rel);
-          if (esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel);
+          if (esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
           if (shaRemota !== undefined) {
+            if (esPre) continue; // ya publicado con otro contenido: un pre-cálculo no se pisa (lo anota el plan como conflicto)
             const remoto = await leerBlob(shaRemota);
             const modo = esInd ? relacionIndicador(leerIndicador(remoto), leerIndicador(buf)) : relacion(remoto, buf, f.rel);
             if (modo !== 'ampliar') continue; // remoto igual o mayor: no recortar
@@ -396,13 +411,14 @@ export function registrar(ctx) {
       await git(['add', '--', ...items]);
       const pendiente = String(await git(['status', '--porcelain', '--', ...items])).trim();
       if (!pendiente) return { commit: null, subidos: [], omitidos }; // el arbol ya tenia ese contenido
-      const velas = items.filter((i) => !RUTA_IND.test(i)).map((i) => i.replace(`${PREFIJO}/`, ''));
+      const velas = items.filter((i) => !RUTA_IND.test(i) && !esRutaPre(i)).map((i) => i.replace(`${PREFIJO}/`, ''));
       const partes = [];
       if (velas.length) partes.push(`Registros de velas: ${velas.join(', ')}`);
       for (const s of SERIES) {
         const meses = items.filter((i) => i.startsWith(`registros/${s.serie}/`)).map((i) => i.split('/').pop());
         if (meses.length) partes.push(`Indicadores ${s.serie}: ${meses.join(', ')}`);
       }
+      for (const rel of items.filter(esRutaPre)) partes.push(`Pre-cálculo ${corta(rel)}`);
       const mensaje = partes.join(' · ');
       const sha = await commitGit(mensaje);
       try {
@@ -420,7 +436,7 @@ export function registrar(ctx) {
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
   // pasada: mantiene la sincronizacion automatica configurada. No se
   // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
-  async function pasada(progreso = async () => {}, { ind } = {}) {
+  async function pasada(progreso = async () => {}, { ind, pre } = {}) {
     try { limpiarExcluidos(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
@@ -444,6 +460,19 @@ export function registrar(ctx) {
           else if (s.nuevos) { const u = s.dias[s.dias.length - 1]; previo.push(`indicador ${s.etiqueta}: ${s.nuevos} día(s) nuevo(s), último ${u.fecha} con valor ${u.valor}`); }
         }
       } catch (e) { previo.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
+    }
+    // Pre-cálculos (decisión del usuario, 20-nov-2026): tras las velas y los indicadores, antes de
+    // la comparación: los archivos del día entran en la comparación y suben en el mismo commit, así
+    // velas y lectura nunca se publican desencontradas. Un fallo de un cálculo se anota y no
+    // detiene a los demás ni a las velas.
+    if (pre) {
+      try {
+        const rPre = await pre();
+        for (const l of (rPre.lineas || [])) {
+          if (l.estado === 'error') previo.push(`pre-cálculo ${l.calculo} ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
+          else previo.push(`pre-cálculo ${l.calculo} ${l.mercado} ${l.periodo}: ${l.estado}`);
+        }
+      } catch (e) { previo.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
     }
     const mud = mudarLocalHeredado();
     if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
@@ -521,7 +550,7 @@ export function registrar(ctx) {
     let reporte;
     try {
       reporte=await ctx.reporte.crearSync({event});
-      const r = await pasada(reporte.progreso, { ind: pasoInd });
+      const r = await pasada(reporte.progreso, { ind: pasoInd, pre: pasoPre });
       await reporte.final(r.error || r.texto);
     } catch (e) {
       const texto=`La sincronizacion se detuvo o no pude informar su resultado: ${e.message}. Lo ya copiado se conserva; revisa el estado antes de repetir.`;
@@ -588,7 +617,7 @@ export function registrar(ctx) {
         try { await abrirReporte('Comprobando GitHub\u2026'); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
-      const r = await pasada(progreso, { ind: pasoInd });
+      const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre });
       let aviso = '';
       if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
       else if (r.detenida) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros detenida a pedido. Lo ya copiado queda; la pr\u00f3xima pasada retoma lo que falte.`;

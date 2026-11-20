@@ -191,6 +191,9 @@ const RAW_IND = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registro
 // Piso del registro (decisión del usuario, 18-nov-2026): el graficador nunca pide meses
 // anteriores a agosto de 2026, aunque un catálogo futuro los anuncie por error.
 const PISO_VISOR = '2608';
+const DIA_MS = 86400000;
+const PISO_VISOR_TS = Date.UTC(2026, 7, 1);
+const aammddUTC = (ts) => new Date(ts).toISOString().slice(2, 10).replace(/-/g, '');
 const MESES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -265,15 +268,17 @@ const INDICADORES = [
     bandas: BANDAS_MIEDO([24, 44, 55, 74]), clasif: clasifMiedo([24, 44, 55, 74]) },
   // Iceberg: el primer indicador propio (decisión del usuario, 20-nov-2026): por día cerrado
   // en UTC, cuántos activos de su mercado cerraron en alza (verde, sobre el cero) y cuántos a
-  // la baja (rojo, bajo el cero). Sin bandas ni escala 0-100: son conteos del registro. Uno por
+  // la baja (rojo, bajo el cero). El cero cuenta como verde (misma decisión: «solo es pérdida o
+  // no», sin tercera categoría). Sin bandas ni escala 0-100: son conteos del registro. Uno por
   // mercado (decisión del usuario, 20-nov-2026: experiencia separada por mercado); dentro de su
-  // espacio se llama simplemente «Iceberg».
+  // espacio se llama simplemente «Iceberg». La serie sale del pre-cálculo diario de Hugo
+  // (registros/pre-calculado/<mercado>/iceberg-90d/, ventana de 90 días), no de un recorrido del visor.
   { codigo: 'iceberg-stock', tipo: 'conteo diario', indicador: true, iceberg: true, mercado: 'stock',
     fuente: 'Hugo, sobre los registros publicados',
-    notaDias: 'cuenta los stocks con vela cerrada ese día; una vela plana no cuenta' },
+    notaDias: 'cuenta los stocks con vela cerrada ese día; el cero cuenta como verde' },
   { codigo: 'iceberg-cripto', tipo: 'conteo diario', indicador: true, iceberg: true, mercado: 'cripto',
     fuente: 'Hugo, sobre los registros publicados',
-    notaDias: 'cuenta las cripto con vela cerrada ese día; una vela plana no cuenta' },
+    notaDias: 'cuenta las cripto con vela cerrada ese día; el cero cuenta como verde' },
 ];
 
 // Rótulos de los indicadores: UNA sola definición en el repositorio
@@ -414,15 +419,37 @@ function mesesIndicador() {
   return out.filter((m) => m >= PISO_VISOR);
 }
 
+// El iceberg se lee del pre-cálculo diario (decisión del usuario, 20-nov-2026): un archivo por
+// día y mercado en registros/pre-calculado/<mercado>/iceberg-90d/, con el nombre de los extremos
+// reales de la ventana (fin = último día UTC cerrado; inicio = fin − 89 días: 90 días contando
+// ambos extremos, sin bajar del piso del registro; el nombre expone los extremos reales).
+// Se pide el del último día cerrado y, si la pasada aún no lo subió, el de hasta dos días antes;
+// sin ninguno, la ficha queda en su mensaje de espera, sin inventar datos.
+async function cargarIcebergPre(e) {
+  const base = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/pre-calculado/' + e.mercado + '/iceberg-90d';
+  const ultimoCerrado = Math.floor(Date.now() / DIA_MS) * DIA_MS - DIA_MS;
+  for (let d = 0; d <= 2; d++) {
+    const fin = ultimoCerrado - d * DIA_MS;
+    const inicio = Math.max(fin - 89 * DIA_MS, PISO_VISOR_TS);
+    const r = await fetch(`${base}/${aammddUTC(inicio)}-${aammddUTC(fin)}_iceberg`);
+    if (r.ok) return r.json();
+  }
+  return [];
+}
+
 async function cargarIndicador(codigo) {
   const clave = 'indicador/' + codigo;
   if (cacheRegistros.has(clave)) return cacheRegistros.get(clave);
   const e = INDICADORES.find((x) => x.codigo === codigo);
   if (!e) return [];
-  const base = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/' + e.codigo;
-  const respuestas = await Promise.all(mesesIndicador().map((m) =>
-    fetch(`${base}/${m}`).then((r) => (r.ok ? r.json() : []))));
-  const puntos = respuestas.flat().sort((a, b) => a[0] - b[0]);
+  let puntos;
+  if (e.iceberg) puntos = (await cargarIcebergPre(e)).sort((a, b) => a[0] - b[0]);
+  else {
+    const base = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/' + e.codigo;
+    const respuestas = await Promise.all(mesesIndicador().map((m) =>
+      fetch(`${base}/${m}`).then((r) => (r.ok ? r.json() : []))));
+    puntos = respuestas.flat().sort((a, b) => a[0] - b[0]);
+  }
   cacheRegistros.set(clave, puntos);
   return puntos;
 }
@@ -507,10 +534,10 @@ function graficoIndicador(ctx, puntos, e, hasta) {
 // corren de arriba abajo con sus fechas a la izquierda y el valor 0-100 va en X, con
 // las bandas oficiales como franjas verticales. Mismos datos y mismas bandas, otro eje.
 // Iceberg (decisión del usuario, 20-nov-2026): cada día es una barra completa, el 100 % de
-// los activos contados ese día (los que cerraron en alza más los que cerraron a la baja),
+// los activos con vela ese día (verde = sin pérdida: al alza o planos; rojo = a la baja),
 // repartido en la frontera entre verde (arriba) y rojo (abajo): la frontera dibuja la
 // proporción. Colores sólidos rojo y verde (decisión del usuario, 20-nov-2026: sin
-// atenuaciones). Un día sin contados (todas planas) queda vacío, sin inventar.
+// atenuaciones). Un día sin velas queda sin fila en la serie, sin inventar.
 // Misma pieza común de trazado, rejilla de días y colores de la casa; hasta recorta igual.
 function graficoIceberg(ctx, puntos, e, hasta) {
   const n = puntos.length;
@@ -555,7 +582,7 @@ function graficoIceberg(ctx, puntos, e, hasta) {
   ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
   ctx.fillText(`${e.nombre} · activos al alza y a la baja por día`, LW / 2, 15);
   ctx.fillStyle = TICK; ctx.font = '11px ' + FUENTE;
-  ctx.fillText(`cada día es el 100 % de los que subieron o bajaron · verde = al alza · rojo = a la baja · ${n} días`, LW / 2, 40);
+  ctx.fillText(`cada día es el 100 % de los activos con vela ese día · verde = al alza o planos · rojo = a la baja · ${n} días`, LW / 2, 40);
   // el último día, al completar el trazado
   if (k >= n) {
     const uf = new Date(puntos[n - 1][0]);
@@ -658,7 +685,7 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
   ctx.fillText(`${e.nombre} · activos al alza y a la baja`, w / 2, 26);
   ctx.fillStyle = TICK; ctx.font = '18px ' + FUENTE;
-  ctx.fillText(`cada día es el 100 % de los que subieron o bajaron · ${n} días`, w / 2, 58);
+  ctx.fillText(`cada día es el 100 % de los activos con vela ese día · ${n} días`, w / 2, 58);
   // barras completas: rojo desde la izquierda hasta la frontera, verde hasta la derecha
   const grueso = n === 1 ? (bottom - top) : Math.max(1, (bottom - top) / (n - 1));
   for (let i = 0; i < k; i++) {

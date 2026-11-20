@@ -11,9 +11,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
-import { fijarPasoIndicador } from '../app/modulos/sincronizar-registros.mjs';
+import { fijarPasoIndicador, fijarPasoPreCalculo } from '../app/modulos/sincronizar-registros.mjs';
 // Estas pruebas miden el reporte de la pasada, no los indicadores: paso anulado, sin red.
 fijarPasoIndicador(async () => ({ nuevos: 0, dias: [], archivos: [] }));
+fijarPasoPreCalculo(async () => ({ lineas: [] })); // el paso de pre-cálculos tiene su guardia en pre-calculado.mjs
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
 const serie = JSON.stringify([vela(Date.UTC(2026, 10, 1)), vela(Date.UTC(2026, 10, 2))]);

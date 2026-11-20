@@ -78,7 +78,9 @@ test('escribirIceberg parte por mes, escribe atómico y es idempotente', () => {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('las series publicadas por mercado existen, son válidas y llegan a la última vela del registro', () => {
+test('las series mensuales por mercado quedan como histórico válido (sustituidas por el pre-cálculo, 20-nov-2026)', () => {
+  // El visor ya no las lee: el iceberg sale de registros/pre-calculado/<mercado>/iceberg-90d/.
+  // Se conservan congeladas como registro histórico; esta guardia solo exige que sigan íntegras.
   for (const mercado of ['stock', 'cripto']) {
     const dir = new URL(`../registros/iceberg-${mercado}/`, import.meta.url);
     const archivos = fs.readdirSync(dir).filter((n) => /^\d{4}$/.test(n)).sort();
@@ -90,6 +92,20 @@ test('las series publicadas por mercado existen, son válidas y llegan a la últ
   }
   // La serie combinada anterior no existe más (decisión del usuario, 20-nov-2026: una por mercado).
   assert.ok(!fs.existsSync(new URL('../registros/iceberg/', import.meta.url)));
+});
+
+test('el visor lee el iceberg del pre-cálculo diario, con el nombre de los extremos reales y repliegue corto', () => {
+  assert.match(visor, /registros\/pre-calculado\/' \+ e\.mercado \+ '\/iceberg-90d/);
+  // Nombre determinista: fin = último día cerrado; inicio = fin − 90 días, sin bajar del piso.
+  assert.match(visor, /Math\.floor\(Date\.now\(\) \/ DIA_MS\) \* DIA_MS - DIA_MS/);
+  assert.match(visor, /Math\.max\(fin - 89 \* DIA_MS, PISO_VISOR_TS\)/);
+  assert.match(visor, /aammddUTC\(inicio\)\}-\$\{aammddUTC\(fin\)\}_iceberg/);
+  // Si la pasada aún no subió el archivo del día, prueba hasta dos días antes; nunca inventa.
+  assert.match(visor, /d <= 2/);
+  // La serie mensual anterior ya no alimenta el gráfico.
+  assert.ok(!/registros\/iceberg-stock/.test(visor) && !/registros\/iceberg-cripto/.test(visor));
+  // La regla vigente se anuncia en la ficha (decisión del usuario, 20-nov-2026).
+  assert.equal(visor.match(/el cero cuenta como verde/g)?.length, 2);
 });
 
 test('el visor registra un Iceberg por mercado y los dibuja por la pieza común, con hasta', () => {
