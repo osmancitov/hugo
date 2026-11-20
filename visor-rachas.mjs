@@ -82,7 +82,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   reglas.append(texto('p','R %: rango del día, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio del registro.'));
   reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
-  reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: lo acumulado en días verdes dividido entre la magnitud de lo acumulado en días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
+  reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
