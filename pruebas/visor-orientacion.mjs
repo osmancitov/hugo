@@ -35,7 +35,7 @@ test('el trazado animado existe una sola vez, dentro del graficador común', () 
 test('los dibujos de indicador aceptan trazado parcial (hasta) y no pintan el último valor antes de terminar', () => {
   assert.match(visor, /function graficoIndicador\(ctx, puntos, e, hasta\)/);
   assert.match(visor, /function graficoIndicadorVertical\(ctx, puntos, e, alto, hasta\)/);
-  assert.equal(visor.match(/if \(k >= n\)/g)?.length, 2);
+  assert.equal(visor.match(/if \(k >= n\)/g)?.length, 4); // los cuatro dibujos: índice e iceberg, horizontales y verticales
 });
 
 // Guardia del graficador configurable: cada caso entrega datos y solo su desviación
