@@ -125,16 +125,18 @@ a.tit-link:hover { text-decoration: none; }
 .cap-fecha { color: var(--tenue); font-size: .68rem; }
 
 .vistas, .mercados { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+.vistas { gap:.9rem; }
 .mercados { margin-bottom:.55rem; }
 .vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
-.vistas a, .mercados a { border:1px solid var(--borde); border-radius:3px; }
-/* Dos niveles (decisión del usuario, 20-nov-2026): el mercado es el modo principal y va destacado;
-   la vista (Capitalización / Variación) es secundaria y no compite con él. */
-.mercados a { font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); border-color:var(--oro); }
+/* Dos niveles (decisión del usuario, 20-nov-2026): el mercado es el modo principal, con botones;
+   la vista (Capitalización / Variación) es secundaria, como pestañas sin recuadro que no compiten
+   con él. Ninguno de los dos niveles subraya su texto, ni al pasar el dedo o el ratón. */
+.mercados a { border:1px solid var(--oro); border-radius:3px; font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); }
 .mercados a.actual { background:var(--oro); color:var(--tinta); }
-.vistas a { font-size:.8rem; padding:.3rem .6rem; color:var(--tenue); }
-.vistas a:hover, .mercados a:hover { border-color:var(--oro); }
-.vistas a.actual { border-color:var(--oro); color:var(--oro); }
+.vistas a { padding:.15rem .2rem; border-bottom:2px solid transparent; font-size:.8rem; color:var(--tenue); }
+.vistas a.actual { color:var(--oro); border-bottom-color:var(--oro); }
+.mercados a:hover, .vistas a:hover { text-decoration:none; }
+.vistas a:hover { color:var(--oro); }
 #rotulo-mercado { font-family:'Cinzel','Lora',serif; font-weight:600; font-size:1.15rem; letter-spacing:.06em; color:var(--oro); margin:.1rem 0 .6rem; }
 .rachas-nota { color:var(--tenue); font-size:.85rem; line-height:1.6; margin:.65rem 0; }
 .rachas-controles { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; margin:1rem 0; }
