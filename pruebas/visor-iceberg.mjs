@@ -40,6 +40,20 @@ test('calcularIceberg cuenta alzas y bajas por día; la plana no cuenta y el dí
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('calcularIceberg por mercado cuenta solo su clase (decisión del usuario, 20-nov-2026)', () => {
+  const { dir, p } = bancoVelas();
+  try {
+    const d1 = Date.UTC(2026, 7, 1), hoy = Date.UTC(2026, 7, 2);
+    fs.writeFileSync(path.join(p, '2608_AAA'), JSON.stringify([vela(d1, 1, 2)])); // cripto al alza
+    const s = path.join(dir, 'stock', 'SSS');
+    fs.mkdirSync(s, { recursive: true });
+    fs.writeFileSync(path.join(s, '2608_SSS'), JSON.stringify([vela(d1, 2, 1)])); // stock a la baja
+    assert.deepEqual(calcularIceberg(dir, hoy + 3600000, 'cripto'), [[d1, 1, 0]]);
+    assert.deepEqual(calcularIceberg(dir, hoy + 3600000, 'stock'), [[d1, 0, 1]]);
+    assert.deepEqual(calcularIceberg(dir, hoy + 3600000), [[d1, 1, 1]]); // sin clase, todo
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('leerIceberg valida forma, piso, alineación y orden', () => {
   const d1 = Date.UTC(2026, 7, 1);
   assert.deepEqual(leerIceberg(JSON.stringify([[d1, 3, 2]])), [[d1, 3, 2]]);
@@ -64,18 +78,24 @@ test('escribirIceberg parte por mes, escribe atómico y es idempotente', () => {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('la serie publicada existe, es válida y cierra en la vela del registro', () => {
-  const dir = new URL('../registros/iceberg/', import.meta.url);
-  const archivos = fs.readdirSync(dir).filter((n) => /^\d{4}$/.test(n)).sort();
-  assert.ok(archivos.length >= 4, 'al menos ago-nov 2026');
-  const serie = archivos.flatMap((n) => leerIceberg(fs.readFileSync(new URL(n, dir), 'utf8')));
-  assert.ok(serie.length > 100, 'más de 100 días');
-  // Sin días repetidos ni desordenados entre meses (leerIceberg ya valida dentro de cada mes).
-  for (let i = 1; i < serie.length; i++) assert.ok(serie[i][0] > serie[i - 1][0]);
+test('las series publicadas por mercado existen, son válidas y llegan a la última vela del registro', () => {
+  for (const mercado of ['stock', 'cripto']) {
+    const dir = new URL(`../registros/iceberg-${mercado}/`, import.meta.url);
+    const archivos = fs.readdirSync(dir).filter((n) => /^\d{4}$/.test(n)).sort();
+    assert.ok(archivos.length >= 4, `iceberg-${mercado}: al menos ago-nov 2026`);
+    const serie = archivos.flatMap((n) => leerIceberg(fs.readFileSync(new URL(n, dir), 'utf8')));
+    assert.ok(serie.length > 100, `iceberg-${mercado}: más de 100 días`);
+    // Sin días repetidos ni desordenados entre meses (leerIceberg ya valida dentro de cada mes).
+    for (let i = 1; i < serie.length; i++) assert.ok(serie[i][0] > serie[i - 1][0]);
+  }
+  // La serie combinada anterior no existe más (decisión del usuario, 20-nov-2026: una por mercado).
+  assert.ok(!fs.existsSync(new URL('../registros/iceberg/', import.meta.url)));
 });
 
-test('el visor registra Iceberg una sola vez y lo dibuja por la pieza común, con hasta', () => {
-  assert.equal(visor.match(/codigo: 'iceberg'/g)?.length, 1);
+test('el visor registra un Iceberg por mercado y los dibuja por la pieza común, con hasta', () => {
+  assert.equal(visor.match(/codigo: 'iceberg-stock'/g)?.length, 1);
+  assert.equal(visor.match(/codigo: 'iceberg-cripto'/g)?.length, 1);
+  assert.equal(visor.match(/codigo: 'iceberg',/g)?.length ?? 0, 0);
   assert.equal(visor.match(/function graficoIceberg\(/g)?.length, 1);
   assert.equal(visor.match(/function graficoIcebergVertical\(/g)?.length, 1);
   assert.match(visor, /if \(geometria\.vertical\) graficoIcebergVertical/);
@@ -87,7 +107,26 @@ test('el visor registra Iceberg una sola vez y lo dibuja por la pieza común, co
   for (const d of dibujos) { assert.match(d, /GREEN_S/); assert.match(d, /RED_S/); }
 });
 
-test('el rótulo visible de Iceberg vive en la fuente única de rótulos', async () => {
+test('los rótulos visibles de los icebergs viven en la fuente única de rótulos', async () => {
   const { default: rotulos } = await import('../app/modulos/indicadores-rotulos.mjs');
-  assert.equal(rotulos['iceberg'], 'Iceberg');
+  assert.equal(rotulos['iceberg-stock'], 'Iceberg');
+  assert.equal(rotulos['iceberg-cripto'], 'Iceberg');
+  assert.equal(rotulos['iceberg'], undefined);
+});
+
+test('la separación por mercado: selector sobre las vistas, entrada en Stocks y rutas por espacio', () => {
+  // Selector de mercados encima de las vistas (decisión del usuario, 20-nov-2026).
+  assert.match(visor, /<nav class="mercados" aria-label="Mercados">/);
+  assert.equal(visor.match(/id="mercado-stock"/g)?.length, 1);
+  assert.equal(visor.match(/id="mercado-cripto"/g)?.length, 1);
+  assert.ok(visor.indexOf('class="mercados"') < visor.indexOf('class="vistas"'), 'mercados encima de vistas');
+  // Rutas por espacio y redirección de las rutas sin mercado al espacio inicial, Stocks.
+  assert.match(visor, /location\.replace\(location\.hash === '#\/rachas' \? '#\/stock\/rachas' : '#\/stock'\)/);
+  assert.match(visor, /'#\/' \+ mercado \+ '\/rachas'/);
+  assert.match(visor, /location\.hash\.startsWith\('#\/cripto'\) \? 'cripto' : 'stock'/);
+  // La portada de un mercado solo lista su clase y sus indicadores.
+  assert.match(visor, /INDICADORES\.filter\(\(e\) => e\.mercado === mercado\)/);
+  assert.match(visor, /TODOS\.filter\(\(e\) => e\.clase === mercado\)/);
+  // La vista Variación recibe solo el catálogo del mercado y lo fija.
+  assert.match(visor, /montarRachas\(seccion, mercado === 'cripto' \? CRIPTOS : STOCKS/);
 });

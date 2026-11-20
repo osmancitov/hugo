@@ -52,12 +52,14 @@ async function cargar(catalogo, progreso) {
   await Promise.all(Array.from({length: 6}, trabajador));
   return { resultados, corte, revision };
 }
-export function montarRachas(contenedor, catalogo, consulta) {
+export function montarRachas(contenedor, catalogo, consulta, mercado = null) {
+  if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica
   const titulo = texto('h2', 'Variación y rachas');
   const nota = texto('p', 'Última vela diaria cerrada publicada, no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
   const controles = texto('div', '', 'rachas-controles');
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
+  if (mercado) selector.hidden = true;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
   for (const [v,t] of [['gp','G/P'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');

@@ -7,6 +7,9 @@ export default {
   'feargreedchart-bolsa': 'Fear & Greed Index (Stock)',
   'alternative-fear-greed': 'Fear & Greed Index (Cripto)',
   // Iceberg: el nombre provisional que le dio el usuario (20-nov-2026), hasta mudarlo si
-  // encuentra un indicador ya hecho con otro nombre.
-  'iceberg': 'Iceberg',
+  // encuentra un indicador ya hecho con otro nombre. Uno por mercado; dentro de su espacio
+  // se llama simplemente «Iceberg», porque el mercado ya está indicado (decisión del usuario,
+  // 20-nov-2026).
+  'iceberg-stock': 'Iceberg',
+  'iceberg-cripto': 'Iceberg',
 };
