@@ -57,7 +57,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','Equilibrio G/P'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','G/P'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
@@ -78,12 +78,11 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
-  reglas.append(texto('p','Cada fila usa la última vela diaria cerrada (día UTC, como en la gráfica). Racha es cuántos días seguidos lleva cerrando en la misma dirección: «3» son tres días seguidos cerrando por encima de su apertura; el sentido lo dan el color y el signo de la variación acumulada. Un día que cierra igual que abre no cuenta y deja la racha en 0.'));
-  reglas.append(texto('p','Variación acumulada es cuánto cambió el precio durante esa racha, desde la apertura del primer día hasta el cierre del último, con su signo. Si la racha es de un solo día, es la variación de ese día. Ejemplo: racha «2» con −11,98 % significa que en dos días seguidos a la baja el precio cayó en total casi un 12 %. Puede salir con signo contrario al de las velas, porque cuenta también los saltos entre el cierre de un día y la apertura del siguiente.'));
-  reglas.append(texto('p','En la tabla: R % es el rango del día y A % la variación acumulada; Racha y G/P van con su nombre.'));
-  reglas.append(texto('p','Equilibrio G/P es la razón de variación de la radiografía, calculada igual y sobre el mismo período: todo el registro del activo. Es lo acumulado en días verdes dividido entre la magnitud de lo acumulado en días rojos: 1,02 dice que por cada punto acumulado a la baja hubo 1,02 al alza. Sin días rojos no hay división posible y el activo ordena primero; sin días verdes, vale 0.'));
-  reglas.append(texto('p','Rango del día mide la amplitud de esa última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura. No dice qué ocurrió primero.'));
-  reglas.append(texto('p','≥ y * indican que la racha pudo ser más larga: se corta por un hueco en los datos o por el inicio del registro, y solo se muestra lo observado. No se rellenan huecos. Los datos atrasados y los errores quedan fuera del orden principal.'));
+  reglas.append(texto('p','Activo: el código del activo; su fila abre su gráfica habitual.'));
+  reglas.append(texto('p','R %: rango del día, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
+  reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio del registro.'));
+  reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
+  reglas.append(texto('p','G/P: la razón de variación de la radiografía, sobre todo el registro del activo: lo acumulado en días verdes dividido entre la magnitud de lo acumulado en días rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
