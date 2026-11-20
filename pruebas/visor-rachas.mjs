@@ -136,4 +136,7 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  const src=fs.readFileSync(new URL('../visor-rachas.mjs',import.meta.url),'utf8');
  for(const marca of ['registros/pre-calculado/','lectura-dia-90d','ranking-24h','Activos analizados','Sin lectura en la ventana']) assert.ok(src.includes(marca),marca);
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
+ // La nota de racha limitada va bajo el nombre del activo: en la celda estrecha de la racha se partía letra a letra.
+ assert.ok(src.includes("id.append(texto('small',d.motivo,'rachas-limite'))"),'nota bajo el nombre');
+ assert.ok(!src.includes("dias.append(texto('small',d.motivo,'rachas-limite'))"),'nota fuera de la celda estrecha');
 });

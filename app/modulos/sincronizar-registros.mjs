@@ -84,7 +84,7 @@ export function registrar(ctx) {
   const serieDe = (rel) => rel.split('/')[1];
   const pasoInd = () => (pasoIndicador || actualizarIndicadores)({ dirRaiz: path.dirname(dirBase()) });
   const pasoPre = () => (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
-  const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()) });
+  const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()), rutaIndex: path.join(clonDir(), 'index.html') });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
@@ -491,18 +491,6 @@ export function registrar(ctx) {
         }
       } catch (e) { previo.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
     }
-    // Catálogo por mercado (decisión del usuario, 20-nov-2026): tras los pre-cálculos y antes de
-    // la comparación, para que suba en el mismo commit. Si un alta no tiene información curada,
-    // el reporte pide completarla; el activo aparece igual por su código y su nombre.
-    if (cat) {
-      try {
-        const rCat = await cat();
-        for (const l of (rCat.lineas || [])) {
-          if (l.estado === 'error') previo.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
-          else previo.push(`catálogo ${l.mercado}: ${l.estado}, ${l.periodo}${l.sinInfo && l.sinInfo.length ? `; falta información curada de ${l.sinInfo.join(', ')}` : ''}`);
-        }
-      } catch (e) { previo.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
-    }
     const mud = mudarLocalHeredado();
     if (mud.movidos.length) { mudo = true; previo.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
     if (mud.conflictos.length) previo.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
@@ -511,6 +499,19 @@ export function registrar(ctx) {
     try {
       await asegurarClon(repo, token);
       await traerPunta(token);
+      // Catálogo por mercado (decisión del usuario, 20-nov-2026): tras traer la punta, para leer
+      // la capa curada del index.html ya vigente, y antes de la comparación, para que suba en el
+      // mismo commit. Un alta sin información curada aparece por su código y su nombre; el reporte
+      // pide completarla y anota si la lista de productos o la capa curada no se pudieron leer.
+      if (cat) {
+        try {
+          const rCat = await cat();
+          for (const l of (rCat.lineas || [])) {
+            if (l.estado === 'error') previo.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
+            else previo.push(`catálogo ${l.mercado}: ${l.estado}, ${l.periodo}${l.sinInfo && l.sinInfo.length ? `; falta información curada de ${l.sinInfo.join(', ')}` : ''}${l.aviso ? `; ${l.aviso}` : ''}`);
+          }
+        } catch (e) { previo.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
+      }
       plan = await planear();
       if (plan.heredados.length) {
         if (token) {

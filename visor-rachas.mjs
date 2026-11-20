@@ -218,7 +218,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       const id=texto('td','','col-activo'); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
       const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
-      if(d.limitada) { dias.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; }
+      if(d.limitada) { id.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; } // la nota va bajo el nombre: en la celda de la racha se partía letra a letra
       const rango=texto('td',Math.round(d.rango).toLocaleString('es'));
       const gp=texto('td',d.gp===Infinity?'∞':(Math.round(d.gp*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2}));
       if(d.gp===Infinity) gp.title='Sin días rojos en la ventana: el equilibrio no tiene fin.';
