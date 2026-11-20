@@ -127,6 +127,6 @@ test('la separación por mercado: selector sobre las vistas, entrada en Stocks y
   // La portada de un mercado solo lista su clase y sus indicadores.
   assert.match(visor, /INDICADORES\.filter\(\(e\) => e\.mercado === mercado\)/);
   assert.match(visor, /TODOS\.filter\(\(e\) => e\.clase === mercado\)/);
-  // La vista Variación recibe solo el catálogo del mercado y lo fija.
-  assert.match(visor, /montarRachas\(seccion, mercado === 'cripto' \? CRIPTOS : STOCKS/);
+  // La vista Variación recibe el catálogo completo (una sola lectura sirve a ambos espacios) y fija el mercado.
+  assert.match(visor, /montarRachas\(seccion, TODOS/);
 });

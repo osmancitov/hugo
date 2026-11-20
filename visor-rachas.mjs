@@ -53,7 +53,7 @@ async function cargar(catalogo, progreso) {
   return { resultados, corte, revision };
 }
 export function montarRachas(contenedor, catalogo, consulta, mercado = null) {
-  if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica
+  if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
   const titulo = texto('h2', 'Variación y rachas');
   const nota = texto('p', 'Última vela diaria cerrada publicada, no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
   const controles = texto('div', '', 'rachas-controles');

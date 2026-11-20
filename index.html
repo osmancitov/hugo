@@ -1347,7 +1347,9 @@ async function ruta() {
     const guardado = estadoLista; estadoLista = null;
     app.replaceChildren();
     const seccion = document.createElement('section'); app.append(seccion);
-    actualizarRachas = montarRachas(seccion, mercado === 'cripto' ? CRIPTOS : STOCKS, () => $('#buscar').value.trim(), mercado);
+    // Una sola lectura cubre los 515 activos y sirve a ambos espacios en la visita: el mercado
+    // solo fija la clase mostrada (decisión del usuario, 20-nov-2026), como antes el selector de clase.
+    actualizarRachas = montarRachas(seccion, TODOS, () => $('#buscar').value.trim(), mercado);
     if (guardado) requestAnimationFrame(() => window.scrollTo(0, guardado.y));
   }
   else {
