@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion, cambiosDireccion } from '../visor-rachas-datos.mjs';
+import { DIA, validarMes, resumir, separar, corteUTC, razonVariacion, cambiosDireccion } from '../app/modulos/visor-rachas-datos.mjs';
 const t = Date.UTC(2026,10,1), corte = Date.UTC(2026,10,18);
 const vela = (i,o,c) => [t+i*DIA,String(o),String(Math.max(o,c)),String(Math.min(o,c)),String(c),'1',t+(i+1)*DIA-1,'1',1,'1','1','0'];
 test('racha usa apertura/cierre; su cambio real incluye cambios entre velas, sin sumar porcentajes',()=>{

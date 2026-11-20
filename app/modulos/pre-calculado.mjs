@@ -29,7 +29,7 @@ import path from 'node:path';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { DIA, PISO_DIA, aammDe } from './indicadores.mjs';
 import { leerIceberg } from './iceberg.mjs';
-import { resumir, razonVariacion, cambiosDireccion } from '../../visor-rachas-datos.mjs';
+import { resumir, razonVariacion, cambiosDireccion } from './visor-rachas-datos.mjs';
 
 export const UNIDADES = { d: DIA }; // días; la escala horaria (90h) queda solo prevista
 export const CALCULOS = [

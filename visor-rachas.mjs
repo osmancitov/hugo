@@ -1,4 +1,4 @@
-import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './visor-rachas-datos.mjs';
+import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './app/modulos/visor-rachas-datos.mjs';
 const API = 'https://api.github.com/repos/osmancitov/hugo';
 const BASE = 'https://raw.githubusercontent.com/osmancitov/hugo';
 const fecha = t => new Date(t).toISOString().slice(0,10);
