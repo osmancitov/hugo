@@ -7,8 +7,11 @@
 // hay, publica directamente la solicitud de aprobacion (commit, titulo, archivos que cambian), sin
 // mensaje previo de «comprobando/hay cambios» (decisión del usuario, 19-nov-2026: ese anuncio metía
 // ruido y parecía pedir un segundo 👍; la solicitud es el único lugar para aprobar) -> con 👍 ejecuta
-// un instalador local con copia y reversion (ctx.lanzarInstalacion, el mismo de "actualiza"). El
-// aviso inmediato lo da el 👀 de la mención, que la primera respuesta edita: una sola burbuja siempre.
+// un instalador local con copia y reversion (ctx.lanzarInstalacion, el mismo de "actualiza"). La
+// detección al arrancar usa la MISMA solicitud: detectar → proponer → 👍, sin que el usuario tenga
+// que escribir «actualiza» (decisión del usuario, 20-nov-2026); la propuesta espontánea caduca en
+// silencio. El aviso inmediato lo da el 👀 de la mención, que la primera respuesta edita: una sola
+// burbuja siempre.
 // Solo toca app/app.mjs, app/modulos/ y manual/manual-hugo.md. No toca config.env, keys/, historial, package.json ni node_modules.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -148,6 +151,28 @@ export function registrar(ctx) {
   }
   const resumenDe = (dif) => dif.map((d) => `${d.rel.replace(/^app\//, '')} (${d.estado})`).join(', ');
 
+  // La solicitud de aprobación, compartida por «actualiza» y por la detección al arrancar. El 👍 que
+  // cuenta es siempre el del usuario. silenciarNo: la propuesta espontánea caduca sin mensaje (ya se
+  // anunció sola; el siguiente arranque la vuelve a proponer si sigue habiendo cambios).
+  async function proponer(repo, r, channel, hilo, { silenciarNo = false } = {}) {
+    const { sha, titulo, tmp, src, dif } = r;
+    await ctx.confirmar({
+      que: 'actualizar desde GitHub', channel, thread_ts: hilo, user: ctx.usuario, corta: true,
+      texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,
+      alSi: async () => {
+        try {
+          const script = path.join(base(), `instalar-github-${sha.slice(0, 7)}.sh`);
+          fs.writeFileSync(script, INSTALADOR, { mode: 0o700 });
+          await ctx.lanzarInstalacion({ channel, hilo, ruta: script, args: [src, sha.slice(0, 7)], etiqueta: `commit ${sha.slice(0, 7)} de ${repo}`, sha: sha.slice(0, 7), limpiar: tmp });
+        } catch (e) {
+          fs.rmSync(tmp, { recursive: true, force: true });
+          await decir(channel, hilo, `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`);
+        }
+      },
+      alNo: async () => { fs.rmSync(tmp, { recursive: true, force: true }); if (!silenciarNo) await decir(channel, hilo, 'Sin respuesta: no apliqu\u00e9 nada.'); },
+    });
+  }
+
   ctx.comando(/^\s*actualiz\w*(\s+(desde\s+)?github)?\s*$/i, async (event) => {
     const hilo = event.thread_ts || event.ts;
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
@@ -167,27 +192,15 @@ export function registrar(ctx) {
       fs.rmSync(tmp, { recursive: true, force: true });
       return decir(event.channel, hilo, `Comprobado: Hugo ya est\u00e1 al d\u00eda con GitHub (commit ${sha.slice(0, 7)}). No cambi\u00e9 nada.`);
     }
-    await ctx.confirmar({
-      que: 'actualizar desde GitHub', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true,
-      texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb? Cambia: ${resumenDe(dif)}.`,
-      alSi: async () => {
-        try {
-          const script = path.join(base(), `instalar-github-${sha.slice(0, 7)}.sh`);
-          fs.writeFileSync(script, INSTALADOR, { mode: 0o700 });
-          await ctx.lanzarInstalacion({ channel: event.channel, hilo, ruta: script, args: [src, sha.slice(0, 7)], etiqueta: `commit ${sha.slice(0, 7)} de ${repo}`, sha: sha.slice(0, 7), limpiar: tmp });
-        } catch (e) {
-          fs.rmSync(tmp, { recursive: true, force: true });
-          await decir(event.channel, hilo, `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`);
-        }
-      },
-      alNo: async () => { fs.rmSync(tmp, { recursive: true, force: true }); await decir(event.channel, hilo, 'Sin respuesta: no apliqu\u00e9 nada.'); },
-    });
+    await proponer(repo, r, event.channel, hilo);
   }, { delegable: true, nombre: 'comprobar GitHub' });
 
-  // Al arrancar (despues del saludo con la fecha): comprueba GitHub y AVISA en el canal si hay cambios. Nunca instala ni reinicia.
-  // - Al dia en la primera comprobacion: en silencio. Con cambios: aviso con commit y archivos; aplicar pide el 👍 de siempre.
+  // Al arrancar (despues del saludo con la fecha): comprueba GitHub y, si hay cambios, publica la
+  // SOLICITUD de aprobacion directamente en el canal (decisión del usuario, 20-nov-2026: detectar →
+  // proponer → 👍, sin tener que escribir «actualiza»; la propuesta espontánea caduca en silencio).
+  // Nunca instala ni reinicia sin el pulgar. Al dia en la primera comprobacion: en silencio.
   // - Sin conexion: 3 intentos cortos; si fallan, un aviso unico («sigo con la version instalada, sin comprobar») y reintentos
-  //   a los 2, 10 y 60 minutos. Si despues se puede comprobar: avisa los cambios, o «Comprobado: al dia» si antes avis\u00e9 del fallo.
+  //   a los 2, 10 y 60 minutos. Si despues se puede comprobar: propone los cambios, o «Comprobado: al dia» si antes avis\u00e9 del fallo.
   const REINTENTOS_MS = (process.env.HUGO_REINTENTOS_GITHUB_MS || '120000,600000,3600000').split(',').map(Number);
   const alArrancar = async () => {
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
@@ -205,9 +218,9 @@ export function registrar(ctx) {
         if (ultimo?.invalido) { await aviso(`GitHub tiene un commit nuevo (${ultimo.invalido.slice(0, 7)}) que no pasa la comprobaci\u00f3n (${ultimo.message}). Sigo con la versi\u00f3n instalada.`); return 'invalido'; }
         return 'sinred';
       }
+      if (r.dif.length) { await proponer(repo, r, ctx.canal, undefined, { silenciarNo: true }); return 'ok'; } // la propuesta es el aviso; r.tmp lo gestiona ella
       try {
-        if (r.dif.length) await aviso(`Hay una actualizaci\u00f3n en GitHub: commit ${r.sha.slice(0, 7)} \u00ab${r.titulo}\u00bb. Cambia: ${resumenDe(r.dif)}. Escribe @Hugo actualiza para aplicarla (te pedir\u00e9 el \u{1F44D}).`);
-        else if (avisadoFallo) await aviso(`Comprobado: Hugo est\u00e1 al d\u00eda con GitHub (commit ${r.sha.slice(0, 7)}).`);
+        if (avisadoFallo) await aviso(`Comprobado: Hugo est\u00e1 al d\u00eda con GitHub (commit ${r.sha.slice(0, 7)}).`);
       } finally { fs.rmSync(r.tmp, { recursive: true, force: true }); }
       return 'ok';
     }

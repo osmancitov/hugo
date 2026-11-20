@@ -105,3 +105,62 @@ test('fallo de red: un solo mensaje dice que no pudo comprobar y que nada cambio
   assert.equal(s.esT(), 0);
  } finally { s.close(); }
 });
+
+// Detección al arrancar (decisión del usuario, 20-nov-2026): con cambios, la solicitud de
+// aprobación sale directa en el canal — detectar → proponer → 👍, sin tener que escribir
+// «actualiza»— y caduca en silencio. Al día: silencio. El 👍 sigue siendo el del usuario.
+function bancoArranque(t, { conCambios }) {
+ const s = banco(t, { conCambios });
+ const inicios = [];
+ s.ctx.alIniciar = (f) => inicios.push(f);
+ s.ctx.canal = 'canal-aviso';
+ const propuestas = [];
+ s.ctx.confirmar = async (o) => { propuestas.push(o); };
+ return { ...s, inicios, propuestas, arrancar: async () => {
+  process.env.HUGO_RETRASO_GITHUB_MS = '0';
+  const { registrar } = await import('../app/modulos/github.mjs');
+  registrar(conectarCaja(s.ctx));
+  for (const f of inicios) await f();
+  await new Promise((r) => setTimeout(r, 60));
+  delete process.env.HUGO_RETRASO_GITHUB_MS;
+ } };
+}
+
+test('al arrancar con cambios: propone directo en el canal, sin aviso aparte ni paso «actualiza»', async (t) => {
+ const s = bancoArranque(t, { conCambios: true });
+ try {
+  await s.arrancar();
+  assert.equal(s.propuestas.length, 1);
+  assert.match(s.propuestas[0].texto, /Solicitud/);
+  assert.match(s.propuestas[0].texto, /aaaaaaa/); // el commit abreviado
+  assert.match(s.propuestas[0].texto, /Cambia:/); // el resumen de archivos
+  assert.equal(s.propuestas[0].channel, 'canal-aviso');
+  assert.equal(s.propuestas[0].user, s.ctx.usuario); // el 👍 que cuenta es el del usuario
+  assert.equal(s.posts.length, 0); // ninguna burbuja aparte de la solicitud
+ } finally { s.close(); }
+});
+
+test('al arrancar al día o la propuesta espontánea caducada: silencio', async (t) => {
+ const alDia = bancoArranque(t, { conCambios: false });
+ try {
+  await alDia.arrancar();
+  assert.equal(alDia.propuestas.length, 0);
+  assert.equal(alDia.posts.length, 0); // al día no dice nada
+ } finally { alDia.close(); }
+ const s = bancoArranque(t, { conCambios: true });
+ try {
+  await s.arrancar();
+  await s.propuestas[0].alNo({ motivo: 'sin-respuesta' }); // caduca: limpia y calla
+  assert.equal(s.posts.length, 0);
+ } finally { s.close(); }
+ // La solicitada con «actualiza» conserva su «Sin respuesta: no apliqué nada.»
+ const pedida = banco(t, { conCambios: true });
+ let prop;
+ pedida.ctx.confirmar = async (o) => { prop = o; };
+ try {
+  await pedida.run();
+  await prop.alNo({ motivo: 'sin-respuesta' });
+  assert.equal(pedida.posts.length, 1);
+  assert.match(pedida.posts[0].text, /Sin respuesta: no apliqu. nada/);
+ } finally { pedida.close(); }
+});
