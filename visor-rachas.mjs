@@ -4,7 +4,7 @@ const BASE = 'https://raw.githubusercontent.com/osmancitov/hugo';
 const fecha = t => new Date(t).toISOString().slice(0,10);
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const texto = (tag, valor, clase = '') => { const n = document.createElement(tag); n.textContent = valor; if (clase) n.className = clase; return n; };
-let pendiente, ultimo, revision = '', clase = 'todos', orden = 'variacion', direccionRacha = 'todas';
+let pendiente, ultimo, revision = '', clase = 'todos', orden = 'gp', direccionRacha = 'todas';
 async function json(url) {
   const r = await fetch(url, { signal: AbortSignal.timeout(25000), cache: 'no-cache' });
   if (!r.ok) throw Error('No se pudo leer GitHub (HTTP ' + r.status + ')');
@@ -57,7 +57,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['gp','Equilibrio G/P'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','Equilibrio G/P'],['rango','Rango del día ↓'],['rango-asc','Rango del día ↑'],['dias','Racha'],['subida','Variación acumulada ↓'],['variacion','Variación acumulada ↑']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
   const recargar=texto('button','Actualizar lectura','boton');
@@ -92,7 +92,7 @@ export function montarRachas(contenedor, catalogo, consulta) {
     const link=texto('a',ultimo.revision.slice(0,7)); link.href='https://github.com/osmancitov/hugo/commit/'+ultimo.revision; link.target='_blank'; link.rel='noopener'; fuente.append(link);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of ['Activo','Rango del día %','Racha','Variación acumulada %','G/P']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
+    for(const t of ['Activo','Rango diario %','Racha','Variación acumulada %','G/P']) { const th=texto('th',t); th.scope='col'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
