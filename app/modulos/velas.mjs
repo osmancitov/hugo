@@ -18,6 +18,7 @@ export function registrar(ctx) {
   ctx.registroPendiente=()=>motor.pendiente(); // para que «estado» no calle un registro pausado
   let cotejando = false;
   ctx.comando(/^\s*registr\w*(?:\s|$)/i, async(event,texto)=>{
+    if(ctx.preparandoCierreIntradia || ctx.intradiaInfo?.().ocupado) return avisar(event,'Hay una lectura intradiaria en curso; espera a que termine.');
     if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');
     const partes=texto.trim().replace(/[.!?]+$/,'').split(/[\s,;]+/);
     partes.shift();
@@ -75,6 +76,7 @@ export function registrar(ctx) {
   // misma via. Con diaria:true, un trabajo interrumpido DE LA PROPIA corrida (origen 'diaria')
   // se retoma en vez de bloquear; un trabajo pedido a mano no se toca.
   const ponerAlDia=async(event,{diaria=false}={})=>{
+    if(ctx.preparandoCierreIntradia || ctx.intradiaInfo?.().ocupado) return avisar(event,'Hay una lectura intradiaria en curso; espera a que termine.');
     if(cotejando) return avisar(event,'Ya hay un cotejo del universo en curso; no inicio otro registro.');
     const pendiente=leerEstado(archivoEstado());
     if(pendiente && pendiente.estado!=='terminado') {

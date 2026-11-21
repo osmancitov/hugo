@@ -257,3 +257,9 @@ Si la búsqueda automática termina sin novedades ni problemas, conserva «Verif
 - Texto bajo las barras (21-nov-2026): Rojos, Verdes e Iguales en una línea, separados por puntos medios, sin totales entre paréntesis; Fuente en la línea siguiente. La primera combina vela diaria y ticker de Binance; las otras usan ticker 24 h. Iguales se toma de la comparación propia de cada barra, nunca se copia de otra; si una lectura antigua no lo permite saber, dice sin dato. El detalle de cobertura y referencias sigue disponible en Ver tabla.
 
 - Fuente visible del conjunto: una sola línea tenue «Fuente: Binance», sin repetirla bajo cada barra. Los datos y las tablas conservan referencias y procedencia detalladas.
+
+### Cierre disponible antes de la primera lectura
+
+Antes de tomar una lectura, Hugo comprueba que estén guardados los cierres diarios UTC del día anterior que necesita la superficie de stocks. Si falta alguno, comprueba la hora del servidor y solicita solo las velas pendientes, con fecha y cierre exactos. Si todavía no están disponibles, espera un minuto y vuelve a comprobar solo las pendientes. Después consulta el ticker y guarda la foto con su hora real, sin atribuirla a medianoche si se retrasó. No hay límite de una hora ni fotos parciales por esa espera. No cambia las referencias de las tres barras.
+
+Durante esa preparación y la toma, la ingesta y sincronización no se solapan. La corrida diaria espera su turno y reutiliza lo ya recogido. Stop, cambio de día y las pausas de protección HTTP429/418 interrumpen el intento sin inventar fotos ni cierres. Esta mejora requiere la aprobación habitual de actualización en Debian; publicarla en GitHub no la instala.

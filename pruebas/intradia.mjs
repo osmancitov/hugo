@@ -358,7 +358,7 @@ test('consulta en el hito sin esperar reporte Slack; ciclo lento no se solapa ni
   let ahora=Date.parse('2026-11-21T14:13:47Z'), consultas=0, liberar;
   ctx.ahora=()=>ahora; ctx.conf.HUGO_INTRADIA_MINUTOS='5';
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
-  fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA','2611_AAA'),JSON.stringify([[T-DIA,'100','100','100','100']]));
+  fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA','2611_AAA'),JSON.stringify([[Date.UTC(2026,10,20),'100','100','100','100']]));
   ctx.publicarIntradia=async archivos=>{ahora=Date.parse('2026-11-21T14:27:00Z');return {archivos,commit:'abcdef0'};};
   global.setTimeout=(fn,ms)=>{timers.push({fn,ms});return {unref(){}};};
   ctx.reporte={crear:async()=>{await new Promise(r=>{liberar=r;}); return {final:async()=>{}};}};
@@ -372,4 +372,37 @@ test('consulta en el hito sin esperar reporte Slack; ciclo lento no se solapa ni
     assert.equal(ctx.intradiaInfo().proxima,Date.parse('2026-11-21T14:30:00Z'));
     assert.equal(timers[1].ms,180000);assert.equal(consultas,1);
   }finally{global.setTimeout=timeout;global.fetch=fuente;limpiar(p);}
+});
+
+test('primera foto espera cierre disponible, bloquea ingesta concurrente y usa hora real posterior', async () => {
+ const p=temp(),ctx=contexto(p);let ahora=Date.UTC(2026,10,22),rondas=0,consultasTicker=0;
+ try{
+  ctx.ahora=()=>ahora;ctx.esperar=async ms=>{assert.equal(ms,60000);assert.equal(ctx.preparandoCierreIntradia,true);ahora+=ms;};
+  fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  ctx.publicarIntradia=async archivos=>({archivos,commit:'abcdef0'});
+  const fetchImpl=async url=>{
+   url=new URL(url);
+   if(url.pathname.endsWith('/time')){rondas++;return {ok:true,json:async()=>({serverTime:ahora})};}
+   if(url.pathname.endsWith('/klines')){const inicio=Date.UTC(2026,10,21);return {ok:true,json:async()=>rondas===1?[]:[[inicio,'100','100','100','100','0',inicio+DIA-1,'0',0,'0','0','0']]};}
+   assert.equal(ctx.preparandoCierreIntradia,false);consultasTicker++;return {ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'100.01',openTime:ahora-DIA,closeTime:ahora}])};
+  };
+  registrarIntradia(ctx);const r=await ctx.tomarBarra({fetchImpl});
+  assert.equal(rondas,2);assert.equal(consultasTicker,1);assert.equal(r.generada,Date.UTC(2026,10,22,0,1));
+  const dia=leerDia(fs.readFileSync(path.join(p,'registros/intradia/stock/2026-11-22.json'),'utf8'));
+  assert.equal(dia.lecturas[0].generada,'2026-11-22T00:01:00.000Z');assert.equal(ctx.intradiaInfo().ocupado,false);assert.equal(ctx.preparandoCierreIntradia,false);
+ }finally{limpiar(p);}
+});
+
+test('429 preparando cierre respeta pausa duradera, libera guardias y no inventa foto',async()=>{
+ const p=temp(),ctx=contexto(p);ctx.ahora=()=>Date.UTC(2026,10,22);
+ try{
+  fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  let peticiones=0;const fetchImpl=async()=>{peticiones++;return {status:429,headers:{get:()=> '120'}};};
+  registrarIntradia(ctx);
+  await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/HTTP 429/);
+  assert.equal(ctx.intradiaInfo().ocupado,false);assert.equal(ctx.preparandoCierreIntradia,false);
+  assert.equal(ctx.intradiaInfo().pausa.hasta,Date.UTC(2026,10,22,0,2));
+  await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/Fuente pausada/);assert.equal(peticiones,1);
+  assert.equal(fs.existsSync(path.join(p,'registros/intradia/stock/2026-11-22.json')),false);
+ }finally{limpiar(p);}
 });

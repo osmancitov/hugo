@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { guardarEstado } from './registro-motor.mjs';
-import { generarBarra, leerBarra, escribirBarra, RUTA_BARRA } from './barra-movil.mjs';
+import { generarBarra, leerBarra, escribirBarra, RUTA_BARRA, universoBarra, cierreVelaDiaAnterior } from './barra-movil.mjs';
+import { asegurarCierreDiario } from './intradia-cierre.mjs';
 import { fetchConPausa, pausaFuente } from './intradia-fuente.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, esRutaIntradia, leerDia, leerIndice, unirDias, unirIndices } from './intradia-datos.mjs';
 
@@ -125,12 +126,29 @@ export function registrar(ctx) {
     return r;
   };
   const tomar = async (opciones = {}) => {
-    if (ocupado || ctx.sincronizacionEnCurso?.()) throw Error('Hay una lectura o sincronización en curso; no inicio otra.');
+    if (ocupado) throw Error('Hay una lectura intradiaria en curso; no inicio otra.');
     ocupado = true;
     ctx.activas?.set('intradia', { que: 'lectura y publicación intradiaria', desde: ahora(), largo: true });
     const parada = ctx.parada?.n;
     try {
       recuperarIntradia(raiz());
+      const objetivoDia = Math.floor((opciones.ahora ?? ahora()) / 86400000) * 86400000;
+      const comprobar = () => { if (ctx.parada?.n !== parada) throw Error('Lectura detenida a pedido antes de preparar el cierre.'); };
+      const reloj = () => opciones.ahora ?? ahora();
+      // El guardia comparte la exclusión de la toma: la diaria no modifica velas en paralelo.
+      const universo = universoBarra(dirVelas());
+      const necesitaCierre = universo.some(c => cierreVelaDiaAnterior(dirVelas(), c, objetivoDia - 86400000) === null);
+      if (necesitaCierre) {
+        ctx.preparandoCierreIntradia = true;
+        try {
+          while (ctx.registroOcupado?.() || ctx.sincronizacionEnCurso?.()) { comprobar(); await (ctx.esperar || (ms => new Promise(r => setTimeout(r, ms))))(60000); }
+          await asegurarCierreDiario({ dirVelas: dirVelas(), host: process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST,
+            fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), ahora: reloj, esperar: ctx.esperar,
+            comprobar, informar: informarAutomatico });
+          comprobar();
+          if (Math.floor(reloj() / 86400000) * 86400000 !== objetivoDia) throw Error('Cambió el día preparando el cierre; no tomo foto atrasada.');
+        } finally { ctx.preparandoCierreIntradia = false; }
+      } else if (ctx.registroOcupado?.() || ctx.sincronizacionEnCurso?.()) throw Error('Hay un registro o sincronización en curso; no inicio otra lectura.');
       // La única instantánea heredada se conserva tal como existe. Su comparada_con no
       // permite reconstruir otra foto; no se rellena el pasado.
       const heredada = leerOpcional(archivoLocal(raiz(), RUTA_BARRA));
@@ -156,7 +174,7 @@ export function registrar(ctx) {
       pendientes = Object.keys(pendientesIntradia(raiz())).length;
       pausa = pausaFuente(raiz());
     } catch (e) { problema = e.message; }
-    return { minutos, proxima, ultima: guardada, pendientes, error: problema, ocupado, retencion: null, pausa };
+    return { minutos, proxima, ultima: guardada, pendientes, error: problema, ocupado, preparandoCierre: Boolean(ctx.preparandoCierreIntradia), retencion: null, pausa };
   };
   ctx.reintentarIntradia = async () => {
     if (ocupado) throw Error('Hay una lectura intradiaria en curso.');
@@ -172,6 +190,7 @@ export function registrar(ctx) {
     if (info.ultima !== null) lineas.push(`Última guardada: ${new Date(info.ultima).toISOString().slice(0, 19).replace('T', ' ')} UTC.`);
     if (info.pendientes !== null) lineas.push(`Archivos pendientes de publicar: ${info.pendientes}.`);
     if (info.pausa && (info.pausa.hasta === null || info.pausa.hasta > ahora())) lineas.push(info.pausa.hasta === null ? `Fuente pausada por HTTP ${info.pausa.status}, sin plazo válido; requiere revisión.` : `Fuente pausada hasta ${new Date(info.pausa.hasta).toISOString()} por HTTP ${info.pausa.status}.`);
+    if (info.preparandoCierre) lineas.push('Preparando cierre diario antes de tomar la foto; se conserva su hora real.');
     if (info.error) lineas.push(`Problema: ${info.error}`);
     lineas.push('Sin borrado automático de registros.');
     return decir(e, lineas.join('\n'));

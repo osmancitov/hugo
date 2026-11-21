@@ -144,3 +144,16 @@ test('horario: último cerrado y próxima corrida alrededor del cierre UTC', () 
   assert.equal(proximaCorrida(Date.UTC(2026, 10, 21, 0, 5)), Date.UTC(2026, 10, 22, 0, 5), 'en el borde, la siguiente');
   assert.equal(proximaCorrida(Date.UTC(2026, 10, 21, 20, 0)), Date.UTC(2026, 10, 22, 0, 5));
 });
+
+test('diaria espera a la preparación del cierre antes de iniciar ingesta', async () => {
+ const b=banco();
+ try{
+  b.ctx.preparandoCierreIntradia=true;
+  b.ctx.esperar=async()=>{};
+  // La función de espera ya capturada consulta este cierre mutable.
+  let comprobaciones=0;
+  Object.defineProperty(b.ctx,'preparandoCierreIntradia',{get(){return comprobaciones++===0;}});
+  await b.ctx.cicloDiario('programada');
+  assert.ok(comprobaciones>=2);assert.deepEqual(b.llamadas,['ingesta','pasada']);
+ }finally{fs.rmSync(b.root,{recursive:true,force:true});}
+});

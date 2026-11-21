@@ -56,6 +56,10 @@ export function registrar(ctx) {
       hilo = await ctx.reporte.hilo({ canal: ctx.canal, texto: `Puesta al día diaria (${origen}): registros hasta el ${fecha} y publicación; reporto en este hilo.` });
       // 1) Ingesta: la misma vía de «pon al día». Si la propia corrida quedó interrumpida, se
       // retoma; si otro registro corre, se espera sin tocarlo.
+      while (ctx.preparandoCierreIntradia || ctx.intradiaInfo?.().ocupado) {
+        if (ahora() - t0 > TOPE_ESPERA_REGISTRO) { await avisar('La preparación del cierre sigue pendiente; conservo el ciclo diario para el próximo arranque.'); return; }
+        await esperar(60000);
+      }
       await ctx.ponerAlDiaDiaria({ channel: ctx.canal, thread_ts: hilo });
       const tope = ahora() + TOPE_ESPERA_REGISTRO;
       while (ctx.registroOcupado()) {
