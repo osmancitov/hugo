@@ -568,7 +568,7 @@ function parsearBarraVisor(texto) {
   const num = (t) => { const v = t == null || t === '' ? NaN : Number(t); return Number.isFinite(v) ? v : null; };
   const n = (k) => Number(campos[k]);
   if (!Number.isInteger(n('suben')) || !Number.isInteger(n('bajan'))) return null;
-  const b = { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
+  const b = { generada: Date.parse(campos.generada), inicio: Date.parse(campos.inicio), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
   // Movimiento entre las dos últimas consultas (decisión del usuario, 20-nov-2026): solo si
   // la instantánea trae el bloque y cierra; sin lectura anterior comparable, no se dibuja.
   // Barra del día anterior (decisión del usuario, 21-nov-2026): precio actual contra el cierre
@@ -601,7 +601,16 @@ function duracionBarra(desde, hasta) {
   if (!Number.isFinite(ms) || ms < 0) return 'duración no disponible';
   if (ms < 60000 && ms > 0) return '<1 min';
   const minutos = Math.round(ms / 60000), horas = Math.floor(minutos / 60), resto = minutos % 60;
-  return (ms % 60000 ? '≈' : '') + [horas ? `${horas} h` : '', resto || !horas ? `${resto} min` : ''].filter(Boolean).join(' ');
+  return [horas ? `${horas} h` : '', resto || !horas ? `${resto} min` : ''].filter(Boolean).join(' ');
+}
+function fechaPeriodoBarra(ms) {
+  if (!Number.isFinite(ms)) return 'sin dato';
+  const d = new Date(ms), meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const h = d.getUTCHours();
+  return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+function periodoBarra(desde, hasta, tiempo) {
+  return `Desde: ${fechaPeriodoBarra(desde)}\nHasta: ${fechaPeriodoBarra(hasta)}\nTiempo: ${tiempo}`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const zona = compacta ? '' : ' UTC', zonaParentesis = compacta ? '' : ' (UTC)';
@@ -612,7 +621,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const hora = (ms) => new Date(ms).toISOString().slice(0, compacta ? 16 : 19).replace('T', ' ');
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
-  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt, enlace) => {
+  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt, enlace, periodo) => {
     const t = document.createElement('div');
     t.className = 'barra-movil-titulo';
     t.textContent = tituloTxt;
@@ -632,7 +641,11 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     nota.textContent = notaTxt;
     const sec = document.createElement('div');
     sec.className = 'barra-movil-sec';
-    sec.append(t, g, nums, nota);
+    const fechas = document.createElement('div');
+    fechas.className = 'barra-movil-periodo';
+    fechas.style.whiteSpace = 'pre-line';
+    fechas.textContent = periodo;
+    sec.append(t, fechas, g, nums, nota);
     if (enlace) {
       const a = document.createElement('a');
       a.className = 'barra-movil-enlace';
@@ -658,22 +671,24 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     enlaceSuperficie.textContent = 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(
-      `Cierre del día anterior (${d.ref}) · ${duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada)} · hasta ${hora(b.generada)}${zona}`,
+      'Cierre del día anterior',
       d.suben, d.bajan, d.suben + d.bajan,
       `Verdes ${d.suben} · Rojos ${d.bajan} (${d.suben + d.bajan} con vela)`,
       `Cierre de la vela diaria del ${d.ref}${zonaParentesis}, referencia fija del día · iguales entre verdes: ${d.iguales}` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : ''),
-      '#/i/iceberg-stock/barra-dia' + sufijo
+      '#/i/iceberg-stock/barra-dia' + sufijo,
+      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000 - 1, b.generada, duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada))
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
   // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
   // de cierres, no un corte común que no existe.
   caja.append(seccion(
-    `24 h móviles por activo · cierres hasta ${hora(b.fin)}${zona}`,
+    '24 h móviles por activo',
     b.suben, b.bajan, b.conDato,
     `Verdes ${b.suben} · Rojos ${b.bajan} (${b.conDato} con dato de ${b.consultados})`,
-    `Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)}${zonaParentesis} · Fuente: ticker 24 h de Binance`,
-    '#/i/iceberg-stock/barra-24h' + sufijo
+    `Desde muestra el inicio más antiguo; Hasta, el cierre más reciente. No son un intervalo común. Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)}${zonaParentesis} · Fuente: ticker 24 h de Binance`,
+    '#/i/iceberg-stock/barra-24h' + sufijo,
+    periodoBarra(b.inicio, b.fin, '24 h por activo')
   ));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
@@ -686,11 +701,12 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const m = b.movimiento;
   if (m) {
     const sec = seccion(
-      `Entre consultas · ${duracionBarra(m.comparadaCon, b.generada)} · ${hora(m.comparadaCon)} a ${hora(b.generada)}${zona}`,
+      'Entre consultas',
       m.suben, m.bajan, m.suben + m.bajan,
       `Verdes ${m.suben} · Rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
       `Cada activo se mide con el cierre de su propia ventana` + (m.iguales === null ? '' : ` · iguales entre verdes: ${m.iguales}`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : ''),
-      '#/i/iceberg-stock/barra-movimiento' + sufijo
+      '#/i/iceberg-stock/barra-movimiento' + sufijo,
+      periodoBarra(m.comparadaCon, b.generada, duracionBarra(m.comparadaCon, b.generada))
     );
     const ref = document.createElement('div');
     ref.className = 'barra-movil-nota';

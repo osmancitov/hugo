@@ -337,7 +337,7 @@ test('guardia de la sincronización: la instantánea es archivo vivo (el local g
 // Executes the real browser parser and table classifiers, not copies of their logic.
 test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con cada barra', async () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const cargar = html.slice(html.indexOf('async function cargarBarra()'), html.indexOf('function vistaBarra('));
+  const cargar = html.slice(html.indexOf('async function cargarBarra()'), html.indexOf('function fechaPeriodoBarra('));
   const defs = html.slice(html.indexOf('const BARRAS_TABLA ='), html.indexOf('const precioTabla ='));
   const base = {
     inicio: 1000, cierreMin: 2000, fin: 3000, dispersionMs: 1000,
@@ -380,12 +380,12 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
 
 test('duración de títulos: horas/minutos reales, no frecuencia nominal', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const codigo = html.slice(html.indexOf('function duracionBarra('), html.indexOf('function vistaBarra('));
+  const codigo = html.slice(html.indexOf('function duracionBarra('), html.indexOf('function fechaPeriodoBarra('));
   const f = vm.runInNewContext(codigo + ';duracionBarra');
   const inicio = Date.parse('2026-11-21T00:00:00Z');
   assert.equal(f(inicio, inicio + 14 * 3600000 + 55 * 60000), '14 h 55 min');
   assert.equal(f(inicio, inicio + 300000), '5 min');
-  assert.equal(f(inicio, inicio + 300043), '≈5 min');
+  assert.equal(f(inicio, inicio + 300043), '5 min');
   assert.equal(f(inicio, inicio + 3600000), '1 h');
   assert.equal(f(inicio, inicio + 11000), '<1 min');
   assert.equal(f(inicio, inicio + 47 * 60000), '47 min');
@@ -393,4 +393,14 @@ test('duración de títulos: horas/minutos reales, no frecuencia nominal', () =>
   assert.equal(f(NaN, inicio), 'duración no disponible');
   assert.match(html, /duracionBarra\(Date.parse\(d.ref/);
   assert.match(html, /duracionBarra\(m.comparadaCon, b.generada\)/);
+});
+
+
+test('periodos visibles en tres líneas Desde/Hasta/Tiempo y fecha de doce horas UTC', () => {
+ const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
+ const codigo=html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('));
+ const f=vm.runInNewContext(codigo+';periodoBarra');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'Desde: Nov 20 · 11:59 PM\nHasta: Nov 21 · 3:00 PM\nTiempo: 15 h');
+ assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'Desde: Nov 21 · 12:00 AM');
+ assert.match(html,/No son un intervalo común/);
 });
