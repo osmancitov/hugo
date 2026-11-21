@@ -400,6 +400,8 @@ test('periodos unificados con meses legibles y reloj de24horasUTC', () => {
  const f=vm.runInNewContext(codigo+';periodoBarra');
  assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 23:59-nov 21 · 15:00 UTC');
  assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 00:00-sin dato UTC');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T16:00:00Z'),'dia'),'00:00-16:00 UTC');
+ assert.equal(f(Date.parse('2026-11-21T15:00:00Z'),Date.parse('2026-11-21T16:00:00Z'),'horas'),'15:00-16:00 UTC');
  assert.match(html,/24 h por activo/);
 });
 

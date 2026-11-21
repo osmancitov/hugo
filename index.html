@@ -615,7 +615,11 @@ function fechaPeriodoBarra(ms) {
   const h = d.getUTCHours();
   return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${String(h).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
-function periodoBarra(desde, hasta, tiempo) {
+function periodoBarra(desde, hasta, modo) {
+  if (modo === 'dia' || modo === 'horas') {
+    const hora = ms => Number.isFinite(ms) ? new Date(ms).toISOString().slice(11,16) : 'sin dato';
+    return `${modo === 'dia' ? '00:00' : hora(desde)}-${hora(hasta)} UTC`;
+  }
   return `${fechaPeriodoBarra(desde)}-${fechaPeriodoBarra(hasta)} UTC`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
@@ -681,7 +685,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
       d.suben, d.bajan, d.suben + d.bajan,
       '',
       '#/i/iceberg-stock/barra-dia' + sufijo,
-      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000 - 1, b.generada, duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada)), d.iguales
+      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada, 'dia'), d.iguales
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
@@ -710,7 +714,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
       m.suben, m.bajan, m.suben + m.bajan,
       '',
       '#/i/iceberg-stock/barra-movimiento' + sufijo,
-      periodoBarra(m.comparadaCon, b.generada, duracionBarra(m.comparadaCon, b.generada)), m.iguales ?? 0
+      periodoBarra(m.comparadaCon, b.generada, 'horas'), m.iguales ?? 0
     );
     caja.append(sec);
   }
@@ -730,7 +734,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
 const BARRAS_TABLA = {
   'barra-dia': {
     titulo: 'Rojos, grises y verdes contra el cierre del día anterior',
-    nota: (b) => periodoBarra(Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000 - 1, b.generada),
+    nota: (b) => periodoBarra(Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000, b.generada, 'dia'),
     apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
     fila: (a) => {
       if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null, refN: null };
@@ -750,7 +754,7 @@ const BARRAS_TABLA = {
   },
   'barra-movimiento': {
     titulo: 'Rojos, grises y verdes entre las dos últimas consultas',
-    nota: (b) => periodoBarra(b.movimiento.comparadaCon, b.generada),
+    nota: (b) => periodoBarra(b.movimiento.comparadaCon, b.generada, 'horas'),
     apta: (b) => b.movimiento && b.activos && [...b.activos.values()].every((a) => a.mov !== undefined),
     fila: (a) => {
       const res = { sube: 'Verde', igual: 'Igual', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];
