@@ -189,11 +189,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const fila = malla[ultima] || [];
     for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], '#ded0a4', 1.2);
     if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = ORO; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
-    // Rótulos en los bordes, sin escribir 113 nombres superpuestos.
-    const salto = Math.max(1, Math.ceil(codigos.length / (ancho < 600 ? 4 : 8)));
-    for (let i = 0; i < codigos.length; i += salto) {
-      const p = proyectar(px(i), .78, 0); p.y = alto - 52; texto(p, codigos[i], '#bbb39e', 'center');
-    }
     if (ancho < 600 && barras.length) {
       texto({ x: ancho - 10, y: 43 }, `${hora(barras[0].generada)} → ${hora(barras.at(-1).generada)}`, '#bbb39e', 'right');
     } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
