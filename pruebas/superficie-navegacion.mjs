@@ -79,3 +79,44 @@ test('reloj del observatorio actualiza el minuto sin red y se desmonta sin dejar
     ms += 60000; pendientes[1].fn(); assert.equal(tiempo.textContent, '13:08'); assert.equal(pendientes.length, 2);
   } finally { global.document = anterior; }
 });
+
+test('mantener activo avanza cada 100ms, suelta sin paso duplicado y se detiene en extremo', () => {
+  const anterior = global.document, tiempos = [], cancelados = new Set(); let llamados = 0;
+  global.document = { createElement: (tag) => new Elemento(tag) };
+  try {
+    const selector = { selectedIndex: 0, options: Array(15) }; let pasos;
+    pasos = montarPasos(selector, 'Activo', (i) => { selector.selectedIndex = i; llamados++; pasos.actualizar(); }, {
+      repetir: true, programar: (fn, ms) => { tiempos.push({ fn, ms }); return tiempos.length; }, cancelar: (id) => cancelados.add(id),
+    });
+    const [previo,, siguiente] = pasos.grupo.hijos;
+    siguiente.onpointerdown({ button: 0, pointerId: 1 });
+    assert.equal(selector.selectedIndex, 1); assert.equal(tiempos[0].ms, 100);
+    for (let i = 0; i < 9; i++) tiempos[i].fn();
+    assert.equal(selector.selectedIndex, 10); assert.equal(llamados, 10);
+    siguiente.onpointerup(); assert.ok(cancelados.has(10));
+    siguiente.onclick({ detail: 1 }); assert.equal(llamados, 10);
+    tiempos[9].fn(); assert.equal(llamados, 10); // callback ya encolado no revive
+    siguiente.onclick({ detail: 0 }); assert.equal(llamados, 11); // teclado
+    siguiente.onpointerdown({ button: 0 });
+    for (let i = 10; i < tiempos.length && i < 40; i++) tiempos[i].fn();
+    assert.equal(selector.selectedIndex, 14); assert.equal(siguiente.disabled, true);
+    const antes = llamados; siguiente.onpointerdown({ button: 0 }); assert.equal(llamados, antes);
+    previo.onpointerdown({ button: 0 }); assert.equal(selector.selectedIndex, 13);
+    pasos.desmontar(); tiempos.at(-1).fn(); assert.equal(selector.selectedIndex, 13);
+  } finally { global.document = anterior; }
+});
+
+test('cancelar puntero detiene recorrido; lecturas conservan un paso por clic', () => {
+  const anterior = global.document, tiempos = []; global.document = { createElement: (tag) => new Elemento(tag) };
+  try {
+    const selector = { selectedIndex: 5, options: Array(20) }; let pasos;
+    pasos = montarPasos(selector, 'Activo', (i) => { selector.selectedIndex = i; pasos.actualizar(); }, { repetir: true, programar: (fn) => { tiempos.push(fn); return 1; }, cancelar: () => {} });
+    const previo = pasos.grupo.hijos[0]; previo.onpointerdown({ button: 2 }); assert.equal(selector.selectedIndex, 5);
+    previo.onpointerdown({ button: 0 }); assert.equal(selector.selectedIndex, 4);
+    previo.onpointercancel(); tiempos[0](); assert.equal(selector.selectedIndex, 4);
+    const lecturas = montarPasos(selector, 'Lectura', (i) => { selector.selectedIndex = i; });
+    assert.equal(lecturas.grupo.hijos[0].onpointerdown, undefined);
+    lecturas.grupo.hijos[0].onclick({ detail: 1 }); assert.equal(selector.selectedIndex, 3);
+    pasos.desmontar(); lecturas.desmontar();
+  } finally { global.document = anterior; }
+});

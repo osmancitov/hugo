@@ -32,7 +32,7 @@ export function montarRelojObservatorio(contenedor, { ahora = Date.now, programa
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
 // Misma navegación para activos y lecturas: los extremos no saltan al otro lado.
-export function montarPasos(selector, nombre, mover) {
+export function montarPasos(selector, nombre, mover, { repetir = false, programar = setTimeout, cancelar = clearTimeout } = {}) {
   const grupo = crear('span', 'superficie-pasos');
   const anterior = crear('button', 'superficie-flecha', '←');
   const siguiente = crear('button', 'superficie-flecha', '→');
@@ -41,19 +41,49 @@ export function montarPasos(selector, nombre, mover) {
     boton.setAttribute('aria-label', `${nombre} ${direccion}`);
     boton.title = `${nombre} ${direccion}`;
   }
+  let temporizador = null, pulsado = null, vivo = true;
+  const detener = () => { cancelar(temporizador); temporizador = null; pulsado = null; };
   const actualizar = () => {
     anterior.disabled = selector.selectedIndex <= 0;
     siguiente.disabled = selector.selectedIndex < 0 || selector.selectedIndex >= selector.options.length - 1;
+    if (pulsado?.disabled) detener();
   };
   const paso = (delta) => {
     const indice = selector.selectedIndex + delta;
     if (indice >= 0 && indice < selector.options.length) mover(indice);
   };
-  anterior.onclick = () => paso(-1);
-  siguiente.onclick = () => paso(1);
+  for (const [boton, delta] of [[anterior, -1], [siguiente, 1]]) {
+    boton.onclick = (e) => { if (vivo && (!repetir || !e?.detail)) paso(delta); };
+    if (!repetir) continue;
+    boton.style && (boton.style.touchAction = 'none');
+    boton.title += ' · Mantén pulsado para recorrer 10 activos por segundo';
+    boton.onpointerdown = (e) => {
+      if (!vivo || boton.disabled || (e.button !== undefined && e.button !== 0) || e.isPrimary === false) return;
+      detener(); pulsado = boton;
+      boton.setPointerCapture?.(e.pointerId);
+      const avanzar = () => {
+        if (!vivo || pulsado !== boton || boton.disabled) { detener(); return; }
+        paso(delta);
+        if (pulsado === boton && !boton.disabled) temporizador = programar(avanzar, 100);
+      };
+      avanzar();
+    };
+    boton.onpointerup = boton.onpointercancel = boton.onlostpointercapture = detener;
+    boton.oncontextmenu = (e) => e.preventDefault();
+  }
+  const alOcultar = () => { if (globalThis.document?.hidden) detener(); };
+  if (repetir) {
+    globalThis.window?.addEventListener?.('blur', detener);
+    globalThis.document?.addEventListener?.('visibilitychange', alOcultar);
+  }
   grupo.append(anterior, selector, siguiente);
   actualizar();
-  return { grupo, actualizar };
+  return { grupo, actualizar, desmontar() {
+    vivo = false; detener();
+    globalThis.window?.removeEventListener?.('blur', detener);
+    globalThis.document?.removeEventListener?.('visibilitychange', alOcultar);
+    for (const b of [anterior, siguiente]) b.onclick = b.onpointerdown = b.onpointerup = b.onpointercancel = b.onlostpointercapture = b.oncontextmenu = null;
+  } };
 }
 
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
@@ -70,7 +100,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
-  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i));
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i), { repetir: true });
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
@@ -204,5 +234,5 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.onpointercancel = () => { arrastre = null; };
   const observador = new ResizeObserver(dibujar); observador.observe(caja);
   dibujar(); alSeleccionar(ultima);
-  return { datos, desmontar() { viva = false; observador.disconnect(); canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = null; } };
+  return { datos, desmontar() { viva = false; pasosActivo.desmontar(); pasosLectura.desmontar(); observador.disconnect(); canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = null; } };
 }
