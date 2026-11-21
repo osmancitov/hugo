@@ -75,7 +75,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
   etiquetaAltura.append(relieve);
-  controles.append(etiquetaLectura, etiquetaActivo, etiquetaAltura);
+  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura);
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra cierre diario fijo. Los selectores permiten leer cada punto. Arrastra para girar.');
