@@ -54,7 +54,7 @@ test('consultarTanda pide la lista codificada al host dado y rechaza tandas de m
   let url = null;
   const fetchFalso = async (u) => { url = u; return { ok: true, text: async () => '[]' }; };
   await consultarTanda(['AAPL', 'MSFT'], { fetchImpl: fetchFalso, host: 'https://data-api.binance.vision' });
-  assert.equal(url, 'https://data-api.binance.vision/api/v3/ticker/24hr?symbols=' + encodeURIComponent('["AAPLBUSDT","MSFTBUSDT"]'));
+  assert.equal(url, 'https://data-api.binance.vision/api/v3/ticker?symbols=' + encodeURIComponent('["AAPLBUSDT","MSFTBUSDT"]') + '&windowSize=1d');
   await assert.rejects(() => consultarTanda(Array.from({ length: 101 }, (_, i) => `S${i}`), { fetchImpl: fetchFalso }), /100/);
   assert.deepEqual(await consultarTanda([], { fetchImpl: fetchFalso }), []);
   const errorHttp = async () => ({ ok: false, status: 451, text: async () => '{}' });
@@ -122,7 +122,7 @@ test('generarBarra: universo del registro, dos tandas, barra e instantánea en d
     const pedidas = [];
     const fetchFalso = async (u) => {
       pedidas.push(u);
-      const simbolos = JSON.parse(decodeURIComponent(u.split('symbols=')[1]));
+      const simbolos = JSON.parse(new URL(u).searchParams.get('symbols'));
       const cuerpo = simbolos.map((s, i) => ticker(s, 10, i % 2 ? 9 : 11, 1000, 2000));
       return { ok: true, text: async () => JSON.stringify(cuerpo) };
     };
@@ -255,7 +255,7 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
     const velas = path.join(dir, 'velas-24h');
     for (const c of ['AAA', 'BBB']) fs.mkdirSync(path.join(velas, 'stock', c), { recursive: true });
     const responder = (precios, cierres) => async (u) => {
-      const simbolos = JSON.parse(decodeURIComponent(u.split('symbols=')[1]));
+      const simbolos = JSON.parse(new URL(u).searchParams.get('symbols'));
       return { ok: true, text: async () => JSON.stringify(simbolos.map((s) => ticker(s, 10, precios[s], 1000, cierres[s]))) };
     };
     const p1 = { AAABUSDT: 10, BBBBUSDT: 20 };
@@ -439,4 +439,17 @@ test('barras comunes separan igualdad gris de subidas verdes sin cambiar datos g
   }
  }
  assert.equal(JSON.stringify({...b,activos:[...b.activos]}),antes);
+});
+
+// El rótulo conserva extremos devueltos por la consulta, sin corregirlos artificialmente.
+test('rolling 1d conserva minuto real y separación entre tandas en rango y precios', () => {
+ const inicio=Date.parse('2026-11-20T16:00:00Z');
+ const fin=Date.parse('2026-11-21T16:00:00.625Z');
+ const b=calcularBarra([[ticker('IWMBUSDT',265.09,259.12,inicio,fin)],[ticker('TQQQBUSDT',45.29,43.19,inicio,fin+626)]],['IWM','TQQQ']);
+ assert.equal(b.inicio,inicio);assert.equal(b.fin,fin+626);
+ assert.equal(b.dispersionMs,626);assert.equal(b.bajan,2);
+ assert.equal(b.activos[0].ultimoTexto,'259.12');
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const f=vm.runInNewContext(html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('))+';periodoBarra');
+ assert.equal(f(b.inicio,b.fin),'nov 20 · 16:00-nov 21 · 16:00 UTC');
 });

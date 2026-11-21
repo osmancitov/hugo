@@ -5,9 +5,11 @@
 // recursos, sin construir un registro propio ni reconstruir nada; la barra acompana al
 // iceberg de stocks para ver moverse la frontera durante el dia).
 //
-// Una sola consulta por tanda al endpoint /api/v3/ticker/24hr con la lista de simbolos
-// (documentacion oficial de Binance: maximo 100 simbolos por consulta; la ventana es movil
-// y la cierra Binance al responder, sin endTime propio). La particion es estable: universo
+// Una consulta por tanda a /api/v3/ticker?windowSize=1d, calculada desde Database.
+// Binance cierra al pedirla y redondea el inicio al minuto: 24 h + hasta 59 999 ms.
+// Maximo 100 simbolos; peso 4 por simbolo, limitado a 200 por tanda (113 -> 400).
+// El limite por IP es compartido con las demas consultas; se conserva la pausa 429/418.
+// No se fuerza la hora ni se reconstruyen precios. La particion es estable: universo
 // ordenado, mitad y mitad (113 -> 57 + 56); cada activo consulta siempre en su tanda.
 //
 // Regla del plano: la misma del iceberg publicado (decision del usuario, 20-nov-2026: «solo
@@ -89,7 +91,7 @@ export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_P
   if (!codigos.length) return [];
   if (codigos.length > MAX_SIMBOLOS) throw new Error(`Tanda de ${codigos.length} simbolos; el maximo documentado es ${MAX_SIMBOLOS}.`);
   const lista = encodeURIComponent(JSON.stringify(codigos.map(simboloStock)));
-  const r = await fetchImpl(`${host}/api/v3/ticker/24hr?symbols=${lista}`, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'hugo' } });
+  const r = await fetchImpl(`${host}/api/v3/ticker?symbols=${lista}&windowSize=1d`, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'hugo' } });
   const cuerpo = await r.text();
   if (!r.ok) throw new Error(`Binance HTTP ${r.status}; no equivale a una barra vacia.`);
   let datos;
