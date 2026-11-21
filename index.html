@@ -676,7 +676,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     caja.append(seccion(
       'Cierre del día anterior',
       d.suben, d.bajan, d.suben + d.bajan,
-      `Rojos ${d.bajan} · Verdes ${d.suben} · Iguales: ${d.iguales}`,
+      `Rojos ${d.bajan} · Verdes ${d.suben} · Iguales ${d.iguales}`,
       '',
       '#/i/iceberg-stock/barra-dia' + sufijo,
       periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000 - 1, b.generada, duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada))
@@ -688,7 +688,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   caja.append(seccion(
     '24 h móviles por activo',
     b.suben, b.bajan, b.conDato,
-    `Rojos ${b.bajan} · Verdes ${b.suben} · Iguales: ${b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 'sin dato'}`,
+    `Rojos ${b.bajan} · Verdes ${b.suben} · Iguales ${b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 'sin dato'}`,
     '',
     '#/i/iceberg-stock/barra-24h' + sufijo,
     periodoBarra(b.inicio, b.fin, '24 h por activo')
@@ -706,7 +706,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     const sec = seccion(
       'Entre consultas',
       m.suben, m.bajan, m.suben + m.bajan,
-      `Rojos ${m.bajan} · Verdes ${m.suben} · Iguales: ${m.iguales === null ? 'sin dato' : m.iguales}`,
+      `Rojos ${m.bajan} · Verdes ${m.suben} · Iguales ${m.iguales === null ? 'sin dato' : m.iguales}`,
       '',
       '#/i/iceberg-stock/barra-movimiento' + sufijo,
       periodoBarra(m.comparadaCon, b.generada, duracionBarra(m.comparadaCon, b.generada))

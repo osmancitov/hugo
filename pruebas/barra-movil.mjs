@@ -286,7 +286,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
 
   assert.match(visor, /sin cierre nuevo/);
-  assert.match(visor, /Iguales:/); // el verde no afirma aumento: incluye la igualdad, explícito
+  assert.match(visor, /Iguales /); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /Cierre del día anterior/);
   assert.match(visor, /Fuente: Binance/);
