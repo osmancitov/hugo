@@ -20,8 +20,7 @@ export function montarRelojObservatorio(contenedor, { ahora = Date.now, programa
   const tiempo = crear('time');
   tiempo.title = 'Hora del dispositivo expresada en UTC, no una cotización en vivo';
   titulo.append(document.createTextNode('Reloj del observatorio: '), tiempo);
-  const nota = crear('p', 'superficie-nota', 'Todas las lecturas usan esta referencia horaria. La hora de cada foto se muestra por separado.');
-  caja.append(titulo, linea, nota); contenedor.append(caja);
+  caja.append(titulo, linea); contenedor.append(caja);
   let temporizador = null, vivo = true;
   const actualizar = () => {
     if (!vivo) return;

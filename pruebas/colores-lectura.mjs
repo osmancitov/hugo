@@ -40,7 +40,7 @@ test('detalle diario nace de velas exactas sin reescribir los registros',()=>{
 test('entradas comunes y leyendas no conservan reglas visuales viejas',()=>{
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sup=fs.readFileSync(new URL('../visor-superficie.mjs',import.meta.url),'utf8');
- for(const texto of [html,sup])assert.doesNotMatch(texto,/cero cuenta como verde|no bajó entre lecturas|sin comparación nueva|Las caras unen|sin significado de proximidad|Altura: cambio porcentual|activos · orden A|const salto = Math.max|arrastra para girar|Altura frente al cierre fijo/);
+ for(const texto of [html,sup])assert.doesNotMatch(texto,/cero cuenta como verde|no bajó entre lecturas|sin comparación nueva|Las caras unen|sin significado de proximidad|Altura: cambio porcentual|activos · orden A|const salto = Math.max|arrastra para girar|Altura frente al cierre fijo|Todas las lecturas usan esta referencia horaria|lecturas reales guardadas/);
  for(const texto of [html,sup])assert.match(texto,/colores-lectura.mjs/);
  assert.match(sup,/activo = -1/);
  assert.doesNotMatch(sup,/superficie-leyenda|ETIQUETAS_LECTURA/);
