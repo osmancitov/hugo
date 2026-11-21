@@ -661,7 +661,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   if (d) {
     const enlaceSuperficie = document.createElement('a');
     enlaceSuperficie.className = 'barra-movil-enlace';
-    enlaceSuperficie.href = compacta ? '#/i/iceberg-stock' : 'superficie.html';
+    enlaceSuperficie.href = compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html';
     enlaceSuperficie.textContent = compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(

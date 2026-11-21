@@ -407,7 +407,7 @@ test('2D y 3D comparten periodos y tablas, sin Lectura redundante y con navegaci
  const vista=html.slice(html.indexOf('function vistaBarra('),html.indexOf('const BARRAS_TABLA'));
  const tablas=html.slice(html.indexOf('const BARRAS_TABLA'),html.indexOf('const precioTabla'));
  assert.doesNotMatch(vista,/Lectura:/);
- assert.ok(vista.includes("compacta ? '#/i/iceberg-stock' : 'superficie.html'"));
+ assert.ok(vista.includes("compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html'"));
  assert.ok(vista.includes("compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas'"));
  assert.equal((tablas.match(/nota: \(b\) => periodoBarra\(/g)||[]).length,3);
  assert.doesNotMatch(tablas,/Lectura:|Referencia fija:|toISOString/);
