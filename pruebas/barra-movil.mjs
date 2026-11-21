@@ -400,7 +400,7 @@ test('periodos visibles en tres líneas Desde/Hasta/Tiempo y fecha de doce horas
  const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
  const codigo=html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('));
  const f=vm.runInNewContext(codigo+';periodoBarra');
- assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 11:59 PM - nov 21 · 3:00 PM\nTiempo: 15 h');
- assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 12:00 AM - sin dato');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 11:59 PM - nov 21 · 3:00 PM - 15 h');
+ assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 12:00 AM - sin dato - sin dato');
  assert.match(html,/24 h por activo/);
 });

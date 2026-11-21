@@ -611,7 +611,7 @@ function fechaPeriodoBarra(ms) {
   return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 function periodoBarra(desde, hasta, tiempo) {
-  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)}\nTiempo: ${tiempo}`;
+  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)} - ${tiempo}`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const zona = compacta ? '' : ' UTC';
