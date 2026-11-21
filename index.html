@@ -96,11 +96,14 @@ canvas { display: block; width: 100%; height: auto; margin: 0 auto; }
 /* Barra móvil 24 h (stocks): al pie del iceberg, misma orientación que las minis de la portada
    (rojo a la izquierda, verde a la derecha) y mismos colores sólidos de la casa. */
 .barra-movil { margin-top: .6rem; }
+.barra-movil-sec { margin-top: 1.15rem; }
+.barra-tabla td { white-space: normal !important; }
 .barra-movil-titulo { font-size: .85rem; color: var(--texto); margin-bottom: .25rem; }
 .barra-movil-graf { display: flex; height: .6rem; border-radius: 2px; overflow: hidden; background: var(--borde); }
 .barra-movil-graf span { display: block; height: 100%; }
 .barra-movil-nums { font-size: .85rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .barra-movil-nota { color: var(--tenue); font-size: .8rem; font-style: italic; margin-top: .15rem; }
+.barra-movil-enlace { display: inline-block; font-size: .85rem; margin-top: .2rem; }
 button.boton {
   background: none; border: 1px solid var(--oro); color: var(--oro);
   font-family: inherit; font-size: .85rem; padding: .35rem .8rem; border-radius: 3px; cursor: pointer;
@@ -480,10 +483,18 @@ async function cargarBarra() {
   const r = await fetch(`${RUTA_BARRA}?t=${Math.floor(Date.now() / 60000)}`);
   if (!r.ok) return null;
   const campos = {};
+  const activos = new Map(); // detalle por activo: las tablas de las tres barras
   for (const linea of (await r.text()).split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
-    if (m) campos[m[1]] = m[2];
+    if (m) { campos[m[1]] = m[2]; continue; }
+    const a = linea.match(/^([A-Z0-9]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/);
+    if (a) {
+      const e = activos.get(a[1]) || {};
+      e[a[2]] = a[3];
+      activos.set(a[1], e);
+    }
   }
+  const num = (t) => { const v = t == null || t === '' ? NaN : Number(t); return Number.isFinite(v) ? v : null; };
   const n = (k) => Number(campos[k]);
   if (!Number.isInteger(n('suben')) || !Number.isInteger(n('bajan'))) return null;
   const b = { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
@@ -500,21 +511,27 @@ async function cargarBarra() {
     const enteros = [m.suben, m.bajan, m.sinCierreNuevo, m.sinPrevia].every(Number.isInteger) && (m.iguales === null || Number.isInteger(m.iguales));
     if (enteros && Number.isFinite(m.comparadaCon) && m.suben + m.bajan + m.sinCierreNuevo + m.sinPrevia === b.conDato) b.movimiento = m;
   }
+  if (activos.size === b.conDato) {
+    for (const [codigo, e] of activos) {
+      const ultimo = num(e.ultimo);
+      if (ultimo === null) { activos.delete(codigo); continue; } // sin último legible: no entra en tablas
+      e.ultimoN = ultimo;
+      e.aperturaN = num(e.apertura);
+      e.diaCierreN = e.dia_cierre === 'sin dato' ? null : num(e.dia_cierre);
+      e.previoN = e.previo === 'sin dato' ? null : num(e.previo);
+    }
+    if (activos.size === b.conDato) b.activos = activos;
+  }
   return b;
 }
 function vistaBarra(b) {
-  // Los dos instantes, visibles y en el formato del usuario («HH:MM:SS UTC-4», 21-nov-2026):
-  // el de ESTA lectura arriba del bloque y el de la lectura anterior dentro de la barra de
-  // movimiento, que es su referencia.
-  const fhLocal = (ms) => {
-    const f = new Intl.DateTimeFormat('es', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
-    const h = new Intl.DateTimeFormat('es', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(ms));
-    return `${f} ${h} UTC-4`;
-  };
+  // Los dos instantes, visibles (decisión del usuario, 21-nov-2026: en UTC, «sin el cero»,
+  // como el iceberg y la API): el de ESTA lectura arriba del bloque y el de la lectura
+  // anterior dentro de la barra de movimiento, que es su referencia.
   const hora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
-  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt) => {
+  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt, enlace) => {
     const t = document.createElement('div');
     t.className = 'barra-movil-titulo';
     t.textContent = tituloTxt;
@@ -532,34 +549,45 @@ function vistaBarra(b) {
     const nota = document.createElement('div');
     nota.className = 'barra-movil-nota';
     nota.textContent = notaTxt;
-    return [t, g, nums, nota];
+    const sec = document.createElement('div');
+    sec.className = 'barra-movil-sec';
+    sec.append(t, g, nums, nota);
+    if (enlace) {
+      const a = document.createElement('a');
+      a.className = 'barra-movil-enlace';
+      a.href = enlace;
+      a.textContent = 'Ver la tabla';
+      sec.append(a);
+    }
+    return sec;
   };
   const lectura = document.createElement('div');
   lectura.className = 'barra-movil-nums';
-  lectura.textContent = `Lectura: ${fhLocal(b.generada)}`;
+  lectura.textContent = `Lectura: ${hora(b.generada)} UTC`;
   caja.append(lectura);
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
   // vela diaria completa del día UTC anterior, referencia FIJA del día. El verde incluye la
-  // igualdad (la misma regla del iceberg, sin tercera categoría); por eso la etiqueta dice
-  // «No bajan» y la nota declara los iguales aparte. Los sin vela local o sin dato quedan
-  // fuera de la frontera, anotados.
+  // igualdad (la misma regla del iceberg, sin tercera categoría) y la nota declara los
+  // iguales aparte. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
   const d = b.dia;
   if (d) {
-    caja.append(...seccion(
-      'Contra el cierre del día anterior (vela diaria)',
+    caja.append(seccion(
+      `Cierre del día anterior (${d.ref}) a ${hora(b.generada)} UTC`,
       d.suben, d.bajan, d.suben + d.bajan,
-      `No bajan ${d.suben} · Bajan ${d.bajan} (${d.suben + d.bajan} con vela)`,
-      `Cierre de la vela diaria del ${d.ref} (UTC), referencia fija del día · verde = suben o iguales (iguales: ${d.iguales})` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : '')
+      `Verdes ${d.suben} · Rojos ${d.bajan} (${d.suben + d.bajan} con vela)`,
+      `Cierre de la vela diaria del ${d.ref} (UTC), referencia fija del día · iguales entre verdes: ${d.iguales}` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : ''),
+      '#/i/iceberg-stock/barra-dia'
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
   // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
   // de cierres, no un corte común que no existe.
-  caja.append(...seccion(
-    'Últimas 24 h (ventana móvil)',
+  caja.append(seccion(
+    `24 h móviles por activo · cierres hasta ${hora(b.fin)} UTC`,
     b.suben, b.bajan, b.conDato,
-    `Suben ${b.suben} · Bajan ${b.bajan} (${b.conDato} con dato de ${b.consultados})`,
-    `Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} (UTC) · Fuente: ticker 24 h de Binance`
+    `Verdes ${b.suben} · Rojos ${b.bajan} (${b.conDato} con dato de ${b.consultados})`,
+    `Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} (UTC) · Fuente: ticker 24 h de Binance`,
+    '#/i/iceberg-stock/barra-24h'
   ));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
@@ -567,20 +595,111 @@ function vistaBarra(b) {
   // (cierre sobre apertura); este verde es no haber bajado entre lecturas, medido solo con
   // cierres nuevos (misma regla del dueño: «solo es pérdida o no», sin tercera categoría).
   // Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
+  // Las tres barras dicen Verdes/Rojos (decisión del usuario, 21-nov-2026: «llamemos verdes
+  // y rojos y ya»).
   const m = b.movimiento;
   if (m) {
-    caja.append(...seccion(
-      'Movimiento entre las dos últimas consultas',
+    const sec = seccion(
+      `Entre consultas: ${hora(m.comparadaCon)} a ${hora(b.generada)} UTC`,
       m.suben, m.bajan, m.suben + m.bajan,
-      `No bajan ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
-      `Cada activo se mide con el cierre de su propia ventana · verde = suben o iguales` + (m.iguales === null ? '' : ` (iguales: ${m.iguales})`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '')
-    ));
+      `Verdes ${m.suben} · Rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
+      `Cada activo se mide con el cierre de su propia ventana` + (m.iguales === null ? '' : ` · iguales entre verdes: ${m.iguales}`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : ''),
+      '#/i/iceberg-stock/barra-movimiento'
+    );
     const ref = document.createElement('div');
-    ref.className = 'barra-movil-nums';
-    ref.textContent = `Referencia de esta barra: lectura anterior del ${fhLocal(m.comparadaCon)}`;
-    caja.append(ref);
+    ref.className = 'barra-movil-nota';
+    ref.textContent = `Referencia de esta barra: lectura anterior del ${hora(m.comparadaCon)} UTC`;
+    sec.append(ref);
+    caja.append(sec);
   }
   return caja;
+}
+
+// Las tablas de las tres barras (decisión del usuario, 21-nov-2026: «que cada una de esas
+// tres barras tuviera enlace a sus propias tablas donde muestran sus resultados para ver
+// cuales son los verdes»). Mismo archivo vivo de la barra, sin más consultas; cada fila dice
+// el activo, la referencia comparada, el precio actual y el resultado (verdes primero, con
+// los iguales identificados; los fuera de la frontera al final, anotados). Si la instantánea
+// no trae el detalle de esa barra, la tabla no se inventa.
+const BARRAS_TABLA = {
+  'barra-dia': {
+    titulo: 'Verdes y rojos contra el cierre del día anterior',
+    nota: (b) => `Referencia fija: cierre de la vela diaria del ${b.dia.ref} (UTC) · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
+    fila: (a) => {
+      if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null };
+      const igual = a.ultimoN === a.diaCierreN;
+      return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN };
+    },
+  },
+  'barra-24h': {
+    titulo: 'Verdes y rojos en las últimas 24 h',
+    nota: (b) => `Apertura de la ventana móvil de cada activo contra su último precio · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    apta: (b) => b.activos && [...b.activos.values()].every((a) => a.apertura !== undefined),
+    fila: (a) => {
+      if (a.aperturaN === null) return { ref: 'sin dato', res: 'Sin dato', verde: null };
+      const igual = a.ultimoN === a.aperturaN;
+      return { ref: a.apertura, res: a.ultimoN >= a.aperturaN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.aperturaN };
+    },
+  },
+  'barra-movimiento': {
+    titulo: 'Verdes y rojos entre las dos últimas consultas',
+    nota: (b) => `Lectura anterior del ${new Date(b.movimiento.comparadaCon).toISOString().slice(0, 19).replace('T', ' ')} UTC (su referencia) · Lectura actual: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    apta: (b) => b.movimiento && b.activos && [...b.activos.values()].every((a) => a.mov !== undefined),
+    fila: (a) => {
+      const res = { sube: 'Verde', igual: 'Verde (igual)', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];
+      return { ref: a.previo ?? 'sin dato', res: res || 'Sin previa', verde: a.mov === 'sube' || a.mov === 'igual' ? true : a.mov === 'baja' ? false : null };
+    },
+  },
+};
+const precioTabla = (t) => /^\d+\.\d+$/.test(t) ? t.replace(/0+$/, '').replace(/\.$/, '') : t;
+async function vistaTablaBarra(clave) {
+  const def = BARRAS_TABLA[clave];
+  if (!def) { location.hash = ''; return; }
+  app.innerHTML = '';
+  const volver = document.createElement('a');
+  volver.className = 'volver'; volver.href = '#/i/iceberg-stock'; volver.textContent = 'volver';
+  const ficha = document.createElement('div');
+  ficha.className = 'ficha';
+  const h1 = document.createElement('h1');
+  h1.textContent = def.titulo;
+  ficha.appendChild(h1);
+  const estado = document.createElement('p');
+  estado.className = 'estado'; estado.textContent = 'Trayendo la instantánea…';
+  app.append(volver, ficha, estado);
+  const b = await cargarBarra();
+  estado.remove();
+  if (!b || !def.apta(b)) {
+    app.append(Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Esta instantánea no trae el detalle de esta barra; la próxima consulta lo incluirá.' }));
+    return;
+  }
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = def.nota(b);
+  ficha.appendChild(meta);
+  const filas = [...b.activos.entries()].map(([codigo, a]) => ({ codigo, ...def.fila(a), ultimoTxt: a.ultimo }));
+  const orden = (f) => f.verde === true ? (f.res === 'Verde (igual)' ? 1 : 0) : f.verde === false ? 2 : 3;
+  filas.sort((x, y) => orden(x) - orden(y) || (x.codigo < y.codigo ? -1 : 1));
+  const caja = document.createElement('div');
+  caja.className = 'rachas-tabla-caja';
+  const tabla = document.createElement('table');
+  tabla.className = 'rachas-tabla barra-tabla';
+  tabla.innerHTML = '<thead><tr><th class="col-activo">Activo</th><th>Referencia</th><th>Precio actual</th><th>Resultado</th></tr></thead>';
+  const cuerpo = document.createElement('tbody');
+  for (const f of filas) {
+    const tr = document.createElement('tr');
+    const tdA = document.createElement('td'); tdA.className = 'col-activo'; tdA.textContent = f.codigo;
+    const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;
+    const tdU = document.createElement('td'); tdU.textContent = precioTabla(f.ultimoTxt); tdU.title = f.ultimoTxt;
+    const tdS = document.createElement('td'); tdS.textContent = f.res;
+    if (f.verde === true) tdS.className = 'positivo';
+    else if (f.verde === false) tdS.className = 'negativo';
+    tr.append(tdA, tdR, tdU, tdS);
+    cuerpo.appendChild(tr);
+  }
+  tabla.appendChild(cuerpo);
+  caja.appendChild(tabla);
+  app.append(caja);
 }
 
 async function cargarIndicador(codigo) {
@@ -1498,6 +1617,7 @@ async function ruta() {
   limpiarGrafica(); limpiarGrafica = () => {};
   const m = location.hash.match(/^#\/a\/(cripto|stock)\/(.+)$/);
   const mi = location.hash.match(/^#\/i\/(.+)$/);
+  const tb = location.hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)$/);
   // Espacios por mercado (decisión del usuario, 20-nov-2026): la entrada y la variación viven
   // bajo #/stock o #/cripto; las rutas sin mercado llevan al espacio inicial, Stocks.
   if (!m && !mi) {
@@ -1526,6 +1646,7 @@ async function ruta() {
   document.getElementById('vista-cap').classList.toggle('actual', !fuera && !enRachas);
   document.getElementById('vista-rachas').classList.toggle('actual', !fuera && enRachas);
   if (m) vistaActivo(m[1], decodeURIComponent(m[2]));
+  else if (tb) vistaTablaBarra(tb[1]);
   else if (mi) vistaIndicador(decodeURIComponent(mi[1]));
   else if (enRachas) {
     const guardado = estadoLista; estadoLista = null;

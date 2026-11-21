@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
 import {
   universoBarra, particionar, consultarTanda, calcularBarra, calcularMovimiento,
   cierreVelaDiaAnterior, calcularDia,
@@ -150,7 +151,13 @@ test('calcularMovimiento: sube, baja, cero cuenta verde, sin cierre nuevo y sin 
     ['QUI', { ultimo: 10, cierre: 1500 }],
   ]);
   const m = calcularMovimiento(actuales, previos);
-  assert.deepEqual(m, { suben: 2, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 1 });
+  const { detalle, ...conteos } = m;
+  assert.deepEqual(conteos, { suben: 2, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 1 });
+  assert.deepEqual(detalle.get('SUB'), { previoTexto: '10', resultado: 'sube' });
+  assert.deepEqual(detalle.get('PLA'), { previoTexto: '10', resultado: 'igual' });
+  assert.deepEqual(detalle.get('BAJ'), { previoTexto: '10', resultado: 'baja' });
+  assert.deepEqual(detalle.get('QUI'), { previoTexto: '10', resultado: 'sin_cierre_nuevo' });
+  assert.deepEqual(detalle.get('NUE'), { previoTexto: 'sin dato', resultado: 'sin_previa' });
   assert.equal(calcularMovimiento(actuales, null), null);       // sin archivo previo: no hay bloque
   assert.equal(calcularMovimiento(actuales, new Map()), null);  // previa sin detalle por activo: tampoco
 });
@@ -164,7 +171,7 @@ test('cierreVelaDiaAnterior: lee el CIERRE de la vela del día dado en el regist
     const otra = Date.UTC(2026, 9, 30);
     const vela = (t, open, close) => [t, String(open), '1', '1', String(close), '1', t + 86399999, '1', 1, '1', '1', '0'];
     fs.writeFileSync(path.join(velas, 'stock', 'AAA', '2610_AAA'), JSON.stringify([vela(otra, 5, 6), vela(ref, 10, 12)]));
-    assert.equal(cierreVelaDiaAnterior(velas, 'AAA', ref), 12, 'toma k[4], el cierre, no la apertura');
+    assert.equal(cierreVelaDiaAnterior(velas, 'AAA', ref), '12', 'toma k[4], el cierre, no la apertura, tal cual vino escrito');
     assert.equal(cierreVelaDiaAnterior(velas, 'AAA', Date.UTC(2026, 9, 29)), null, 'sin vela de ese día no usa una más vieja');
     assert.equal(cierreVelaDiaAnterior(velas, 'BBB', ref), null, 'sin archivo, sin dato');
     fs.writeFileSync(path.join(velas, 'stock', 'AAA', '2611_AAA'), 'no es json');
@@ -211,25 +218,30 @@ test('formatearBarra y leerBarra con movimiento y detalle por activo: ida y vuel
     comparadaCon: 1763814880000,
     movimiento: { suben: 1, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 0 },
     activos: [
-      { codigo: 'BBB', ultimo: 9, ultimoTexto: '9.00', cierre: 3000 },
-      { codigo: 'AAA', ultimo: 11, ultimoTexto: '11.00', cierre: 2000 },
-      { codigo: 'CCC', ultimo: 10, ultimoTexto: '10.00', cierre: 2000 },
+      { codigo: 'BBB', ultimo: 9, ultimoTexto: '9.00', aperturaTexto: '9.50', cierre: 3000, previoTexto: '10.00', movResultado: 'baja' },
+      { codigo: 'AAA', ultimo: 11, ultimoTexto: '11.00', aperturaTexto: '10.50', cierre: 2000, previoTexto: '10.00', movResultado: 'sube' },
+      { codigo: 'CCC', ultimo: 10, ultimoTexto: '10.00', aperturaTexto: '10.00', cierre: 2000, previoTexto: '10.00', movResultado: 'igual' },
     ],
   };
   const texto = formatearBarra(b, 4000);
   const q = leerBarra(texto);
   assert.deepEqual(q.movimiento, { comparadaCon: 1763814880000, suben: 1, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 0 });
   assert.equal(q.activos.size, 3);
-  assert.deepEqual(q.activos.get('AAA'), { ultimo: 11, cierre: 2000 });
-  assert.match(texto, /\nAAA ultimo: 11\.00\nAAA cierre: /); // un dato por línea, texto tal cual vino
+  assert.deepEqual(q.activos.get('AAA'), { apertura: '10.50', ultimo: 11, ultimoTexto: '11.00', cierre: 2000, previo: '10.00', mov: 'sube' });
+  assert.match(texto, /\nAAA apertura: 10\.50\nAAA ultimo: 11\.00\nAAA cierre: /); // un dato por línea, texto tal cual vino
+  assert.match(texto, /\nAAA previo: 10\.00\nAAA mov: sube\n/); // el precio comparado y el resultado medido, por activo
   assert.ok(texto.indexOf('AAA ultimo') < texto.indexOf('BBB ultimo')); // detalle ordenado por código
   // el movimiento debe cerrar contra los con dato
   assert.throws(() => leerBarra(texto.replace('mov_suben: 1', 'mov_suben: 2')), /movimiento no cierra/);
   assert.throws(() => leerBarra(texto.replace('mov_iguales: 1', 'mov_iguales: 2')), /los iguales no caben/);
+  // resultado desconocido o previo ilegible: instantánea incoherente
+  assert.throws(() => leerBarra(texto.replace('AAA mov: sube', 'AAA mov: vuelo')), /mov desconocido/);
+  assert.throws(() => leerBarra(texto.replace('AAA previo: 10.00', 'AAA previo: mil')), /sin previo legible/);
   // una instantánea anterior al desglose (sin mov_iguales) sigue siendo válida: iguales desconocido, no cero
   assert.equal(leerBarra(texto.replace(/mov_iguales: 1\n/, '')).movimiento.iguales, null);
   // el detalle por activo, cuando está, cubre exactamente a los con dato
-  assert.throws(() => leerBarra(texto.replace('CCC ultimo: 10.00\nCCC cierre: ' + new Date(2000).toISOString() + '\n', '')), /detalle por activo/);
+  const sinCCC = texto.split('\n').filter((l) => !l.startsWith('CCC ')).join('\n');
+  assert.throws(() => leerBarra(sinCCC), /detalle por activo/);
   // sin líneas por activo la instantánea vieja sigue siendo válida (pero no sirve de previa)
   const vieja = formatearBarra({ inicio: 1000, cierreMin: 2000, fin: 3000, dispersionMs: 0, consultados: 1, respondieron: 1, conDato: 1, sinDato: 0, suben: 1, bajan: 0 }, 3000);
   assert.equal(leerBarra(vieja).activos.size, 0);
@@ -253,9 +265,13 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
     const p2 = { AAABUSDT: 12, BBBBUSDT: 20 }; // AAA subió con cierre nuevo; BBB sin cierre nuevo
     const c2 = { AAABUSDT: 2500, BBBBUSDT: 2000 };
     const r2 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p2, c2), host: 'https://data-api.binance.vision', ahora: 9000 });
-    assert.deepEqual(r2.barra.movimiento, { suben: 1, bajan: 0, iguales: 0, sinCierreNuevo: 1, sinPrevia: 0 });
+    const { detalle, ...conteos } = r2.barra.movimiento;
+    assert.deepEqual(conteos, { suben: 1, bajan: 0, iguales: 0, sinCierreNuevo: 1, sinPrevia: 0 });
+    assert.deepEqual(detalle.get('AAA'), { previoTexto: '10', resultado: 'sube' }); // el previo viaja con el texto exacto de la lectura anterior
+    assert.deepEqual(detalle.get('BBB'), { previoTexto: '20', resultado: 'sin_cierre_nuevo' });
     assert.equal(r2.barra.comparadaCon, 5000);
     assert.match(r2.texto, /comparada_con: 1970-01-01T00:00:05\.000Z/);
+    assert.match(r2.texto, /\nAAA previo: 10\nAAA mov: sube\n/);
     assert.equal(leerBarra(r2.texto).movimiento.suben, 1);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -270,13 +286,17 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /[Cc]ada activo se mide con el cierre de su propia ventana/);
   assert.match(visor, /sin cierre nuevo/);
-  assert.match(visor, /verde = suben o iguales/); // el verde no afirma aumento: incluye la igualdad, explícito
+  assert.match(visor, /iguales entre verdes/); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
-  assert.match(visor, /Contra el cierre del día anterior \(vela diaria\)/);
+  assert.match(visor, /Cierre del día anterior/);
   assert.match(visor, /referencia fija del día/);
-  assert.match(visor, /Lectura: \$\{fhLocal\(b\.generada\)\}/); // instante de la lectura actual, visible
+  assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\} UTC/); // instante de la lectura actual, visible
   assert.match(visor, /Referencia de esta barra: lectura anterior del/); // instante de la lectura anterior, visible
-  assert.match(visor, /UTC-4/); // el formato del usuario en los dos instantes
+  assert.match(visor, /UTC/);
+  assert.doesNotMatch(visor, /UTC-4|No bajan|`Suben/);
+  for (const ruta of ['barra-dia', 'barra-24h', 'barra-movimiento']) assert.ok(visor.includes(ruta));
+  assert.match(visor, /barra-movil-sec/);
+  assert.match(visor, /Verde \(igual\)/); // el formato del usuario en los dos instantes
 });
 
 test('guardia de la casa: la orden está registrada en la app y documentada en el manual', () => {
@@ -305,4 +325,39 @@ test('guardia de la sincronización: la instantánea es archivo vivo (el local g
   const sync = fs.readFileSync(new URL('../app/modulos/sincronizar-registros.mjs', import.meta.url), 'utf8');
   assert.match(sync, /esRutaBarra/);
   assert.match(sync, /el local gana/);
+});
+
+// Executes the real browser parser and table classifiers, not copies of their logic.
+test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con cada barra', async () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const cargar = html.slice(html.indexOf('async function cargarBarra()'), html.indexOf('function vistaBarra('));
+  const defs = html.slice(html.indexOf('const BARRAS_TABLA ='), html.indexOf('const precioTabla ='));
+  const base = {
+    inicio: 1000, cierreMin: 2000, fin: 3000, dispersionMs: 1000,
+    consultados: 3, conDato: 3, sinDato: 0, suben: 2, bajan: 1,
+    dia: { ref: '2026-11-20', suben: 1, bajan: 1, iguales: 1, sinDato: 1 },
+    comparadaCon: 1000, movimiento: { suben: 1, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 0 },
+    activos: [
+      { codigo: 'AAA', aperturaTexto: '10.00', ultimoTexto: '10.00', cierre: 3000, diaCierreTexto: '10.00', previoTexto: '10.00', movResultado: 'igual' },
+      { codigo: 'BBB', aperturaTexto: '10.00', ultimoTexto: '9.00', cierre: 3000, diaCierreTexto: '10.00', previoTexto: '10.00', movResultado: 'baja' },
+      { codigo: 'CCC', aperturaTexto: '8.00', ultimoTexto: '9.00', cierre: 2000, previoTexto: '9.00', movResultado: 'sin_cierre_nuevo' },
+    ],
+  };
+  const texto = formatearBarra(base, 4000);
+  const ctx = vm.createContext({ RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
+  vm.runInContext(cargar + defs + ';globalThis.defs = BARRAS_TABLA;', ctx);
+  const b = await vm.runInContext('cargarBarra()', ctx);
+  for (const [key, green, red, equal, out] of [['barra-dia',1,1,1,1], ['barra-24h',2,1,1,0], ['barra-movimiento',1,1,1,1]]) {
+    const def = ctx.defs[key];
+    assert.ok(def.apta(b));
+    const rows = [...b.activos.values()].map(def.fila);
+    assert.equal(rows.filter((r) => r.verde === true).length, green, key);
+    assert.equal(rows.filter((r) => r.verde === false).length, red, key);
+    assert.equal(rows.filter((r) => r.res === 'Verde (igual)').length, equal, key);
+    assert.equal(rows.filter((r) => r.verde === null).length, out, key);
+    assert.equal(rows[0].ref, '10.00', 'conserva el precio comparado exacto');
+  }
+  assert.equal(b.activos.get('AAA').ultimo, '10.00');
+  delete b.activos.get('AAA').apertura;
+  assert.ok(!ctx.defs['barra-24h'].apta(b), 'sin detalle completo no inventa tabla');
 });

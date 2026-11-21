@@ -124,7 +124,7 @@ export function calcularBarra(tandas, universo) {
     // cual vino, sin recomponer) y el cierre de SU ventana. Sin ellos no hay movimiento.
     const simbolo = String(t?.symbol || '');
     const codigo = simbolo.endsWith('BUSDT') ? simbolo.slice(0, -5) : simbolo;
-    activos.push({ codigo, ultimo, ultimoTexto: String(t.lastPrice), cierre: Number.isFinite(c) ? c : null });
+    activos.push({ codigo, ultimo, ultimoTexto: String(t.lastPrice), aperturaTexto: String(t.openPrice), cierre: Number.isFinite(c) ? c : null });
   }
   const respondieron = new Set(tickers.map((t) => t?.symbol)).size;
   return {
@@ -150,15 +150,21 @@ export function calcularBarra(tandas, universo) {
 export function calcularMovimiento(actuales, previos) {
   if (!previos || !previos.size) return null;
   let suben = 0, bajan = 0, iguales = 0, sinCierreNuevo = 0, sinPrevia = 0;
+  const detalle = new Map(); // codigo -> { previoTexto, resultado }, para la tabla del visor
   for (const a of actuales) {
     const p = previos.get(a.codigo);
-    if (!p || !Number.isFinite(p.ultimo) || p.cierre === null) { sinPrevia++; continue; }
-    if (a.cierre === null || a.cierre <= p.cierre) { sinCierreNuevo++; continue; }
-    if (a.ultimo >= p.ultimo) { suben++; if (a.ultimo === p.ultimo) iguales++; } else bajan++;
+    if (!p || !Number.isFinite(p.ultimo) || p.cierre === null) { sinPrevia++; detalle.set(a.codigo, { previoTexto: 'sin dato', resultado: 'sin_previa' }); continue; }
+    const previoTexto = p.ultimoTexto ?? String(p.ultimo);
+    if (a.cierre === null || a.cierre <= p.cierre) { sinCierreNuevo++; detalle.set(a.codigo, { previoTexto, resultado: 'sin_cierre_nuevo' }); continue; }
+    if (a.ultimo >= p.ultimo) {
+      const igual = a.ultimo === p.ultimo;
+      suben++; if (igual) iguales++;
+      detalle.set(a.codigo, { previoTexto, resultado: igual ? 'igual' : 'sube' });
+    } else { bajan++; detalle.set(a.codigo, { previoTexto, resultado: 'baja' }); }
   }
   // suben es la frontera del dueno («solo es perdida o no»: el que no bajo, verde) e
   // INCLUYE los iguales; iguales los cuenta aparte para que el verde no afirme aumento.
-  return { suben, bajan, iguales, sinCierreNuevo, sinPrevia };
+  return { suben, bajan, iguales, sinCierreNuevo, sinPrevia, detalle };
 }
 
 const DIA_MS = 86400000;
@@ -178,8 +184,8 @@ export function cierreVelaDiaAnterior(dirVelas, codigo, refInicio) {
   if (!Array.isArray(velas)) return null;
   const v = velas.find((k) => Number(k?.[0]) === refInicio);
   if (!v) return null;
-  const cierre = parseFloat(v[4]);
-  return Number.isFinite(cierre) ? cierre : null;
+  const texto = String(v[4] ?? '');
+  return Number.isFinite(parseFloat(texto)) ? texto : null; // el cierre tal cual vino escrito
 }
 
 // La frontera contra el cierre del dia anterior, por simbolo. Cero cuenta verde («solo es
@@ -190,8 +196,10 @@ export function calcularDia(activos, dirVelas, universo, refInicio) {
   const conPrecio = new Set();
   for (const a of activos) {
     conPrecio.add(a.codigo);
-    const cierre = cierreVelaDiaAnterior(dirVelas, a.codigo, refInicio);
-    if (cierre === null) { sinDato++; continue; }
+    const texto = cierreVelaDiaAnterior(dirVelas, a.codigo, refInicio);
+    a.diaCierreTexto = texto === null ? 'sin dato' : texto; // viaja en la instantanea (tabla del visor)
+    if (texto === null) { sinDato++; continue; }
+    const cierre = parseFloat(texto);
     if (a.ultimo >= cierre) { suben++; if (a.ultimo === cierre) iguales++; } else bajan++;
   }
   sinDato += universo.length - conPrecio.size;
@@ -248,10 +256,13 @@ export function formatearBarra(barra, ahora = Date.now()) {
       `mov_sin_previa: ${m.sinPrevia}`,
     );
   }
-  lineas.push('# Por activo (para comparar con la proxima consulta): ultimo precio y cierre de su ventana.');
+  lineas.push('# Por activo (memoria de la proxima comparacion y datos de las tablas del visor): apertura y ultimo precio de la ventana, cierre de su ventana, cierre de la vela del dia anterior y, si hubo comparacion, el precio previo y el resultado medido.');
   for (const a of [...(barra.activos || [])].sort((x, y) => x.codigo < y.codigo ? -1 : x.codigo > y.codigo ? 1 : 0)) {
+    lineas.push(`${a.codigo} apertura: ${a.aperturaTexto}`);
     lineas.push(`${a.codigo} ultimo: ${a.ultimoTexto}`);
     lineas.push(`${a.codigo} cierre: ${iso(a.cierre)}`);
+    if (barra.dia) lineas.push(`${a.codigo} dia_cierre: ${a.diaCierreTexto ?? 'sin dato'}`);
+    if (barra.movimiento) lineas.push(`${a.codigo} previo: ${a.previoTexto ?? 'sin dato'}`, `${a.codigo} mov: ${a.movResultado ?? 'sin_previa'}`);
   }
   lineas.push('');
   return lineas.join('\n');
@@ -270,7 +281,7 @@ export function leerBarra(texto) {
   for (const linea of String(texto).split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
     if (m) { campos[m[1]] = m[2]; continue; }
-    const a = linea.match(/^([A-Z0-9]+) (ultimo|cierre): (.+)$/);
+    const a = linea.match(/^([A-Z0-9]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/);
     if (a) {
       if (activos.has(a[1]) && activos.get(a[1])[a[2]] !== undefined) throw new Error(`Instantanea de barra incoherente (${a[1]} repetido).`);
       const e = activos.get(a[1]) || {};
@@ -303,8 +314,15 @@ export function leerBarra(texto) {
     for (const [codigo, e] of activos) {
       const ultimo = parseFloat(e.ultimo);
       if (!Number.isFinite(ultimo)) throw new Error(`Instantanea de barra incoherente (${codigo} sin ultimo legible).`);
+      e.ultimoTexto = e.ultimo;
       e.ultimo = ultimo;
       e.cierre = deIso(e.cierre || '');
+      if (e.apertura !== undefined && !Number.isFinite(parseFloat(e.apertura))) throw new Error(`Instantanea de barra incoherente (${codigo} sin apertura legible).`);
+      if (e.dia_cierre !== undefined && e.dia_cierre !== 'sin dato' && !Number.isFinite(parseFloat(e.dia_cierre))) throw new Error(`Instantanea de barra incoherente (${codigo} sin dia_cierre legible).`);
+      if (e.mov !== undefined) {
+        if (!['sube', 'baja', 'igual', 'sin_cierre_nuevo', 'sin_previa'].includes(e.mov)) throw new Error(`Instantanea de barra incoherente (${codigo} con mov desconocido).`);
+        if (e.previo === undefined || (e.previo !== 'sin dato' && !Number.isFinite(parseFloat(e.previo)))) throw new Error(`Instantanea de barra incoherente (${codigo} con mov pero sin previo legible).`);
+      }
     }
   }
   b.activos = activos;
@@ -374,7 +392,13 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   const barra = calcularBarra(tandas, universo);
   barra.dia = calcularDia(barra.activos, dirVelas, universo, Math.floor(ahora / DIA_MS) * DIA_MS - DIA_MS);
   const movimiento = calcularMovimiento(barra.activos, previos);
-  if (movimiento) { barra.movimiento = movimiento; barra.comparadaCon = comparadaCon; }
+  if (movimiento) {
+    barra.movimiento = movimiento; barra.comparadaCon = comparadaCon;
+    for (const a of barra.activos) {
+      const d = movimiento.detalle.get(a.codigo);
+      if (d) { a.previoTexto = d.previoTexto; a.movResultado = d.resultado; }
+    }
+  }
   const texto = formatearBarra(barra, ahora);
   const rel = escribirBarra(dirRegistros, texto);
   return { barra, texto, rel, generada: ahora };
@@ -382,14 +406,8 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
 
 // --- La orden ---
 
-// Fecha y hora completas con segundos y su desfase, como le gustan al usuario
-// («HH:MM:SS UTC-4», 20-nov-2026). Caracas no cambia de horario.
-const TZ = 'America/Caracas';
-const fechaHora = (ms) => {
-  const f = new Intl.DateTimeFormat('es', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
-  const h = new Intl.DateTimeFormat('es', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(ms));
-  return `${f} ${h} UTC-4`;
-};
+// Mismo instante, fecha y segundos en UTC en todo el bloque.
+const fechaHora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
 
 export function registrar(ctx) {
   const { app, botToken } = ctx;
@@ -405,20 +423,21 @@ export function registrar(ctx) {
       ];
       if (barra.dia) {
         const d = barra.dia;
-        l.push(`· Contra el cierre de la vela diaria del ${d.ref} (UTC, referencia fija): no bajaron ${d.suben} · bajan ${d.bajan} (${d.suben + d.bajan} con vela; el que no bajó cuenta verde, iguales: ${d.iguales}).`);
+        l.push(`· Contra el cierre de la vela diaria del ${d.ref} (UTC, referencia fija): verdes ${d.suben} · rojos ${d.bajan} (${d.suben + d.bajan} con vela; iguales: ${d.iguales}).`);
         if (d.sinDato) l.push(`· Sin vela del día anterior o sin dato: ${d.sinDato} (fuera de la frontera, no inventados).`);
       }
-      l.push(`· Suben ${barra.suben} · bajan ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`);
+      l.push(`· Verdes ${barra.suben} · rojos ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`);
       l.push(`· Consulta: ${fechaHora(generada)}.`);
       if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
       if (barra.movimiento) {
         const m = barra.movimiento;
-        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): no bajaron ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde${m.iguales === null ? '' : `, iguales: ${m.iguales}`}).`);
+        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): verdes ${m.suben} · rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo${m.iguales === null ? '' : `; iguales: ${m.iguales}`}).`);
         if (m.sinCierreNuevo) l.push(`· Sin cierre nuevo: ${m.sinCierreNuevo} (la respuesta no ofrece uno más reciente; fuera de la frontera, como el sin dato).`);
         if (m.sinPrevia) l.push(`· Sin lectura previa: ${m.sinPrevia} (fuera de la frontera, no inventados).`);
       }
       if (barra.dispersionMs !== null) l.push(`· Dispersión entre cierres de la ventana: ${barra.dispersionMs} ms.`);
       if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
+      l.push(`· Tablas del visor (qué activos quedaron verdes): <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-dia|día anterior> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-24h|24 h> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-movimiento|movimiento>.`);
       l.push(`· Instantánea guardada en ${rel} (archivo vivo, se pisa en cada consulta).`);
       await decir(l.join('\n'));
     } catch (e) {
