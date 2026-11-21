@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   universoBarra, particionar, consultarTanda, calcularBarra, calcularMovimiento,
+  cierreVelaDiaAnterior, calcularDia,
   formatearBarra, leerBarra, escribirBarra, generarBarra,
   simboloStock, RUTA_BARRA,
 } from '../app/modulos/barra-movil.mjs';
@@ -154,6 +155,55 @@ test('calcularMovimiento: sube, baja, cero cuenta verde, sin cierre nuevo y sin 
   assert.equal(calcularMovimiento(actuales, new Map()), null);  // previa sin detalle por activo: tampoco
 });
 
+test('cierreVelaDiaAnterior: lee el CIERRE de la vela del día dado en el registro local, sin buscar velas más viejas', () => {
+  const dir = tmp('hugo-barra-d-');
+  try {
+    const velas = path.join(dir, 'velas-24h');
+    fs.mkdirSync(path.join(velas, 'stock', 'AAA'), { recursive: true });
+    const ref = Date.UTC(2026, 9, 31); // 31-oct-2026: mes distinto del de la consulta (1-nov)
+    const otra = Date.UTC(2026, 9, 30);
+    const vela = (t, open, close) => [t, String(open), '1', '1', String(close), '1', t + 86399999, '1', 1, '1', '1', '0'];
+    fs.writeFileSync(path.join(velas, 'stock', 'AAA', '2610_AAA'), JSON.stringify([vela(otra, 5, 6), vela(ref, 10, 12)]));
+    assert.equal(cierreVelaDiaAnterior(velas, 'AAA', ref), 12, 'toma k[4], el cierre, no la apertura');
+    assert.equal(cierreVelaDiaAnterior(velas, 'AAA', Date.UTC(2026, 9, 29)), null, 'sin vela de ese día no usa una más vieja');
+    assert.equal(cierreVelaDiaAnterior(velas, 'BBB', ref), null, 'sin archivo, sin dato');
+    fs.writeFileSync(path.join(velas, 'stock', 'AAA', '2611_AAA'), 'no es json');
+    assert.equal(cierreVelaDiaAnterior(velas, 'AAA', Date.UTC(2026, 10, 1)), null, 'archivo ilegible, sin dato');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('calcularDia: frontera contra el cierre del día anterior, cero verde con iguales aparte, sin vela o sin ticker fuera', () => {
+  const dir = tmp('hugo-barra-cd-');
+  try {
+    const velas = path.join(dir, 'velas-24h');
+    const ref = Date.UTC(2026, 10, 20);
+    const vela = (t, close) => [[t, '1', '1', '1', String(close), '1', t + 86399999, '1', 1, '1', '1', '0']];
+    for (const [c, close] of [['AAA', 10], ['BBB', 10], ['CCC', 10]]) {
+      fs.mkdirSync(path.join(velas, 'stock', c), { recursive: true });
+      if (c !== 'CCC') fs.writeFileSync(path.join(velas, 'stock', c, `2611_${c}`), JSON.stringify(vela(ref, close)));
+    }
+    const activos = [
+      { codigo: 'AAA', ultimo: 11, ultimoTexto: '11', cierre: 1 }, // sube
+      { codigo: 'BBB', ultimo: 10, ultimoTexto: '10', cierre: 1 }, // igual: verde, contado aparte
+      // CCC: con ticker pero sin vela local del día anterior
+    ];
+    const d = calcularDia(activos, velas, ['AAA', 'BBB', 'CCC', 'DDD'], ref); // DDD: sin ticker
+    assert.deepEqual(d, { ref: '2026-11-20', suben: 2, bajan: 0, iguales: 1, sinDato: 2 });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('formatearBarra y leerBarra con el bloque del día: ida y vuelta y validaciones', () => {
+  const b = { inicio: 1000, cierreMin: 1500, fin: 2000, dispersionMs: 5, consultados: 4, respondieron: 4, conDato: 4, sinDato: 0, suben: 1, bajan: 3,
+    dia: { ref: '2026-11-20', suben: 2, bajan: 1, iguales: 1, sinDato: 1 } };
+  const texto = formatearBarra(b, 3000);
+  const q = leerBarra(texto);
+  assert.deepEqual(q.dia, b.dia);
+  assert.throws(() => leerBarra(texto.replace('dia_suben: 2', 'dia_suben: 3')), /el dia anterior no cierra/);
+  assert.throws(() => leerBarra(texto.replace('dia_iguales: 1', 'dia_iguales: 3')), /los iguales del dia no caben/);
+  assert.throws(() => leerBarra(texto.replace('dia_ref: 2026-11-20', 'dia_ref: ayer')), /dia_ref ilegible/);
+  assert.equal(leerBarra(formatearBarra({ ...b, dia: undefined }, 3000)).dia, undefined, 'instantáneas viejas sin el bloque siguen siendo válidas');
+});
+
 test('formatearBarra y leerBarra con movimiento y detalle por activo: ida y vuelta y validaciones', () => {
   const b = {
     inicio: 1000, cierreMin: 2000, fin: 3000, dispersionMs: 1000,
@@ -218,9 +268,15 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /ventana móvil/);
   assert.match(visor, /Movimiento entre las dos últimas consultas/); // segunda barra: movimiento medido entre lecturas
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
-  assert.match(visor, /cada activo se mide con el cierre de su propia ventana/);
+  assert.match(visor, /[Cc]ada activo se mide con el cierre de su propia ventana/);
   assert.match(visor, /sin cierre nuevo/);
   assert.match(visor, /verde = suben o iguales/); // el verde no afirma aumento: incluye la igualdad, explícito
+  assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
+  assert.match(visor, /Contra el cierre del día anterior \(vela diaria\)/);
+  assert.match(visor, /referencia fija del día/);
+  assert.match(visor, /Lectura: \$\{fhLocal\(b\.generada\)\}/); // instante de la lectura actual, visible
+  assert.match(visor, /Referencia de esta barra: lectura anterior del/); // instante de la lectura anterior, visible
+  assert.match(visor, /UTC-4/); // el formato del usuario en los dos instantes
 });
 
 test('guardia de la casa: la orden está registrada en la app y documentada en el manual', () => {
@@ -232,6 +288,9 @@ test('guardia de la casa: la orden está registrada en la app y documentada en e
   assert.match(manual, /barra-24h\/actual_barra/);
   assert.match(manual, /Movimiento entre lecturas/);
   assert.match(manual, /sin cierre nuevo/);
+  assert.match(manual, /Contra el cierre del día anterior/);
+  assert.match(manual, /referencia fija/);
+  assert.match(manual, /timestamp de la lectura anterior/);
 });
 
 test('guardia de la sincronización: la instantánea es archivo vivo (el local gana), nunca pre-cálculo de un día', async () => {

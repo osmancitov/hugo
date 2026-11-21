@@ -489,6 +489,12 @@ async function cargarBarra() {
   const b = { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
   // Movimiento entre las dos últimas consultas (decisión del usuario, 20-nov-2026): solo si
   // la instantánea trae el bloque y cierra; sin lectura anterior comparable, no se dibuja.
+  // Barra del día anterior (decisión del usuario, 21-nov-2026): precio actual contra el cierre
+  // de la vela diaria completa del día UTC anterior (referencia fija); solo si cierra el bloque.
+  if (campos.dia_ref !== undefined) {
+    const d = { ref: campos.dia_ref, suben: n('dia_suben'), bajan: n('dia_bajan'), iguales: n('dia_iguales'), sinDato: n('dia_sin_dato') };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d.ref) && [d.suben, d.bajan, d.iguales, d.sinDato].every(Number.isInteger) && d.suben + d.bajan + d.sinDato === b.consultados) b.dia = d;
+  }
   if (campos.comparada_con !== undefined) {
     const m = { comparadaCon: Date.parse(campos.comparada_con), suben: n('mov_suben'), bajan: n('mov_bajan'), iguales: campos.mov_iguales === undefined ? null : n('mov_iguales'), sinCierreNuevo: n('mov_sin_cierre_nuevo'), sinPrevia: n('mov_sin_previa') };
     const enteros = [m.suben, m.bajan, m.sinCierreNuevo, m.sinPrevia].every(Number.isInteger) && (m.iguales === null || Number.isInteger(m.iguales));
@@ -497,57 +503,82 @@ async function cargarBarra() {
   return b;
 }
 function vistaBarra(b) {
+  // Los dos instantes, visibles y en el formato del usuario («HH:MM:SS UTC-4», 21-nov-2026):
+  // el de ESTA lectura arriba del bloque y el de la lectura anterior dentro de la barra de
+  // movimiento, que es su referencia.
+  const fhLocal = (ms) => {
+    const f = new Intl.DateTimeFormat('es', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
+    const h = new Intl.DateTimeFormat('es', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(ms));
+    return `${f} ${h} UTC-4`;
+  };
+  const hora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
-  const titulo = document.createElement('div');
-  titulo.className = 'barra-movil-titulo';
-  titulo.textContent = 'Últimas 24 h (ventana móvil)';
-  const graf = document.createElement('div');
-  graf.className = 'barra-movil-graf';
-  const rojo = document.createElement('span'), verde = document.createElement('span');
-  rojo.style.background = RED_S; verde.style.background = GREEN_S;
-  const total = Math.max(1, b.conDato);
-  rojo.style.width = (b.bajan / total * 100) + '%';
-  verde.style.width = (b.suben / total * 100) + '%';
-  graf.append(rojo, verde);
-  const nums = document.createElement('div');
-  nums.className = 'barra-movil-nums';
-  nums.textContent = `Suben ${b.suben} · Bajan ${b.bajan} (${b.conDato} con dato de ${b.consultados})`;
-  const nota = document.createElement('div');
-  nota.className = 'barra-movil-nota';
-  const hora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
-  // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el instante
-  // de la consulta y el rango de cierres, no un corte común que no existe.
-  nota.textContent = `Consulta: ${hora(b.generada)} (UTC) · cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} · Fuente: ticker 24 h de Binance`;
-  caja.append(titulo, graf, nums, nota);
-  // Segunda barra: el movimiento del último precio de cada activo entre las dos últimas
+  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt) => {
+    const t = document.createElement('div');
+    t.className = 'barra-movil-titulo';
+    t.textContent = tituloTxt;
+    const g = document.createElement('div');
+    g.className = 'barra-movil-graf';
+    const rojo = document.createElement('span'), verde = document.createElement('span');
+    rojo.style.background = RED_S; verde.style.background = GREEN_S;
+    const total = Math.max(1, base);
+    rojo.style.width = (bajan / total * 100) + '%';
+    verde.style.width = (suben / total * 100) + '%';
+    g.append(rojo, verde);
+    const nums = document.createElement('div');
+    nums.className = 'barra-movil-nums';
+    nums.textContent = numsTxt;
+    const nota = document.createElement('div');
+    nota.className = 'barra-movil-nota';
+    nota.textContent = notaTxt;
+    return [t, g, nums, nota];
+  };
+  const lectura = document.createElement('div');
+  lectura.className = 'barra-movil-nums';
+  lectura.textContent = `Lectura: ${fhLocal(b.generada)}`;
+  caja.append(lectura);
+  // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
+  // vela diaria completa del día UTC anterior, referencia FIJA del día. El verde incluye la
+  // igualdad (la misma regla del iceberg, sin tercera categoría); por eso la etiqueta dice
+  // «No bajan» y la nota declara los iguales aparte. Los sin vela local o sin dato quedan
+  // fuera de la frontera, anotados.
+  const d = b.dia;
+  if (d) {
+    caja.append(...seccion(
+      'Contra el cierre del día anterior (vela diaria)',
+      d.suben, d.bajan, d.suben + d.bajan,
+      `No bajan ${d.suben} · Bajan ${d.bajan} (${d.suben + d.bajan} con vela)`,
+      `Cierre de la vela diaria del ${d.ref} (UTC), referencia fija del día · verde = suben o iguales (iguales: ${d.iguales})` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : '')
+    ));
+  }
+  // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
+  // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
+  // de cierres, no un corte común que no existe.
+  caja.append(...seccion(
+    'Últimas 24 h (ventana móvil)',
+    b.suben, b.bajan, b.conDato,
+    `Suben ${b.suben} · Bajan ${b.bajan} (${b.conDato} con dato de ${b.consultados})`,
+    `Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} (UTC) · Fuente: ticker 24 h de Binance`
+  ));
+  // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
-  // está aumentando, no cuando la referencia bajó»). El verde de arriba es posición (cierre
-  // sobre apertura de la ventana); este verde es no haber bajado entre lecturas, medido
-  // solo con cierres nuevos (misma regla del dueño: «solo es pérdida o no», sin tercera
-  // categoría). Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
+  // está aumentando, no cuando la referencia bajó»). El verde de la ventana es posición
+  // (cierre sobre apertura); este verde es no haber bajado entre lecturas, medido solo con
+  // cierres nuevos (misma regla del dueño: «solo es pérdida o no», sin tercera categoría).
+  // Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
   const m = b.movimiento;
   if (m) {
-    const titulo2 = document.createElement('div');
-    titulo2.className = 'barra-movil-titulo';
-    titulo2.textContent = 'Movimiento entre las dos últimas consultas';
-    const graf2 = document.createElement('div');
-    graf2.className = 'barra-movil-graf';
-    const rojo2 = document.createElement('span'), verde2 = document.createElement('span');
-    rojo2.style.background = RED_S; verde2.style.background = GREEN_S;
-    const frescos = Math.max(1, m.suben + m.bajan);
-    rojo2.style.width = (m.bajan / frescos * 100) + '%';
-    verde2.style.width = (m.suben / frescos * 100) + '%';
-    graf2.append(rojo2, verde2);
-    const nums2 = document.createElement('div');
-    nums2.className = 'barra-movil-nums';
-    nums2.textContent = `No bajan ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`;
-    const nota2 = document.createElement('div');
-    nota2.className = 'barra-movil-nota';
-    // El verde incluye la igualdad (la misma regla del iceberg, sin tercera categoría);
-    // por eso la etiqueta dice «No bajan» y la nota declara los iguales aparte.
-    nota2.textContent = `Comparada con la consulta del ${hora(m.comparadaCon)} (UTC); cada activo se mide con el cierre de su propia ventana · verde = suben o iguales` + (m.iguales === null ? '' : ` (iguales: ${m.iguales})`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '');
-    caja.append(titulo2, graf2, nums2, nota2);
+    caja.append(...seccion(
+      'Movimiento entre las dos últimas consultas',
+      m.suben, m.bajan, m.suben + m.bajan,
+      `No bajan ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
+      `Cada activo se mide con el cierre de su propia ventana · verde = suben o iguales` + (m.iguales === null ? '' : ` (iguales: ${m.iguales})`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '')
+    ));
+    const ref = document.createElement('div');
+    ref.className = 'barra-movil-nums';
+    ref.textContent = `Referencia de esta barra: lectura anterior del ${fhLocal(m.comparadaCon)}`;
+    caja.append(ref);
   }
   return caja;
 }

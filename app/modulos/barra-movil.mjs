@@ -34,6 +34,18 @@
 // este quieto; cuenta aparte como «sin cierre nuevo» y no entra en la frontera, como el
 // sin dato. Sin lectura previa comparable no se escribe el bloque de movimiento (lo que
 // falta se muestra como que falta, no se inventa).
+//
+// Barra del dia anterior (decision del usuario, 21-nov-2026: «la variacion entre la lectura
+// actual y el cierre de la ultima barra de 24h completa del dia anterior», con «referencia
+// fija»): por activo, el ultimo precio contra el CIERRE de su vela diaria del dia UTC
+// anterior (no la apertura, aunque a veces coincidan). Es un dato LOCAL del registro de
+// velas: no anade consultas; la lectura sigue siendo la de dos tandas. Si la vela del dia
+// anterior no esta en el registro local, el activo cuenta como sin dato de esta barra (no
+// se usa una vela mas vieja: la referencia es el dia anterior, no «la ultima que haya»).
+// Misma frontera del dueno: el que no bajo cuenta verde, con los iguales contados aparte.
+// El visor muestra esta barra primero y deja visibles los dos instantes (decision del
+// usuario, 21-nov-2026): el de la lectura actual y el de la lectura anterior (referencia
+// de la barra de movimiento), en su formato «HH:MM:SS UTC-4».
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -149,6 +161,43 @@ export function calcularMovimiento(actuales, previos) {
   return { suben, bajan, iguales, sinCierreNuevo, sinPrevia };
 }
 
+const DIA_MS = 86400000;
+
+// El cierre de la vela diaria completa del dia UTC anterior: referencia fija de la barra del
+// dia (decision del usuario, 21-nov-2026). Dato local del registro de velas (archivo mensual
+// AAMM_CODIGO, velas diarias en formato kline de Binance: [aperturaMs, open, high, low,
+// close, ...]); se toma k[4], el CIERRE, nunca la apertura. Sin archivo, sin vela de ese dia
+// o cierre ilegible: null (el activo cuenta sin dato de esta barra; no se busca una vela mas
+// vieja). No hace consultas: la lectura sigue siendo la de dos tandas.
+export function cierreVelaDiaAnterior(dirVelas, codigo, refInicio) {
+  const f = new Date(refInicio);
+  const aamm = `${String(f.getUTCFullYear() % 100).padStart(2, '0')}${String(f.getUTCMonth() + 1).padStart(2, '0')}`;
+  let velas;
+  try { velas = JSON.parse(fs.readFileSync(path.join(dirVelas, 'stock', codigo, `${aamm}_${codigo}`), 'utf8')); }
+  catch { return null; }
+  if (!Array.isArray(velas)) return null;
+  const v = velas.find((k) => Number(k?.[0]) === refInicio);
+  if (!v) return null;
+  const cierre = parseFloat(v[4]);
+  return Number.isFinite(cierre) ? cierre : null;
+}
+
+// La frontera contra el cierre del dia anterior, por simbolo. Cero cuenta verde («solo es
+// perdida o no»), con los iguales contados aparte para que el verde no afirme aumento. Los
+// activos sin ticker o sin vela local del dia anterior cuentan como sin dato de esta barra.
+export function calcularDia(activos, dirVelas, universo, refInicio) {
+  let suben = 0, bajan = 0, iguales = 0, sinDato = 0;
+  const conPrecio = new Set();
+  for (const a of activos) {
+    conPrecio.add(a.codigo);
+    const cierre = cierreVelaDiaAnterior(dirVelas, a.codigo, refInicio);
+    if (cierre === null) { sinDato++; continue; }
+    if (a.ultimo >= cierre) { suben++; if (a.ultimo === cierre) iguales++; } else bajan++;
+  }
+  sinDato += universo.length - conPrecio.size;
+  return { ref: new Date(refInicio).toISOString().slice(0, 10), suben, bajan, iguales, sinDato };
+}
+
 const iso = (ms) => (ms === null ? 'sin dato' : new Date(ms).toISOString());
 const deIso = (s) => {
   if (s === 'sin dato') return null;
@@ -176,6 +225,17 @@ export function formatearBarra(barra, ahora = Date.now()) {
     `suben: ${barra.suben}`,
     `bajan: ${barra.bajan}`,
   ];
+  const d = barra.dia;
+  if (d) {
+    lineas.push(
+      '# Variacion del ultimo precio contra el cierre de la vela diaria completa del dia anterior (dia UTC, referencia fija; el verde incluye los iguales):',
+      `dia_ref: ${d.ref}`,
+      `dia_suben: ${d.suben}`,
+      `dia_bajan: ${d.bajan}`,
+      `dia_iguales: ${d.iguales}`,
+      `dia_sin_dato: ${d.sinDato}`,
+    );
+  }
   const m = barra.movimiento;
   if (m) {
     lineas.push(
@@ -248,6 +308,17 @@ export function leerBarra(texto) {
     }
   }
   b.activos = activos;
+  if (campos.dia_ref !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(campos.dia_ref)) throw new Error('Instantanea de barra incoherente (dia_ref ilegible).');
+    const dia = { ref: campos.dia_ref, suben: entero('dia_suben'), bajan: entero('dia_bajan'), iguales: entero('dia_iguales'), sinDato: entero('dia_sin_dato') };
+    if (dia.suben + dia.bajan + dia.sinDato !== b.consultados) {
+      throw new Error('Instantanea de barra incoherente (el dia anterior no cierra).');
+    }
+    if (dia.iguales > dia.suben) {
+      throw new Error('Instantanea de barra incoherente (los iguales del dia no caben en los que no bajaron).');
+    }
+    b.dia = dia;
+  }
   if (campos.comparada_con !== undefined) {
     const mov = {
       comparadaCon: deIso(campos.comparada_con),
@@ -301,6 +372,7 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   const tandas = [];
   for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
   const barra = calcularBarra(tandas, universo);
+  barra.dia = calcularDia(barra.activos, dirVelas, universo, Math.floor(ahora / DIA_MS) * DIA_MS - DIA_MS);
   const movimiento = calcularMovimiento(barra.activos, previos);
   if (movimiento) { barra.movimiento = movimiento; barra.comparadaCon = comparadaCon; }
   const texto = formatearBarra(barra, ahora);
@@ -330,8 +402,13 @@ export function registrar(ctx) {
       const { barra, rel, generada } = await generarBarra({ dirVelas: dirVelas(), host });
       const l = [
         `Barra móvil 24 h (stocks), consultada ahora a Binance:`,
-        `· Suben ${barra.suben} · bajan ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`,
       ];
+      if (barra.dia) {
+        const d = barra.dia;
+        l.push(`· Contra el cierre de la vela diaria del ${d.ref} (UTC, referencia fija): no bajaron ${d.suben} · bajan ${d.bajan} (${d.suben + d.bajan} con vela; el que no bajó cuenta verde, iguales: ${d.iguales}).`);
+        if (d.sinDato) l.push(`· Sin vela del día anterior o sin dato: ${d.sinDato} (fuera de la frontera, no inventados).`);
+      }
+      l.push(`· Suben ${barra.suben} · bajan ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`);
       l.push(`· Consulta: ${fechaHora(generada)}.`);
       if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
       if (barra.movimiento) {
