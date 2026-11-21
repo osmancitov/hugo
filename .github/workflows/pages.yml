@@ -1,0 +1,38 @@
+# Publica el visor solo cuando cambian archivos fuera de las tomas intradiarias.
+name: Visor estático de Hugo
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'registros/intradia/stock/**'
+      - 'registros/pre-calculado/stock/barra-24h/actual_barra'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Pages
+        uses: actions/configure-pages@v5
+      - name: Empaquetar el sitio estático
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Publicar el visor
+        id: deployment
+        uses: actions/deploy-pages@v5

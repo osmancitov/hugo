@@ -1,4 +1,5 @@
 // Superficie 3D del registro real. Proyección y dibujo locales, sin dependencias externas.
+// Las tomas se leen directamente de GitHub; actualizar datos no requiere desplegar este módulo.
 import { terrenoDia } from './app/modulos/intradia-datos.mjs';
 const VERDE = '#25855c', ROJO = '#b73d40', ORO = '#c2a15a', GRIS = '#626b7d';
 const hora = (ms) => new Date(ms).toISOString().slice(11, 19);
