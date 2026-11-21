@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { guardarEstado } from './registro-motor.mjs';
-import { generarBarra, leerBarra, escribirBarra, RUTA_BARRA, universoBarra, cierreVelaDiaAnterior } from './barra-movil.mjs';
+import { generarBarra, leerBarra, RUTA_BARRA, universoBarra, cierreVelaDiaAnterior } from './barra-movil.mjs';
 import { asegurarCierreDiario } from './intradia-cierre.mjs';
 import { fetchConPausa, pausaFuente } from './intradia-fuente.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, esRutaIntradia, leerDia, leerIndice, unirDias, unirIndices } from './intradia-datos.mjs';
@@ -35,18 +35,53 @@ export function pendientesIntradia(raiz) {
 function materializar(raiz, archivos) {
   for (const [rel, texto] of Object.entries(archivos)) {
     const destino = archivoLocal(raiz, rel);
-    if (rel === RUTA_BARRA) escribirBarra(raiz, texto);
-    else guardarEstado(destino, JSON.parse(texto));
+    guardarEstado(destino, JSON.parse(texto));
   }
 }
 function encolar(raiz, archivos) {
   guardarEstado(colaLocal(raiz), { version: 1, archivos });
   materializar(raiz, archivos);
 }
+// Migración de una sola vez: conservar fotos únicas antes de retirar la copia local.
 export function recuperarIntradia(raiz) {
-  const archivos = pendientesIntradia(raiz);
+  const originales = pendientesIntradia(raiz);
+  const archivos = { ...originales };
+  const rutaVieja = archivoLocal(raiz, RUTA_BARRA);
+  const vieja = leerOpcional(rutaVieja);
+  const agregar = (texto) => {
+    const b = validar(texto), generada = new Date(b.generada).toISOString();
+    const dia = diaUTC(b.generada), rel = rutaDia(dia);
+    const uno = JSON.stringify({ version: 1, dia, lecturas: [{ generada, texto }] }) + '\n';
+    const previo = archivos[rel] ?? leerOpcional(archivoLocal(raiz, rel));
+    archivos[rel] = previo === null ? uno : unirDias(uno, previo, validar);
+    const indice = JSON.stringify({ version: 1, dias: [dia], ultima: generada }) + '\n';
+    const anterior = archivos[RUTA_INDICE] ?? leerOpcional(archivoLocal(raiz, RUTA_INDICE));
+    archivos[RUTA_INDICE] = anterior === null ? indice : unirIndices(indice, anterior);
+  };
+  if (archivos[RUTA_BARRA]) agregar(archivos[RUTA_BARRA]);
+  if (vieja !== null) agregar(vieja);
+  delete archivos[RUTA_BARRA];
+  // Validar la unión con el disco antes de cualquier escritura o retirada.
+  for (const [rel, texto] of Object.entries(archivos)) {
+    const disco = leerOpcional(archivoLocal(raiz, rel));
+    archivos[rel] = disco === null ? texto : combinarArchivoIntradia(rel, texto, disco);
+  }
+  guardarEstado(colaLocal(raiz), { version: 1, archivos });
   materializar(raiz, archivos);
+  if (vieja !== null) {
+    if (leerOpcional(rutaVieja) !== vieja) throw Error('La copia antigua cambió durante la migración; la conservo.');
+    fs.unlinkSync(rutaVieja);
+  }
   return archivos;
+}
+export function ultimaLecturaLocal(raiz) {
+  const indice = leerOpcional(archivoLocal(raiz, RUTA_INDICE));
+  if (indice === null) return null;
+  const i = leerIndice(indice);
+  const dia = leerDia(fs.readFileSync(archivoLocal(raiz, rutaDia(diaUTC(Date.parse(i.ultima)))),'utf8'), validar);
+  const ultima = dia.lecturas.at(-1);
+  if (!ultima || ultima.generada !== i.ultima) throw Error('Índice y última lectura local no coinciden.');
+  return ultima.texto;
 }
 export function validarArchivoIntradia(rel, texto) {
   if (rel === RUTA_BARRA) return validar(texto);
@@ -76,10 +111,8 @@ export function guardarLectura(raiz, texto) {
   const registro = previo === null ? uno : unirDias(uno, previo, validar);
   const indicePrevio = leerOpcional(archivoLocal(raiz, RUTA_INDICE));
   const indice = JSON.stringify({ version: 1, dias: [dia], ultima: generada }) + '\n';
-  const actual = leerOpcional(archivoLocal(raiz, RUTA_BARRA));
   const archivos = { ...pendientes, [rel]: registro,
-    [RUTA_INDICE]: indicePrevio === null ? indice : unirIndices(indice, indicePrevio),
-    [RUTA_BARRA]: combinarArchivoIntradia(RUTA_BARRA, texto, actual) };
+    [RUTA_INDICE]: indicePrevio === null ? indice : unirIndices(indice, indicePrevio) };
   encolar(raiz, archivos);
   return { rel, lecturas: leerDia(registro, validar).lecturas.length, rutas: Object.keys(archivos) };
 }
@@ -149,12 +182,8 @@ export function registrar(ctx) {
           if (Math.floor(reloj() / 86400000) * 86400000 !== objetivoDia) throw Error('Cambió el día preparando el cierre; no tomo foto atrasada.');
         } finally { ctx.preparandoCierreIntradia = false; }
       } else if (ctx.registroOcupado?.() || ctx.sincronizacionEnCurso?.()) throw Error('Hay un registro o sincronización en curso; no inicio otra lectura.');
-      // La única instantánea heredada se conserva tal como existe. Su comparada_con no
-      // permite reconstruir otra foto; no se rellena el pasado.
-      const heredada = leerOpcional(archivoLocal(raiz(), RUTA_BARRA));
-      if (heredada !== null) guardarLectura(raiz(), heredada);
       const r = await generarBarra({ dirVelas: dirVelas(), host: process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST,
-        ...opciones, fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), guardarInstantanea: false, ahora: opciones.ahora ?? ahora() });
+        ...opciones, fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), anteriorTexto: ultimaLecturaLocal(raiz()), ahora: opciones.ahora ?? ahora() });
       if (ctx.parada?.n !== parada) throw Error('Lectura detenida a pedido; no guardé la consulta nueva.');
       r.registro = guardarLectura(raiz(), r.texto);
       ultima = r.generada;
@@ -210,10 +239,12 @@ export function registrar(ctx) {
     } catch (e) { reporteAutomatico = null; console.error('Reporte intradiario:', e.message); }
   };
   ctx.alIniciar(async () => {
+    try { recuperarIntradia(raiz()); }
+    catch (e) { error = e.message; console.error(error); return; }
     if (minutos === null) return;
     // Recupera y publica fotos anteriores aunque Binance siga sin responder. No toma precios.
     try {
-      if (Object.keys(pendientesIntradia(raiz())).length) {
+      if (Object.keys(recuperarIntradia(raiz())).length) {
         const r = await ctx.reintentarIntradia();
         await informarAutomatico(r.commit ? `Cola intradiaria recuperada y publicada: ${r.commit.slice(0, 7)}.` : 'Cola intradiaria recuperada y confirmada, sin cambios nuevos.');
       }

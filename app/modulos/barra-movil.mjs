@@ -18,11 +18,9 @@
 // ningun lado; contradice esa decision y no es el origen del iceberg publicado (lo calcula
 // pre-calculado.mjs con cero = verde). Pendiente de unificar; aqui manda la decision.
 //
-// Instantanea: copia viva en texto, UN dato por linea; se pisa atomico en cada consulta.
-// Desde el 21-nov, registro-intradia.mjs conserva cada lectura completa antes de actualizar
-// esta copia y publica solo sus rutas pendientes mediante el transporte comun.
-// La frecuencia automatica sigue sin elegirse: no hay reloj activo por defecto.
-//
+// Cada foto se conserva en el registro intradiario. No se escribe una copia separada.
+// Los precios previos se reciben desde la última lectura real del historial local.
+
 // Movimiento entre lecturas (decision del usuario, 20-nov-2026: «quiero ver cuando la
 // cuestion realmente esta aumentando, no cuando la referencia bajo»): el verde de la
 // ventana es una POSICION (cierre sobre apertura), no una direccion; una sola lectura no
@@ -51,9 +49,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export const CARPETA_BARRA = 'barra-24h';
-export const ARCHIVO_BARRA = 'actual_barra';
-export const RUTA_BARRA = `registros/pre-calculado/stock/${CARPETA_BARRA}/${ARCHIVO_BARRA}`;
+// Solo migración de instalaciones anteriores; nunca se vuelve a escribir.
+export const RUTA_BARRA = 'registros/pre-calculado/stock/barra-24h/actual_barra';
 
 // Ruta oficial de la consulta publica. El documento de Binance (rest-api.md) pide usar
 // https://data-api.binance.vision para las APIs que SOLO leen datos publicos de mercado, como
@@ -358,36 +355,16 @@ export function leerBarra(texto) {
   return b;
 }
 
-// La instantanea en la sincronizacion: ruta unica conocida. Archivo vivo como el catalogo
-// (lo regenera cada consulta y el local gana); NO es un pre-calculo de un dia, que seria
-// conflicto al diferir y no se pisaria nunca.
-export const esRutaBarra = (rel) => rel === RUTA_BARRA;
-export const validarBarra = (buf) => leerBarra(String(buf)).conDato;
-
-// Escritura atomica (temporal + renombrado) pisando la anterior: es un archivo vivo.
-// Devuelve la ruta relativa dentro del repo.
-export function escribirBarra(dirRegistros, texto) {
-  const dir = path.join(dirRegistros, 'pre-calculado', 'stock', CARPETA_BARRA);
-  fs.mkdirSync(dir, { recursive: true });
-  const destino = path.join(dir, ARCHIVO_BARRA);
-  const tmp = `${destino}.tmp-${process.pid}`;
-  fs.writeFileSync(tmp, texto);
-  fs.renameSync(tmp, destino);
-  return RUTA_BARRA;
-}
-
 // La consulta completa: universo del registro, dos tandas, barra, comparacion con la
-// lectura anterior guardada en la propia instantanea (si la hay y es legible; si no, no se
-// compara ni se inventa) e instantanea nueva en disco.
-export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), guardarInstantanea = true } = {}) {
+// lectura anterior recibida del historial; sin previa no se inventa movimiento.
+export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), anteriorTexto = null } = {}) {
   const universo = universoBarra(dirVelas);
   if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
-  const dirRegistros = path.dirname(dirVelas);
   let previos = null, comparadaCon = null;
-  try {
-    const anterior = leerBarra(fs.readFileSync(path.join(dirRegistros, 'pre-calculado', 'stock', CARPETA_BARRA, ARCHIVO_BARRA), 'utf8'));
+  if (anteriorTexto !== null) {
+    const anterior = leerBarra(anteriorTexto);
     if (anterior.activos.size) { previos = anterior.activos; comparadaCon = anterior.generada; }
-  } catch { /* sin instantanea previa legible: esta lectura no compara, solo guarda */ }
+  }
   const tandas = [];
   for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
   const barra = calcularBarra(tandas, universo);
@@ -401,8 +378,7 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
     }
   }
   const texto = formatearBarra(barra, ahora);
-  const rel = guardarInstantanea ? escribirBarra(dirRegistros, texto) : RUTA_BARRA;
-  return { barra, texto, rel, generada: ahora };
+  return { barra, texto, generada: ahora };
 }
 
 // --- La orden ---
@@ -418,8 +394,9 @@ export function registrar(ctx) {
     const decir = (text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text });
     try {
       const host = process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST || HOST_POR_DEFECTO;
-      const tomar = ctx.tomarBarra || generarBarra;
-      const { barra, rel, generada, registro, publicacion, pendiente } = await tomar({ dirVelas: dirVelas(), host });
+      if (!ctx.tomarBarra) throw Error('El registro intradiario no está disponible; no tomo una foto sin guardarla.');
+      const tomar = ctx.tomarBarra;
+      const { barra, generada, registro, publicacion, pendiente } = await tomar({ dirVelas: dirVelas(), host });
       const l = [
         `Barra móvil 24 h (stocks), consultada ahora a Binance:`,
       ];
@@ -440,7 +417,7 @@ export function registrar(ctx) {
       if (barra.dispersionMs !== null) l.push(`· Dispersión entre cierres de la ventana: ${barra.dispersionMs} ms.`);
       if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
       l.push(`· Tablas del visor (qué activos quedaron verdes): <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-dia|día anterior> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-24h|24 h> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-movimiento|movimiento>.`);
-      l.push(`· Instantánea guardada en ${rel} (archivo vivo, se pisa en cada consulta).`);
+      if (registro) l.push(`· Historial guardado en ${registro.rel}.`);
       if (registro) l.push(`· Registro intradiario: ${registro.lecturas} lectura(s) del día guardada(s).`);
       if (publicacion) l.push(publicacion.commit ? `· Publicada en el commit ${publicacion.commit.slice(0, 7)}.` : '· Publicación confirmada, sin cambios nuevos.');
       if (pendiente) l.push(`· Guardada, pero pendiente de publicar: ${pendiente}. Reintentar con «intradia publica», sin otra consulta.`);

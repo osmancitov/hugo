@@ -520,10 +520,8 @@ async function cargarIcebergPre(e) {
 
 // Barra móvil 24 h (decisión del usuario, 20-nov-2026): la frontera suben/bajan de la ventana
 // móvil de Binance al pie del iceberg de stocks, para verla moverse durante el día sin esperar
-// al cierre diario. La genera Hugo con la orden «barra» en la instantánea desechable
-// registros/pre-calculado/stock/barra-24h/actual_barra; si el archivo no está publicado,
-// el bloque no aparece (lo que falta se muestra como que falta).
-const RUTA_BARRA = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/pre-calculado/stock/barra-24h/actual_barra';
+// al cierre diario. Cada lectura completa queda guardada en el historial.
+// El historial intradiario es la única fuente de lecturas.
 const BASE_INTRADIA_WEB = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/intradia/stock';
 const cacheIntradia = new Map();
 async function cargarRegistroIntradia(diaElegido = null) {
@@ -554,10 +552,7 @@ async function cargarRegistroIntradia(diaElegido = null) {
 async function cargarBarra() {
   const registro = await cargarRegistroIntradia();
   if (registro) return parsearBarraVisor(registro.dia.lecturas.at(-1).texto);
-  // Compatibilidad: solo cuando todavía no existe el registro nuevo.
-  const r = await fetch(`${RUTA_BARRA}?t=${Math.floor(Date.now() / 60000)}`);
-  if (!r.ok) return null;
-  return parsearBarraVisor(await r.text());
+  return null; // Sin historial publicado, no hay lectura que mostrar.
 }
 function parsearBarraVisor(texto) {
   const campos = {};

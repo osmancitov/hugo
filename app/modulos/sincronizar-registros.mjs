@@ -24,9 +24,7 @@
 // pre-calculos: registros/pre-calculado/<clase>/<calculo>-<duracion>/<archivo> y
 // registros/ranking-24h/<clase>/<AAMMDD>_ranking-24h. Los pre-calculos son archivos de un dia:
 // se crean una vez y no cambian; contenido distinto en los dos lados es conflicto y no se toca
-// (nunca se pisa, en ningun sentido). Excepcion de archivo vivo (decision del usuario,
-// 20-nov-2026): registros/pre-calculado/stock/barra-24h/actual_barra, la instantanea desechable
-// de la barra movil; como el catalogo, la regenera cada consulta y el local gana. Ninguna otra carpeta, en ningun sentido.
+// (nunca se pisa, en ningun sentido). El historial intradiario tiene su publicador propio.
 // Piso fijo del registro (decision del usuario, 18-nov-2026): nada anterior al 1-ago-2026 se
 // sincroniza en NINGUN sentido — los archivos AAMM anteriores ni bajan del repo ni suben de
 // la Debian; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
@@ -48,7 +46,6 @@ import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos, preCalculosFrescos } from './pre-calculado.mjs';
-import { esRutaBarra, validarBarra, RUTA_BARRA } from './barra-movil.mjs';
 import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
 import { validarArchivoIntradia, combinarArchivoIntradia } from './registro-intradia.mjs';
 
@@ -182,7 +179,6 @@ export function registrar(ctx) {
       else if (RUTA_IND.test(p)) { mapa.set(p, sha); blobs.set(p, sha); } // indicadores: misma comparación por huella
       else if (esRutaPre(p)) { mapa.set(p, sha); blobs.set(p, sha); } // pre-cálculos: comparación por huella; distinto es conflicto
       else if (esRutaCatalogo(p)) { mapa.set(p, sha); blobs.set(p, sha); } // catálogo: archivo vivo; lo regenera la pasada y el local gana
-      else if (esRutaBarra(p)) { mapa.set(p, sha); blobs.set(p, sha); } // barra móvil: archivo vivo como el catálogo; el local gana
       else if (RUTA_HEREDADA.test(p)) { heredados.push(p); blobs.set(p, sha); } // ruta anterior sin clase: no se sincroniza, solo se muda
     }
     return { mapa, heredados, blobs };
@@ -239,12 +235,6 @@ export function registrar(ctx) {
         if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
         lista.push({ rel: `registros/catalogo/${n}`, ruta, bytes: st.size });
       }
-    } catch {}
-    // Barra móvil 24 h (20-nov-2026): instantánea viva que regenera cada consulta; entra en la comparación.
-    try {
-      const ruta = path.join(path.dirname(dirBase()), RUTA_BARRA.slice('registros/'.length));
-      const st = fs.lstatSync(ruta);
-      if (st.isFile() && st.size > 0 && st.size <= MAX_BYTES) lista.push({ rel: RUTA_BARRA, ruta, bytes: st.size });
     } catch {}
     return lista;
   }
@@ -361,7 +351,6 @@ export function registrar(ctx) {
       const local = fs.readFileSync(f.ruta);
       if (shaBlob(local) === shaRemota) iguales++;
       else {
-        if (esRutaBarra(f.rel)) { subir.push(f); mapa.delete(f.rel); continue; } // la barra móvil se pisa en cada consulta: el local gana
         if (esRutaPre(f.rel)) { conflictos.push(f.rel); mapa.delete(f.rel); continue; } // un pre-cálculo distinto ya publicado no se pisa
         if (esRutaCatalogo(f.rel)) { subir.push(f); mapa.delete(f.rel); continue; } // el catálogo se regenera en cada pasada: el local gana
         const remoto = await leerBlob(shaRemota);
@@ -381,7 +370,7 @@ export function registrar(ctx) {
     return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
-  const corta = (rel) => (esRutaPre(rel) || esRutaCatalogo(rel) || esRutaBarra(rel)) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
+  const corta = (rel) => (esRutaPre(rel) || esRutaCatalogo(rel)) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
   const cortas = (l) => l.map((x) => corta(typeof x === 'string' ? x : x.rel));
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
@@ -392,18 +381,17 @@ export function registrar(ctx) {
       verificar();
       try {
         const buf = await leerBlob(b.sha);
-        const esInd = RUTA_IND.test(b.rel), esPre = esRutaPre(b.rel), esBarra = esRutaBarra(b.rel);
-        const destino = esPre ? destinoPre(path.dirname(dirBase()), b.rel) : esBarra ? path.join(path.dirname(dirBase()), b.rel.slice('registros/'.length)) : esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
-        if (esPre ? !validarPre(buf, b.rel) : esBarra ? !validarBarra(buf) : esInd ? !leerIndicador(buf).length : esRutaCatalogo(b.rel) ? !validarCatalogo(buf) : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+        const esInd = RUTA_IND.test(b.rel), esPre = esRutaPre(b.rel);
+        const destino = esPre ? destinoPre(path.dirname(dirBase()), b.rel) : esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
+        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : esRutaCatalogo(b.rel) ? !validarCatalogo(buf) : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
         if (fs.existsSync(destino)) {
           if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
-          if (esBarra) { hechos.push(b.rel); continue; } // archivo vivo: si ya hay una local, ella gana; subirá en la pasada
           const previo = fs.readFileSync(destino);
           if (esPre) { if (!previo.equals(buf)) throw Error('Hay un pre-cálculo local distinto; no lo piso.'); continue; }
           const modo = esInd ? relacionIndicador(leerIndicador(previo), leerIndicador(buf)) : relacion(previo, buf, b.rel);
           if (modo === 'ampliar') { if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf, previo); }
           else continue; // iguales o la Debian tiene una extension mayor: nunca recortar
-        } else if (esPre || esBarra) { fs.mkdirSync(path.dirname(destino), { recursive: true }); fs.writeFileSync(destino, buf); }
+        } else if (esPre) { fs.mkdirSync(path.dirname(destino), { recursive: true }); fs.writeFileSync(destino, buf); }
         else if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf);
         hechos.push(b.rel);
         await progreso(`Descarga: ${hechos.length}/${bajar.length} archivo(s) copiados.`);
@@ -434,9 +422,9 @@ export function registrar(ctx) {
         const shaRemota = actuales.get(f.rel);
         if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel), esBarra = esRutaBarra(f.rel);
-          if (esBarra ? !validarBarra(buf) : esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo vacío.');
-          if (shaRemota !== undefined && !esCat && !esBarra) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
+          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel);
+          if (esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo vacío.');
+          if (shaRemota !== undefined && !esCat) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
             if (esPre) continue; // ya publicado con otro contenido: un pre-cálculo no se pisa (lo anota el plan como conflicto)
             const remoto = await leerBlob(shaRemota);
             const modo = esInd ? relacionIndicador(leerIndicador(remoto), leerIndicador(buf)) : relacion(remoto, buf, f.rel);
@@ -483,7 +471,10 @@ export function registrar(ctx) {
     if (enCurso) throw Error('Ya hay una sincronización en curso; la lectura queda pendiente.');
     const rutas = Object.keys(archivos).sort();
     if (!rutas.length) return { commit: null, subidos: [], archivos: {} };
-    for (const rel of rutas) validarArchivoIntradia(rel, archivos[rel]);
+    for (const rel of rutas) {
+      if (!rel.startsWith('registros/intradia/stock/')) throw Error('La copia retirada no se publica.');
+      validarArchivoIntradia(rel, archivos[rel]);
+    }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Falta HUGO_GITHUB para publicar.');
     const token = ctx.leerClave('.github-key');

@@ -6,11 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { crearRemoto } from './git-remoto.mjs';
-import { formatearBarra, leerBarra, RUTA_BARRA, escribirBarra } from '../app/modulos/barra-movil.mjs';
-import { guardarLectura, recuperarIntradia, pendientesIntradia, confirmarIntradia, combinarArchivoIntradia, intervaloIntradia, siguienteHitoUTC, registrar as registrarIntradia } from '../app/modulos/registro-intradia.mjs';
+import { formatearBarra, leerBarra, RUTA_BARRA } from '../app/modulos/barra-movil.mjs';
+import { guardarLectura, ultimaLecturaLocal, recuperarIntradia, pendientesIntradia, confirmarIntradia, combinarArchivoIntradia, intervaloIntradia, siguienteHitoUTC, registrar as registrarIntradia } from '../app/modulos/registro-intradia.mjs';
 import { registrar as registrarSync } from '../app/modulos/sincronizar-registros.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, leerDia, terrenoDia } from '../app/modulos/intradia-datos.mjs';
 
+function escribirBarra(raiz, texto) {
+  const p = path.join(raiz, RUTA_BARRA.slice('registros/'.length));
+  fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, texto);
+}
 const T = Date.UTC(2026, 10, 21, 10), DIA = 86400000;
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-intradia-prueba-'));
 const limpiar = (p) => fs.rmSync(p, { recursive: true, force: true });
@@ -65,7 +69,7 @@ test('un conflicto nunca reemplaza un registro existente ni vacía su cola', () 
     const antes = fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8');
     assert.throws(() => guardarLectura(raiz, foto(T, 90)), /Conflicto/);
     assert.equal(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8'), antes);
-    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 3);
+    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 2);
   } finally { limpiar(p); }
 });
 
@@ -138,7 +142,7 @@ test('fallo de publicación conserva cola y reintenta sin consultar Binance otra
     guardarLectura(raiz, foto()); registrarIntradia(ctx);
     ctx.publicarIntradia = async () => { throw Error('sin conexión'); };
     await assert.rejects(() => ctx.reintentarIntradia(), /sin conexión/);
-    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 3);
+    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 2);
     ctx.publicarIntradia = async (archivos) => ({ archivos, commit: 'abcdef0' });
     await ctx.reintentarIntradia(); assert.deepEqual(pendientesIntradia(raiz), {});
   } finally { limpiar(p); }
@@ -153,9 +157,9 @@ test('git publica las tres rutas exactas en un commit y no abre ni recorre el hi
     fs.readdirSync = () => { throw Error('Prohibido recorrer archivos históricos'); };
     let r;
     try { r = await ctx.publicarIntradia(pendientesIntradia(raiz)); } finally { fs.readdirSync = readdir; }
-    assert.equal(r.subidos.length, 3); assert.ok(r.commit);
+    assert.equal(r.subidos.length, 2); assert.ok(r.commit);
     const arbol = rem.arbol(); assert.equal(arbol['ajeno.txt'], 'intacto');
-    assert.equal(Object.keys(arbol).length, 5); // README, ajeno y las tres rutas
+    assert.equal(Object.keys(arbol).length, 4); // README, ajeno y las tres rutas
     assert.match(rem.commits()[0], /Osmancito <osmanvielma@gmail.com>/);
     const segundo = await ctx.publicarIntradia(pendientesIntradia(raiz)); assert.equal(segundo.commit, null);
   } finally { rem.destruir(); limpiar(p); }
@@ -178,13 +182,13 @@ test('git reintenta un avance ajeno y conserva ambos registros sin pisar código
 });
 
 test('rechaza publicación sin credencial, conflictos remotos y otro trabajo en curso', async () => {
-  const p = temp(), rem = crearRemoto({ [RUTA_BARRA]: foto(T, 90) }), ctx = contexto(p, rem), raiz = path.join(p, 'registros');
+  const p = temp(), rem = crearRemoto({ [rutaDia('2026-11-21')]: JSON.stringify({ version:1,dia:'2026-11-21',lecturas:[{generada:new Date(T).toISOString(),texto:foto(T,90)}]}) }), ctx = contexto(p, rem), raiz = path.join(p, 'registros');
   try {
     guardarLectura(raiz, foto()); registrarSync(ctx);
     await assert.rejects(() => ctx.publicarIntradia(pendientesIntradia(raiz)), /Conflicto/);
-    assert.equal(rem.arbol()[RUTA_BARRA], foto(T, 90));
+    assert.equal(JSON.parse(rem.arbol()[rutaDia('2026-11-21')]).lecturas[0].texto, foto(T, 90));
     ctx.leerClave = () => ''; await assert.rejects(() => ctx.publicarIntradia(pendientesIntradia(raiz)), /Falta/);
-    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 3);
+    assert.equal(Object.keys(pendientesIntradia(raiz)).length, 2);
   } finally { rem.destruir(); limpiar(p); }
 });
 
@@ -405,4 +409,60 @@ test('429 preparando cierre respeta pausa duradera, libera guardias y no inventa
   await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/Fuente pausada/);assert.equal(peticiones,1);
   assert.equal(fs.existsSync(path.join(p,'registros/intradia/stock/2026-11-22.json')),false);
  }finally{limpiar(p);}
+});
+
+
+test('migración de copia y cola antiguas conserva fotos únicas y ya no vuelve a crear copia', () => {
+  const p = temp(), raiz = path.join(p, 'registros');
+  try {
+    guardarLectura(raiz, foto());
+    escribirBarra(raiz, foto(T + 120000, 95));
+    const cola = path.join(p, '.estado-intradia', 'pendientes.json');
+    const j = JSON.parse(fs.readFileSync(cola));
+    j.archivos[RUTA_BARRA] = foto(T + 60000, 90);
+    fs.writeFileSync(cola, JSON.stringify(j));
+    const migrados = recuperarIntradia(raiz);
+    assert.equal(Object.keys(migrados).length, 2);
+    assert.ok(!fs.existsSync(archivo(raiz, RUTA_BARRA)));
+    assert.equal(leerDia(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8')).lecturas.length, 3);
+    assert.equal(ultimaLecturaLocal(raiz), foto(T + 120000, 95));
+    recuperarIntradia(raiz);
+    assert.ok(!fs.existsSync(archivo(raiz, RUTA_BARRA)));
+    assert.deepEqual(pendientesIntradia(raiz), migrados);
+  } finally { limpiar(p); }
+});
+test('migración conflictiva no toca archivo anterior, historial ni cola', () => {
+  const p = temp(), raiz = path.join(p, 'registros');
+  try {
+    guardarLectura(raiz, foto()); escribirBarra(raiz, foto(T, 90));
+    const dia = fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8');
+    const cola = fs.readFileSync(path.join(p, '.estado-intradia', 'pendientes.json'), 'utf8');
+    assert.throws(() => recuperarIntradia(raiz), /Conflicto/);
+    assert.equal(fs.readFileSync(archivo(raiz, RUTA_BARRA),'utf8'), foto(T,90));
+    assert.equal(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')),'utf8'),dia);
+    assert.equal(fs.readFileSync(path.join(p, '.estado-intradia', 'pendientes.json'),'utf8'),cola);
+  } finally { limpiar(p); }
+});
+test('toma previa atraviesa medianoche sin copia y sin reconstruir fotos', () => {
+  const p=temp(), raiz=path.join(p,'registros');
+  try {
+    assert.equal(ultimaLecturaLocal(raiz), null);
+    guardarLectura(raiz,foto());
+    assert.equal(ultimaLecturaLocal(raiz),foto());
+    guardarLectura(raiz,foto(T+DIA));
+    assert.equal(ultimaLecturaLocal(raiz),foto(T+DIA));
+    assert.equal(Object.keys(pendientesIntradia(raiz)).length,3); // dos días, un índice
+  } finally { limpiar(p); }
+});
+test('recuperación no recorta un día local más amplio que la cola anterior', () => {
+  const p=temp(), raiz=path.join(p,'registros');
+  try {
+    guardarLectura(raiz,foto());
+    const antigua=fs.readFileSync(path.join(p,'.estado-intradia','pendientes.json'));
+    guardarLectura(raiz,foto(T+60000,90));
+    fs.writeFileSync(path.join(p,'.estado-intradia','pendientes.json'),antigua);
+    recuperarIntradia(raiz);
+    assert.equal(leerDia(fs.readFileSync(archivo(raiz,rutaDia('2026-11-21')),'utf8')).lecturas.length,2);
+    assert.equal(ultimaLecturaLocal(raiz),foto(T+60000,90));
+  } finally { limpiar(p); }
 });

@@ -13,7 +13,7 @@ import vm from 'node:vm';
 import {
   universoBarra, particionar, consultarTanda, calcularBarra, calcularMovimiento,
   cierreVelaDiaAnterior, calcularDia,
-  formatearBarra, leerBarra, escribirBarra, generarBarra,
+  formatearBarra, leerBarra, generarBarra,
   simboloStock, RUTA_BARRA,
 } from '../app/modulos/barra-movil.mjs';
 
@@ -101,19 +101,6 @@ test('formatearBarra y leerBarra: ida y vuelta, un dato por línea, y el validad
   assert.throws(() => leerBarra('suben: 1\nbajan: 1\n'), /Instantanea|Fecha|NaN|undefined/);
 });
 
-test('escribirBarra escribe atómico en la ruta publicada y pisa la instantánea anterior', () => {
-  const dir = tmp('hugo-barra-e-');
-  try {
-    const b = { inicio: 1000, cierreMin: 1500, fin: 2000, dispersionMs: 5, consultados: 2, respondieron: 2, conDato: 2, sinDato: 0, suben: 1, bajan: 1 };
-    const rel1 = escribirBarra(dir, formatearBarra(b, 3000));
-    assert.equal(rel1, RUTA_BARRA);
-    assert.equal(rel1, 'registros/pre-calculado/stock/barra-24h/actual_barra');
-    const rel2 = escribirBarra(dir, formatearBarra({ ...b, suben: 2, bajan: 0 }, 4000));
-    assert.equal(rel2, rel1); // archivo vivo: mismo sitio, contenido nuevo
-    assert.equal(leerBarra(fs.readFileSync(path.join(dir, 'pre-calculado', 'stock', 'barra-24h', 'actual_barra'), 'utf8')).suben, 2);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-});
-
 test('generarBarra: universo del registro, dos tandas, barra e instantánea en disco', async () => {
   const dir = tmp('hugo-barra-g-');
   try {
@@ -131,8 +118,8 @@ test('generarBarra: universo del registro, dos tandas, barra e instantánea en d
     assert.equal(barra.consultados, 3);
     assert.equal(barra.suben, 2);
     assert.equal(barra.bajan, 1);
-    assert.equal(rel, RUTA_BARRA);
-    assert.ok(fs.existsSync(path.join(dir, 'pre-calculado', 'stock', 'barra-24h', 'actual_barra')));
+    assert.equal(rel, undefined);
+    assert.ok(!fs.existsSync(path.join(dir, 'pre-calculado', 'stock', 'barra-24h', 'actual_barra')));
     await assert.rejects(() => generarBarra({ dirVelas: path.join(dir, 'vacio'), fetchImpl: fetchFalso }), /no invento/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -265,7 +252,7 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
     assert.ok(!r1.texto.includes('mov_suben'));
     const p2 = { AAABUSDT: 12, BBBBUSDT: 20 }; // AAA subió con cierre nuevo; BBB sin cierre nuevo
     const c2 = { AAABUSDT: 2500, BBBBUSDT: 2000 };
-    const r2 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p2, c2), host: 'https://data-api.binance.vision', ahora: 9000 });
+    const r2 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p2, c2), host: 'https://data-api.binance.vision', ahora: 9000, anteriorTexto: r1.texto });
     const { detalle, ...conteos } = r2.barra.movimiento;
     assert.deepEqual(conteos, { suben: 1, bajan: 0, iguales: 0, sinCierreNuevo: 1, sinPrevia: 0 });
     assert.deepEqual(detalle.get('AAA'), { previoTexto: '10', resultado: 'sube' }); // el previo viaja con el texto exacto de la lectura anterior
@@ -279,9 +266,9 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
 
 test('guardia del visor: la barra solo en el iceberg de stocks, colores de la casa, ausente si el archivo falta', () => {
   const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(visor, /registros\/pre-calculado\/stock\/barra-24h\/actual_barra/);
+  assert.doesNotMatch(visor, /actual_barra/);
   assert.match(visor, /e\.codigo === 'iceberg-stock'/); // ni cripto ni otras vistas
-  assert.match(visor, /if \(!r\.ok\) return null/); // sin archivo publicado, sin bloque
+  assert.match(visor, /return null; \/\/ Sin historial/); // sin archivo publicado, sin bloque
   assert.match(visor, /ventana móvil/);
   assert.match(visor, /Movimiento entre las dos últimas consultas/); // segunda barra: movimiento medido entre lecturas
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
@@ -310,7 +297,7 @@ test('guardia de la casa: la orden está registrada en la app y documentada en e
   assert.match(app, /barraMovil/);
   const manual = fs.readFileSync(new URL('../manual/manual-hugo.md', import.meta.url), 'utf8');
   assert.match(manual, /`barra`/);
-  assert.match(manual, /barra-24h\/actual_barra/);
+  assert.match(manual, /historial local/);
   assert.match(manual, /Movimiento entre lecturas/);
   assert.match(manual, /sin cierre nuevo/);
   assert.match(manual, /Contra el cierre del día anterior/);
@@ -318,18 +305,11 @@ test('guardia de la casa: la orden está registrada en la app y documentada en e
   assert.match(manual, /timestamp de la lectura anterior/);
 });
 
-test('guardia de la sincronización: la instantánea es archivo vivo (el local gana), nunca pre-cálculo de un día', async () => {
-  const { esRutaPre } = await import('../app/modulos/pre-calculado.mjs');
-  const { esRutaBarra, validarBarra } = await import('../app/modulos/barra-movil.mjs');
-  assert.equal(esRutaPre(RUTA_BARRA), false); // si entrara como pre-cálculo, cada actualización sería conflicto eterno
-  assert.equal(esRutaBarra(RUTA_BARRA), true);
-  assert.equal(esRutaBarra('registros/pre-calculado/stock/iceberg-90d/260822-261119_iceberg'), false);
-  const texto = formatearBarra({ inicio: 1000, cierreMin: 2000, fin: 2000, dispersionMs: 0, consultados: 1, respondieron: 1, conDato: 1, sinDato: 0, suben: 1, bajan: 0 }, 3000);
-  assert.equal(validarBarra(Buffer.from(texto)), 1);
-  assert.throws(() => validarBarra(Buffer.from('suben: 3\n')));
+test('la copia retirada no participa en la sincronización ni el visor', () => {
   const sync = fs.readFileSync(new URL('../app/modulos/sincronizar-registros.mjs', import.meta.url), 'utf8');
-  assert.match(sync, /esRutaBarra/);
-  assert.match(sync, /el local gana/);
+  assert.doesNotMatch(sync, /esRutaBarra|actual_barra/);
+  const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(visor, /actual_barra|RUTA_BARRA/);
 });
 
 // Executes the real browser parser and table classifiers, not copies of their logic.
@@ -349,7 +329,7 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     ],
   };
   const texto = formatearBarra(base, 4000);
-  const ctx = vm.createContext({ cargarRegistroIntradia: async () => null, RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
+  const ctx = vm.createContext({ cargarRegistroIntradia: async () => ({ dia: { lecturas: [{ texto }] } }), RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
   vm.runInContext(cargar + defs + html.slice(html.indexOf('const precioTabla ='), html.indexOf('async function vistaTablaBarra(')) + ';globalThis.defs = BARRAS_TABLA;globalThis.pctTabla = pctTabla;', ctx);
   const b = await vm.runInContext('cargarBarra()', ctx);
   for (const [key, green, red, equal, out] of [['barra-dia',1,1,1,1], ['barra-24h',2,1,1,0], ['barra-movimiento',1,1,1,1]]) {
