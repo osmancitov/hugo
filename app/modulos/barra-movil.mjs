@@ -336,7 +336,7 @@ export function registrar(ctx) {
       if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
       if (barra.movimiento) {
         const m = barra.movimiento;
-        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): suben ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde${m.iguales === null ? '' : `, iguales: ${m.iguales}`}).`);
+        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): no bajaron ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde${m.iguales === null ? '' : `, iguales: ${m.iguales}`}).`);
         if (m.sinCierreNuevo) l.push(`· Sin cierre nuevo: ${m.sinCierreNuevo} (la respuesta no ofrece uno más reciente; fuera de la frontera, como el sin dato).`);
         if (m.sinPrevia) l.push(`· Sin lectura previa: ${m.sinPrevia} (fuera de la frontera, no inventados).`);
       }

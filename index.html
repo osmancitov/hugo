@@ -541,11 +541,11 @@ function vistaBarra(b) {
     graf2.append(rojo2, verde2);
     const nums2 = document.createElement('div');
     nums2.className = 'barra-movil-nums';
-    nums2.textContent = `Suben ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`;
+    nums2.textContent = `No bajan ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`;
     const nota2 = document.createElement('div');
     nota2.className = 'barra-movil-nota';
     // El verde incluye la igualdad (la misma regla del iceberg, sin tercera categoría);
-    // se dice explícito para que «Suben» no afirme aumento cuando hubo iguales.
+    // por eso la etiqueta dice «No bajan» y la nota declara los iguales aparte.
     nota2.textContent = `Comparada con la consulta del ${hora(m.comparadaCon)} (UTC); cada activo se mide con el cierre de su propia ventana · verde = suben o iguales` + (m.iguales === null ? '' : ` (iguales: ${m.iguales})`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '');
     caja.append(titulo2, graf2, nums2, nota2);
   }
