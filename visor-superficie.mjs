@@ -31,8 +31,8 @@ export function montarRelojObservatorio(contenedor, { ahora = Date.now, programa
 }
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
-// Misma navegación para activos y lecturas: los extremos no saltan al otro lado.
-export function montarPasos(selector, nombre, mover, { repetir = false, programar = setTimeout, cancelar = clearTimeout } = {}) {
+// Misma navegación para activos y lecturas, con repetición y ciclo opcionales.
+export function montarPasos(selector, nombre, mover, { repetir = false, ciclar = false, programar = setTimeout, cancelar = clearTimeout } = {}) {
   const grupo = crear('span', 'superficie-pasos');
   const anterior = crear('button', 'superficie-flecha', '←');
   const siguiente = crear('button', 'superficie-flecha', '→');
@@ -44,19 +44,21 @@ export function montarPasos(selector, nombre, mover, { repetir = false, programa
   let temporizador = null, pulsado = null, vivo = true;
   const detener = () => { cancelar(temporizador); temporizador = null; pulsado = null; };
   const actualizar = () => {
-    anterior.disabled = selector.selectedIndex <= 0;
-    siguiente.disabled = selector.selectedIndex < 0 || selector.selectedIndex >= selector.options.length - 1;
+    anterior.disabled = selector.options.length < 2 || selector.selectedIndex < 0 || (!ciclar && selector.selectedIndex <= 0);
+    siguiente.disabled = selector.options.length < 2 || selector.selectedIndex < 0 || (!ciclar && selector.selectedIndex >= selector.options.length - 1);
     if (pulsado?.disabled) detener();
   };
   const paso = (delta) => {
-    const indice = selector.selectedIndex + delta;
+    const n = selector.options.length;
+    if (n < 2 || selector.selectedIndex < 0) return;
+    const indice = ciclar ? (selector.selectedIndex + delta + n) % n : selector.selectedIndex + delta;
     if (indice >= 0 && indice < selector.options.length) mover(indice);
   };
   for (const [boton, delta] of [[anterior, -1], [siguiente, 1]]) {
     boton.onclick = (e) => { if (vivo && (!repetir || !e?.detail)) paso(delta); };
     if (!repetir) continue;
     boton.style && (boton.style.touchAction = 'none');
-    boton.title += ' · Mantén pulsado para recorrer 10 activos por segundo';
+    boton.title += ' · Mantén pulsado para recorrer 10 pasos por segundo';
     boton.onpointerdown = (e) => {
       if (!vivo || boton.disabled || (e.button !== undefined && e.button !== 0) || e.isPrimary === false) return;
       detener(); pulsado = boton;
@@ -96,11 +98,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
   barras.forEach((b, i) => { const o = crear('option', '', `${hora(b.generada)}`); o.value = i; elegirLectura.append(o); });
   elegirLectura.value = ultima;
-  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo));
+  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo), { repetir: true, ciclar: true });
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
-  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i), { repetir: true });
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i), { repetir: true, ciclar: true });
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');

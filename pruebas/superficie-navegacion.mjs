@@ -106,7 +106,7 @@ test('mantener activo avanza cada 100ms, suelta sin paso duplicado y se detiene 
   } finally { global.document = anterior; }
 });
 
-test('cancelar puntero detiene recorrido; lecturas conservan un paso por clic', () => {
+test('cancelar puntero detiene recorrido; modo sin repetición conserva un paso por clic', () => {
   const anterior = global.document, tiempos = []; global.document = { createElement: (tag) => new Elemento(tag) };
   try {
     const selector = { selectedIndex: 5, options: Array(20) }; let pasos;
@@ -119,4 +119,21 @@ test('cancelar puntero detiene recorrido; lecturas conservan un paso por clic', 
     lecturas.grupo.hijos[0].onclick({ detail: 1 }); assert.equal(selector.selectedIndex, 3);
     pasos.desmontar(); lecturas.desmontar();
   } finally { global.document = anterior; }
+});
+
+
+for (const nombre of ['Activo', 'Lectura']) test(`${nombre}: ciclo bidireccional y pulsación sostenida comparten diez pasos por segundo`, () => {
+ const antes=global.document, tiempos=[];global.document={createElement:tag=>new Elemento(tag)};
+ try{
+  const selector={selectedIndex:0,options:Array(3)};let pasos;
+  pasos=montarPasos(selector,nombre,i=>{selector.selectedIndex=i;pasos.actualizar();},{repetir:true,ciclar:true,programar:(fn,ms)=>{tiempos.push({fn,ms});return tiempos.length;},cancelar:()=>{}});
+  const previo=pasos.grupo.hijos[0], siguiente=pasos.grupo.hijos[2];
+  assert.equal(previo.disabled,false);previo.onpointerdown({button:0,pointerId:1});assert.equal(selector.selectedIndex,2);
+  assert.equal(tiempos[0].ms,100);tiempos[0].fn();assert.equal(selector.selectedIndex,1);
+  previo.onpointerup();tiempos[1].fn();assert.equal(selector.selectedIndex,1);
+  selector.selectedIndex=2;pasos.actualizar();siguiente.onpointerdown({button:0,pointerId:2});assert.equal(selector.selectedIndex,0);
+  siguiente.onpointercancel();tiempos.at(-1).fn();assert.equal(selector.selectedIndex,0);
+  selector.options=Array(1);selector.selectedIndex=0;pasos.actualizar();assert.equal(previo.disabled,true);assert.equal(siguiente.disabled,true);
+  pasos.desmontar();
+ }finally{global.document=antes;}
 });
