@@ -4,8 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { guardarEstado } from './registro-motor.mjs';
-import { generarBarra, leerBarra, RUTA_BARRA, universoBarra, cierreVelaDiaAnterior } from './barra-movil.mjs';
-import { asegurarCierreDiario } from './intradia-cierre.mjs';
+import { generarBarra, leerBarra, RUTA_BARRA } from './barra-movil.mjs';
 import { fetchConPausa, pausaFuente } from './intradia-fuente.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, esRutaIntradia, leerDia, leerIndice, unirDias, unirIndices } from './intradia-datos.mjs';
 
@@ -82,6 +81,10 @@ export function ultimaLecturaLocal(raiz) {
   const ultima = dia.lecturas.at(-1);
   if (!ultima || ultima.generada !== i.ultima) throw Error('Índice y última lectura local no coinciden.');
   return ultima.texto;
+}
+export function primeraLecturaDelDia(raiz, ahora) {
+  const texto = leerOpcional(archivoLocal(raiz, rutaDia(diaUTC(ahora))));
+  return texto === null ? null : leerDia(texto, validar).lecturas[0]?.texto ?? null;
 }
 export function validarArchivoIntradia(rel, texto) {
   if (rel === RUTA_BARRA) return validar(texto);
@@ -165,25 +168,14 @@ export function registrar(ctx) {
     const parada = ctx.parada?.n;
     try {
       recuperarIntradia(raiz());
-      const objetivoDia = Math.floor((opciones.ahora ?? ahora()) / 86400000) * 86400000;
-      const comprobar = () => { if (ctx.parada?.n !== parada) throw Error('Lectura detenida a pedido antes de preparar el cierre.'); };
-      const reloj = () => opciones.ahora ?? ahora();
-      // El guardia comparte la exclusión de la toma: la diaria no modifica velas en paralelo.
-      const universo = universoBarra(dirVelas());
-      const necesitaCierre = universo.some(c => cierreVelaDiaAnterior(dirVelas(), c, objetivoDia - 86400000) === null);
-      if (necesitaCierre) {
-        ctx.preparandoCierreIntradia = true;
-        try {
-          while (ctx.registroOcupado?.() || ctx.sincronizacionEnCurso?.()) { comprobar(); await (ctx.esperar || (ms => new Promise(r => setTimeout(r, ms))))(60000); }
-          await asegurarCierreDiario({ dirVelas: dirVelas(), host: process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST,
-            fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), ahora: reloj, esperar: ctx.esperar,
-            comprobar, informar: informarAutomatico });
-          comprobar();
-          if (Math.floor(reloj() / 86400000) * 86400000 !== objetivoDia) throw Error('Cambió el día preparando el cierre; no tomo foto atrasada.');
-        } finally { ctx.preparandoCierreIntradia = false; }
-      } else if (ctx.registroOcupado?.() || ctx.sincronizacionEnCurso?.()) throw Error('Hay un registro o sincronización en curso; no inicio otra lectura.');
+      // El ticker no depende de la ingesta diaria. Si el transporte está ocupado,
+      // la foto queda en cola para publicar sin repetir la captura.
+      const instante=opciones.ahora??ahora();
+      const inicialTexto=primeraLecturaDelDia(raiz(),instante);
+      const previaLocal=ultimaLecturaLocal(raiz());
+      const anteriorTexto=previaLocal!==null&&diaUTC(validar(previaLocal).generada)===diaUTC(instante)?previaLocal:null;
       const r = await generarBarra({ dirVelas: dirVelas(), host: process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST,
-        ...opciones, fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), anteriorTexto: ultimaLecturaLocal(raiz()), ahora: opciones.ahora ?? ahora() });
+        ...opciones, fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), anteriorTexto, inicialTexto, ahora: instante });
       if (ctx.parada?.n !== parada) throw Error('Lectura detenida a pedido; no guardé la consulta nueva.');
       r.registro = guardarLectura(raiz(), r.texto);
       ultima = r.generada;

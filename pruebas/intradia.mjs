@@ -9,7 +9,7 @@ import { crearRemoto } from './git-remoto.mjs';
 import { formatearBarra, leerBarra, RUTA_BARRA } from '../app/modulos/barra-movil.mjs';
 import { guardarLectura, ultimaLecturaLocal, recuperarIntradia, pendientesIntradia, confirmarIntradia, combinarArchivoIntradia, intervaloIntradia, siguienteHitoUTC, registrar as registrarIntradia } from '../app/modulos/registro-intradia.mjs';
 import { registrar as registrarSync } from '../app/modulos/sincronizar-registros.mjs';
-import { diaUTC, rutaDia, RUTA_INDICE, leerDia, terrenoDia } from '../app/modulos/intradia-datos.mjs';
+import { diaUTC, rutaDia, RUTA_INDICE, leerDia, terrenoDia, contextualizarBarra, lecturasConFrontera, diaVisible } from '../app/modulos/intradia-datos.mjs';
 
 function escribirBarra(raiz, texto) {
   const p = path.join(raiz, RUTA_BARRA.slice('registros/'.length));
@@ -103,7 +103,7 @@ test('100 → 90 → 100 vuelve a altura cero sin sumar porcentajes; movimiento 
   assert.equal(alturas[0], 0); assert.ok(Math.abs(alturas[1] + 10) < 1e-10); assert.equal(alturas[2], 0);
   assert.ok(Math.abs(terreno.puntos[2][0].movimiento - 100 / 9) < 1e-10);
   const sinRef = foto().replace('AAA dia_cierre: 100', 'AAA dia_cierre: sin dato');
-  assert.equal(terrenoDia([{ texto: sinRef }], leerBarra).puntos[0][0], null);
+  assert.equal(terrenoDia([{ texto: sinRef }], leerBarra).puntos[0][0].altura, 0);
 });
 
 test('sin frecuencia no programa, no consulta y no borra registros', async () => {
@@ -378,22 +378,20 @@ test('consulta en el hito sin esperar reporte Slack; ciclo lento no se solapa ni
   }finally{global.setTimeout=timeout;global.fetch=fuente;limpiar(p);}
 });
 
-test('primera foto espera cierre disponible, bloquea ingesta concurrente y usa hora real posterior', async () => {
- const p=temp(),ctx=contexto(p);let ahora=Date.UTC(2026,10,22),rondas=0,consultasTicker=0;
+test('primera foto no espera ni consulta cierres diarios y usa instante real', async () => {
+ const p=temp(),ctx=contexto(p);const ahora=Date.UTC(2026,10,22);let consultas=0;
  try{
-  ctx.ahora=()=>ahora;ctx.esperar=async ms=>{assert.equal(ms,60000);assert.equal(ctx.preparandoCierreIntradia,true);ahora+=ms;};
+  ctx.ahora=()=>ahora;
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
   ctx.publicarIntradia=async archivos=>({archivos,commit:'abcdef0'});
   const fetchImpl=async url=>{
-   url=new URL(url);
-   if(url.pathname.endsWith('/time')){rondas++;return {ok:true,json:async()=>({serverTime:ahora})};}
-   if(url.pathname.endsWith('/klines')){const inicio=Date.UTC(2026,10,21);return {ok:true,json:async()=>rondas===1?[]:[[inicio,'100','100','100','100','0',inicio+DIA-1,'0',0,'0','0','0']]};}
-   assert.equal(ctx.preparandoCierreIntradia,false);consultasTicker++;return {ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'100.01',openTime:ahora-DIA,closeTime:ahora}])};
+   assert.ok(new URL(url).pathname.endsWith('/ticker')); consultas++;
+   return {ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'100.01',openTime:ahora-DIA,closeTime:ahora}])};
   };
   registrarIntradia(ctx);const r=await ctx.tomarBarra({fetchImpl});
-  assert.equal(rondas,2);assert.equal(consultasTicker,1);assert.equal(r.generada,Date.UTC(2026,10,22,0,1));
+  assert.equal(consultas,1);assert.equal(r.generada,ahora);
   const dia=leerDia(fs.readFileSync(path.join(p,'registros/intradia/stock/2026-11-22.json'),'utf8'));
-  assert.equal(dia.lecturas[0].generada,'2026-11-22T00:01:00.000Z');assert.equal(ctx.intradiaInfo().ocupado,false);assert.equal(ctx.preparandoCierreIntradia,false);
+  assert.equal(dia.lecturas[0].generada,'2026-11-22T00:00:00.000Z');assert.equal(ctx.intradiaInfo().ocupado,false);
  }finally{limpiar(p);}
 });
 
@@ -404,7 +402,7 @@ test('429 preparando cierre respeta pausa duradera, libera guardias y no inventa
   let peticiones=0;const fetchImpl=async()=>{peticiones++;return {status:429,headers:{get:()=> '120'}};};
   registrarIntradia(ctx);
   await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/HTTP 429/);
-  assert.equal(ctx.intradiaInfo().ocupado,false);assert.equal(ctx.preparandoCierreIntradia,false);
+  assert.equal(ctx.intradiaInfo().ocupado,false);assert.ok(!ctx.preparandoCierreIntradia);
   assert.equal(ctx.intradiaInfo().pausa.hasta,Date.UTC(2026,10,22,0,2));
   await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/Fuente pausada/);assert.equal(peticiones,1);
   assert.equal(fs.existsSync(path.join(p,'registros/intradia/stock/2026-11-22.json')),false);
@@ -465,4 +463,67 @@ test('recuperación no recorta un día local más amplio que la cola anterior', 
     assert.equal(leerDia(fs.readFileSync(archivo(raiz,rutaDia('2026-11-21')),'utf8')).lecturas.length,2);
     assert.equal(ultimaLecturaLocal(raiz),foto(T+60000,90));
   } finally { limpiar(p); }
+});
+
+test('perfil inicial son113ceros,grises y sin duración; segunda toma crea variación real', () => {
+ const t=Date.UTC(2026,10,22), codigos=Array.from({length:113},(_,i)=>`A${i}`);
+ const crear=(generada,incremento=0)=>({generada,activos:new Map(codigos.map((c,i)=>[c,{ultimo:100+i+incremento,cierre:generada,dia_cierre:99999}]))});
+ const b=[crear(t),crear(t+3600000,1)];
+ const uno=terrenoDia([{texto:0}],i=>b[i]);
+ assert.equal(uno.puntos.length,1);assert.equal(uno.puntos[0].length,113);
+ assert.ok(uno.puntos[0].every(p=>p.altura===0&&p.movimiento===0&&p.generada===t));
+ const dos=terrenoDia([{texto:0},{texto:1}],i=>b[i]);
+ assert.ok(dos.puntos[1].every(p=>p.altura>0&&p.movimiento>0));
+ assert.equal(dos.barras[1].generada-dos.barras[0].generada,3600000);
+});
+test('base real retrasada conserva hora y no crea foto de00, ni cero donde falta activo', () => {
+ const t=Date.UTC(2026,10,22,0,7), b=[{generada:t,activos:new Map([['AAA',{ultimo:10}]])},{generada:t+3600000,activos:new Map([['AAA',{ultimo:9}],['BBB',{ultimo:20}]])}];
+ const r=terrenoDia([{texto:0},{texto:1}],i=>b[i]);
+ assert.equal(r.barras[0].generada,t);assert.equal(r.barras.length,2);
+ assert.equal(r.puntos[0][0].altura,0);assert.ok(r.puntos[1][0].altura<0);
+ assert.equal(r.puntos[0][1],null);assert.equal(r.puntos[1][1],null);
+});
+
+
+test('día visible espera segunda foto; misma frontera cierra ayer y abre hoy sin cambiar el registro',()=>{
+ const ayer={version:1,dia:'2026-11-21',lecturas:[{generada:'2026-11-21T00:00:00.100Z',texto:'a'},{generada:'2026-11-21T23:00:00.100Z',texto:'b'}]};
+ const hoy={version:1,dia:'2026-11-22',lecturas:[{generada:'2026-11-22T00:00:00.190Z',texto:'c'}]};
+ const indice={dias:[ayer.dia,hoy.dia]};
+ assert.equal(diaVisible(indice,hoy),ayer.dia);
+ const vista=lecturasConFrontera(ayer,hoy);assert.equal(vista.lecturas.length,3);assert.equal(ayer.lecturas.length,2);
+ assert.equal(vista.lecturas[2],hoy.lecturas[0]);
+ hoy.lecturas.push({generada:'2026-11-22T02:00:00.100Z',texto:'d'});
+ assert.equal(diaVisible(indice,hoy),hoy.dia); //01falló,02da segundo punto real
+ const sinMedianoche={...hoy,lecturas:[{generada:'2026-11-22T01:00:00.100Z',texto:'c'}]};
+ assert.equal(lecturasConFrontera(ayer,sinMedianoche).lecturas.length,2);
+});
+test('mismos precios de frontera tienen referencias distintas en ayer y hoy',()=>{
+ const b=(generada,precio)=>({generada,consultados:1,conDato:1,activos:new Map([['AAA',{ultimo:String(precio),ultimoTexto:String(precio)}]])});
+ const inicio=b(T,100),anterior=b(T+3600000,110),frontera=b(T+DIA,120);
+ const cierre=contextualizarBarra(frontera,inicio,anterior),apertura=contextualizarBarra(frontera,frontera,frontera);
+ assert.equal(cierre.dia.suben,1);assert.equal(cierre.dia.iguales,0);assert.equal(cierre.activos.get('AAA').diaCierreN,100);
+ assert.equal(apertura.dia.iguales,1);assert.equal(apertura.movimiento.iguales,1);assert.equal(apertura.activos.get('AAA').diaCierreN,120);
+ assert.equal(frontera.activos.get('AAA').dia_cierre,undefined);assert.equal(cierre.generada,frontera.generada);
+});
+test('captura de nuevo día no lee cierres diarios y reinicia primera y tercera con igualdad',async()=>{
+ const p=temp(),ctx=contexto(p),raiz=path.join(p,'registros'),t=Date.UTC(2026,10,22);
+ try{
+  guardarLectura(raiz,foto(T,90));
+  fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  ctx.ahora=()=>t;ctx.publicarIntradia=async archivos=>({archivos});registrarIntradia(ctx);
+  const r=await ctx.tomarBarra({fetchImpl:async url=>{assert.ok(new URL(url).pathname.endsWith('/ticker'));return {ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'120',openTime:t-DIA,closeTime:t}])};}});
+  assert.equal(r.barra.dia.base,t);assert.equal(r.barra.dia.iguales,1);assert.equal(r.barra.movimiento.iguales,1);assert.equal(r.barra.comparadaCon,t);
+  assert.equal(r.barra.suben,1);assert.equal(leerDia(fs.readFileSync(archivo(raiz,rutaDia('2026-11-22')),'utf8')).lecturas.length,1);
+ }finally{limpiar(p);}
+});
+test('ingesta o transporte general ocupado no impiden captura independiente; fallo de envío conserva foto',async()=>{
+ const p=temp(),ctx=contexto(p),raiz=path.join(p,'registros'),t=Date.UTC(2026,10,22);
+ try{
+  fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  ctx.ahora=()=>t;ctx.registroOcupado=()=>true;ctx.sincronizacionEnCurso=()=>true;
+  ctx.publicarIntradia=async()=>{throw Error('Transporte ocupado');};registrarIntradia(ctx);
+  const r=await ctx.tomarBarra({fetchImpl:async()=>({ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'120',openTime:t-DIA,closeTime:t}])})});
+  assert.match(r.pendiente,/Transporte ocupado/);assert.equal(r.generada,t);assert.equal(Object.keys(pendientesIntradia(raiz)).length,2);
+  const dia=leerDia(fs.readFileSync(archivo(raiz,rutaDia('2026-11-22')),'utf8'));assert.equal(dia.lecturas.length,1);
+ }finally{limpiar(p);}
 });

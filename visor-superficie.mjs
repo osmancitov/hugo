@@ -92,6 +92,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
 }
 
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
+  const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
   let giro = -0.34, inclinacion = 0.68, amplitud = 1, ultima = barras.length - 1, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
@@ -99,7 +100,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const caja = crear('div', 'superficie-caja');
   const controles = crear('div', 'superficie-controles');
   const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
-  barras.forEach((b, i) => { const o = crear('option', '', `${hora(b.generada)}`); o.value = i; elegirLectura.append(o); });
+  barras.forEach((b, i) => { const o = crear('option', '', `${horaVista(b.generada)}`); o.value = i; elegirLectura.append(o); });
   elegirLectura.value = ultima;
   const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo), { repetir: true, ciclar: true });
   etiquetaLectura.append(pasosLectura.grupo);
@@ -114,7 +115,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura);
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'Superficie de variación contra cierre diario fijo. Los selectores permiten leer cada punto. Arrastra para girar.');
+  canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
   caja.append(controles, canvas, detalle);
   contenedor.append(caja);
@@ -122,7 +123,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     detalle.hidden = activo < 0;
     if (activo < 0) { detalle.textContent = ''; return; }
     const p = puntos[ultima]?.[activo];
-    const fecha = barras[ultima] ? `${hora(barras[ultima].generada)}` : 'sin lectura';
+    const fecha = barras[ultima] ? `${horaVista(barras[ultima].generada)}` : 'sin lectura';
     detalle.textContent = p ? `${codigos[activo]} · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : `${codigos[activo] || 'Sin activos'} · ${fecha} · sin cierre diario o sin precio comparable`;
   }
   function dibujar() {
@@ -182,13 +183,13 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       if (a && b && b.p.movimiento !== null) linea(a, b, colorMovimiento(b.p.movimiento), .8);
     }
     const fila = malla[ultima] || [];
-    for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], '#ded0a4', 1.2);
-    if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = ORO; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
+    for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ded0a4', 1.2);
+    if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = GRIS; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
     if (ancho < 600 && barras.length) {
-      texto({ x: ancho - 10, y: 43 }, `${hora(barras[0].generada)} → ${hora(barras.at(-1).generada)}`, '#bbb39e', 'right');
+      texto({ x: ancho - 10, y: 43 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)}`, '#bbb39e', 'right');
     } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
       if (!barras[j]) continue;
-      const p = proyectar(1.04, py(j), 0); texto(p, `${hora(barras[j].generada)}`);
+      const p = proyectar(1.04, py(j), 0); texto(p, `${horaVista(barras[j].generada)}`);
     }
     const elegido = malla[ultima]?.[activo];
     if (elegido) {

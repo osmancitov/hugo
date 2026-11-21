@@ -218,8 +218,8 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
 import { montarRachas } from './visor-rachas.mjs?v=3'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=16';
-import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
+import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=17';
+import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
 
@@ -549,9 +549,23 @@ async function cargarRegistroIntradia(diaElegido = null) {
   cacheIntradia.set(clave, promesa);
   try { return await promesa; } catch (e) { cacheIntradia.delete(clave); throw e; }
 }
+async function cargarDiaObservatorio(diaElegido = null) {
+  const ultimo=await cargarRegistroIntradia(diaElegido);
+  if(!ultimo)return null;
+  const elegido=diaElegido??diaVisible(ultimo.indice,ultimo.dia);
+  const registro=elegido===ultimo.dia.dia?ultimo:await cargarRegistroIntradia(elegido);
+  const siguiente=diaUTC(Date.parse(elegido)+86400000);
+  let frontera=null;
+  if(registro.indice.dias.includes(siguiente))frontera=await cargarRegistroIntradia(siguiente);
+  return {...registro,dia:lecturasConFrontera(registro.dia,frontera?.dia)};
+}
+function barraContextual(registro,i=registro.dia.lecturas.length-1){
+  const fotos=registro.dia.lecturas;
+  return contextualizarBarra(parsearBarraVisor(fotos[i].texto),parsearBarraVisor(fotos[0].texto),parsearBarraVisor(fotos[Math.max(0,i-1)].texto));
+}
 async function cargarBarra() {
-  const registro = await cargarRegistroIntradia();
-  if (registro) return parsearBarraVisor(registro.dia.lecturas.at(-1).texto);
+  const registro = await cargarDiaObservatorio();
+  if (registro) return barraContextual(registro);
   return null; // Sin historial publicado, no hay lectura que mostrar.
 }
 function parsearBarraVisor(texto) {
@@ -614,12 +628,13 @@ function fechaPeriodoBarra(ms) {
 function periodoBarra(desde, hasta, modo) {
   if (modo === 'dia' || modo === 'horas') {
     const hora = ms => Number.isFinite(ms) ? new Date(ms).toISOString().slice(11,16) : 'sin dato';
-    return `${modo === 'dia' ? '00:00' : hora(desde)}-${hora(hasta)} UTC`;
+    const fin=diaUTC(hasta)!==diaUTC(desde)&&hora(hasta)==='00:00'?'24:00':hora(hasta);
+    return `${hora(desde)}-${fin} UTC`;
   }
   return `${fechaPeriodoBarra(desde)}-${fechaPeriodoBarra(hasta)} UTC`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
-  const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}` : '';
+  const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}&dia=${diaUTC(b.dia.base??b.generada)}` : '';
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
   const seccion = (tituloTxt, suben, bajan, base, notaTxt, enlace, periodo, iguales = 0) => {
@@ -677,11 +692,11 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     enlaceSuperficie.textContent = compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(
-      duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
+      duracionBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       d.suben, d.bajan, d.suben + d.bajan,
       '',
       '#/i/iceberg-stock/barra-dia' + sufijo,
-      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada, 'dia'), d.iguales
+      periodoBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada, 'dia'), d.iguales
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
@@ -729,11 +744,11 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
 // no trae el detalle de esa barra, la tabla no se inventa.
 const BARRAS_TABLA = {
   'barra-dia': {
-    titulo: 'Rojos, grises y verdes contra el cierre del día anterior',
-    nota: (b) => periodoBarra(Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000, b.generada, 'dia'),
+    titulo: 'Rojos, grises y verdes desde la primera lectura del día',
+    nota: (b) => periodoBarra(b.dia.base ?? (Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000), b.generada, 'dia'),
     apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
     fila: (a) => {
-      if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null, refN: null };
+      if (a.diaCierreN === null) return { ref: 'sin referencia inicial', res: 'Sin referencia inicial', verde: null, refN: null };
       const igual = a.ultimoN === a.diaCierreN;
       return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Igual' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN, refN: a.diaCierreN };
     },
@@ -789,12 +804,13 @@ async function vistaTablaBarra(clave, instante = null) {
   let b;
   try {
     if (instante) {
-      const ms = Date.parse(decodeURIComponent(instante));
+      const parametros=new URLSearchParams('lectura='+instante);
+      const ms = Date.parse(parametros.get('lectura'));
       if (!Number.isFinite(ms)) throw Error('Instante de lectura inválido.');
-      const registro = await cargarRegistroIntradia(diaUTC(ms));
+      const registro = await cargarDiaObservatorio(parametros.get('dia')??diaUTC(ms));
       const lectura = registro?.dia.lecturas.find((l) => Date.parse(l.generada) === ms);
       if (!lectura) throw Error('Esa lectura no está publicada.');
-      b = parsearBarraVisor(lectura.texto);
+      b = barraContextual(registro,registro.dia.lecturas.indexOf(lectura));
     } else b = await cargarBarra();
   } catch (e) { if (estado.isConnected) estado.textContent = e.message; return; }
   if (!estado.isConnected) return;
@@ -869,12 +885,12 @@ async function vistaSuperficie() {
     const zona = document.createElement('div'), barra = document.createElement('div');
     cuerpo.append(zona, barra);
     grafica = montarSuperficie(zona, lecturas, parsearBarraVisor, { alSeleccionar: (i) => {
-      const b = parsearBarraVisor(lecturas[i].texto);
+      const b = barraContextual(registro,i);
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true }));
     } });
   }
   try {
-    const registro = await cargarRegistroIntradia();
+    const registro = await cargarDiaObservatorio();
     if (!cuerpo.isConnected) return;
     estado.remove();
     if (!registro) { cuerpo.textContent = 'Todavía no hay registro intradiario publicado. La instantánea anterior no contiene un historial temporal.'; return; }
@@ -889,7 +905,7 @@ async function vistaSuperficie() {
     elegirDia.onchange = async () => {
       const este = ++turno;
       try {
-        const r = await cargarRegistroIntradia(elegirDia.value);
+        const r = await cargarDiaObservatorio(elegirDia.value);
         if (este === turno && cuerpo.isConnected) await mostrar(r);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };

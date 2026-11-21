@@ -248,8 +248,8 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
     const p1 = { AAABUSDT: 10, BBBBUSDT: 20 };
     const c1 = { AAABUSDT: 2000, BBBBUSDT: 2000 };
     const r1 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p1, c1), host: 'https://data-api.binance.vision', ahora: 5000 });
-    assert.equal(r1.barra.movimiento, undefined); // primera lectura: nada con qué comparar
-    assert.ok(!r1.texto.includes('mov_suben'));
+    assert.equal(r1.barra.movimiento.iguales, 2); // primera lectura contra sí misma, cero gris
+    assert.ok(r1.texto.includes('mov_iguales: 2'));
     const p2 = { AAABUSDT: 12, BBBBUSDT: 20 }; // AAA subió con cierre nuevo; BBB sin cierre nuevo
     const c2 = { AAABUSDT: 2500, BBBBUSDT: 2000 };
     const r2 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p2, c2), host: 'https://data-api.binance.vision', ahora: 9000, anteriorTexto: r1.texto });
@@ -300,8 +300,8 @@ test('guardia de la casa: la orden está registrada en la app y documentada en e
   assert.match(manual, /historial local/);
   assert.match(manual, /Movimiento entre lecturas/);
   assert.match(manual, /sin cierre nuevo/);
-  assert.match(manual, /Contra el cierre del día anterior/);
-  assert.match(manual, /referencia fija/);
+  assert.match(manual, /Primera barra: variación desde la primera lectura real/);
+  assert.match(manual, /referencia intradiaria/);
   assert.match(manual, /timestamp de la lectura anterior/);
 });
 
@@ -329,7 +329,7 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     ],
   };
   const texto = formatearBarra(base, 4000);
-  const ctx = vm.createContext({ cargarRegistroIntradia: async () => ({ dia: { lecturas: [{ texto }] } }), RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
+  const ctx = vm.createContext({ cargarDiaObservatorio: async () => ({ dia: { lecturas: [{ texto }] } }), barraContextual: (r)=>ctx.parsearBarraVisor(r.dia.lecturas[0].texto), RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
   vm.runInContext(cargar + defs + html.slice(html.indexOf('const precioTabla ='), html.indexOf('async function vistaTablaBarra(')) + ';globalThis.defs = BARRAS_TABLA;globalThis.pctTabla = pctTabla;', ctx);
   const b = await vm.runInContext('cargarBarra()', ctx);
   for (const [key, green, red, equal, out] of [['barra-dia',1,1,1,1], ['barra-24h',2,1,1,0], ['barra-movimiento',1,1,1,1]]) {
@@ -369,7 +369,7 @@ test('duración de títulos: horas/minutos reales, no frecuencia nominal', () =>
   assert.equal(f(inicio, inicio + 47 * 60000), '47 min');
   assert.equal(f(inicio, inicio - 1), 'duración no disponible');
   assert.equal(f(NaN, inicio), 'duración no disponible');
-  assert.match(html, /duracionBarra\(Date.parse\(d.ref/);
+  assert.match(html, /duracionBarra\(d.base/);
   assert.match(html, /duracionBarra\(m.comparadaCon, b.generada\)/);
 });
 
@@ -377,10 +377,10 @@ test('duración de títulos: horas/minutos reales, no frecuencia nominal', () =>
 test('periodos unificados con meses legibles y reloj de24horasUTC', () => {
  const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
  const codigo=html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('));
- const f=vm.runInNewContext(codigo+';periodoBarra');
+ const f=vm.runInNewContext(codigo+';periodoBarra',{diaUTC:ms=>new Date(ms).toISOString().slice(0,10)});
  assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 23:59-nov 21 · 15:00 UTC');
  assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 00:00-sin dato UTC');
- assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T16:00:00Z'),'dia'),'00:00-16:00 UTC');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T16:00:00Z'),'dia'),'23:59-16:00 UTC');
  assert.equal(f(Date.parse('2026-11-21T15:00:00Z'),Date.parse('2026-11-21T16:00:00Z'),'horas'),'15:00-16:00 UTC');
  assert.match(html,/24 h por activo/);
 });

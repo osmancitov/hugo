@@ -219,7 +219,7 @@ const deIso = (s) => {
 export function formatearBarra(barra, ahora = Date.now()) {
   const lineas = [
     '# Barra movil de las ultimas 24 h de los stocks (ventana movil de Binance, no el dia cerrado del iceberg).',
-    '# Archivo vivo y desechable: cada consulta lo pisa entero; no es un registro del historico.',
+    '# Foto real conservada en el registro intradiario; referencias de inicio del dia independientes de las velas diarias.',
     `generada: ${new Date(ahora).toISOString()}`,
     `inicio: ${iso(barra.inicio)}`,
     `cierre_min: ${iso(barra.cierreMin)}`,
@@ -234,8 +234,9 @@ export function formatearBarra(barra, ahora = Date.now()) {
   const d = barra.dia;
   if (d) {
     lineas.push(
-      '# Variacion del ultimo precio contra el cierre de la vela diaria completa del dia anterior (dia UTC, referencia fija; el verde incluye los iguales):',
+      d.base === undefined ? '# Referencia diaria anterior (formato historico):' : '# Variacion contra la primera lectura real del dia; dia_ref conserva la clave de compatibilidad:',
       `dia_ref: ${d.ref}`,
+      ...(d.base === undefined ? [] : [`dia_base: ${iso(d.base)}`]),
       `dia_suben: ${d.suben}`,
       `dia_bajan: ${d.bajan}`,
       `dia_iguales: ${d.iguales}`,
@@ -333,6 +334,7 @@ export function leerBarra(texto) {
     if (dia.iguales > dia.suben) {
       throw new Error('Instantanea de barra incoherente (los iguales del dia no caben en los que no bajaron).');
     }
+    if (campos.dia_base !== undefined) dia.base = deIso(campos.dia_base);
     b.dia = dia;
   }
   if (campos.comparada_con !== undefined) {
@@ -357,7 +359,7 @@ export function leerBarra(texto) {
 
 // La consulta completa: universo del registro, dos tandas, barra, comparacion con la
 // lectura anterior recibida del historial; sin previa no se inventa movimiento.
-export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), anteriorTexto = null } = {}) {
+export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), anteriorTexto = null, inicialTexto = null } = {}) {
   const universo = universoBarra(dirVelas);
   if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
   let previos = null, comparadaCon = null;
@@ -368,7 +370,18 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   const tandas = [];
   for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
   const barra = calcularBarra(tandas, universo);
-  barra.dia = calcularDia(barra.activos, dirVelas, universo, Math.floor(ahora / DIA_MS) * DIA_MS - DIA_MS);
+  // Lectura del día independiente del registro diario: primera foto real como base.
+  const inicial = inicialTexto === null ? null : leerBarra(inicialTexto);
+  const base = inicial?.activos ?? new Map(barra.activos.map(a=>[a.codigo,a]));
+  let suben=0,bajan=0,iguales=0,sinDato=0;
+  for(const a of barra.activos){
+    const ref=base.get(a.codigo),n=Number(ref?.ultimo);
+    a.diaCierreTexto=ref?.ultimoTexto??(ref?String(ref.ultimo):'sin dato');
+    if(!Number.isFinite(n)||n<=0)sinDato++;else if(a.ultimo>=n){suben++;if(a.ultimo===n)iguales++;}else bajan++;
+  }
+  sinDato+=universo.length-barra.activos.length;
+  barra.dia={ref:new Date(Math.floor(ahora/DIA_MS)*DIA_MS-DIA_MS).toISOString().slice(0,10),base:inicial?.generada??ahora,suben,bajan,iguales,sinDato};
+  if (!previos) { previos = new Map(barra.activos.map(a=>[a.codigo,{...a,cierre:a.cierre-1}])); comparadaCon=ahora; }
   const movimiento = calcularMovimiento(barra.activos, previos);
   if (movimiento) {
     barra.movimiento = movimiento; barra.comparadaCon = comparadaCon;
@@ -402,8 +415,8 @@ export function registrar(ctx) {
       ];
       if (barra.dia) {
         const d = barra.dia;
-        l.push(`· Contra el cierre de la vela diaria del ${d.ref} (UTC, referencia fija): verdes ${d.suben} · rojos ${d.bajan} (${d.suben + d.bajan} con vela; iguales: ${d.iguales}).`);
-        if (d.sinDato) l.push(`· Sin vela del día anterior o sin dato: ${d.sinDato} (fuera de la frontera, no inventados).`);
+        l.push(`· Desde la primera lectura del día (${fechaHora(d.base ?? Date.parse(d.ref)+DIA_MS)}): verdes ${d.suben} · rojos ${d.bajan} (${d.suben + d.bajan} comparables; iguales: ${d.iguales}).`);
+        if (d.sinDato) l.push(`· Sin referencia inicial o sin dato: ${d.sinDato} (fuera de la frontera, no inventados).`);
       }
       l.push(`· Verdes ${barra.suben} · rojos ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`);
       l.push(`· Consulta: ${fechaHora(generada)}.`);
