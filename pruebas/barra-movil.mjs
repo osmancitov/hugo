@@ -290,7 +290,9 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /Cierre del día anterior/);
   assert.match(visor, /referencia fija del día/);
-  assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\} UTC/); // instante de la lectura actual, visible
+  assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\}\$\{zona\}/); // instante visible; superficie usa su nota única
+  assert.match(visor, /const zona = compacta \? '' : ' UTC'/); // otras vistas conservan su zona explícita
+  assert.match(visor, /compacta \? 16 : 19/); // segundos solo se omiten dentro de la superficie
   assert.match(visor, /Referencia de esta barra: lectura anterior del/); // instante de la lectura anterior, visible
   assert.match(visor, /UTC/);
   assert.doesNotMatch(visor, /UTC-4|No bajan|`Suben/);

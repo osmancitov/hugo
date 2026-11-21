@@ -2,12 +2,13 @@
 // Las tomas se leen directamente de GitHub; actualizar datos no requiere desplegar este módulo.
 import { terrenoDia } from './app/modulos/intradia-datos.mjs';
 const VERDE = '#25855c', ROJO = '#b73d40', ORO = '#c2a15a', GRIS = '#626b7d';
-const hora = (ms) => new Date(ms).toISOString().slice(11, 19);
-const pct = (n) => {
+export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
+export const porcentajeSuperficie = (n) => {
   if (n === null) return 'sin comparación';
-  const opciones = n !== 0 && Math.abs(n) < .0005 ? { maximumSignificantDigits: 3 } : { maximumFractionDigits: 3 };
-  return `${n > 0 ? '+' : ''}${new Intl.NumberFormat('es', opciones).format(n === 0 ? 0 : n)} %`;
+  const visible = Math.abs(n) < .05 ? 0 : n;
+  return `${visible > 0 ? '+' : ''}${new Intl.NumberFormat('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(visible)} %`;
 };
+const hora = horaSuperficie, pct = porcentajeSuperficie;
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
 // Misma navegación para activos y lecturas: los extremos no saltan al otro lado.
@@ -43,7 +44,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const caja = crear('div', 'superficie-caja');
   const controles = crear('div', 'superficie-controles');
   const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
-  barras.forEach((b, i) => { const o = crear('option', '', `${hora(b.generada)} UTC`); o.value = i; elegirLectura.append(o); });
+  barras.forEach((b, i) => { const o = crear('option', '', `${hora(b.generada)}`); o.value = i; elegirLectura.append(o); });
   elegirLectura.value = ultima;
   const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo));
   etiquetaLectura.append(pasosLectura.grupo);
@@ -51,11 +52,10 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
   const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i));
   etiquetaActivo.append(pasosActivo.grupo);
-  const reiniciar = crear('button', '', 'Restablecer vista'); reiniciar.type = 'button';
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
   etiquetaAltura.append(relieve);
-  controles.append(etiquetaLectura, etiquetaActivo, etiquetaAltura, reiniciar);
+  controles.append(etiquetaLectura, etiquetaActivo, etiquetaAltura);
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra cierre diario fijo. Los selectores permiten leer cada punto. Arrastra para girar.');
@@ -69,7 +69,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   contenedor.append(caja);
   function describir() {
     const p = puntos[ultima]?.[activo];
-    const fecha = barras[ultima] ? `${hora(barras[ultima].generada)} UTC` : 'sin lectura';
+    const fecha = barras[ultima] ? `${hora(barras[ultima].generada)}` : 'sin lectura';
     detalle.textContent = p ? `${codigos[activo]} · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : `${codigos[activo] || 'Sin activos'} · ${fecha} · sin cierre diario o sin precio comparable`;
   }
   function dibujar() {
@@ -139,10 +139,10 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     }
     texto({ x: ancho / 2, y: alto - 18 }, `${codigos.length} activos · orden A → Z`, ORO, 'center');
     if (ancho < 600 && barras.length) {
-      texto({ x: ancho - 10, y: 43 }, `${hora(barras[0].generada)} → ${hora(barras.at(-1).generada)} UTC`, '#bbb39e', 'right');
+      texto({ x: ancho - 10, y: 43 }, `${hora(barras[0].generada)} → ${hora(barras.at(-1).generada)}`, '#bbb39e', 'right');
     } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
       if (!barras[j]) continue;
-      const p = proyectar(1.04, py(j), 0); texto(p, `${hora(barras[j].generada)} UTC`);
+      const p = proyectar(1.04, py(j), 0); texto(p, `${hora(barras[j].generada)}`);
     }
     const elegido = malla[ultima]?.[activo];
     if (elegido) {
@@ -166,7 +166,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   elegirLectura.onchange = () => seleccionar(Number(elegirLectura.value), activo);
   elegirActivo.onchange = () => seleccionar(ultima, Number(elegirActivo.value));
   relieve.oninput = () => { amplitud = Number(relieve.value); dibujar(); };
-  reiniciar.onclick = () => { giro = -.34; inclinacion = .68; amplitud = 1; relieve.value = '1'; dibujar(); };
   canvas.onpointerdown = (e) => { arrastre = { x: e.clientX, y: e.clientY, giro, inclinacion, movido: false }; canvas.setPointerCapture(e.pointerId); };
   canvas.onpointermove = (e) => {
     if (!arrastre) return;

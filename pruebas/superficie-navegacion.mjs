@@ -51,3 +51,14 @@ test('cada flecha tiene nombre accesible y no envía formularios', () => {
   assert.equal(b.siguiente.atributos['aria-label'], 'Activo siguiente');
   assert.equal(b.previo.type, 'button'); assert.equal(b.siguiente.type, 'button');
 });
+
+test('superficie: porcentaje de un decimal y hora sin segundos son solo formato', async () => {
+  const { porcentajeSuperficie, horaSuperficie } = await import('../visor-superficie.mjs');
+  assert.equal(porcentajeSuperficie(1.234567), '+1,2 %');
+  assert.equal(porcentajeSuperficie(-1.2711234), '-1,3 %');
+  assert.equal(porcentajeSuperficie(0), '0,0 %');
+  assert.equal(porcentajeSuperficie(-0.001), '0,0 %');
+  assert.equal(porcentajeSuperficie(null), 'sin comparación');
+  const n = 1.234567; porcentajeSuperficie(n); assert.equal(n, 1.234567);
+  assert.equal(horaSuperficie(Date.parse('2026-11-21T09:45:52.736Z')), '09:45');
+});
