@@ -254,3 +254,65 @@ const r=cp.spawnSync('/usr/bin/git',args,{cwd:process.cwd(),env:process.env,stdi
     assert.equal(leerDia(arbol[rutaDia('2026-11-21')]).lecturas.length, 1);
   } finally { process.env.PATH = rutaAntes; rem.destruir(); limpiar(p); }
 });
+
+test('arranque con frecuencia recupera cola sin consultar Binance ni esperar otra foto', async () => {
+  const p = temp(), raiz = path.join(p, 'registros'), ctx = contexto(p), temporizadores = [];
+  const timeout = global.setTimeout; let publicadas = 0;
+  global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; };
+  try {
+    guardarLectura(raiz, foto()); const pendientes = pendientesIntradia(raiz);
+    for (const r of Object.keys(pendientes)) fs.unlinkSync(archivo(raiz, r));
+    ctx.conf.HUGO_INTRADIA_MINUTOS = '5';
+    ctx.publicarIntradia = async (archivos) => { publicadas++; return { archivos, commit: 'abcdef0' }; };
+    registrarIntradia(ctx); for (const fn of ctx.inicios) await fn();
+    assert.equal(publicadas, 1); assert.deepEqual(pendientesIntradia(raiz), {});
+    assert.equal(leerDia(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8')).lecturas.length, 1);
+    assert.equal(temporizadores.length, 1); assert.equal(temporizadores[0].ms, 300000);
+  } finally { global.setTimeout = timeout; limpiar(p); }
+});
+
+test('GitHub recuperado publica cola aunque falle la toma; con reloj apagado no publica al arrancar', async () => {
+  const p = temp(), raiz = path.join(p, 'registros'), ctx = contexto(p), temporizadores = [];
+  const timeout = global.setTimeout, consola = console.error; let publicadas = 0, disponible = false;
+  global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; }; console.error = () => {};
+  try {
+    guardarLectura(raiz, foto());
+    ctx.publicarIntradia = async (archivos) => { publicadas++; if (!disponible) throw Error('GitHub sin red'); return { archivos, commit: 'abcdef0' }; };
+    registrarIntradia(ctx); for (const fn of ctx.inicios) await fn(); assert.equal(publicadas, 0); assert.equal(temporizadores.length, 0);
+    ctx.conf.HUGO_INTRADIA_MINUTOS = '5'; ctx.inicios.length = 0;
+    registrarIntradia(ctx); for (const fn of ctx.inicios) await fn(); assert.equal(publicadas, 1); assert.equal(temporizadores.length, 1);
+    disponible = true;
+    await temporizadores[0].fn(); // Sin universo: la toma falla sin consultar red.
+    assert.equal(publicadas, 2); assert.deepEqual(pendientesIntradia(raiz), {});
+    assert.match(ctx.intradiaInfo().error, /No hay carpetas/);
+    assert.equal(temporizadores.length, 2); assert.equal(temporizadores[1].ms, 300000);
+  } finally { global.setTimeout = timeout; console.error = consola; limpiar(p); }
+});
+
+test('funcionamiento continuo: conserva huecos por 429, recupera cola y sigue programado', async () => {
+  const p = temp(), raiz = path.join(p, 'registros'), ctx = contexto(p), temporizadores = [];
+  const timeout = global.setTimeout, fuente = global.fetch, consola = console.error;
+  let ahora = T, peticiones = 0, intentosSubida = 0;
+  global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; }; console.error = () => {};
+  try {
+    fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA'), { recursive: true });
+    fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA', '2611_AAA'), JSON.stringify([[T - 10 * 3600000 - DIA, '100', '100', '100', '100']]));
+    ctx.ahora = () => ahora; ctx.conf.HUGO_INTRADIA_MINUTOS = '5';
+    ctx.publicarIntradia = async (archivos) => { intentosSubida++; if (ahora < T + 20 * 60000) throw Error('GitHub sin conexión'); return { archivos, commit: 'abcdef0' }; };
+    global.fetch = async () => {
+      peticiones++;
+      if (ahora === T + 15 * 60000) return { status: 429, headers: { get: () => '900' } };
+      return { ok: true, status: 200, text: async () => JSON.stringify([{ symbol: 'AAABUSDT', openPrice: '100', lastPrice: '101', openTime: ahora - DIA, closeTime: ahora }]) };
+    };
+    registrarIntradia(ctx); for (const fn of ctx.inicios) await fn();
+    for (let i = 0; i < 24; i++) { const t = temporizadores[i]; ahora += t.ms; await t.fn(); }
+    assert.equal(ahora, T + 120 * 60000); assert.equal(ctx.intradiaInfo().proxima, T + 125 * 60000); assert.equal(temporizadores.length, 25);
+    const lecturas = leerDia(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8'), leerBarra).lecturas;
+    // 24 ciclos, menos 3 fotos por bloqueo en 15, 20 y 25 minutos.
+    assert.equal(lecturas.length, 21); assert.equal(peticiones, 22);
+    assert.ok(lecturas.some((l) => Date.parse(l.generada) === T + 10 * 60000));
+    assert.ok(!lecturas.some((l) => [15,20,25].map((m) => T + m * 60000).includes(Date.parse(l.generada))));
+    assert.ok(lecturas.some((l) => Date.parse(l.generada) === T + 30 * 60000));
+    assert.deepEqual(pendientesIntradia(raiz), {}); assert.ok(intentosSubida >= 20);
+  } finally { global.setTimeout = timeout; global.fetch = fuente; console.error = consola; limpiar(p); }
+});

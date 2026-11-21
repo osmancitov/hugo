@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { guardarEstado } from './registro-motor.mjs';
 import { generarBarra, leerBarra, escribirBarra, RUTA_BARRA } from './barra-movil.mjs';
+import { fetchConPausa, pausaFuente } from './intradia-fuente.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, esRutaIntradia, leerDia, leerIndice, unirDias, unirIndices } from './intradia-datos.mjs';
 
 const archivoLocal = (raiz, rel) => path.join(raiz, rel.slice('registros/'.length));
@@ -127,7 +128,7 @@ export function registrar(ctx) {
       const heredada = leerOpcional(archivoLocal(raiz(), RUTA_BARRA));
       if (heredada !== null) guardarLectura(raiz(), heredada);
       const r = await generarBarra({ dirVelas: dirVelas(), host: process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST,
-        ...opciones, guardarInstantanea: false, ahora: opciones.ahora ?? ahora() });
+        ...opciones, fetchImpl: fetchConPausa(raiz(), opciones.fetchImpl || fetch, ahora), guardarInstantanea: false, ahora: opciones.ahora ?? ahora() });
       if (ctx.parada?.n !== parada) throw Error('Lectura detenida a pedido; no guardé la consulta nueva.');
       r.registro = guardarLectura(raiz(), r.texto);
       ultima = r.generada;
@@ -140,13 +141,14 @@ export function registrar(ctx) {
   };
   ctx.tomarBarra = tomar; // La orden barra y el reloj pasan por el mismo registro.
   ctx.intradiaInfo = () => {
-    let guardada = ultima, pendientes = null, problema = error;
+    let guardada = ultima, pendientes = null, problema = error, pausa = null;
     try {
       const indice = leerOpcional(archivoLocal(raiz(), RUTA_INDICE));
       if (indice !== null) guardada = Date.parse(leerIndice(indice).ultima);
       pendientes = Object.keys(pendientesIntradia(raiz())).length;
+      pausa = pausaFuente(raiz());
     } catch (e) { problema = e.message; }
-    return { minutos, proxima, ultima: guardada, pendientes, error: problema, ocupado, retencion: null };
+    return { minutos, proxima, ultima: guardada, pendientes, error: problema, ocupado, retencion: null, pausa };
   };
   ctx.reintentarIntradia = async () => {
     if (ocupado) throw Error('Hay una lectura intradiaria en curso.');
@@ -160,6 +162,7 @@ export function registrar(ctx) {
     const lineas = [`Lectura intradiaria automática: ${minutos === null ? 'apagada (sin frecuencia elegida)' : `cada ${minutos} minutos`}.`];
     if (info.ultima !== null) lineas.push(`Última guardada: ${new Date(info.ultima).toISOString().slice(0, 19).replace('T', ' ')} UTC.`);
     if (info.pendientes !== null) lineas.push(`Archivos pendientes de publicar: ${info.pendientes}.`);
+    if (info.pausa && (info.pausa.hasta === null || info.pausa.hasta > ahora())) lineas.push(info.pausa.hasta === null ? `Fuente pausada por HTTP ${info.pausa.status}, sin plazo válido; requiere revisión.` : `Fuente pausada hasta ${new Date(info.pausa.hasta).toISOString()} por HTTP ${info.pausa.status}.`);
     if (info.error) lineas.push(`Problema: ${info.error}`);
     lineas.push('Sin borrado automático de registros.');
     return decir(e, lineas.join('\n'));
@@ -178,8 +181,15 @@ export function registrar(ctx) {
       else await reporteAutomatico.final(texto);
     } catch (e) { reporteAutomatico = null; console.error('Reporte intradiario:', e.message); }
   };
-  ctx.alIniciar(() => {
+  ctx.alIniciar(async () => {
     if (minutos === null) return;
+    // Recupera y publica fotos anteriores aunque Binance siga sin responder. No toma precios.
+    try {
+      if (Object.keys(pendientesIntradia(raiz())).length) {
+        const r = await ctx.reintentarIntradia();
+        await informarAutomatico(r.commit ? `Cola intradiaria recuperada y publicada: ${r.commit.slice(0, 7)}.` : 'Cola intradiaria recuperada y confirmada, sin cambios nuevos.');
+      }
+    } catch (e) { error = e.message; await informarAutomatico(`Cola intradiaria conservada al arrancar: ${e.message}`); }
     const programar = () => {
       proxima = ahora() + minutos * 60000;
       const t = setTimeout(async () => {
@@ -190,8 +200,15 @@ export function registrar(ctx) {
           await informarAutomatico(`Lectura intradiaria guardada: ${instante} UTC.\n${r.pendiente ? `Pendiente de publicar: ${r.pendiente}. La cola se conserva.` : r.publicacion?.commit ? `Publicada en el commit ${r.publicacion.commit.slice(0, 7)}.` : 'Publicación confirmada, sin cambios nuevos.'}`);
         } catch (e) {
           error = e.message; console.error('Lectura intradiaria:', e.message);
-          await informarAutomatico(`No completé la lectura intradiaria: ${e.message}. Los registros anteriores se conservan; reintento en el próximo intervalo.`);
-        } finally { programar(); }
+          let recuperacion = '';
+          // La publicación pendiente no depende del éxito de una consulta nueva.
+          try {
+            const r = await ctx.reintentarIntradia();
+            recuperacion = r.commit ? ` Cola anterior publicada: ${r.commit.slice(0, 7)}.` : '';
+          } catch (x) { recuperacion = ` Cola pendiente: ${x.message}.`; }
+          error = e.message;
+          await informarAutomatico(`No completé la lectura intradiaria: ${e.message}. Los registros anteriores se conservan; reintento en el próximo intervalo.${recuperacion}`);
+        } finally { await programar(); }
       }, minutos * 60000);
       t.unref?.();
     };
