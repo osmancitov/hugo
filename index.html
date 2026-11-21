@@ -595,6 +595,14 @@ function parsearBarraVisor(texto) {
   }
   return b;
 }
+// Duración visible al minuto: no confundir frecuencia configurada con intervalo real.
+function duracionBarra(desde, hasta) {
+  const ms = hasta - desde;
+  if (!Number.isFinite(ms) || ms < 0) return 'duración no disponible';
+  if (ms < 60000 && ms > 0) return '<1 min';
+  const minutos = Math.round(ms / 60000), horas = Math.floor(minutos / 60), resto = minutos % 60;
+  return (ms % 60000 ? '≈' : '') + [horas ? `${horas} h` : '', resto || !horas ? `${resto} min` : ''].filter(Boolean).join(' ');
+}
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const zona = compacta ? '' : ' UTC', zonaParentesis = compacta ? '' : ' (UTC)';
   const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}` : '';
@@ -650,7 +658,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     enlaceSuperficie.textContent = 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(
-      `Cierre del día anterior (${d.ref}) a ${hora(b.generada)}${zona}`,
+      `Cierre del día anterior (${d.ref}) · ${duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada)} · hasta ${hora(b.generada)}${zona}`,
       d.suben, d.bajan, d.suben + d.bajan,
       `Verdes ${d.suben} · Rojos ${d.bajan} (${d.suben + d.bajan} con vela)`,
       `Cierre de la vela diaria del ${d.ref}${zonaParentesis}, referencia fija del día · iguales entre verdes: ${d.iguales}` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : ''),
@@ -678,7 +686,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const m = b.movimiento;
   if (m) {
     const sec = seccion(
-      `Entre consultas: ${hora(m.comparadaCon)} a ${hora(b.generada)}${zona}`,
+      `Entre consultas · ${duracionBarra(m.comparadaCon, b.generada)} · ${hora(m.comparadaCon)} a ${hora(b.generada)}${zona}`,
       m.suben, m.bajan, m.suben + m.bajan,
       `Verdes ${m.suben} · Rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
       `Cada activo se mide con el cierre de su propia ventana` + (m.iguales === null ? '' : ` · iguales entre verdes: ${m.iguales}`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : ''),
