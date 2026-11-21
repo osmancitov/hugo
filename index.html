@@ -93,6 +93,14 @@ canvas { display: block; width: 100%; height: auto; margin: 0 auto; }
 .pie-grafica { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: .6rem; flex-wrap: wrap; }
 .controles-grafica { display: flex; gap: .5rem; flex-wrap: wrap; }
 .pie-grafica .nota { color: var(--tenue); font-size: .8rem; font-style: italic; }
+/* Barra móvil 24 h (stocks): al pie del iceberg, misma orientación que las minis de la portada
+   (rojo a la izquierda, verde a la derecha) y mismos colores sólidos de la casa. */
+.barra-movil { margin-top: .6rem; }
+.barra-movil-titulo { font-size: .85rem; color: var(--texto); margin-bottom: .25rem; }
+.barra-movil-graf { display: flex; height: .6rem; border-radius: 2px; overflow: hidden; background: var(--borde); }
+.barra-movil-graf span { display: block; height: 100%; }
+.barra-movil-nums { font-size: .85rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
+.barra-movil-nota { color: var(--tenue); font-size: .8rem; font-style: italic; margin-top: .15rem; }
 button.boton {
   background: none; border: 1px solid var(--oro); color: var(--oro);
   font-family: inherit; font-size: .85rem; padding: .35rem .8rem; border-radius: 3px; cursor: pointer;
@@ -462,6 +470,51 @@ async function cargarIcebergPre(e) {
   return [];
 }
 
+// Barra móvil 24 h (decisión del usuario, 20-nov-2026): la frontera suben/bajan de la ventana
+// móvil de Binance al pie del iceberg de stocks, para verla moverse durante el día sin esperar
+// al cierre diario. La genera Hugo con la orden «barra» en la instantánea desechable
+// registros/pre-calculado/stock/barra-24h/actual_barra; si el archivo no está publicado,
+// el bloque no aparece (lo que falta se muestra como que falta).
+const RUTA_BARRA = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/pre-calculado/stock/barra-24h/actual_barra';
+async function cargarBarra() {
+  const r = await fetch(`${RUTA_BARRA}?t=${Math.floor(Date.now() / 60000)}`);
+  if (!r.ok) return null;
+  const campos = {};
+  for (const linea of (await r.text()).split('\n')) {
+    const m = linea.match(/^([a-z_]+): (.*)$/);
+    if (m) campos[m[1]] = m[2];
+  }
+  const n = (k) => Number(campos[k]);
+  if (!Number.isInteger(n('suben')) || !Number.isInteger(n('bajan'))) return null;
+  return { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
+}
+function vistaBarra(b) {
+  const caja = document.createElement('div');
+  caja.className = 'barra-movil';
+  const titulo = document.createElement('div');
+  titulo.className = 'barra-movil-titulo';
+  titulo.textContent = 'Últimas 24 h (ventana móvil)';
+  const graf = document.createElement('div');
+  graf.className = 'barra-movil-graf';
+  const rojo = document.createElement('span'), verde = document.createElement('span');
+  rojo.style.background = RED_S; verde.style.background = GREEN_S;
+  const total = Math.max(1, b.conDato);
+  rojo.style.width = (b.bajan / total * 100) + '%';
+  verde.style.width = (b.suben / total * 100) + '%';
+  graf.append(rojo, verde);
+  const nums = document.createElement('div');
+  nums.className = 'barra-movil-nums';
+  nums.textContent = `Suben ${b.suben} · Bajan ${b.bajan} (${b.conDato} con dato de ${b.consultados})`;
+  const nota = document.createElement('div');
+  nota.className = 'barra-movil-nota';
+  const hora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el instante
+  // de la consulta y el rango de cierres, no un corte común que no existe.
+  nota.textContent = `Consulta: ${hora(b.generada)} (UTC) · cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} · Fuente: ticker 24 h de Binance`;
+  caja.append(titulo, graf, nums, nota);
+  return caja;
+}
+
 async function cargarIndicador(codigo) {
   const clave = 'indicador/' + codigo;
   if (cacheRegistros.has(clave)) return cacheRegistros.get(clave);
@@ -813,6 +866,9 @@ function vistaIndicador(codigo) {
       nota.append(enlace);
     } else nota.append(e.fuente);
     pie.append(nota);
+    if (e.codigo === 'iceberg-stock') {
+      cargarBarra().then((b) => { if (b && pie.isConnected) pie.append(vistaBarra(b)); }).catch(() => {});
+    }
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').';
   });

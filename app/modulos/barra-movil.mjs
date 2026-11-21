@@ -1,0 +1,231 @@
+// Modulo barra movil: «@Hugo barra» consulta a Binance el ticker de 24 h de los stocks y
+// dibuja la frontera suben/bajan de la ventana MOVIL (las ultimas 24 h hasta el instante de
+// la consulta, no el dia cerrado en UTC que cuenta el iceberg). Nace del estudio horario de
+// candidatos (decision del usuario, 20-nov-2026: dos tandas equilibradas, menor proceso y
+// recursos, sin construir un registro propio ni reconstruir nada; la barra acompana al
+// iceberg de stocks para ver moverse la frontera durante el dia).
+//
+// Una sola consulta por tanda al endpoint /api/v3/ticker/24hr con la lista de simbolos
+// (documentacion oficial de Binance: maximo 100 simbolos por consulta; la ventana es movil
+// y la cierra Binance al responder, sin endTime propio). La particion es estable: universo
+// ordenado, mitad y mitad (113 -> 57 + 56); cada activo consulta siempre en su tanda.
+//
+// Regla del plano: la misma del iceberg publicado (decision del usuario, 20-nov-2026: «solo
+// es perdida o no», sin tercera categoria): lastPrice >= openPrice cuenta como sube.
+// Ojo: app/modulos/iceberg.mjs (modulo viejo de la serie mensual) no cuenta el plano en
+// ningun lado; contradice esa decision y no es el origen del iceberg publicado (lo calcula
+// pre-calculado.mjs con cero = verde). Pendiente de unificar; aqui manda la decision.
+//
+// Instantanea: un archivo de texto vivo, UN dato por linea, desechable (decision del
+// usuario, 20-nov-2026: almacenamiento temporal); se pisa atomico en cada consulta. NO es
+// un registro del historico: no guarda series ni reconstruye ventanas pasadas.
+// Publicacion al visor: pendiente de decision (frecuencia de generacion y de subida); la
+// sincronizacion diaria todavia no recoge esta carpeta (esRutaPre no la conoce).
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+export const CARPETA_BARRA = 'barra-24h';
+export const ARCHIVO_BARRA = 'actual_barra';
+export const RUTA_BARRA = `registros/pre-calculado/stock/${CARPETA_BARRA}/${ARCHIVO_BARRA}`;
+
+// Ruta oficial de la consulta publica. El documento de Binance (rest-api.md) pide usar
+// https://data-api.binance.vision para las APIs que SOLO leen datos publicos de mercado, como
+// esta; api.binance.com responde 451 (ubicacion restringida) desde algunas redes. La Debian
+// puede seguir con api.binance.com si alli responde: se cambia con HUGO_BARRA_HOST, sin tocar codigo.
+const HOST_POR_DEFECTO = 'https://api.binance.com';
+const MAX_SIMBOLOS = 100; // tope documentado del endpoint; la particion en dos ya queda muy por debajo.
+
+// El simbolo del stock tokenizado en Binance: CODIGO + B + USDT (la misma regla que aplica
+// registro-motor.mjs al registrar; aqui no hay baja de activos, solo consulta).
+export const simboloStock = (codigo) => `${codigo}BUSDT`;
+
+// El universo es el del registro de velas: una carpeta por stock bajo velas-24h/stock/.
+// Ordenado para que la particion y las tandas sean estables de una consulta a otra.
+export function universoBarra(dirVelas) {
+  const dir = path.join(dirVelas, 'stock');
+  let nombres = [];
+  try { nombres = fs.readdirSync(dir); } catch { return []; }
+  return nombres.filter((n) => {
+    try { return fs.lstatSync(path.join(dir, n)).isDirectory(); } catch { return false; }
+  }).sort();
+}
+
+// Dos tandas equilibradas (decision del usuario, 20-nov-2026, su ejemplo 65+65): la primera
+// se lleva el sobrante cuando el universo es impar. Estable: mismo universo, misma particion.
+export function particionar(codigos) {
+  const n = codigos.length;
+  const mitad = Math.ceil(n / 2);
+  return [codigos.slice(0, mitad), codigos.slice(mitad)];
+}
+
+// Una tanda: una consulta con su lista de simbolos. Error explicito si Binance no responde
+// bien: una respuesta mala NO equivale a una barra vacia.
+export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_POR_DEFECTO } = {}) {
+  if (!codigos.length) return [];
+  if (codigos.length > MAX_SIMBOLOS) throw new Error(`Tanda de ${codigos.length} simbolos; el maximo documentado es ${MAX_SIMBOLOS}.`);
+  const lista = encodeURIComponent(JSON.stringify(codigos.map(simboloStock)));
+  const r = await fetchImpl(`${host}/api/v3/ticker/24hr?symbols=${lista}`, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'hugo' } });
+  const cuerpo = await r.text();
+  if (!r.ok) throw new Error(`Binance HTTP ${r.status}; no equivale a una barra vacia.`);
+  let datos;
+  try { datos = JSON.parse(cuerpo); } catch { throw new Error('Binance no devolvio JSON; no equivale a una barra vacia.'); }
+  if (!Array.isArray(datos)) throw new Error('Respuesta de Binance sin lista de tickers; no equivale a una barra vacia.');
+  return datos;
+}
+
+// La barra: cuantos stocks suben y cuantos bajan en la ventana movil, con lo que Binance
+// declaro (openTime/closeTime de cada ticker) y la dispersion de los cierres en milisegundos.
+// No hay una ventana comun: cada activo trae la suya y sus cierres difieren; la instantanea
+// guarda el rango de cierres (cierreMin, fin) y el menor inicio, sin presentarlos como un
+// solo corte. Sin dato (falta el ticker o los precios no se leen) se cuenta aparte y no
+// entra en la frontera.
+export function calcularBarra(tandas, universo) {
+  const tickers = tandas.flat();
+  let suben = 0, bajan = 0, sinDato = 0, inicio = null, fin = null, minCierre = null, maxCierre = null;
+  for (const t of tickers) {
+    const apertura = parseFloat(t?.openPrice), ultimo = parseFloat(t?.lastPrice);
+    if (!Number.isFinite(apertura) || !Number.isFinite(ultimo)) { sinDato++; continue; }
+    if (ultimo >= apertura) suben++; else bajan++;
+    const o = Number(t.openTime), c = Number(t.closeTime);
+    if (Number.isFinite(o)) inicio = inicio === null ? o : Math.min(inicio, o);
+    if (Number.isFinite(c)) {
+      fin = fin === null ? c : Math.max(fin, c);
+      minCierre = minCierre === null ? c : Math.min(minCierre, c);
+      maxCierre = maxCierre === null ? c : Math.max(maxCierre, c);
+    }
+  }
+  const respondieron = new Set(tickers.map((t) => t?.symbol)).size;
+  return {
+    inicio, fin, cierreMin: minCierre,
+    dispersionMs: minCierre === null ? null : maxCierre - minCierre,
+    consultados: universo.length,
+    respondieron,
+    conDato: suben + bajan,
+    sinDato: sinDato + Math.max(0, universo.length - respondieron),
+    suben, bajan,
+  };
+}
+
+const iso = (ms) => (ms === null ? 'sin dato' : new Date(ms).toISOString());
+const deIso = (s) => {
+  if (s === 'sin dato') return null;
+  const ms = Date.parse(s);
+  if (!Number.isFinite(ms)) throw new Error(`Fecha ilegible en la instantanea: ${s}.`);
+  return ms;
+};
+
+// Instantanea en texto, un dato por linea. Se pisa entera en cada consulta: es desechable.
+export function formatearBarra(barra, ahora = Date.now()) {
+  return [
+    '# Barra movil de las ultimas 24 h de los stocks (ventana movil de Binance, no el dia cerrado del iceberg).',
+    '# Archivo vivo y desechable: cada consulta lo pisa entero; no es un registro del historico.',
+    `generada: ${new Date(ahora).toISOString()}`,
+    `inicio: ${iso(barra.inicio)}`,
+    `cierre_min: ${iso(barra.cierreMin)}`,
+    `fin: ${iso(barra.fin)}`,
+    `dispersion_ms: ${barra.dispersionMs === null ? 'sin dato' : barra.dispersionMs}`,
+    `consultados: ${barra.consultados}`,
+    `con_dato: ${barra.conDato}`,
+    `sin_dato: ${barra.sinDato}`,
+    `suben: ${barra.suben}`,
+    `bajan: ${barra.bajan}`,
+    '',
+  ].join('\n');
+}
+
+// Lee y valida una instantanea; sirve de validador cuando la sincronizacion la recoja.
+export function leerBarra(texto) {
+  const campos = {};
+  for (const linea of String(texto).split('\n')) {
+    const m = linea.match(/^([a-z_]+): (.*)$/);
+    if (m) campos[m[1]] = m[2];
+  }
+  const entero = (k) => {
+    const n = Number(campos[k]);
+    if (!Number.isInteger(n) || n < 0) throw new Error(`Instantanea de barra incoherente (${k}).`);
+    return n;
+  };
+  const b = {
+    generada: deIso(campos.generada || ''),
+    inicio: deIso(campos.inicio || ''),
+    cierreMin: deIso(campos.cierre_min || ''),
+    fin: deIso(campos.fin || ''),
+    dispersionMs: campos.dispersion_ms === 'sin dato' ? null : entero('dispersion_ms'),
+    consultados: entero('consultados'),
+    conDato: entero('con_dato'),
+    sinDato: entero('sin_dato'),
+    suben: entero('suben'),
+    bajan: entero('bajan'),
+  };
+  if (b.suben + b.bajan !== b.conDato || b.conDato + b.sinDato !== b.consultados) {
+    throw new Error('Instantanea de barra incoherente (las cuentas no cierran).');
+  }
+  return b;
+}
+
+// La instantanea en la sincronizacion: ruta unica conocida. Archivo vivo como el catalogo
+// (lo regenera cada consulta y el local gana); NO es un pre-calculo de un dia, que seria
+// conflicto al diferir y no se pisaria nunca.
+export const esRutaBarra = (rel) => rel === RUTA_BARRA;
+export const validarBarra = (buf) => leerBarra(String(buf)).conDato;
+
+// Escritura atomica (temporal + renombrado) pisando la anterior: es un archivo vivo.
+// Devuelve la ruta relativa dentro del repo.
+export function escribirBarra(dirRegistros, texto) {
+  const dir = path.join(dirRegistros, 'pre-calculado', 'stock', CARPETA_BARRA);
+  fs.mkdirSync(dir, { recursive: true });
+  const destino = path.join(dir, ARCHIVO_BARRA);
+  const tmp = `${destino}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, texto);
+  fs.renameSync(tmp, destino);
+  return RUTA_BARRA;
+}
+
+// La consulta completa: universo del registro, dos tandas, barra, instantanea en disco.
+export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now() } = {}) {
+  const universo = universoBarra(dirVelas);
+  if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
+  const tandas = [];
+  for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
+  const barra = calcularBarra(tandas, universo);
+  const texto = formatearBarra(barra, ahora);
+  const rel = escribirBarra(path.dirname(dirVelas), texto);
+  return { barra, texto, rel, generada: ahora };
+}
+
+// --- La orden ---
+
+// Fecha y hora completas con segundos y su desfase, como le gustan al usuario
+// («HH:MM:SS UTC-4», 20-nov-2026). Caracas no cambia de horario.
+const TZ = 'America/Caracas';
+const fechaHora = (ms) => {
+  const f = new Intl.DateTimeFormat('es', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
+  const h = new Intl.DateTimeFormat('es', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(ms));
+  return `${f} ${h} UTC-4`;
+};
+
+export function registrar(ctx) {
+  const { app, botToken } = ctx;
+  const dirVelas = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
+  ctx.comando(/^\s*barra\s*[.!?]*\s*$/i, async (event) => {
+    const hilo = event.thread_ts || event.ts;
+    const decir = (text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text });
+    try {
+      const host = process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST || HOST_POR_DEFECTO;
+      const { barra, rel, generada } = await generarBarra({ dirVelas: dirVelas(), host });
+      const l = [
+        `Barra móvil 24 h (stocks), consultada ahora a Binance:`,
+        `· Suben ${barra.suben} · bajan ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`,
+      ];
+      l.push(`· Consulta: ${fechaHora(generada)}.`);
+      if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
+      if (barra.dispersionMs !== null) l.push(`· Dispersión entre cierres de la ventana: ${barra.dispersionMs} ms.`);
+      if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
+      l.push(`· Instantánea guardada en ${rel} (archivo vivo, se pisa en cada consulta).`);
+      await decir(l.join('\n'));
+    } catch (e) {
+      await decir(`No pude consultar la barra: ${e.message}`);
+    }
+  }, { nombre: 'barra' });
+}
