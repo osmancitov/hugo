@@ -486,7 +486,15 @@ async function cargarBarra() {
   }
   const n = (k) => Number(campos[k]);
   if (!Number.isInteger(n('suben')) || !Number.isInteger(n('bajan'))) return null;
-  return { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
+  const b = { generada: Date.parse(campos.generada), cierreMin: Date.parse(campos.cierre_min), fin: Date.parse(campos.fin), conDato: n('con_dato'), consultados: n('consultados'), suben: n('suben'), bajan: n('bajan') };
+  // Movimiento entre las dos últimas consultas (decisión del usuario, 20-nov-2026): solo si
+  // la instantánea trae el bloque y cierra; sin lectura anterior comparable, no se dibuja.
+  if (campos.comparada_con !== undefined) {
+    const m = { comparadaCon: Date.parse(campos.comparada_con), suben: n('mov_suben'), bajan: n('mov_bajan'), sinCierreNuevo: n('mov_sin_cierre_nuevo'), sinPrevia: n('mov_sin_previa') };
+    const enteros = [m.suben, m.bajan, m.sinCierreNuevo, m.sinPrevia].every(Number.isInteger);
+    if (enteros && Number.isFinite(m.comparadaCon) && m.suben + m.bajan + m.sinCierreNuevo + m.sinPrevia === b.conDato) b.movimiento = m;
+  }
+  return b;
 }
 function vistaBarra(b) {
   const caja = document.createElement('div');
@@ -512,6 +520,33 @@ function vistaBarra(b) {
   // de la consulta y el rango de cierres, no un corte común que no existe.
   nota.textContent = `Consulta: ${hora(b.generada)} (UTC) · cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} · Fuente: ticker 24 h de Binance`;
   caja.append(titulo, graf, nums, nota);
+  // Segunda barra: el movimiento del último precio de cada activo entre las dos últimas
+  // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
+  // está aumentando, no cuando la referencia bajó»). El verde de arriba es posición (cierre
+  // sobre apertura de la ventana); este verde es no haber bajado entre lecturas, medido
+  // solo con cierres nuevos (misma regla del dueño: «solo es pérdida o no», sin tercera
+  // categoría). Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
+  const m = b.movimiento;
+  if (m) {
+    const titulo2 = document.createElement('div');
+    titulo2.className = 'barra-movil-titulo';
+    titulo2.textContent = 'Movimiento entre las dos últimas consultas';
+    const graf2 = document.createElement('div');
+    graf2.className = 'barra-movil-graf';
+    const rojo2 = document.createElement('span'), verde2 = document.createElement('span');
+    rojo2.style.background = RED_S; verde2.style.background = GREEN_S;
+    const frescos = Math.max(1, m.suben + m.bajan);
+    rojo2.style.width = (m.bajan / frescos * 100) + '%';
+    verde2.style.width = (m.suben / frescos * 100) + '%';
+    graf2.append(rojo2, verde2);
+    const nums2 = document.createElement('div');
+    nums2.className = 'barra-movil-nums';
+    nums2.textContent = `Suben ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`;
+    const nota2 = document.createElement('div');
+    nota2.className = 'barra-movil-nota';
+    nota2.textContent = `Comparada con la consulta del ${hora(m.comparadaCon)} (UTC); cada activo se mide con el cierre de su propia ventana` + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '');
+    caja.append(titulo2, graf2, nums2, nota2);
+  }
   return caja;
 }
 

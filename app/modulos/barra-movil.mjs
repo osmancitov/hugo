@@ -21,6 +21,19 @@
 // un registro del historico: no guarda series ni reconstruye ventanas pasadas.
 // Publicacion al visor: pendiente de decision (frecuencia de generacion y de subida); la
 // sincronizacion diaria todavia no recoge esta carpeta (esRutaPre no la conoce).
+//
+// Movimiento entre lecturas (decision del usuario, 20-nov-2026: «quiero ver cuando la
+// cuestion realmente esta aumentando, no cuando la referencia bajo»): el verde de la
+// ventana es una POSICION (cierre sobre apertura), no una direccion; una sola lectura no
+// puede decir cual de los dos extremos se movio. Por eso la instantanea guarda por activo
+// su ultimo precio y el cierre de su ventana, y cada consulta compara con la lectura
+// ANTERIOR por simbolo. La frontera es la misma regla del dueno que en la barra y el
+// ranking («solo es perdida o no», sin tercera categoria): el que no bajo cuenta verde.
+// Si el cierre de la ventana de un activo no avanzo entre las dos lecturas, la respuesta
+// no ofrece un cierre mas nuevo: no acredita que no hubiera operaciones ni que el precio
+// este quieto; cuenta aparte como «sin cierre nuevo» y no entra en la frontera, como el
+// sin dato. Sin lectura previa comparable no se escribe el bloque de movimiento (lo que
+// falta se muestra como que falta, no se inventa).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -83,6 +96,7 @@ export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_P
 export function calcularBarra(tandas, universo) {
   const tickers = tandas.flat();
   let suben = 0, bajan = 0, sinDato = 0, inicio = null, fin = null, minCierre = null, maxCierre = null;
+  const activos = [];
   for (const t of tickers) {
     const apertura = parseFloat(t?.openPrice), ultimo = parseFloat(t?.lastPrice);
     if (!Number.isFinite(apertura) || !Number.isFinite(ultimo)) { sinDato++; continue; }
@@ -94,6 +108,11 @@ export function calcularBarra(tandas, universo) {
       minCierre = minCierre === null ? c : Math.min(minCierre, c);
       maxCierre = maxCierre === null ? c : Math.max(maxCierre, c);
     }
+    // Por activo, para la comparacion con la proxima lectura: su ultimo precio (texto tal
+    // cual vino, sin recomponer) y el cierre de SU ventana. Sin ellos no hay movimiento.
+    const simbolo = String(t?.symbol || '');
+    const codigo = simbolo.endsWith('BUSDT') ? simbolo.slice(0, -5) : simbolo;
+    activos.push({ codigo, ultimo, ultimoTexto: String(t.lastPrice), cierre: Number.isFinite(c) ? c : null });
   }
   const respondieron = new Set(tickers.map((t) => t?.symbol)).size;
   return {
@@ -104,7 +123,28 @@ export function calcularBarra(tandas, universo) {
     conDato: suben + bajan,
     sinDato: sinDato + Math.max(0, universo.length - respondieron),
     suben, bajan,
+    activos,
   };
+}
+
+// Movimiento entre dos lecturas (decision del usuario, 20-nov-2026): por simbolo, el ultimo
+// precio de ahora contra el de la lectura anterior, solo cuando la ventana trae un cierre
+// mas nuevo. Cero cuenta verde («solo es perdida o no», la misma regla de la barra y el
+// ranking, sin tercera categoria). Cierre sin avanzar = sin cierre nuevo: la respuesta no
+// ofrece uno mas reciente (no prueba que no hubiera operaciones); fuera de la frontera.
+// Sin previa legible = sin previa, nunca inventada. Devuelve null cuando no hay NINGUN
+// activo previo con que comparar (primera lectura o instantanea vieja sin detalle): en ese
+// caso el bloque de movimiento no se escribe.
+export function calcularMovimiento(actuales, previos) {
+  if (!previos || !previos.size) return null;
+  let suben = 0, bajan = 0, sinCierreNuevo = 0, sinPrevia = 0;
+  for (const a of actuales) {
+    const p = previos.get(a.codigo);
+    if (!p || !Number.isFinite(p.ultimo) || p.cierre === null) { sinPrevia++; continue; }
+    if (a.cierre === null || a.cierre <= p.cierre) { sinCierreNuevo++; continue; }
+    if (a.ultimo >= p.ultimo) suben++; else bajan++;
+  }
+  return { suben, bajan, sinCierreNuevo, sinPrevia };
 }
 
 const iso = (ms) => (ms === null ? 'sin dato' : new Date(ms).toISOString());
@@ -116,8 +156,11 @@ const deIso = (s) => {
 };
 
 // Instantanea en texto, un dato por linea. Se pisa entera en cada consulta: es desechable.
+// El bloque de movimiento solo sale cuando hubo lectura anterior comparable; las lineas por
+// activo (CODIGO ultimo / CODIGO cierre) son la unica memoria que se conserva: la previa
+// para la proxima comparacion.
 export function formatearBarra(barra, ahora = Date.now()) {
-  return [
+  const lineas = [
     '# Barra movil de las ultimas 24 h de los stocks (ventana movil de Binance, no el dia cerrado del iceberg).',
     '# Archivo vivo y desechable: cada consulta lo pisa entero; no es un registro del historico.',
     `generada: ${new Date(ahora).toISOString()}`,
@@ -130,16 +173,47 @@ export function formatearBarra(barra, ahora = Date.now()) {
     `sin_dato: ${barra.sinDato}`,
     `suben: ${barra.suben}`,
     `bajan: ${barra.bajan}`,
-    '',
-  ].join('\n');
+  ];
+  const m = barra.movimiento;
+  if (m) {
+    lineas.push(
+      '# Movimiento del ultimo precio de cada activo contra la lectura anterior, solo con cierre nuevo (posicion medida, no promesa):',
+      `comparada_con: ${iso(barra.comparadaCon)}`,
+      `mov_suben: ${m.suben}`,
+      `mov_bajan: ${m.bajan}`,
+      `mov_sin_cierre_nuevo: ${m.sinCierreNuevo}`,
+      `mov_sin_previa: ${m.sinPrevia}`,
+    );
+  }
+  lineas.push('# Por activo (para comparar con la proxima consulta): ultimo precio y cierre de su ventana.');
+  for (const a of [...(barra.activos || [])].sort((x, y) => x.codigo < y.codigo ? -1 : x.codigo > y.codigo ? 1 : 0)) {
+    lineas.push(`${a.codigo} ultimo: ${a.ultimoTexto}`);
+    lineas.push(`${a.codigo} cierre: ${iso(a.cierre)}`);
+  }
+  lineas.push('');
+  return lineas.join('\n');
 }
 
 // Lee y valida una instantanea; sirve de validador cuando la sincronizacion la recoja.
+// Ademas de los agregados devuelve el detalle por activo (Map codigo -> {ultimo, cierre}),
+// que es la previa de la proxima comparacion. Si hay detalle por activo, debe cubrir
+// exactamente a los con dato, ni uno mas ni uno menos; sin lineas por activo la
+// instantanea sigue siendo valida (formato anterior al movimiento entre lecturas), pero no
+// sirve de previa. El bloque de movimiento, cuando esta, debe cerrar: suben + bajan +
+// sin cierre nuevo + sin previa = con dato.
 export function leerBarra(texto) {
   const campos = {};
+  const activos = new Map();
   for (const linea of String(texto).split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
-    if (m) campos[m[1]] = m[2];
+    if (m) { campos[m[1]] = m[2]; continue; }
+    const a = linea.match(/^([A-Z0-9]+) (ultimo|cierre): (.+)$/);
+    if (a) {
+      if (activos.has(a[1]) && activos.get(a[1])[a[2]] !== undefined) throw new Error(`Instantanea de barra incoherente (${a[1]} repetido).`);
+      const e = activos.get(a[1]) || {};
+      e[a[2]] = a[3];
+      activos.set(a[1], e);
+    }
   }
   const entero = (k) => {
     const n = Number(campos[k]);
@@ -160,6 +234,29 @@ export function leerBarra(texto) {
   };
   if (b.suben + b.bajan !== b.conDato || b.conDato + b.sinDato !== b.consultados) {
     throw new Error('Instantanea de barra incoherente (las cuentas no cierran).');
+  }
+  if (activos.size) {
+    if (activos.size !== b.conDato) throw new Error('Instantanea de barra incoherente (el detalle por activo no cubre a los con dato).');
+    for (const [codigo, e] of activos) {
+      const ultimo = parseFloat(e.ultimo);
+      if (!Number.isFinite(ultimo)) throw new Error(`Instantanea de barra incoherente (${codigo} sin ultimo legible).`);
+      e.ultimo = ultimo;
+      e.cierre = deIso(e.cierre || '');
+    }
+  }
+  b.activos = activos;
+  if (campos.comparada_con !== undefined) {
+    const mov = {
+      comparadaCon: deIso(campos.comparada_con),
+      suben: entero('mov_suben'),
+      bajan: entero('mov_bajan'),
+      sinCierreNuevo: entero('mov_sin_cierre_nuevo'),
+      sinPrevia: entero('mov_sin_previa'),
+    };
+    if (mov.suben + mov.bajan + mov.sinCierreNuevo + mov.sinPrevia !== b.conDato) {
+      throw new Error('Instantanea de barra incoherente (el movimiento no cierra).');
+    }
+    b.movimiento = mov;
   }
   return b;
 }
@@ -182,15 +279,25 @@ export function escribirBarra(dirRegistros, texto) {
   return RUTA_BARRA;
 }
 
-// La consulta completa: universo del registro, dos tandas, barra, instantanea en disco.
+// La consulta completa: universo del registro, dos tandas, barra, comparacion con la
+// lectura anterior guardada en la propia instantanea (si la hay y es legible; si no, no se
+// compara ni se inventa) e instantanea nueva en disco.
 export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now() } = {}) {
   const universo = universoBarra(dirVelas);
   if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
+  const dirRegistros = path.dirname(dirVelas);
+  let previos = null, comparadaCon = null;
+  try {
+    const anterior = leerBarra(fs.readFileSync(path.join(dirRegistros, 'pre-calculado', 'stock', CARPETA_BARRA, ARCHIVO_BARRA), 'utf8'));
+    if (anterior.activos.size) { previos = anterior.activos; comparadaCon = anterior.generada; }
+  } catch { /* sin instantanea previa legible: esta lectura no compara, solo guarda */ }
   const tandas = [];
   for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
   const barra = calcularBarra(tandas, universo);
+  const movimiento = calcularMovimiento(barra.activos, previos);
+  if (movimiento) { barra.movimiento = movimiento; barra.comparadaCon = comparadaCon; }
   const texto = formatearBarra(barra, ahora);
-  const rel = escribirBarra(path.dirname(dirVelas), texto);
+  const rel = escribirBarra(dirRegistros, texto);
   return { barra, texto, rel, generada: ahora };
 }
 
@@ -220,6 +327,12 @@ export function registrar(ctx) {
       ];
       l.push(`· Consulta: ${fechaHora(generada)}.`);
       if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
+      if (barra.movimiento) {
+        const m = barra.movimiento;
+        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): suben ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde).`);
+        if (m.sinCierreNuevo) l.push(`· Sin cierre nuevo: ${m.sinCierreNuevo} (la respuesta no ofrece uno más reciente; fuera de la frontera, como el sin dato).`);
+        if (m.sinPrevia) l.push(`· Sin lectura previa: ${m.sinPrevia} (fuera de la frontera, no inventados).`);
+      }
       if (barra.dispersionMs !== null) l.push(`· Dispersión entre cierres de la ventana: ${barra.dispersionMs} ms.`);
       if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
       l.push(`· Instantánea guardada en ${rel} (archivo vivo, se pisa en cada consulta).`);
