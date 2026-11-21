@@ -25,5 +25,5 @@ export function separarSerieIceberg(puntos, detalle) {
 
 export function cifrasConteos(suben,bajan,iguales) {
  const c=separarConteos(suben,bajan,iguales);
- return [{valor:c.rojos,color:TINTAS_LECTURA.rojo,nombre:'Bajaron'},{valor:c.verdes,color:TINTAS_LECTURA.verde,nombre:'Subieron'},{valor:c.grises,color:TINTAS_LECTURA.gris,nombre:'Iguales'}];
+ return [{valor:c.rojos,color:TINTAS_LECTURA.rojo,fondo:COLORES_LECTURA.rojo,nombre:'Bajaron'},{valor:c.grises,color:TINTAS_LECTURA.gris,fondo:COLORES_LECTURA.gris,nombre:'Iguales'},{valor:c.verdes,color:TINTAS_LECTURA.verde,fondo:COLORES_LECTURA.verde,nombre:'Subieron'}];
 }

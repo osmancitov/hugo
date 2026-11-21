@@ -430,6 +430,9 @@ test('barras comunes separan igualdad gris de subidas verdes sin cambiar datos g
   assert.equal(secs.length,3);
   for(const sec of secs){
    assert.equal(sec.hijos[2].hijos.map(x=>x.textContent).join(''),'1 · 1 · 1');
+   const cifras=sec.hijos[2].hijos.filter(x=>x.style);
+   assert.deepEqual(sec.hijos[1].hijos.map(x=>x.style.background),[COLORES_LECTURA.rojo,COLORES_LECTURA.gris,COLORES_LECTURA.verde]);
+   assert.deepEqual(cifras.map(x=>x.style.color),cifrasConteos(2,1,1).map(x=>x.color));
    const colores=sec.hijos[1].hijos;
    assert.deepEqual(Array.from(colores,x=>x.style.background),[COLORES_LECTURA.rojo,COLORES_LECTURA.gris,COLORES_LECTURA.verde]);
    for(const x of colores)assert.ok(Math.abs(parseFloat(x.style.width)-100/3)<1e-8);

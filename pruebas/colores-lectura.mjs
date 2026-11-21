@@ -8,8 +8,8 @@ import { detalleIguales,generarDetalles } from '../app/generar-colores-iceberg.m
 test('criterio visual separa igualdad exacta, mantiene totales y distingue ausencia',()=>{
  assert.deepEqual(separarConteos(87,26,7),{verdes:80,rojos:26,grises:7,total:113});
  assert.equal(textoConteos(87,26,7),'Rojos 26 · Grises 7 · Verdes 80');
- assert.deepEqual(cifrasConteos(87,26,7).map(c=>c.valor),[26,80,7]);
- assert.deepEqual(cifrasConteos(45,68,9).map(c=>c.valor),[68,36,9]);
+ assert.deepEqual(cifrasConteos(87,26,7).map(c=>c.valor),[26,7,80]);
+ assert.deepEqual(cifrasConteos(45,68,9).map(c=>c.valor),[68,9,36]);
  assert.equal(claseMovimiento(0),'igual');
  assert.equal(claseMovimiento(.00000001),'positivo');
  assert.equal(claseMovimiento(-.00000001),'negativo');

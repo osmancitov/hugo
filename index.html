@@ -216,7 +216,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 </script>
 <script type="module">
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
-import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs';
+import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
 import { montarRachas } from './visor-rachas.mjs?v=3'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=16';
 import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
@@ -632,17 +632,17 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     t.textContent = tituloTxt;
     const g = document.createElement('div');
     g.className = 'barra-movil-graf';
-    const rojo = document.createElement('span'), gris = document.createElement('span'), verde = document.createElement('span');
-    rojo.style.background = COLORES_LECTURA.rojo; gris.style.background = COLORES_LECTURA.gris; verde.style.background = COLORES_LECTURA.verde;
-    const c = separarConteos(suben, bajan, iguales);
+    const cifras = cifrasConteos(suben,bajan,iguales);
     const total = Math.max(1, base);
-    rojo.style.width = (c.rojos / total * 100) + '%';
-    gris.style.width = (c.grises / total * 100) + '%';
-    verde.style.width = (c.verdes / total * 100) + '%';
-    g.append(rojo, gris, verde);
+    cifras.forEach(({valor,fondo})=>{
+      const segmento = document.createElement('span');
+      segmento.style.background = fondo;
+      segmento.style.width = (valor / total * 100) + '%';
+      g.append(segmento);
+    });
     const nums = document.createElement('div');
     nums.className = 'barra-movil-nums';
-    cifrasConteos(suben,bajan,iguales).forEach(({valor,color,nombre},i)=>{
+    cifras.forEach(({valor,color,nombre},i)=>{
       if(i)nums.append(document.createTextNode(' · '));
       const cifra=document.createElement('span');
       cifra.textContent=valor; cifra.style.color=color;
