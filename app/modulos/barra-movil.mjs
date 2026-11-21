@@ -34,17 +34,9 @@
 // sin dato. Sin lectura previa comparable no se escribe el bloque de movimiento (lo que
 // falta se muestra como que falta, no se inventa).
 //
-// Barra del dia anterior (decision del usuario, 21-nov-2026: «la variacion entre la lectura
-// actual y el cierre de la ultima barra de 24h completa del dia anterior», con «referencia
-// fija»): por activo, el ultimo precio contra el CIERRE de su vela diaria del dia UTC
-// anterior (no la apertura, aunque a veces coincidan). Es un dato LOCAL del registro de
-// velas: no anade consultas; la lectura sigue siendo la de dos tandas. Si la vela del dia
-// anterior no esta en el registro local, el activo cuenta como sin dato de esta barra (no
-// se usa una vela mas vieja: la referencia es el dia anterior, no «la ultima que haya»).
-// Misma frontera del dueno: el que no bajo cuenta verde, con los iguales contados aparte.
-// El visor muestra esta barra primero y deja visibles los dos instantes (decision del
-// usuario, 21-nov-2026): el de la lectura actual y el de la lectura anterior (referencia
-// de la barra de movimiento), en su formato «HH:MM:SS UTC-4».
+// Primera barra: referencia fija en la primera foto real del día UTC mostrado.
+// El origen compara la foto consigo misma, sin inventar precios ni cierres.
+// Los cálculos diarios antiguos siguen exportados para leer datos históricos.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -381,8 +373,12 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   }
   sinDato+=universo.length-barra.activos.length;
   barra.dia={ref:new Date(Math.floor(ahora/DIA_MS)*DIA_MS-DIA_MS).toISOString().slice(0,10),base:inicial?.generada??ahora,suben,bajan,iguales,sinDato};
-  if (!previos) { previos = new Map(barra.activos.map(a=>[a.codigo,{...a,cierre:a.cierre-1}])); comparadaCon=ahora; }
-  const movimiento = calcularMovimiento(barra.activos, previos);
+  // El origen se compara consigo mismo sin modificar precios ni cierres reales.
+  const movimiento = previos ? calcularMovimiento(barra.activos, previos) : {
+    suben: barra.activos.length, bajan: 0, iguales: barra.activos.length, sinCierreNuevo: 0, sinPrevia: 0,
+    detalle: new Map(barra.activos.map(a=>[a.codigo,{previoTexto:a.ultimoTexto,resultado:'igual'}])),
+  };
+  if (!previos) comparadaCon=ahora;
   if (movimiento) {
     barra.movimiento = movimiento; barra.comparadaCon = comparadaCon;
     for (const a of barra.activos) {
