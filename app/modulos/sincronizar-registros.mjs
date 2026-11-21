@@ -724,9 +724,9 @@ export function registrar(ctx) {
       let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0, padre = null;
       const abrirReporte = async (texto) => {
         if (!padre) {
-          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Sincronizaci\u00f3n autom\u00e1tica de registros: comprobando GitHub; reporto el resultado en este hilo.' });
+          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Buscando cambios…' });
         }
-        reporte = await ctx.reporte.crearSync({ canal: ctx.canal, hilo: padre, inicio: `Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${texto}` });
+        reporte = await ctx.reporte.crearSync({ canal: ctx.canal, hilo: padre, inicio: texto });
         abiertoEn = Date.now();
       };
       const conEstimacion = (texto) => {
@@ -750,7 +750,7 @@ export function registrar(ctx) {
           }
           const conEst = conEstimacion(texto);
           if (Date.now() - abiertoEn >= 60000) {
-            await reporte.final(`Sincronizaci\u00f3n autom\u00e1tica de registros en curso. ${conEst}`);
+            await reporte.final(conEst);
             await abrirReporte(conEst);
             return;
           }
@@ -759,16 +759,16 @@ export function registrar(ctx) {
       };
       // Aviso ANTES de clonar y comparar: sin esta señal no se distingue «en curso» de «no arranco».
       if (ctx.canal) {
-        try { await abrirReporte('Comprobando GitHub\u2026'); }
+        try { await abrirReporte('Buscando cambios…'); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
       const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
       let aviso = '';
-      if (r.error) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros: ${r.error}`;
-      else if (r.detenida) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros detenida a pedido. Lo ya copiado queda; la pr\u00f3xima pasada retoma lo que falte.`;
-      else if (r.cambios || r.hayPendiente || r.conflictos) aviso = `Sincronizaci\u00f3n autom\u00e1tica de registros. ${r.texto}`;
+      if (r.error) aviso = `Error: ${r.error}`;
+      else if (r.detenida) aviso = 'Detenido a pedido. Lo ya copiado se conserva.';
+      else if (r.cambios || r.hayPendiente || r.conflictos) aviso = r.texto;
       if (reporte) {
-        try { await reporte.final(aviso || `Sincronizaci\u00f3n autom\u00e1tica de registros: sin cambios; todo sigue igual.`); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
+        try { await reporte.final(aviso || 'Sin cambios'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
         ultimoAviso = '';
       } else {
         const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';

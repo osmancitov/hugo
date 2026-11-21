@@ -76,9 +76,9 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     assert.ok(posts.length >= 4 && posts.length <= 9, `mensajes abiertos: ${posts.length}`);
     // El primer mensaje avisa en el canal que empieza la pasada; los avances son respuestas en su hilo.
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
-    assert.ok(/comprobando GitHub/.test(posts[0].text), posts[0].text);
+    assert.ok(/Buscando cambios…/.test(posts[0].text), posts[0].text);
     assert.ok(posts.slice(1).every((p) => p.thread_ts === posts[0].tsAsignado), 'los avances cuelgan del aviso inicial');
-    assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && p.text.startsWith('Sincronización automática de registros en curso.')));
+    assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && !p.text.includes('Sincronización automática de registros')));
     // A 30 s por archivo, tras el primero el ritmo permite estimar: alguna edicion muestra el tiempo aproximado.
     assert.ok(updates.some((u) => /Quedan aprox\. \d+ min\./.test(u.text)), 'falta la estimacion aproximada');
     assert.ok(!updates.some((u) => /estimación aproximada, no exacta|sigue en un mensaje nuevo/.test(u.text)), 'sobran las muletillas retiradas');
@@ -86,7 +86,7 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
     assert.equal(ultimo.ts, posts.at(-1).tsAsignado, 'el resultado se edita sobre el ultimo mensaje abierto');
-    assert.ok(/Sincronización automática de registros\./.test(ultimo.text) && /subí 12/.test(ultimo.text), ultimo.text);
+    assert.ok(/subí 12/.test(ultimo.text) && !/Sincronización automática/.test(ultimo.text), ultimo.text);
     // La estimacion nunca promete: siempre lleva «aprox.».
     assert.ok(!updates.some((u) => /[Qq]uedan \d+ min/.test(u.text) || (/[Qq]uedan aprox\. \d+ min/.test(u.text) && !/Quedan aprox\. \d+ min\./.test(u.text))));
   } finally { b.restaurar(); }
@@ -102,14 +102,14 @@ test('automatica: sin nada que copiar, anuncia la comprobacion y cierra con el r
     // La senal de arranque es lo primero que sale, antes de clonar y comparar: un aviso en el canal.
     assert.equal(posts.length, 2, `mensajes abiertos: ${posts.length}`);
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
-    assert.ok(/comprobando GitHub/.test(posts[0].text), posts[0].text);
+    assert.ok(/Buscando cambios…/.test(posts[0].text), posts[0].text);
     assert.equal(posts[1].thread_ts, posts[0].tsAsignado, 'el reporte cuelga del aviso inicial');
-    assert.ok(/en curso\. Comprobando GitHub/.test(posts[1].text), posts[1].text);
+    assert.ok(/Buscando cambios…/.test(posts[1].text), posts[1].text);
     // El cierre con el resultado se edita sobre ese mismo mensaje, aunque no hubiera nada que copiar.
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
     assert.equal(ultimo.ts, posts[1].tsAsignado, 'el resultado se edita sobre el mensaje del reporte');
-    assert.ok(/sin cambios; todo sigue igual\./.test(ultimo.text), ultimo.text);
+    assert.ok(/^Sin cambios$/.test(ultimo.text), ultimo.text);
   } finally { b.restaurar(); }
 });
 
