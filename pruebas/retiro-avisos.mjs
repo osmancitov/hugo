@@ -1,0 +1,18 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {registrarRetiro,crearReporte} from '../app/modulos/reporte.mjs';
+import {registrar as confirmar,_prueba} from '../app/modulos/confirmacion.mjs';
+function banco(){
+ const borrados=[],posts=[],updates=[],handlers={};let actual={user:'HUGO',ts:'10',reply_count:0},hilo=null,fallar=false;
+ const ctx={usuario:'DUENO',botUserId:'HUGO',botToken:'falso',activas:new Map(),app:{event:(n,f)=>{handlers[n]=f;},client:{conversations:{history:async()=>{if(fallar)throw Error('sin acceso');return {messages:[actual]};},replies:async()=>hilo||{messages:[actual]}} ,chat:{delete:async m=>borrados.push(m),postMessage:async m=>{posts.push(m);return {ts:String(9+posts.length)};},update:async m=>updates.push(m)}}}};
+ confirmar(ctx);registrarRetiro(ctx);
+ return {ctx,borrados,posts,updates,set:m=>{actual={...actual,...m};},hilo:r=>hilo=r,fallar:()=>fallar=true, pulgar:async(user='DUENO',reaction='+1')=>handlers.reaction_added({event:{user,reaction,item:{type:'message',channel:'C',ts:'10'}}})};
+}
+test('retira solo el aviso propio suelto con pulgar del dueño y sin otro aviso',async()=>{const b=banco();await b.pulgar('OTRO');await b.pulgar('DUENO','heart');assert.equal(b.borrados.length,0);await b.pulgar();assert.equal(b.borrados.length,1);assert.equal(b.posts.length,0);await b.pulgar();assert.equal(b.borrados.length,1);});
+for(const [nombre,cambio] of [['otro autor',{user:'OTRO'}],['respuesta dentro de conversación',{thread_ts:'1'}],['raíz con respuestas',{reply_count:1}],['adjunto',{files:[{id:'F'}]}],['otro mensaje',{ts:'11'}]])test(`conserva ${nombre}`,async()=>{const b=banco();b.set(cambio);await b.pulgar();assert.equal(b.borrados.length,0);});
+for(const [nombre,r] of [['conversación nueva',{messages:[{ts:'10',user:'HUGO'},{ts:'11',user:'OTRO'}]}],['paginación',{messages:[{ts:'10',user:'HUGO'}],has_more:true}],['no verificable',{messages:[]}]])test(`segunda lectura conserva ${nombre}`,async()=>{const b=banco();b.hilo(r);await b.pulgar();assert.equal(b.borrados.length,0);});
+test('fallo de lectura no borra',async()=>{const b=banco();b.fallar();await b.pulgar();assert.equal(b.borrados.length,0);});
+test('trabajo activo conserva avisos',async()=>{const b=banco();b.ctx.activas.set('trabajo',{});await b.pulgar();assert.equal(b.borrados.length,0);});
+test('solicitud pendiente se aprueba sin retirarla',async()=>{const b=banco();let si=0;try{await b.ctx.confirmar({channel:'C',user:'DUENO',texto:'Solicitud',alSi:async()=>si++,alNo:async()=>{}});await b.pulgar();assert.equal(si,1);assert.equal(b.borrados.length,0);}finally{for(const p of _prueba.pendientes.values())clearTimeout(p.timer);_prueba.pendientes.clear();}});
+test('reporte en uso conserva, terminado se retira y solo próximo trabajo lo recrea',async()=>{const b=banco();const r=await crearReporte({client:b.ctx.app.client,token:'falso',canal:'C',inicio:'Inicio',intervalo:0});await b.pulgar();assert.equal(b.borrados.length,0);await r.final('Terminó');await b.pulgar();assert.equal(b.borrados.length,1);assert.equal(b.posts.length,1);await new Promise(r=>setImmediate(r));assert.equal(b.posts.length,1);await r.iniciar('Trabajo siguiente');assert.equal(b.posts.length,2);assert.equal(b.posts[1].text,'Trabajo siguiente');await r.final('Fin siguiente');assert.equal(b.updates.at(-1).ts,'11');});
+test('sin retirar, siguiente trabajo reutiliza el mismo mensaje',async()=>{const b=banco();const r=await crearReporte({client:b.ctx.app.client,token:'falso',canal:'C',inicio:'Inicio',intervalo:0});await r.final('Fin');await r.iniciar('Otro');await r.final('Fin2');assert.equal(b.posts.length,1);assert.ok(b.updates.every(m=>m.ts==='10'));});

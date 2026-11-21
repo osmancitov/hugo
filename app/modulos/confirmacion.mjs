@@ -36,7 +36,8 @@ export function registrar(ctx) {
     if (event.item?.type !== 'message') return;
     const clave = `${event.item.channel}:${event.item.ts}`;
     const p = pendientes.get(clave);
-    if (!p || !esPulgar(event.reaction)) return;
+    if (!esPulgar(event.reaction)) return;
+    if (!p) { await ctx.retirarHuerfano?.(event); return; }
     if (event.user !== p.user && (!p.tambien || event.user !== p.tambien)) return;
     clearTimeout(p.timer);
     pendientes.delete(clave);

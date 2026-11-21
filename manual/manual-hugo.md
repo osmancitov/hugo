@@ -269,3 +269,7 @@ La lectura horaria consulta únicamente el ticker en dos tandas: no espera cierr
 ### Colores de las lecturas
 
 Las tres barras compartidas por 2D y 3D y sus tablas separan rojo (bajó), gris (igual) y verde (subió). Los conteos se muestran solo con cifras coloreadas, en orden rojo, verde, gris. La superficie usa la misma regla para el movimiento entre lecturas. La igualdad sale del precio exacto, no del porcentaje redondeado. Los conteos almacenados conservan su formato anterior: la separación es visual y no cambia referencias, precios ni alturas.
+
+### Retirar avisos sueltos
+
+El 👍 del usuario retira un aviso propio de Hugo si está suelto, sin respuestas ni archivos. Se conservan las conversaciones, las solicitudes pendientes y los reportes en uso. En una solicitud pendiente, el 👍 aprueba y no borra. Si no se puede comprobar el estado, se conserva. No hay borrado de hilos ni aviso nuevo al retirarlo. Si se retira el reporte intradiario ya terminado, la siguiente lectura real puede abrir uno nuevo; sin retirarlo se sigue usando el mismo.

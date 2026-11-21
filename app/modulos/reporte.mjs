@@ -19,16 +19,60 @@
 //   lo último. Errores y aviso final salen garantizados como mensajes propios, tras dejar el
 //   progreso al día. Si el recorrido se corta y retoma en otro arranque, el progreso sigue en
 //   un mensaje nuevo (la referencia del anterior no se guarda), sin repetir consultas.
+const seguimientos=new WeakMap();
+const claveReporte=(channel,ts)=>`${channel}|${ts}`;
+function seguimiento(client){
+ if(!seguimientos.has(client))seguimientos.set(client,{activos:new Set(),retirados:new Set(),retiros:new Map()});
+ return seguimientos.get(client);
+}
+
 export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,mensajeTs,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
  const hilo=event?event.thread_ts||event.ts:hiloOpt;
- const m=mensajeTs?{ts:mensajeTs}:await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio});
+ let m=mensajeTs?{ts:mensajeTs}:await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio});
  if(!m?.ts)throw Error('Slack no devolvio referencia del reporte.');
- let ultimo=ahora();
- const editar=async text=>{await client.chat.update({token,channel,ts:m.ts,text});ultimo=ahora();};
+ const estado=seguimiento(client);
+ const marcar=()=>estado.activos.add(claveReporte(channel,m.ts));
+ marcar();let ultimo=ahora();
+ const editar=async text=>{
+  const k=claveReporte(channel,m.ts);
+  const retiro=estado.retiros.get(k);if(retiro)await retiro;
+  if(estado.retirados.has(k)){
+   m=await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text});
+   if(!m?.ts)throw Error('Slack no devolvio referencia del nuevo reporte.');
+   estado.activos.delete(k);marcar();
+  }else await client.chat.update({token,channel,ts:m.ts,text});
+  ultimo=ahora();
+ };
  return {
-  progreso:async text=>{if(ahora()-ultimo<intervalo)return;await editar(`${prefijo}${text}`);},
-  final:async text=>{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);await editar(text);}
+  iniciar:async text=>{marcar();await editar(text);},
+  progreso:async text=>{marcar();if(ahora()-ultimo<intervalo)return;await editar(`${prefijo}${text}`);},
+  final:async text=>{marcar();try{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);await editar(text);}finally{estado.activos.delete(claveReporte(channel,m.ts));}}
+ };
+}
+
+// El pulgar del dueño solo retira avisos propios sueltos. Nunca recorre ni borra hilos.
+export function registrarRetiro(ctx){
+ const {app,botToken}=ctx;const estado=seguimiento(app.client);const vistos=new Set();
+ ctx.retirarHuerfano=async event=>{
+  if(event.user!==ctx.usuario||event.item?.type!=='message')return;
+  const {channel,ts}=event.item;const k=claveReporte(channel,ts);
+  const ocupado=()=>Boolean(ctx.activas?.size||ctx.registroOcupado?.()||ctx.sincronizacionEnCurso?.()||ctx.intradiaInfo?.().ocupado||estado.activos.has(k));
+  if(vistos.has(k)||estado.retiros.has(k)||ocupado()||!ctx.botUserId)return;
+  // Leer el mensaje exacto primero: history también permite identificar respuestas.
+  let r;
+  try{r=await app.client.conversations.history({token:botToken,channel,latest:ts,inclusive:true,limit:1});}catch{return;}
+  const m=r.messages?.find(x=>x.ts===ts);
+  if(!m||m.user!==ctx.botUserId||m.files?.length||(m.thread_ts&&m.thread_ts!==ts)||Number(m.reply_count)>0)return;
+  // Segunda lectura del hilo para no confiar solo en reply_count ni en datos antiguos.
+  try{r=await app.client.conversations.replies({token:botToken,channel,ts,limit:2});}catch{return;}
+  if(r.has_more||r.response_metadata?.next_cursor||r.messages?.length!==1)return;
+  const vivo=r.messages[0];
+  if(vivo.ts!==ts||vivo.user!==ctx.botUserId||vivo.files?.length||(vivo.thread_ts&&vivo.thread_ts!==ts)||Number(vivo.reply_count)>0||estado.retiros.has(k)||ocupado())return;
+  let resolver;const retiro=new Promise(resolve=>{resolver=resolve;});estado.retiros.set(k,retiro);
+  try{await app.client.chat.delete({token:botToken,channel,ts});estado.retirados.add(k);vistos.add(k);}
+  catch(e){if(e.data?.error!=='message_not_found')console.error('Retiro de aviso:',e.data?.error||e.message);}
+  finally{estado.retiros.delete(k);resolver();}
  };
 }
 

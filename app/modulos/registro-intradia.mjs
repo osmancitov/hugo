@@ -223,11 +223,12 @@ export function registrar(ctx) {
   // Ningún valor predeterminado activa consultas. Configurar una frecuencia requiere la
   // decisión del dueño y la instalación aprobada. Nunca se borran registros por antigüedad.
   let reporteAutomatico = null;
-  const informarAutomatico = async (texto) => {
+  const informarAutomatico = async (texto, enCurso = false) => {
     if (!ctx.canal || !ctx.reporte?.crear) return;
     try {
       if (!reporteAutomatico) reporteAutomatico = await ctx.reporte.crear({ canal: ctx.canal, inicio: texto });
-      else await reporteAutomatico.final(texto);
+      else if (enCurso) await reporteAutomatico.iniciar(texto);
+      if (!enCurso && reporteAutomatico) await reporteAutomatico.final(texto);
     } catch (e) { reporteAutomatico = null; console.error('Reporte intradiario:', e.message); }
   };
   ctx.alIniciar(async () => {
@@ -250,7 +251,7 @@ export function registrar(ctx) {
         if (ahora() < objetivo || ahora() >= siguienteHitoUTC(objetivo, minutos)) { programar(); return; }
         try {
           const lectura = tomar(); // Inicia la consulta sin esperar el reporte de Slack.
-          const reporte = informarAutomatico('Lectura intradiaria automática en curso. Registro y publicación se comprueban por separado.');
+          const reporte = informarAutomatico('Lectura intradiaria automática en curso. Registro y publicación se comprueban por separado.', true);
           const r = await lectura;
           await reporte;
           const instante = new Date(r.generada).toISOString().slice(0, 19).replace('T', ' ');
