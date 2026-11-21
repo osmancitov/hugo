@@ -62,3 +62,20 @@ test('superficie: porcentaje de un decimal y hora sin segundos son solo formato'
   const n = 1.234567; porcentajeSuperficie(n); assert.equal(n, 1.234567);
   assert.equal(horaSuperficie(Date.parse('2026-11-21T09:45:52.736Z')), '09:45');
 });
+
+test('reloj del observatorio actualiza el minuto sin red y se desmonta sin dejar temporizador', async () => {
+  const { montarRelojObservatorio } = await import('../visor-superficie.mjs');
+  const anterior = global.document, contenedor = new Elemento('div'), pendientes = [], cancelados = [];
+  let ms = Date.parse('2026-11-21T13:07:52.736Z');
+  global.document = { createElement: (tag) => new Elemento(tag), createTextNode: (textContent) => ({ textContent }) };
+  try {
+    const reloj = montarRelojObservatorio(contenedor, { ahora: () => ms, programar: (fn, espera) => { pendientes.push({ fn, espera }); return pendientes.length; }, cancelar: (id) => cancelados.push(id) });
+    const tiempo = contenedor.hijos[0].hijos[1].hijos[1];
+    assert.equal(tiempo.textContent, '13:07'); assert.equal(tiempo.dateTime, '2026-11-21T13:07:52.736Z');
+    assert.equal(pendientes[0].espera, 7264);
+    ms = Date.parse('2026-11-21T13:08:00.000Z'); pendientes[0].fn();
+    assert.equal(tiempo.textContent, '13:08'); assert.equal(pendientes[1].espera, 60000);
+    reloj.desmontar(); assert.deepEqual(cancelados, [2]);
+    ms += 60000; pendientes[1].fn(); assert.equal(tiempo.textContent, '13:08'); assert.equal(pendientes.length, 2);
+  } finally { global.document = anterior; }
+});

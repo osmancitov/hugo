@@ -172,6 +172,10 @@ a.tit-link:hover { text-decoration: none; }
 .negativo { color:#ec9698; } .positivo { color:#78caa4; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
 /* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
+.superficie-reloj { margin: .8rem 0 1rem; border-left: 2px solid var(--oro); padding-left: .8rem; }
+.superficie-reloj-titulo { color: var(--oro); font-size: .8rem; margin: 0 0 .3rem; }
+.superficie-reloj-hora { color: var(--texto); font-size: .9rem; line-height: 1.6; margin: 0; }
+.superficie-reloj-hora time { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .superficie-caja { margin: 1rem 0; border-top: 1px solid var(--borde); padding-top: .8rem; }
 .superficie-controles { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: .75rem 0; font-size: .82rem; color: var(--tenue); }
 .superficie-controles label { display: flex; align-items: center; gap: .4rem; }
@@ -211,7 +215,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 </script>
 <script type="module">
 import { montarRachas } from './visor-rachas.mjs?v=2'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie } from './visor-superficie.mjs?v=4';
+import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=5';
 import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
@@ -818,14 +822,15 @@ async function vistaSuperficie() {
   const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/i/iceberg-stock', textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const titulo = Object.assign(document.createElement('h1'), { textContent: 'Superficie del día' });
-  const meta = Object.assign(document.createElement('p'), { className: 'meta', textContent: 'Stocks · referencia diaria fija · horas UTC' });
-  const zonaHoraria = Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Todas las horas están en UTC.' });
-  ficha.append(titulo, zonaHoraria, meta);
+  const meta = Object.assign(document.createElement('p'), { className: 'meta', textContent: 'Stocks · referencia diaria fija' });
+  ficha.append(titulo);
+  const reloj = montarRelojObservatorio(ficha);
+  ficha.append(meta);
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
   app.append(volver, ficha, estado, cuerpo);
   let grafica = null, turno = 0;
-  limpiarGrafica = () => { turno++; grafica?.desmontar(); };
+  limpiarGrafica = () => { turno++; grafica?.desmontar(); reloj.desmontar(); };
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren();
     const lecturas = registro.dia.lecturas;

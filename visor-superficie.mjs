@@ -9,6 +9,26 @@ export const porcentajeSuperficie = (n) => {
   return `${visible > 0 ? '+' : ''}${new Intl.NumberFormat('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(visible)} %`;
 };
 const hora = horaSuperficie, pct = porcentajeSuperficie;
+
+export function montarRelojObservatorio(contenedor, { ahora = Date.now, programar = setTimeout, cancelar = clearTimeout } = {}) {
+  const caja = crear('div', 'superficie-reloj');
+  const titulo = crear('p', 'superficie-reloj-titulo', 'Reloj del observatorio');
+  const linea = crear('p', 'superficie-reloj-hora');
+  const tiempo = crear('time');
+  tiempo.title = 'Hora del dispositivo expresada en UTC, no una cotización en vivo';
+  linea.append(document.createTextNode('Hora actual: '), tiempo, document.createTextNode(' · Tiempo Universal Coordinado (UTC)'));
+  const nota = crear('p', 'superficie-nota', 'Todas las lecturas usan esta referencia horaria. La hora de cada foto se muestra por separado.');
+  caja.append(titulo, linea, nota); contenedor.append(caja);
+  let temporizador = null, vivo = true;
+  const actualizar = () => {
+    if (!vivo) return;
+    const ms = ahora();
+    tiempo.textContent = hora(ms); tiempo.dateTime = new Date(ms).toISOString();
+    temporizador = programar(actualizar, 60000 - ((ms % 60000 + 60000) % 60000));
+  };
+  actualizar();
+  return { desmontar() { vivo = false; cancelar(temporizador); } };
+}
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
 // Misma navegación para activos y lecturas: los extremos no saltan al otro lado.
