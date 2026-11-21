@@ -253,3 +253,5 @@ Fuentes sobre los límites de avisos: https://docs.slack.dev/apis/web-api/rate-l
 La pasada automática de arranque anuncia «Verificando cambios…» y, si no necesita copiar nada ni hay problemas, termina con «Sin cambios». Los avances muestran su fase sin repetir el nombre del proceso; los cambios, conflictos y errores siguen visibles. Solo cambia la presentación, no la comparación, los archivos ni los disparadores.
 
 Si la búsqueda automática termina sin novedades ni problemas, conserva «Verificando cambios…» en su mensaje inicial y añade una segunda línea: «Todo OK», sin respuesta en el hilo. Los trabajos con cambios o problemas conservan su reporte en hilo.
+
+- Texto bajo las barras (21-nov-2026): Verdes, Rojos e Iguales en una línea, separados por puntos medios, sin totales entre paréntesis; Fuente en la línea siguiente. La primera combina vela diaria y ticker de Binance; las otras usan ticker 24 h. Iguales se toma de la comparación propia de cada barra, nunca se copia de otra; si una lectura antigua no lo permite saber, dice sin dato. El detalle de cobertura y referencias sigue disponible en Ver tabla.

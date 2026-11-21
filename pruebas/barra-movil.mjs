@@ -284,16 +284,16 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /ventana móvil/);
   assert.match(visor, /Movimiento entre las dos últimas consultas/); // segunda barra: movimiento medido entre lecturas
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
-  assert.match(visor, /[Cc]ada activo se mide con el cierre de su propia ventana/);
+
   assert.match(visor, /sin cierre nuevo/);
-  assert.match(visor, /iguales entre verdes/); // el verde no afirma aumento: incluye la igualdad, explícito
+  assert.match(visor, /Iguales:/); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /Cierre del día anterior/);
-  assert.match(visor, /referencia fija del día/);
+  assert.match(visor, /Fuente: vela diaria y ticker de Binance/);
   assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\}\$\{zona\}/); // instante visible; superficie usa su nota única
   assert.match(visor, /const zona = compacta \? '' : ' UTC'/); // otras vistas conservan su zona explícita
   assert.match(visor, /compacta \? 16 : 19/); // segundos solo se omiten dentro de la superficie
-  assert.match(visor, /Referencia de esta barra: lectura anterior del/); // instante de la lectura anterior, visible
+  assert.match(visor, /periodoBarra\(m.comparadaCon, b.generada/); // instante anterior en Desde
   assert.match(visor, /UTC/);
   assert.doesNotMatch(visor, /UTC-4|No bajan|`Suben/);
   for (const ruta of ['barra-dia', 'barra-24h', 'barra-movimiento']) assert.ok(visor.includes(ruta));
@@ -402,5 +402,5 @@ test('periodos visibles en tres líneas Desde/Hasta/Tiempo y fecha de doce horas
  const f=vm.runInNewContext(codigo+';periodoBarra');
  assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'Desde: Nov 20 · 11:59 PM\nHasta: Nov 21 · 3:00 PM\nTiempo: 15 h');
  assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'Desde: Nov 21 · 12:00 AM');
- assert.match(html,/No son un intervalo común/);
+ assert.match(html,/24 h por activo/);
 });
