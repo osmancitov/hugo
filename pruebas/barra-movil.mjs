@@ -296,6 +296,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.doesNotMatch(visor, /UTC-4|No bajan|`Suben/);
   for (const ruta of ['barra-dia', 'barra-24h', 'barra-movimiento']) assert.ok(visor.includes(ruta));
   assert.match(visor, /barra-movil-sec/);
+  assert.match(visor, /'Ver tabla'/); assert.doesNotMatch(visor, /Ver la tabla/);
   assert.match(visor, /Verde \(igual\)/); // el formato del usuario en los dos instantes
 });
 
