@@ -389,6 +389,9 @@ function vistaArbol(q, mercado) {
   nota.className = 'rachas-nota';
   nota.textContent = 'Capitalización del token y, en su caso, de la base (la empresa en bolsa o los activos del fondo), con la fecha de cada cifra; no cotizaciones en vivo.';
   app.append(nota, elBuscar);
+  // Indicadores primero en la lista, en stocks y en cripto (decisión del usuario, 21-nov-2026).
+  const inds = INDICADORES.filter((e) => e.mercado === mercado);
+  app.appendChild(nodoArbol('Indicadores', inds.length + (inds.length === 1 ? ' indicador' : ' indicadores'), inds));
   if (mercado === 'stock') {
     const nEmp = nodoArbol('Empresas', EMPRESAS.length + ' activos', EMPRESAS, true);
     nEmp.querySelector('.hijos').prepend(cabCaps());
@@ -398,8 +401,6 @@ function vistaArbol(q, mercado) {
   } else {
     app.appendChild(nodoArbol('Token', CRIPTOS.length + ' activos', CRIPTOS, true));
   }
-  const inds = INDICADORES.filter((e) => e.mercado === mercado);
-  app.appendChild(nodoArbol('Indicadores', inds.length + (inds.length === 1 ? ' indicador' : ' indicadores'), inds));
   if (!q) return;
   // La búsqueda localiza y resalta dentro del árbol, sin esconder los demás activos.
   const s = q.toLowerCase();
@@ -693,7 +694,7 @@ async function vistaTablaBarra(clave) {
   const filas = [...b.activos.entries()].map(([codigo, a]) => ({ codigo, ultimoN: a.ultimoN, ...def.fila(a), ultimoTxt: a.ultimo }));
   // De mayor a menor porcentaje (decisión del usuario, 21-nov-2026): los que más suben
   // arriba, los 0 % después y las mayores caídas al final; sin comparación, aparte al final.
-  const pct = (f) => f.refN == null ? null : (f.ultimoN - f.refN) / f.refN;
+  const pct = (f) => f.verde === null || f.refN == null ? null : (f.ultimoN - f.refN) / f.refN; // sin comparación no entra al orden
   filas.sort((x, y) => {
     const px = pct(x), py = pct(y);
     if (px === null && py === null) return x.codigo < y.codigo ? -1 : 1;

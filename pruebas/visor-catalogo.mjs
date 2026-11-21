@@ -19,3 +19,13 @@ test('el visor lee el catálogo publicado y mantiene el respaldo incrustado', ()
   assert.ok(!src.includes("CATALOGO.cripto.map((e) => ({ ...e, clase"), 'el literal ya no da cobertura');
   assert.ok(!src.includes("CATALOGO.stock.map((e) => ({ ...e, clase"), 'el literal ya no da cobertura');
 });
+
+test('guardia del árbol: los indicadores van primero en stocks y cripto', () => {
+  // Decisión del usuario (21-nov-2026): «Indicadores» debería ir de primero en la lista.
+  const inds = src.indexOf("nodoArbol('Indicadores'");
+  const emp = src.indexOf("nodoArbol('Empresas'");
+  const tok = src.indexOf("nodoArbol('Token'");
+  assert.ok(inds !== -1 && emp !== -1 && tok !== -1);
+  assert.ok(inds < emp && inds < tok, 'los indicadores abren la lista del árbol');
+  assert.match(src, /Indicadores primero en la lista, en stocks y en cripto/);
+});
