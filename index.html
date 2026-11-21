@@ -606,12 +606,12 @@ function duracionBarra(desde, hasta) {
 }
 function fechaPeriodoBarra(ms) {
   if (!Number.isFinite(ms)) return 'sin dato';
-  const d = new Date(ms), meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const d = new Date(ms), meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const h = d.getUTCHours();
   return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 function periodoBarra(desde, hasta, tiempo) {
-  return `Desde: ${fechaPeriodoBarra(desde)}\nHasta: ${fechaPeriodoBarra(hasta)}\nTiempo: ${tiempo}`;
+  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)}\nTiempo: ${tiempo}`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const zona = compacta ? '' : ' UTC';
