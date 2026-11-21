@@ -22,5 +22,5 @@ test('superficie tiene entrada estática con metadatos propios antes de ejecutar
  assert.match(html, /href: 'index.html#\/i\/iceberg-stock'/);
  assert.doesNotMatch(head, /twitter:/);
  assert.equal((html.match(/function vistaSuperficie\(/g) || []).length, 1);
- assert.match(original, /enlaceSuperficie.href = 'superficie.html'/);
+ assert.ok(original.includes("enlaceSuperficie.href = compacta ? '#/i/iceberg-stock' : 'superficie.html'"));
 });

@@ -290,9 +290,6 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /'24 horas'/);
   assert.match(visor, /Fuente: Binance/);
-  assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\}\$\{zona\}/); // instante visible; superficie usa su nota única
-  assert.match(visor, /const zona = compacta \? '' : ' UTC'/); // otras vistas conservan su zona explícita
-  assert.match(visor, /compacta \? 16 : 19/); // segundos solo se omiten dentro de la superficie
   assert.match(visor, /periodoBarra\(m.comparadaCon, b.generada/); // instante anterior en Desde
   assert.match(visor, /UTC/);
   assert.doesNotMatch(visor, /UTC-4|No bajan|`Suben/);
@@ -396,11 +393,22 @@ test('duración de títulos: horas/minutos reales, no frecuencia nominal', () =>
 });
 
 
-test('periodos visibles en tres líneas Desde/Hasta/Tiempo y fecha de doce horas UTC', () => {
+test('periodos unificados con meses legibles y reloj de24horasUTC', () => {
  const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
  const codigo=html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('));
  const f=vm.runInNewContext(codigo+';periodoBarra');
- assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 11:59 PM - nov 21 · 3:00 PM');
- assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 12:00 AM - sin dato');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 23:59-nov 21 · 15:00 UTC');
+ assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 00:00-sin dato UTC');
  assert.match(html,/24 h por activo/);
+});
+
+test('2D y 3D comparten periodos y tablas, sin Lectura redundante y con navegación recíproca', () => {
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const vista=html.slice(html.indexOf('function vistaBarra('),html.indexOf('const BARRAS_TABLA'));
+ const tablas=html.slice(html.indexOf('const BARRAS_TABLA'),html.indexOf('const precioTabla'));
+ assert.doesNotMatch(vista,/Lectura:/);
+ assert.ok(vista.includes("compacta ? '#/i/iceberg-stock' : 'superficie.html'"));
+ assert.ok(vista.includes("compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas'"));
+ assert.equal((tablas.match(/nota: \(b\) => periodoBarra\(/g)||[]).length,3);
+ assert.doesNotMatch(tablas,/Lectura:|Referencia fija:|toISOString/);
 });

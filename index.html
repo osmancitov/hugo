@@ -608,18 +608,13 @@ function fechaPeriodoBarra(ms) {
   if (!Number.isFinite(ms)) return 'sin dato';
   const d = new Date(ms), meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const h = d.getUTCHours();
-  return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+  return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${String(h).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
 function periodoBarra(desde, hasta, tiempo) {
-  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)}`;
+  return `${fechaPeriodoBarra(desde)}-${fechaPeriodoBarra(hasta)} UTC`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
-  const zona = compacta ? '' : ' UTC';
   const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}` : '';
-  // Los dos instantes, visibles (decisión del usuario, 21-nov-2026: en UTC, «sin el cero»,
-  // como el iceberg y la API): el de ESTA lectura arriba del bloque y el de la lectura
-  // anterior dentro de la barra de movimiento, que es su referencia.
-  const hora = (ms) => new Date(ms).toISOString().slice(0, compacta ? 16 : 19).replace('T', ' ');
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
   const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt, enlace, periodo) => {
@@ -658,10 +653,6 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     }
     return sec;
   };
-  const lectura = document.createElement('div');
-  lectura.className = 'barra-movil-nums';
-  lectura.textContent = `Lectura: ${hora(b.generada)}${zona}`;
-  if (!compacta) caja.append(lectura);
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
   // vela diaria completa del día UTC anterior, referencia FIJA del día. El verde incluye la
   // igualdad (la misma regla del iceberg, sin tercera categoría) y la nota declara los
@@ -670,8 +661,8 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   if (d) {
     const enlaceSuperficie = document.createElement('a');
     enlaceSuperficie.className = 'barra-movil-enlace';
-    enlaceSuperficie.href = 'superficie.html';
-    enlaceSuperficie.textContent = 'Ver superficie 3D y lecturas';
+    enlaceSuperficie.href = compacta ? '#/i/iceberg-stock' : 'superficie.html';
+    enlaceSuperficie.textContent = compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(
       duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
@@ -729,7 +720,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
 const BARRAS_TABLA = {
   'barra-dia': {
     titulo: 'Verdes y rojos contra el cierre del día anterior',
-    nota: (b) => `Referencia fija: cierre de la vela diaria del ${b.dia.ref} (UTC) · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    nota: (b) => periodoBarra(Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000 - 1, b.generada),
     apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
     fila: (a) => {
       if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null, refN: null };
@@ -739,7 +730,7 @@ const BARRAS_TABLA = {
   },
   'barra-24h': {
     titulo: 'Verdes y rojos en las últimas 24 h',
-    nota: (b) => `Apertura de la ventana móvil de cada activo contra su último precio · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    nota: (b) => periodoBarra(b.inicio, b.fin),
     apta: (b) => b.activos && [...b.activos.values()].every((a) => a.apertura !== undefined),
     fila: (a) => {
       if (a.aperturaN === null) return { ref: 'sin dato', res: 'Sin dato', verde: null, refN: null };
@@ -749,7 +740,7 @@ const BARRAS_TABLA = {
   },
   'barra-movimiento': {
     titulo: 'Verdes y rojos entre las dos últimas consultas',
-    nota: (b) => `Lectura anterior del ${new Date(b.movimiento.comparadaCon).toISOString().slice(0, 19).replace('T', ' ')} UTC (su referencia) · Lectura actual: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+    nota: (b) => periodoBarra(b.movimiento.comparadaCon, b.generada),
     apta: (b) => b.movimiento && b.activos && [...b.activos.values()].every((a) => a.mov !== undefined),
     fila: (a) => {
       const res = { sube: 'Verde', igual: 'Verde (igual)', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];

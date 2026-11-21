@@ -265,3 +265,5 @@ Antes de tomar una lectura, Hugo comprueba que estén guardados los cierres diar
 Durante esa preparación y la toma, la ingesta y sincronización no se solapan. La corrida diaria espera su turno y reutiliza lo ya recogido. Stop, cambio de día y las pausas de protección HTTP429/418 interrumpen el intento sin inventar fotos ni cierres. Esta mejora requiere la aprobación habitual de actualización en Debian; publicarla en GitHub no la instala.
 
 - Títulos de barras: duración real (horas/minutos), sin duplicarla en el intervalo inferior. La móvil conserva24horas. No cambia la referencia de ninguna barra; las tablas identifican la comparación.
+
+- Formato unificado2D/3D/tablas: periodo abreviado en reloj24hUTC, meses minúsculos y sin segundos; no se repite el renglón Lectura. Las tablas usan el mismo formateador de periodos que las barras. Enlaces recíprocos2D y3D, sin enlace a la propia vista. Solo presentación, sellos y cálculos intactos.
