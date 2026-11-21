@@ -100,6 +100,14 @@ export function intervaloIntradia(valor) {
   if (!Number.isInteger(n) || n < 5 || n > 1440) throw Error('HUGO_INTRADIA_MINUTOS debe ser un entero de 5 a 1440; sin valor queda apagado.');
   return n;
 }
+// Hitos del reloj UTC: para 5 minutos, 00, 05, 10... de cada hora.
+// Siempre futuro: arranque/reinicio o ciclo lento no reconstruyen hitos perdidos.
+export function siguienteHitoUTC(ahora, minutos) {
+  if (!Number.isFinite(ahora) || !Number.isInteger(minutos) || minutos < 5 || minutos > 1440) throw Error('Reloj intradiario inválido.');
+  const d = new Date(ahora), medianoche = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const paso = minutos * 60000;
+  return Math.min(medianoche + 86400000, medianoche + (Math.floor((ahora - medianoche) / paso) + 1) * paso);
+}
 export function registrar(ctx) {
   const dirVelas = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
   const raiz = () => path.dirname(dirVelas());
@@ -160,6 +168,7 @@ export function registrar(ctx) {
   ctx.comando(/^\s*intradia\s+estado\s*[.!?]*\s*$/i, (e) => {
     const info = ctx.intradiaInfo();
     const lineas = [`Lectura intradiaria automática: ${minutos === null ? 'apagada (sin frecuencia elegida)' : `cada ${minutos} minutos`}.`];
+    if (info.proxima !== null) lineas.push(`Próximo inicio programado: ${new Date(info.proxima).toISOString().slice(0, 19).replace('T', ' ')} UTC (publicación posterior).`);
     if (info.ultima !== null) lineas.push(`Última guardada: ${new Date(info.ultima).toISOString().slice(0, 19).replace('T', ' ')} UTC.`);
     if (info.pendientes !== null) lineas.push(`Archivos pendientes de publicar: ${info.pendientes}.`);
     if (info.pausa && (info.pausa.hasta === null || info.pausa.hasta > ahora())) lineas.push(info.pausa.hasta === null ? `Fuente pausada por HTTP ${info.pausa.status}, sin plazo válido; requiere revisión.` : `Fuente pausada hasta ${new Date(info.pausa.hasta).toISOString()} por HTTP ${info.pausa.status}.`);
@@ -191,11 +200,17 @@ export function registrar(ctx) {
       }
     } catch (e) { error = e.message; await informarAutomatico(`Cola intradiaria conservada al arrancar: ${e.message}`); }
     const programar = () => {
-      proxima = ahora() + minutos * 60000;
+      proxima = siguienteHitoUTC(ahora(), minutos);
+      const objetivo = proxima;
       const t = setTimeout(async () => {
+        // Si el reloj retrocedió, esperar al hito; si se perdió un intervalo entero,
+        // saltarlo. No se toman fotos atrasadas ni se lanzan ciclos para recuperar.
+        if (ahora() < objetivo || ahora() >= siguienteHitoUTC(objetivo, minutos)) { programar(); return; }
         try {
-          await informarAutomatico('Lectura intradiaria automática en curso. Registro y publicación se comprueban por separado.');
-          const r = await tomar();
+          const lectura = tomar(); // Inicia la consulta sin esperar el reporte de Slack.
+          const reporte = informarAutomatico('Lectura intradiaria automática en curso. Registro y publicación se comprueban por separado.');
+          const r = await lectura;
+          await reporte;
           const instante = new Date(r.generada).toISOString().slice(0, 19).replace('T', ' ');
           await informarAutomatico(`Lectura intradiaria guardada: ${instante} UTC.\n${r.pendiente ? `Pendiente de publicar: ${r.pendiente}. La cola se conserva.` : r.publicacion?.commit ? `Publicada en el commit ${r.publicacion.commit.slice(0, 7)}.` : 'Publicación confirmada, sin cambios nuevos.'}`);
         } catch (e) {
@@ -209,7 +224,7 @@ export function registrar(ctx) {
           error = e.message;
           await informarAutomatico(`No completé la lectura intradiaria: ${e.message}. Los registros anteriores se conservan; reintento en el próximo intervalo.${recuperacion}`);
         } finally { await programar(); }
-      }, minutos * 60000);
+      }, Math.max(1, objetivo - ahora()));
       t.unref?.();
     };
     programar();

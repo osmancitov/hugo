@@ -7,7 +7,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { crearRemoto } from './git-remoto.mjs';
 import { formatearBarra, leerBarra, RUTA_BARRA, escribirBarra } from '../app/modulos/barra-movil.mjs';
-import { guardarLectura, recuperarIntradia, pendientesIntradia, confirmarIntradia, combinarArchivoIntradia, intervaloIntradia, registrar as registrarIntradia } from '../app/modulos/registro-intradia.mjs';
+import { guardarLectura, recuperarIntradia, pendientesIntradia, confirmarIntradia, combinarArchivoIntradia, intervaloIntradia, siguienteHitoUTC, registrar as registrarIntradia } from '../app/modulos/registro-intradia.mjs';
 import { registrar as registrarSync } from '../app/modulos/sincronizar-registros.mjs';
 import { diaUTC, rutaDia, RUTA_INDICE, leerDia, terrenoDia } from '../app/modulos/intradia-datos.mjs';
 
@@ -200,7 +200,7 @@ test('rechaza cambios de cierre fijo dentro del día y una referencia de otro d�
 
 test('reloj explícito espera el intervalo y conserva un único reporte sin activar nada por defecto', async () => {
   const p = temp(), ctx = contexto(p), temporizadores = [], mensajes = [];
-  ctx.conf.HUGO_INTRADIA_MINUTOS = '15'; ctx.ahora = () => T;
+  let ahora = T; ctx.conf.HUGO_INTRADIA_MINUTOS = '15'; ctx.ahora = () => ahora;
   ctx.reporte = { crear: async (o) => { mensajes.push(o.inicio); return { final: async (t) => mensajes.push(t) }; } };
   const timeout = global.setTimeout, consola = console.error;
   global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; };
@@ -209,7 +209,7 @@ test('reloj explícito espera el intervalo y conserva un único reporte sin acti
     registrarIntradia(ctx); for (const fn of ctx.inicios) await fn();
     assert.equal(temporizadores.length, 1); assert.equal(temporizadores[0].ms, 15 * 60000);
     assert.equal(mensajes.length, 0); assert.equal(ctx.intradiaInfo().proxima, T + 15 * 60000);
-    await temporizadores[0].fn(); // Sin universo local: falla antes de cualquier consulta de red.
+    ahora += temporizadores[0].ms; await temporizadores[0].fn(); // Sin universo local: falla antes de cualquier consulta de red.
     assert.equal(mensajes.length, 2); assert.match(mensajes[1], /No completé/);
     assert.equal(temporizadores.length, 2); assert.equal(ctx.intradiaInfo().minutos, 15);
   } finally { global.setTimeout = timeout; console.error = consola; limpiar(p); }
@@ -257,7 +257,7 @@ const r=cp.spawnSync('/usr/bin/git',args,{cwd:process.cwd(),env:process.env,stdi
 
 test('arranque con frecuencia recupera cola sin consultar Binance ni esperar otra foto', async () => {
   const p = temp(), raiz = path.join(p, 'registros'), ctx = contexto(p), temporizadores = [];
-  const timeout = global.setTimeout; let publicadas = 0;
+  const timeout = global.setTimeout; let publicadas = 0; ctx.ahora=()=>T;
   global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; };
   try {
     guardarLectura(raiz, foto()); const pendientes = pendientesIntradia(raiz);
@@ -273,7 +273,7 @@ test('arranque con frecuencia recupera cola sin consultar Binance ni esperar otr
 
 test('GitHub recuperado publica cola aunque falle la toma; con reloj apagado no publica al arrancar', async () => {
   const p = temp(), raiz = path.join(p, 'registros'), ctx = contexto(p), temporizadores = [];
-  const timeout = global.setTimeout, consola = console.error; let publicadas = 0, disponible = false;
+  const timeout = global.setTimeout, consola = console.error; let publicadas = 0, disponible = false, ahora=T; ctx.ahora=()=>ahora;
   global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; }; console.error = () => {};
   try {
     guardarLectura(raiz, foto());
@@ -281,7 +281,7 @@ test('GitHub recuperado publica cola aunque falle la toma; con reloj apagado no 
     registrarIntradia(ctx); for (const fn of ctx.inicios) await fn(); assert.equal(publicadas, 0); assert.equal(temporizadores.length, 0);
     ctx.conf.HUGO_INTRADIA_MINUTOS = '5'; ctx.inicios.length = 0;
     registrarIntradia(ctx); for (const fn of ctx.inicios) await fn(); assert.equal(publicadas, 1); assert.equal(temporizadores.length, 1);
-    disponible = true;
+    disponible = true; ahora += temporizadores[0].ms;
     await temporizadores[0].fn(); // Sin universo: la toma falla sin consultar red.
     assert.equal(publicadas, 2); assert.deepEqual(pendientesIntradia(raiz), {});
     assert.match(ctx.intradiaInfo().error, /No hay carpetas/);
@@ -315,4 +315,61 @@ test('funcionamiento continuo: conserva huecos por 429, recupera cola y sigue pr
     assert.ok(lecturas.some((l) => Date.parse(l.generada) === T + 30 * 60000));
     assert.deepEqual(pendientesIntradia(raiz), {}); assert.ok(intentosSubida >= 20);
   } finally { global.setTimeout = timeout; global.fetch = fuente; console.error = consola; limpiar(p); }
+});
+
+
+test('hitos UTC de cinco minutos: arranque, borde exacto, medianoche y ciclo largo', () => {
+  const hit = (s) => new Date(siguienteHitoUTC(Date.parse(s), 5)).toISOString();
+  assert.equal(hit('2026-11-21T14:13:47.377Z'), '2026-11-21T14:15:00.000Z');
+  assert.equal(hit('2026-11-21T14:15:00.000Z'), '2026-11-21T14:20:00.000Z');
+  assert.equal(hit('2026-11-21T14:19:59.999Z'), '2026-11-21T14:20:00.000Z');
+  assert.equal(hit('2026-11-21T23:59:59.999Z'), '2026-11-22T00:00:00.000Z');
+  assert.equal(hit('2026-11-21T14:27:13.000Z'), '2026-11-21T14:30:00.000Z');
+  assert.throws(() => siguienteHitoUTC(NaN, 5), /inválido/);
+});
+
+test('reloj UTC omite hitos perdidos y espera al futuro tras trabajo lento o cambio de reloj', async () => {
+  const p=temp(), ctx=contexto(p), timers=[], timeout=global.setTimeout, consola=console.error;
+  let ahora=Date.parse('2026-11-21T14:13:47.377Z');
+  ctx.ahora=()=>ahora; ctx.conf.HUGO_INTRADIA_MINUTOS='5';
+  global.setTimeout=(fn,ms)=>{timers.push({fn,ms});return {unref(){}};}; console.error=()=>{};
+  try {
+    registrarIntradia(ctx); for(const fn of ctx.inicios) await fn();
+    assert.equal(timers[0].ms,72623);
+    // Proceso suspendido: el callback viejo no consulta ni recupera fotos.
+    ahora=Date.parse('2026-11-21T14:26:00Z'); await timers[0].fn();
+    assert.equal(ctx.intradiaInfo().proxima,Date.parse('2026-11-21T14:30:00Z'));
+    assert.equal(ctx.intradiaInfo().ultima,null);
+    // Retroceso del reloj: tampoco dispara antes del hito.
+    ahora=Date.parse('2026-11-21T14:29:00Z'); await timers[1].fn();
+    assert.equal(timers[2].ms,60000);
+    ahora=Date.parse('2026-11-21T14:30:00Z');
+    // Trabajo de reporte lento hasta 14:37. Sin universo, no hay llamada Binance.
+    ctx.reporte={crear:async()=>{ahora=Date.parse('2026-11-21T14:37:00Z');return {final:async()=>{}};}};
+    ctx.canal='canal'; await timers[2].fn();
+    assert.equal(ctx.intradiaInfo().proxima,Date.parse('2026-11-21T14:40:00Z'));
+    assert.equal(timers[3].ms,180000);
+  }finally{global.setTimeout=timeout;console.error=consola;limpiar(p);}
+});
+
+
+test('consulta en el hito sin esperar reporte Slack; ciclo lento no se solapa ni deriva el reloj', async () => {
+  const p=temp(), ctx=contexto(p), timers=[], timeout=global.setTimeout, fuente=global.fetch;
+  let ahora=Date.parse('2026-11-21T14:13:47Z'), consultas=0, liberar;
+  ctx.ahora=()=>ahora; ctx.conf.HUGO_INTRADIA_MINUTOS='5';
+  fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA','2611_AAA'),JSON.stringify([[T-DIA,'100','100','100','100']]));
+  ctx.publicarIntradia=async archivos=>{ahora=Date.parse('2026-11-21T14:27:00Z');return {archivos,commit:'abcdef0'};};
+  global.setTimeout=(fn,ms)=>{timers.push({fn,ms});return {unref(){}};};
+  ctx.reporte={crear:async()=>{await new Promise(r=>{liberar=r;}); return {final:async()=>{}};}};
+  global.fetch=async()=>{consultas++;return {ok:true,status:200,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'101',openTime:ahora-DIA,closeTime:ahora}])};};
+  try{
+    registrarIntradia(ctx);for(const fn of ctx.inicios)await fn();
+    ahora=Date.parse('2026-11-21T14:15:00Z'); const ejecucion=timers[0].fn();
+    assert.equal(consultas,1); assert.equal(timers.length,1); // Sin segundo ciclo mientras trabaja.
+    liberar();await ejecucion;
+    assert.equal(ctx.intradiaInfo().ultima,Date.parse('2026-11-21T14:15:00Z'));
+    assert.equal(ctx.intradiaInfo().proxima,Date.parse('2026-11-21T14:30:00Z'));
+    assert.equal(timers[1].ms,180000);assert.equal(consultas,1);
+  }finally{global.setTimeout=timeout;global.fetch=fuente;limpiar(p);}
 });
