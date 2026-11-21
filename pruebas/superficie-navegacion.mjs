@@ -146,3 +146,11 @@ test('gris representa igualdad exacta y no comparación ausente ni redondeo', as
  assert.equal(colorMovimiento(.000001),'#25855c');
  assert.equal(colorMovimiento(-.000001),'#b73d40');
 });
+
+
+test('flechas permiten elegir explícitamente desde un selector sin selección inicial', () => {
+ const b=banco(113,-1);
+ assert.equal(b.selector.selectedIndex,-1);
+ b.siguiente.onclick();assert.equal(b.selector.selectedIndex,0);
+ const c=banco(113,-1);c.previo.onclick();assert.equal(c.selector.selectedIndex,112);
+});

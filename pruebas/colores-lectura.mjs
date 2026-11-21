@@ -42,5 +42,7 @@ test('entradas comunes y leyendas no conservan reglas visuales viejas',()=>{
  const sup=fs.readFileSync(new URL('../visor-superficie.mjs',import.meta.url),'utf8');
  for(const texto of [html,sup])assert.doesNotMatch(texto,/cero cuenta como verde|no bajó entre lecturas|sin comparación nueva|Las caras unen|sin significado de proximidad|Altura: cambio porcentual|activos · orden A|const salto = Math.max|arrastra para girar/);
  for(const texto of [html,sup])assert.match(texto,/colores-lectura.mjs/);
+ assert.match(sup,/activo = -1/);
+ assert.doesNotMatch(sup,/superficie-leyenda|ETIQUETAS_LECTURA/);
  assert.match(html,/claseMovimiento\(f.ultimoN - f.refN\)/);
 });

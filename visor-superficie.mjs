@@ -1,7 +1,7 @@
 // Superficie 3D del registro real. Proyección y dibujo locales, sin dependencias externas.
 // Las tomas se leen directamente de GitHub; actualizar datos no requiere desplegar este módulo.
 import { terrenoDia } from './app/modulos/intradia-datos.mjs';
-import { COLORES_LECTURA, ETIQUETAS_LECTURA, colorMovimiento } from './app/modulos/colores-lectura.mjs';
+import { COLORES_LECTURA, colorMovimiento } from './app/modulos/colores-lectura.mjs';
 export { colorMovimiento } from './app/modulos/colores-lectura.mjs';
 const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
 const ORO = '#c2a15a';
@@ -47,13 +47,14 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   let temporizador = null, pulsado = null, vivo = true;
   const detener = () => { cancelar(temporizador); temporizador = null; pulsado = null; };
   const actualizar = () => {
-    anterior.disabled = selector.options.length < 2 || selector.selectedIndex < 0 || (!ciclar && selector.selectedIndex <= 0);
-    siguiente.disabled = selector.options.length < 2 || selector.selectedIndex < 0 || (!ciclar && selector.selectedIndex >= selector.options.length - 1);
+    anterior.disabled = selector.options.length < 2 || (!ciclar && selector.selectedIndex <= 0);
+    siguiente.disabled = selector.options.length < 2 || (!ciclar && selector.selectedIndex >= selector.options.length - 1);
     if (pulsado?.disabled) detener();
   };
   const paso = (delta) => {
     const n = selector.options.length;
-    if (n < 2 || selector.selectedIndex < 0) return;
+    if (n < 2) return;
+    if (selector.selectedIndex < 0) { mover(delta > 0 ? 0 : n - 1); return; }
     const indice = ciclar ? (selector.selectedIndex + delta + n) % n : selector.selectedIndex + delta;
     if (indice >= 0 && indice < selector.options.length) mover(indice);
   };
@@ -93,7 +94,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
 
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
-  let giro = -0.34, inclinacion = 0.68, amplitud = 1, ultima = barras.length - 1, activo = 0, arrastre = null, proyecciones = [], viva = true;
+  let giro = -0.34, inclinacion = 0.68, amplitud = 1, ultima = barras.length - 1, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
   const caja = crear('div', 'superficie-caja');
@@ -105,6 +106,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
+  elegirActivo.selectedIndex = -1;
   const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i), { repetir: true, ciclar: true });
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
@@ -115,16 +117,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra cierre diario fijo. Los selectores permiten leer cada punto. Arrastra para girar.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
-  const leyenda = crear('p', 'superficie-leyenda');
-  ETIQUETAS_LECTURA.forEach(({texto,color},i) => {
-    if(i)leyenda.append(document.createTextNode(' · '));
-    const tramo=crear('span','',texto);
-    tramo.style.color=color;
-    leyenda.append(tramo);
-  });
-  caja.append(controles, canvas, detalle, leyenda);
+  caja.append(controles, canvas, detalle);
   contenedor.append(caja);
   function describir() {
+    detalle.hidden = activo < 0;
+    if (activo < 0) { detalle.textContent = ''; return; }
     const p = puntos[ultima]?.[activo];
     const fecha = barras[ultima] ? `${hora(barras[ultima].generada)}` : 'sin lectura';
     detalle.textContent = p ? `${codigos[activo]} · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : `${codigos[activo] || 'Sin activos'} · ${fecha} · sin cierre diario o sin precio comparable`;
@@ -203,10 +200,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     describir();
   }
   const seleccionar = (j, i) => {
-    if (j < 0 || j >= barras.length || i < 0 || i >= codigos.length) return;
+    if (j < 0 || j >= barras.length || i < -1 || i >= codigos.length) return;
     const x = window.scrollX, y = window.scrollY;
     ultima = j; activo = i;
-    elegirLectura.value = j; elegirActivo.value = i;
+    elegirLectura.value = j;
+    if (i < 0) elegirActivo.selectedIndex = -1; else elegirActivo.value = i;
     pasosLectura.actualizar(); pasosActivo.actualizar();
     // Se conservan los mismos controles y el mismo terreno: no se reinicia su ángulo,
     // relieve, foco o posición al avanzar o usar un desplegable.
