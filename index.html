@@ -490,8 +490,8 @@ async function cargarBarra() {
   // Movimiento entre las dos últimas consultas (decisión del usuario, 20-nov-2026): solo si
   // la instantánea trae el bloque y cierra; sin lectura anterior comparable, no se dibuja.
   if (campos.comparada_con !== undefined) {
-    const m = { comparadaCon: Date.parse(campos.comparada_con), suben: n('mov_suben'), bajan: n('mov_bajan'), sinCierreNuevo: n('mov_sin_cierre_nuevo'), sinPrevia: n('mov_sin_previa') };
-    const enteros = [m.suben, m.bajan, m.sinCierreNuevo, m.sinPrevia].every(Number.isInteger);
+    const m = { comparadaCon: Date.parse(campos.comparada_con), suben: n('mov_suben'), bajan: n('mov_bajan'), iguales: campos.mov_iguales === undefined ? null : n('mov_iguales'), sinCierreNuevo: n('mov_sin_cierre_nuevo'), sinPrevia: n('mov_sin_previa') };
+    const enteros = [m.suben, m.bajan, m.sinCierreNuevo, m.sinPrevia].every(Number.isInteger) && (m.iguales === null || Number.isInteger(m.iguales));
     if (enteros && Number.isFinite(m.comparadaCon) && m.suben + m.bajan + m.sinCierreNuevo + m.sinPrevia === b.conDato) b.movimiento = m;
   }
   return b;
@@ -544,7 +544,9 @@ function vistaBarra(b) {
     nums2.textContent = `Suben ${m.suben} · Bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`;
     const nota2 = document.createElement('div');
     nota2.className = 'barra-movil-nota';
-    nota2.textContent = `Comparada con la consulta del ${hora(m.comparadaCon)} (UTC); cada activo se mide con el cierre de su propia ventana` + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '');
+    // El verde incluye la igualdad (la misma regla del iceberg, sin tercera categoría);
+    // se dice explícito para que «Suben» no afirme aumento cuando hubo iguales.
+    nota2.textContent = `Comparada con la consulta del ${hora(m.comparadaCon)} (UTC); cada activo se mide con el cierre de su propia ventana · verde = suben o iguales` + (m.iguales === null ? '' : ` (iguales: ${m.iguales})`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : '');
     caja.append(titulo2, graf2, nums2, nota2);
   }
   return caja;

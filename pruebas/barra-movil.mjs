@@ -149,7 +149,7 @@ test('calcularMovimiento: sube, baja, cero cuenta verde, sin cierre nuevo y sin 
     ['QUI', { ultimo: 10, cierre: 1500 }],
   ]);
   const m = calcularMovimiento(actuales, previos);
-  assert.deepEqual(m, { suben: 2, bajan: 1, sinCierreNuevo: 1, sinPrevia: 1 });
+  assert.deepEqual(m, { suben: 2, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 1 });
   assert.equal(calcularMovimiento(actuales, null), null);       // sin archivo previo: no hay bloque
   assert.equal(calcularMovimiento(actuales, new Map()), null);  // previa sin detalle por activo: tampoco
 });
@@ -159,7 +159,7 @@ test('formatearBarra y leerBarra con movimiento y detalle por activo: ida y vuel
     inicio: 1000, cierreMin: 2000, fin: 3000, dispersionMs: 1000,
     consultados: 3, respondieron: 3, conDato: 3, sinDato: 0, suben: 2, bajan: 1,
     comparadaCon: 1763814880000,
-    movimiento: { suben: 1, bajan: 1, sinCierreNuevo: 1, sinPrevia: 0 },
+    movimiento: { suben: 1, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 0 },
     activos: [
       { codigo: 'BBB', ultimo: 9, ultimoTexto: '9.00', cierre: 3000 },
       { codigo: 'AAA', ultimo: 11, ultimoTexto: '11.00', cierre: 2000 },
@@ -168,13 +168,16 @@ test('formatearBarra y leerBarra con movimiento y detalle por activo: ida y vuel
   };
   const texto = formatearBarra(b, 4000);
   const q = leerBarra(texto);
-  assert.deepEqual(q.movimiento, { comparadaCon: 1763814880000, suben: 1, bajan: 1, sinCierreNuevo: 1, sinPrevia: 0 });
+  assert.deepEqual(q.movimiento, { comparadaCon: 1763814880000, suben: 1, bajan: 1, iguales: 1, sinCierreNuevo: 1, sinPrevia: 0 });
   assert.equal(q.activos.size, 3);
   assert.deepEqual(q.activos.get('AAA'), { ultimo: 11, cierre: 2000 });
   assert.match(texto, /\nAAA ultimo: 11\.00\nAAA cierre: /); // un dato por línea, texto tal cual vino
   assert.ok(texto.indexOf('AAA ultimo') < texto.indexOf('BBB ultimo')); // detalle ordenado por código
   // el movimiento debe cerrar contra los con dato
   assert.throws(() => leerBarra(texto.replace('mov_suben: 1', 'mov_suben: 2')), /movimiento no cierra/);
+  assert.throws(() => leerBarra(texto.replace('mov_iguales: 1', 'mov_iguales: 2')), /los iguales no caben/);
+  // una instantánea anterior al desglose (sin mov_iguales) sigue siendo válida: iguales desconocido, no cero
+  assert.equal(leerBarra(texto.replace(/mov_iguales: 1\n/, '')).movimiento.iguales, null);
   // el detalle por activo, cuando está, cubre exactamente a los con dato
   assert.throws(() => leerBarra(texto.replace('CCC ultimo: 10.00\nCCC cierre: ' + new Date(2000).toISOString() + '\n', '')), /detalle por activo/);
   // sin líneas por activo la instantánea vieja sigue siendo válida (pero no sirve de previa)
@@ -200,7 +203,7 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
     const p2 = { AAABUSDT: 12, BBBBUSDT: 20 }; // AAA subió con cierre nuevo; BBB sin cierre nuevo
     const c2 = { AAABUSDT: 2500, BBBBUSDT: 2000 };
     const r2 = await generarBarra({ dirVelas: velas, fetchImpl: responder(p2, c2), host: 'https://data-api.binance.vision', ahora: 9000 });
-    assert.deepEqual(r2.barra.movimiento, { suben: 1, bajan: 0, sinCierreNuevo: 1, sinPrevia: 0 });
+    assert.deepEqual(r2.barra.movimiento, { suben: 1, bajan: 0, iguales: 0, sinCierreNuevo: 1, sinPrevia: 0 });
     assert.equal(r2.barra.comparadaCon, 5000);
     assert.match(r2.texto, /comparada_con: 1970-01-01T00:00:05\.000Z/);
     assert.equal(leerBarra(r2.texto).movimiento.suben, 1);
@@ -217,6 +220,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /cada activo se mide con el cierre de su propia ventana/);
   assert.match(visor, /sin cierre nuevo/);
+  assert.match(visor, /verde = suben o iguales/); // el verde no afirma aumento: incluye la igualdad, explícito
 });
 
 test('guardia de la casa: la orden está registrada en la app y documentada en el manual', () => {

@@ -137,14 +137,16 @@ export function calcularBarra(tandas, universo) {
 // caso el bloque de movimiento no se escribe.
 export function calcularMovimiento(actuales, previos) {
   if (!previos || !previos.size) return null;
-  let suben = 0, bajan = 0, sinCierreNuevo = 0, sinPrevia = 0;
+  let suben = 0, bajan = 0, iguales = 0, sinCierreNuevo = 0, sinPrevia = 0;
   for (const a of actuales) {
     const p = previos.get(a.codigo);
     if (!p || !Number.isFinite(p.ultimo) || p.cierre === null) { sinPrevia++; continue; }
     if (a.cierre === null || a.cierre <= p.cierre) { sinCierreNuevo++; continue; }
-    if (a.ultimo >= p.ultimo) suben++; else bajan++;
+    if (a.ultimo >= p.ultimo) { suben++; if (a.ultimo === p.ultimo) iguales++; } else bajan++;
   }
-  return { suben, bajan, sinCierreNuevo, sinPrevia };
+  // suben es la frontera del dueno («solo es perdida o no»: el que no bajo, verde) e
+  // INCLUYE los iguales; iguales los cuenta aparte para que el verde no afirme aumento.
+  return { suben, bajan, iguales, sinCierreNuevo, sinPrevia };
 }
 
 const iso = (ms) => (ms === null ? 'sin dato' : new Date(ms).toISOString());
@@ -177,10 +179,11 @@ export function formatearBarra(barra, ahora = Date.now()) {
   const m = barra.movimiento;
   if (m) {
     lineas.push(
-      '# Movimiento del ultimo precio de cada activo contra la lectura anterior, solo con cierre nuevo (posicion medida, no promesa):',
+      '# Movimiento del ultimo precio de cada activo contra la lectura anterior, solo con cierre nuevo (posicion medida, no promesa; el verde incluye los iguales):',
       `comparada_con: ${iso(barra.comparadaCon)}`,
       `mov_suben: ${m.suben}`,
       `mov_bajan: ${m.bajan}`,
+      `mov_iguales: ${m.iguales}`,
       `mov_sin_cierre_nuevo: ${m.sinCierreNuevo}`,
       `mov_sin_previa: ${m.sinPrevia}`,
     );
@@ -250,11 +253,15 @@ export function leerBarra(texto) {
       comparadaCon: deIso(campos.comparada_con),
       suben: entero('mov_suben'),
       bajan: entero('mov_bajan'),
+      iguales: campos.mov_iguales === undefined ? null : entero('mov_iguales'), // ausente en instantaneas previas al desglose
       sinCierreNuevo: entero('mov_sin_cierre_nuevo'),
       sinPrevia: entero('mov_sin_previa'),
     };
     if (mov.suben + mov.bajan + mov.sinCierreNuevo + mov.sinPrevia !== b.conDato) {
       throw new Error('Instantanea de barra incoherente (el movimiento no cierra).');
+    }
+    if (mov.iguales !== null && mov.iguales > mov.suben) {
+      throw new Error('Instantanea de barra incoherente (los iguales no caben en los que no bajaron).');
     }
     b.movimiento = mov;
   }
@@ -329,7 +336,7 @@ export function registrar(ctx) {
       if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
       if (barra.movimiento) {
         const m = barra.movimiento;
-        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): suben ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde).`);
+        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): suben ${m.suben} · bajan ${m.bajan} (${m.suben + m.bajan} con cierre nuevo; el que no bajó cuenta verde${m.iguales === null ? '' : `, iguales: ${m.iguales}`}).`);
         if (m.sinCierreNuevo) l.push(`· Sin cierre nuevo: ${m.sinCierreNuevo} (la respuesta no ofrece uno más reciente; fuera de la frontera, como el sin dato).`);
         if (m.sinPrevia) l.push(`· Sin lectura previa: ${m.sinPrevia} (fuera de la frontera, no inventados).`);
       }
