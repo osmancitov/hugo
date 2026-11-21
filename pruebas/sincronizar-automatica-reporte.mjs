@@ -100,16 +100,13 @@ test('automatica: sin nada que copiar, anuncia la comprobacion y cierra con el r
     await b.ctx.automaticaSincronizacion();
     const posts = b.llamadas.filter((l) => l.tipo === 'post');
     // La senal de arranque es lo primero que sale, antes de clonar y comparar: un aviso en el canal.
-    assert.equal(posts.length, 2, `mensajes abiertos: ${posts.length}`);
+    assert.equal(posts.length, 1, `mensajes abiertos: ${posts.length}`);
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
     assert.ok(/Buscando cambios…/.test(posts[0].text), posts[0].text);
-    assert.equal(posts[1].thread_ts, posts[0].tsAsignado, 'el reporte cuelga del aviso inicial');
-    assert.ok(/Buscando cambios…/.test(posts[1].text), posts[1].text);
-    // El cierre con el resultado se edita sobre ese mismo mensaje, aunque no hubiera nada que copiar.
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
-    assert.equal(ultimo.ts, posts[1].tsAsignado, 'el resultado se edita sobre el mensaje del reporte');
-    assert.ok(/^Sin cambios$/.test(ultimo.text), ultimo.text);
+    assert.equal(ultimo.ts, posts[0].tsAsignado, 'Sin cambios edita la raíz, sin respuesta en hilo');
+    assert.ok(/^Buscando cambios…\nTodo actualizado\.$/.test(ultimo.text), ultimo.text);
   } finally { b.restaurar(); }
 });
 

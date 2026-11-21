@@ -19,10 +19,10 @@
 //   lo último. Errores y aviso final salen garantizados como mensajes propios, tras dejar el
 //   progreso al día. Si el recorrido se corta y retoma en otro arranque, el progreso sigue en
 //   un mensaje nuevo (la referencia del anterior no se guarda), sin repetir consultas.
-export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
+export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,mensajeTs,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
  const hilo=event?event.thread_ts||event.ts:hiloOpt;
- const m=await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio});
+ const m=mensajeTs?{ts:mensajeTs}:await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio});
  if(!m?.ts)throw Error('Slack no devolvio referencia del reporte.');
  let ultimo=ahora();
  const editar=async text=>{await client.chat.update({token,channel,ts:m.ts,text});ultimo=ahora();};

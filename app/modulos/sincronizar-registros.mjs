@@ -743,6 +743,7 @@ export function registrar(ctx) {
       const progreso = async (texto) => {
         try {
           if (ociosa) return;
+          if (!reporte && /^Comparacion lista: 0 por subir, 0 por bajar, \d+ iguales, 0 conflictos sin tocar\.$/.test(texto)) return;
           if (!reporte) {
             if (!ctx.canal) { ociosa = true; return; }
             await abrirReporte(texto);
@@ -759,7 +760,7 @@ export function registrar(ctx) {
       };
       // Aviso ANTES de clonar y comparar: sin esta señal no se distingue «en curso» de «no arranco».
       if (ctx.canal) {
-        try { await abrirReporte('Buscando cambios…'); }
+        try { padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Buscando cambios…' }); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
       const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
@@ -767,8 +768,14 @@ export function registrar(ctx) {
       if (r.error) aviso = `Error: ${r.error}`;
       else if (r.detenida) aviso = 'Detenido a pedido. Lo ya copiado se conserva.';
       else if (r.cambios || r.hayPendiente || r.conflictos) aviso = r.texto;
+      if (!reporte && padre) {
+        // Sin novedades: reutiliza la raíz, sin crear una respuesta para decirlo.
+        // Con resultado material conserva el reporte en hilo.
+        if (!aviso) reporte = await ctx.reporte.crearSync({ canal: ctx.canal, mensajeTs: padre });
+        else await abrirReporte('Buscando cambios…');
+      }
       if (reporte) {
-        try { await reporte.final(aviso || 'Sin cambios'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
+        try { await reporte.final(aviso || 'Buscando cambios…\nTodo actualizado.'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
         ultimoAviso = '';
       } else {
         const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';

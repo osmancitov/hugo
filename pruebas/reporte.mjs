@@ -34,3 +34,11 @@ test('sin referencia de Slack no finje avance: abrir el reporte falla y el llama
  const client = { chat: { postMessage: async () => ({}), update: async () => {} } };
  await assert.rejects(crearReporte({ client, token: 't', event: { channel: 'c', ts: 'h' }, inicio: 'x' }), /referencia del reporte/);
 });
+
+
+test('reutiliza un mensaje existente sin publicar otro y conserva edición regulada', async () => {
+ const calls=[];const client={chat:{postMessage:async m=>{calls.push({tipo:'post',...m});return {ts:'nuevo'};},update:async m=>calls.push({tipo:'update',...m})}};
+ const r=await crearReporte({client,token:'x',canal:'c',mensajeTs:'raiz',ahora:()=>0,esperar:async()=>{}});
+ assert.equal(calls.length,0);await r.final('Sin cambios');
+ assert.equal(calls.length,1);assert.equal(calls[0].tipo,'update');assert.equal(calls[0].ts,'raiz');assert.equal(calls[0].text,'Sin cambios');
+});
