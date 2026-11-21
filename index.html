@@ -611,7 +611,7 @@ function fechaPeriodoBarra(ms) {
   return `${meses[d.getUTCMonth()]} ${d.getUTCDate()} · ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 function periodoBarra(desde, hasta, tiempo) {
-  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)} - ${tiempo}`;
+  return `${fechaPeriodoBarra(desde)} - ${fechaPeriodoBarra(hasta)}`;
 }
 function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const zona = compacta ? '' : ' UTC';
@@ -674,7 +674,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     enlaceSuperficie.textContent = 'Ver superficie 3D y lecturas';
     caja.append(enlaceSuperficie);
     caja.append(seccion(
-      'Cierre del día anterior',
+      duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       d.suben, d.bajan, d.suben + d.bajan,
       `Rojos ${d.bajan} · Verdes ${d.suben} · Iguales ${d.iguales}`,
       '',
@@ -686,7 +686,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
   // de cierres, no un corte común que no existe.
   caja.append(seccion(
-    '24 h móviles por activo',
+    '24 horas',
     b.suben, b.bajan, b.conDato,
     `Rojos ${b.bajan} · Verdes ${b.suben} · Iguales ${b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 'sin dato'}`,
     '',
@@ -704,7 +704,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const m = b.movimiento;
   if (m) {
     const sec = seccion(
-      'Entre consultas',
+      duracionBarra(m.comparadaCon, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       m.suben, m.bajan, m.suben + m.bajan,
       `Rojos ${m.bajan} · Verdes ${m.suben} · Iguales ${m.iguales === null ? 'sin dato' : m.iguales}`,
       '',

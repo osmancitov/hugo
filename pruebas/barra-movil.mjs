@@ -288,7 +288,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /sin cierre nuevo/);
   assert.match(visor, /Iguales /); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
-  assert.match(visor, /Cierre del día anterior/);
+  assert.match(visor, /'24 horas'/);
   assert.match(visor, /Fuente: Binance/);
   assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\}\$\{zona\}/); // instante visible; superficie usa su nota única
   assert.match(visor, /const zona = compacta \? '' : ' UTC'/); // otras vistas conservan su zona explícita
@@ -400,7 +400,7 @@ test('periodos visibles en tres líneas Desde/Hasta/Tiempo y fecha de doce horas
  const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
  const codigo=html.slice(html.indexOf('function fechaPeriodoBarra('),html.indexOf('function vistaBarra('));
  const f=vm.runInNewContext(codigo+';periodoBarra');
- assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 11:59 PM - nov 21 · 3:00 PM - 15 h');
- assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 12:00 AM - sin dato - sin dato');
+ assert.equal(f(Date.parse('2026-11-20T23:59:59.999Z'),Date.parse('2026-11-21T15:00:00Z'),'15 h'),'nov 20 · 11:59 PM - nov 21 · 3:00 PM');
+ assert.equal(f(Date.parse('2026-11-21T00:00:00Z'),NaN,'sin dato').split('\n')[0],'nov 21 · 12:00 AM - sin dato');
  assert.match(html,/24 h por activo/);
 });
