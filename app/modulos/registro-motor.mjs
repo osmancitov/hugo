@@ -170,7 +170,7 @@ export function leerEstado(archivo) {
   return j;
 }
 // Un dato por línea (preferencia del usuario, 20-nov-2026): las cifras no se amontonan con comas.
-function resumen(j) { const total=j.total||j.codigos.length; return [`${j.conteo.activos}/${total} activos terminados.`,`${j.conteo.guardados} meses nuevos.`,`${j.conteo.existentes} existentes comprobados.`,`${j.conteo.ampliados||0} meses ampliados.`].join('\n'); }
+function resumen(j) { const total=j.total||j.codigos.length; return [`${j.conteo.activos}/${total} activos terminados.`,`${j.conteo.guardados} meses nuevos.`,`${j.conteo.existentes} existentes comprobados.`,`${j.conteo.ampliados||0} meses ampliados.`,j.conteo.cubiertos?`${j.conteo.cubiertos} cubiertos por el inventario, sin tocar.`:''].filter(Boolean).join('\n'); }
 
 export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avisar, activas=new Map(), parada={n:0}, ahora=Date.now }) {
   let ocupado=false;
@@ -207,6 +207,22 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
       while(j.indice<j.codigos.length) {
         if(pedida(marca))throw errorParada();
         const codigo=j.codigos[j.indice];
+        const dirActivo=path.join(base(),j.clase,codigo);
+        // Pre-filtro por inventario de cobertura (pedido del usuario, 20-nov-2026: lo ya
+        // comprobado se deja quieto): un activo cubierto hasta el corte no se resuelve, no se
+        // recorre y no sale en el reporte; lo cuenta el resumen final. Misma condición que la
+        // salida por inventario del recorrido mensual de abajo, solo que antes de gastar nada.
+        if(j.rapido) {
+          const cob=leerCobertura(dirActivo);
+          const finEsp=Math.min(siguiente(j.inicial),j.hasta)-DIA;
+          if(cob!=null && cob>=finEsp && fs.existsSync(path.join(dirActivo,`${yymm(j.inicial)}_${codigo}`))) {
+            j.indice++;j.mes=j.inicial;j.conteo.activos++;j.conteo.cubiertos=(j.conteo.cubiertos||0)+1;
+            if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
+            try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
+            guardar(j);
+            continue;
+          }
+        }
         activas.set(id,{que:`registrar ${codigo}, ${etiqueta(j.mes)} (${j.indice+1}/${j.codigos.length})`,desde:Date.now(),largo:true});
         // Nombres y símbolos ya validados por el cotejo que originó este lote: no se vuelve a
         // pedir la ficha (exchangeInfo) de cada activo. Un avance sin nombres (anterior a esta
@@ -216,7 +232,6 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           : await resolver(j.clase,codigo);
         if(!res.ok) throw new Error(res.motivo);
         await notificar(j,`Activo ${j.indice+1}/${j.codigos.length}: ${codigo}${res.nombre ? `, ${res.nombre}`:''} (${j.clase}).`,{tipo:'activo'});
-        const dirActivo=path.join(base(),j.clase,codigo);
         let pisoVerificado=j.rapido?leerMarca(dirActivo):null, verificado=j.rapido?leerVerificado(dirActivo):null, confianza=true;
         let cobertura=j.rapido?leerCobertura(dirActivo):null, datoEnCurso=false;
         let terminado=false;
@@ -259,7 +274,7 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
             const finEsperado=Math.min(siguiente(mes),j.hasta)-DIA;
             if(confianza && cobertura!=null && cobertura>=finEsperado) {
               if(mes===j.inicial && fs.existsSync(destino)) {
-                j.indice++;j.mes=j.inicial;j.conteo.activos++;j.conteo.existentes++;terminado=true;
+                j.indice++;j.mes=j.inicial;j.conteo.activos++;j.conteo.cubiertos=(j.conteo.cubiertos||0)+1;terminado=true;
                 if(j.indice===j.codigos.length && !j.siguientes.length) {j.estado='terminado';j.notificado=false;}
                 try { escribirVerificado(dirActivo, yymm(anterior(j.inicial))); } catch(e) { console.error('No pude escribir la marca de verificado:', e.message); }
                 await notificar(j,`${codigo}: completo hasta ${fechaDia(cobertura)} segun el inventario; nada que pedir. ${j.indice}/${j.codigos.length} activos.${j.indice<j.codigos.length ? ` Sigo con ${j.codigos[j.indice]}.`:''}`,{tipo:'fin-activo',linea:`Completo hasta ${fechaDia(cobertura)}; sin consultas. ${j.indice}/${j.codigos.length} activos.`});
@@ -291,9 +306,10 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
           validarSerie(datos,mes,j.hasta);
           const consultaMs=Date.now()-t;
           const existe=fs.existsSync(destino);
-          let modo='nuevo', previoBuf=null;
+          let modo='nuevo', previoBuf=null, prevLen=null;
           if(existe) {
             let previo;try{previoBuf=Buffer.from(leerNormal(destino));previo=JSON.parse(previoBuf);}catch{throw new Error(`Archivo existente ilegible o incompleto: ${destino}. Lo conservo sin pisar.`);}
+            prevLen=previo.length;
             modo=compararSeries(previo,datos,mes,cierreUTC(ahora()));
           }
           if(!datos.length) {
@@ -333,10 +349,23 @@ export function crearMotor({ base, archivoEstado, resolver, fetchImpl=fetch, avi
               try { if (confianza && (cobertura==null ? (verificado!=null && verificado>=anterior(j.inicial)) : cobertura>=j.inicial-DIA)) escribirCobertura(dirActivo, j.hasta-DIA); } catch(e) { console.error('No pude escribir la cobertura:', e.message); }
             }
             j.mes=anterior(mes);
-            const ndias=new Date(siguiente(mes)-1).getUTCDate();
+            // Días que deben estar al corte: en el mes abierto solo hasta el último día cerrado
+            // (pedido del usuario, 20-nov-2026: los días que aún no cierran no son «faltantes»).
+            const esperados=new Date(Math.min(siguiente(mes),j.hasta)-1).getUTCDate();
             const dias=new Set(datos.map(v=>new Date(v[0]).getUTCDate()));
-            const faltan=Array.from({length:ndias},(_,i)=>i+1).filter(n=>!dias.has(n));
-            await notificar(j,`${codigo}, ${etiqueta(mes)}: ${datos.length} velas ${modo==='conservar'?'del corte comprobadas; conservo la serie local mas larga sin recortarla':modo==='ampliar'?'actualizadas con dias nuevos, anteriores intactos':existe?'ya existentes, comprobadas contra Binance':'guardadas'} en ${destino}. ${siguiente(mes)>j.hasta?`Mes en curso al corte; solo dias cerrados hasta ${new Date(j.hasta-1).toISOString().slice(0,10)}. `:''}${faltan.length?`Mes parcial; faltan los dias ${faltan.join(', ')}.`:`Mes completo: ${ndias}/${ndias} dias.`} Consulta ${dur(consultaMs)}, guardado y avance ${dur(Date.now()-inicioGuardado)}. Sigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea:`${yymm(mes)}: ${datos.length} velas${faltan.length?'; parcial':''}${modo==='ampliar'?'; ampliado':existe?'':'; nuevo'}.`});
+            const faltan=Array.from({length:esperados},(_,i)=>i+1).filter(n=>!dias.has(n));
+            const ultimoDia=Math.max(...dias);
+            const nuevos=modo==='ampliar'?datos.length-prevLen:modo==='nuevo'?datos.length:0;
+            const hecho=modo==='ampliar'?`Tenía ${prevLen} días; añadí ${nuevos} (hasta el ${ultimoDia}).`
+              :modo==='nuevo'?`No había archivo; guardé ${datos.length} velas (hasta el ${ultimoDia}).`
+              :modo==='conservar'?`La serie local es más larga que la del corte; la conservo sin recortarla.`
+              :`Ya estaban las ${datos.length} velas; comprobadas contra Binance, sin cambios.`;
+            const coberturaMes=faltan.length?`Mes parcial al corte: faltan los días ${faltan.join(', ')}.`:`Mes completo al corte: ${esperados}/${esperados} días.`;
+            const linea=modo==='ampliar'?`${yymm(mes)}: +${nuevos} día(s), ${datos.length} en total${faltan.length?'; parcial':''}.`
+              :modo==='nuevo'?`${yymm(mes)}: ${datos.length} velas nuevas${faltan.length?'; parcial':''}.`
+              :modo==='conservar'?`${yymm(mes)}: conservada la serie local más larga.`
+              :`${yymm(mes)}: ${datos.length} comprobadas, sin cambios.`;
+            await notificar(j,`${codigo}, ${etiqueta(mes)}:\n· ${hecho}\n· ${coberturaMes}\n· Consulta ${dur(consultaMs)}; guardado y avance ${dur(Date.now()-inicioGuardado)}.\nSigo con ${etiqueta(j.mes)}.`,{tipo:'mes',mes,linea});
           }
         }
       }

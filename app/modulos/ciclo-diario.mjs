@@ -94,6 +94,8 @@ export function registrar(ctx) {
     } finally { enCurso = false; }
   }
   ctx.cicloDiario = ciclo; // para pruebas
+  // Lo que el ciclo sabe de sí mismo, para que «estado» lo cuente: próxima corrida y último día completo.
+  ctx.cicloInfo = () => ({ proxima: proximaCorrida(ahora()), ultimo: leerMarca() || null });
   ctx.alIniciar(() => {
     // Programada: una vez al día tras el cierre UTC.
     const programar = () => {

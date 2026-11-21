@@ -127,8 +127,11 @@ test('primera corrida escribe _verificado; la segunda confia y no recorre meses 
   await corre(b);
   assert.deepEqual(b.llamadas, [], 'segunda corrida: el inventario cubre el corte, cero consultas');
   assert.equal(fs.readFileSync(viejo, 'utf8'), '[["roto"]]', 'no re-valida ni repara lo ya verificado');
-  assert.ok(!b.lineas.some((l) => /en disco/.test(l)), 'no recorre meses confiables');
-  assert.ok(b.lineas.some((l) => l.startsWith('Completo hasta 2026-11-17; sin consultas.')));
+  assert.deepEqual(b.lineas, [], 'cubierto por el inventario: ni una línea por activo; lo cuenta el resumen');
+  const j2 = leerEstado(path.join(b.root, 'estado.json'));
+  assert.equal(j2.conteo.activos, 1);
+  assert.equal(j2.conteo.cubiertos, 1, 'cubierto se cuenta aparte: no es un existente comprobado');
+  assert.equal(j2.conteo.existentes, 0);
  } finally { b.fin(); }
 });
 
@@ -176,7 +179,10 @@ test('inventario al dia: sin consultas aunque no haya marcas', async () => {
   fs.writeFileSync(path.join(b.root, 'velas/cripto/AAA/_cobertura'), '2026-11-17\n');
   await corre(b);
   assert.deepEqual(b.llamadas, []);
-  assert.ok(b.lineas.some((l) => l.startsWith('Completo hasta 2026-11-17; sin consultas.')));
+  assert.deepEqual(b.lineas, [], 'cubierto por el inventario: ni una línea por activo; lo cuenta el resumen');
+  const j = leerEstado(path.join(b.root, 'estado.json'));
+  assert.equal(j.conteo.cubiertos, 1);
+  assert.equal(j.conteo.existentes, 0);
  } finally { b.fin(); }
 });
 

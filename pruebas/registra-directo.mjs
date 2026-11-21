@@ -95,7 +95,7 @@ test('avance viejo por debajo del piso fijo: frena en el piso sin consultar',asy
 test('fallo de aviso pausa tras guardar avance sin repetir el mes al continuar',async()=>{
  let falla=true;await caso(async s=>{await s.run();assert.equal(leerEstado(s.estado).mes,septiembre);assert.equal(leerEstado(s.estado).estado,'pausado');
  falla=false;await s.m.iniciar({continuar:true,event});assert.equal(leerEstado(s.estado).estado,'terminado');assert.equal(s.consultas.filter(x=>x[1]===octubre).length,1);
- },{aviso:async(_,t)=>{if(falla&&t.includes('velas guardadas'))throw Error('Slack simulado');}});
+ },{aviso:async(_,t)=>{if(falla&&t.includes('guardé'))throw Error('Slack simulado');}});
 });
 test('poda: lista de activos sueltos se rechaza con guia clara, sin consultar ni iniciar nada',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-comando-'));const original=globalThis.fetch;let handler;const msgs=[];let llamadas=0;

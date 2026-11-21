@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   ventana, calcularLectura, calcularRanking, calcularIcebergVentana, actualizarPreCalculos,
-  leerLectura, leerRanking, validarPre, localesPre, esRutaPre,
+  leerLectura, leerRanking, validarPre, localesPre, esRutaPre, preCalculosFrescos,
 } from '../app/modulos/pre-calculado.mjs';
 
 const DIA = 86400000;
@@ -176,5 +176,50 @@ test('localesPre lista solo nombres con la forma acordada', () => {
       'registros/pre-calculado/stock/lectura-dia-90d/261119_lectura-dia',
       'registros/ranking-24h/stock/261119_ranking-24h',
     ]);
+  } finally { fs.rmSync(dirRaiz, { recursive: true, force: true }); }
+});
+
+test('lectura limitada a la ventana: un mes completo anterior no se lee aunque traiga filas dentro', () => {
+  const dirRaiz = banco([
+    ['stock', 'SSS', { '2611': [vela(FIN, 1, 2)] }],
+    ['stock', 'VIEJO', { '2607': [vela(FIN, 1, 9)] }], // archivo de julio con una fila de noviembre: fuera de la ventana
+  ]);
+  try {
+    const r = actualizarPreCalculos({ dirRaiz, ahora: AHORA });
+    const lectura = leerLectura(fs.readFileSync(path.join(dirRaiz, 'pre-calculado', 'stock', 'lectura-dia-90d', '261119_lectura-dia'), 'utf8'));
+    assert.deepEqual(Object.keys(lectura.activos), ['SSS'], 'el mes fuera de la ventana no se lee');
+  } finally { fs.rmSync(dirRaiz, { recursive: true, force: true }); }
+});
+
+test('preCalculosFrescos: hechos y sin velas nuevas no se rehacen; vela nueva en la ventana manda rehacer', () => {
+  const dirRaiz = banco([
+    ['stock', 'SSS', { '2611': [vela(FIN, 1, 2)] }],
+    ['cripto', 'AAA', { '2611': [vela(FIN, 1, 3)] }],
+  ]);
+  try {
+    assert.equal(preCalculosFrescos({ dirRaiz, ahora: AHORA }).frescos, false, 'sin salidas todavía: se hacen');
+    actualizarPreCalculos({ dirRaiz, ahora: AHORA });
+    assert.equal(preCalculosFrescos({ dirRaiz, ahora: AHORA + 3600000 }).frescos, true, 'salidas del día y velas quietas: no se rehacen');
+    // Una vela de la ventana escrita después (ingesta o corrección): rehacer.
+    const p = path.join(dirRaiz, 'velas-24h', 'stock', 'SSS', '2611_SSS');
+    fs.writeFileSync(p, JSON.stringify([vela(FIN - DIA, 1, 2), vela(FIN, 2, 1)]));
+    fs.utimesSync(p, new Date(), new Date());
+    const r = preCalculosFrescos({ dirRaiz, ahora: AHORA + 3600000 });
+    assert.equal(r.frescos, false, 'vela nueva en la ventana: se rehacen');
+    assert.match(r.motivo, /velas nuevas/);
+  } finally { fs.rmSync(dirRaiz, { recursive: true, force: true }); }
+});
+
+test('preCalculosFrescos: un mes fuera de la ventana escrito ahora NO ensucia la frescura', () => {
+  const dirRaiz = banco([
+    ['stock', 'SSS', { '2611': [vela(FIN, 1, 2)] }],
+    ['cripto', 'AAA', { '2611': [vela(FIN, 1, 3)] }],
+  ]);
+  try {
+    actualizarPreCalculos({ dirRaiz, ahora: AHORA });
+    const p = path.join(dirRaiz, 'velas-24h', 'stock', 'SSS', '2606_SSS'); // junio: fuera de la ventana de 90 días
+    fs.writeFileSync(p, JSON.stringify([vela(Date.UTC(2026, 5, 3), 1, 2)]));
+    fs.utimesSync(p, new Date(), new Date());
+    assert.equal(preCalculosFrescos({ dirRaiz, ahora: AHORA + 3600000 }).frescos, true, 'fuera de la ventana no afecta a la salida');
   } finally { fs.rmSync(dirRaiz, { recursive: true, force: true }); }
 });

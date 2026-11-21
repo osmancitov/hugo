@@ -43,6 +43,7 @@ export const RUTA_RANKING = /^registros\/ranking-24h\/(stock|cripto)\/\d{6}_rank
 export const esRutaPre = (rel) => RUTA_PRE.test(rel) || RUTA_RANKING.test(rel);
 
 const aammddDe = (ts) => new Date(ts).toISOString().slice(2, 10).replace(/-/g, '');
+const inicioMesUtc = (ts) => { const d = new Date(ts); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
 
 // Extremos reales de la ventana: fin = último día UTC cerrado; inicio = fin − (duración − 1), sin
 // bajar del piso del registro (los huecos no desplazan el inicio).
@@ -55,8 +56,12 @@ export function ventana(ahora, cantidad, unidad) {
 
 // Lee las velas locales de un mercado: Map(código → filas ordenadas dentro del piso y el corte).
 // Mismo recorrido que el iceberg: registros/velas-24h/<clase>/<ACTIVO>/<AAMM>_<ACTIVO>.
-function leerMercado(dirVelas, clase, corte) {
+// Con «desde»: solo los meses que toca la ventana (pedido del usuario, 20-nov-2026: nada de
+// releer el historial entero para una ventana de 90 días). Un mes completo anterior a la ventana
+// no aporta ninguna fila: los cálculos ya filtran por fecha, así que la salida es idéntica.
+function leerMercado(dirVelas, clase, corte, desde) {
   const mercado = new Map();
+  const minAamm = desde == null ? null : aammDe(inicioMesUtc(desde));
   const dirClase = path.join(dirVelas, clase);
   let activos = [];
   try { activos = fs.readdirSync(dirClase, { withFileTypes: true }); } catch { return mercado; }
@@ -67,6 +72,7 @@ function leerMercado(dirVelas, clase, corte) {
     for (const n of fs.readdirSync(dirActivo)) {
       const m = n.match(/^(\d{4})_(.+)$/);
       if (!m || m[2] !== a.name) continue;
+      if (minAamm && m[1] < minAamm) continue; // mes completo fuera de la ventana: no se lee
       let mes;
       try { mes = JSON.parse(fs.readFileSync(path.join(dirActivo, n), 'utf8')); } catch { continue; }
       if (!Array.isArray(mes)) continue;
@@ -211,8 +217,9 @@ export function actualizarPreCalculos({ dirRaiz, ahora = Date.now() }) {
   const dirVelas = path.join(dirRaiz, 'velas-24h');
   const corte = Math.floor(ahora / DIA) * DIA;
   const lineas = [];
+  const desde = Math.min(corte - DIA, ...CALCULOS.map((c) => ventana(ahora, c.cantidad, c.unidad).inicio));
   for (const clase of CLASES) {
-    const mercado = leerMercado(dirVelas, clase, corte);
+    const mercado = leerMercado(dirVelas, clase, corte, desde);
     for (const { carpeta, calculo, cantidad, unidad } of CALCULOS) {
       const v = ventana(ahora, cantidad, unidad);
       const periodo = `${aammddDe(v.inicio)}-${aammddDe(v.fin)}`;
@@ -250,6 +257,56 @@ export function actualizarPreCalculos({ dirRaiz, ahora = Date.now() }) {
     }
   }
   return { lineas };
+}
+
+// Frescura de los pre-cálculos del período actual (pedido del usuario, 20-nov-2026: lo ya hecho
+// y sin datos nuevos no se rehace en cada pasada). Verdad del filesystem, sin estado nuevo: las
+// salidas del día existen y NINGÚN archivo de velas de los meses que toca la ventana se escribió
+// después que la salida más vieja. La ingesta y las correcciones tocan el mtime de las velas y eso
+// manda la regeneración; los meses fuera de la ventana no afectan a la salida y no la ensucian.
+// Ojo: si un mercado no tiene datos, su salida no existe y esto siempre pide rehacer (barato: la
+// lectura ya va limitada a la ventana).
+export function preCalculosFrescos({ dirRaiz, ahora = Date.now() }) {
+  const corte = Math.floor(ahora / DIA) * DIA;
+  const dia = corte - DIA;
+  const desde = Math.min(dia, ...CALCULOS.map((c) => ventana(ahora, c.cantidad, c.unidad).inicio));
+  const esperadas = [];
+  for (const clase of CLASES) {
+    for (const { carpeta, calculo, cantidad, unidad } of CALCULOS) {
+      const v = ventana(ahora, cantidad, unidad);
+      const nombre = calculo === 'iceberg' ? `${aammddDe(v.inicio)}-${aammddDe(v.fin)}_iceberg` : `${aammddDe(v.fin)}_lectura-dia`;
+      esperadas.push(path.join(dirRaiz, 'pre-calculado', clase, carpeta, nombre));
+    }
+    esperadas.push(path.join(dirRaiz, CARPETA_RANKING, clase, `${aammddDe(dia)}_ranking-24h`));
+  }
+  let masVieja = Infinity;
+  for (const r of esperadas) {
+    let st;
+    try { st = fs.lstatSync(r); } catch { return { frescos: false, motivo: `falta ${path.basename(r)}` }; }
+    if (!st.isFile()) return { frescos: false, motivo: `falta ${path.basename(r)}` };
+    if (st.mtimeMs < masVieja) masVieja = st.mtimeMs;
+  }
+  const minAamm = aammDe(inicioMesUtc(desde));
+  const dirVelas = path.join(dirRaiz, 'velas-24h');
+  for (const clase of CLASES) {
+    const dirClase = path.join(dirVelas, clase);
+    let activos = [];
+    try { activos = fs.readdirSync(dirClase, { withFileTypes: true }); } catch { continue; }
+    for (const a of activos) {
+      if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name))) continue;
+      const dirActivo = path.join(dirClase, a.name);
+      let nombres = [];
+      try { nombres = fs.readdirSync(dirActivo); } catch { continue; }
+      for (const n of nombres) {
+        const m = n.match(/^(\d{4})_(.+)$/);
+        if (!m || m[2] !== a.name || m[1] < minAamm) continue;
+        let st;
+        try { st = fs.lstatSync(path.join(dirActivo, n)); } catch { continue; }
+        if (st.isFile() && st.mtimeMs > masVieja) return { frescos: false, motivo: `velas nuevas en ${clase}/${a.name}/${n}` };
+      }
+    }
+  }
+  return { frescos: true };
 }
 
 // Lista local de archivos pre-calculados publicables: [{ rel, ruta, bytes }], para la comparación

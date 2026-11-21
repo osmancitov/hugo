@@ -25,7 +25,7 @@ test('mes abierto solo hasta ultimo cierre; segunda orden amplia, anteriores int
  try {
   await motor.iniciar({clase:'stock',codigos:['AA'],event:evento});
   const p=path.join(base,'stock/AA/2611_AA');const previo=JSON.parse(fs.readFileSync(p));assert.equal(previo.length,3);assert.equal(Number(urls[0].get('endTime')),noviembre+3*DIA-1);assert.equal(leerEstado(estado).estado,'terminado');
-  hoy+=2*DIA;await motor.iniciar({clase:'stock',codigos:['AA'],event:evento});const nuevo=JSON.parse(fs.readFileSync(p));assert.equal(nuevo.length,5);assert.deepEqual(nuevo.slice(0,3),previo);assert.equal(leerEstado(estado).conteo.ampliados,1);assert.ok(msgs.some(m=>m.includes('Mes en curso')));
+  hoy+=2*DIA;await motor.iniciar({clase:'stock',codigos:['AA'],event:evento});const nuevo=JSON.parse(fs.readFileSync(p));assert.equal(nuevo.length,5);assert.deepEqual(nuevo.slice(0,3),previo);assert.equal(leerEstado(estado).conteo.ampliados,1);assert.ok(msgs.some(m=>m.includes('Tenía 3 días; añadí 2 (hasta el 5).')),'distingue lo que había y lo añadido');assert.ok(msgs.some(m=>m.includes('Mes completo al corte: 5/5 días.')),'los días sin cerrar no son faltantes');
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test('primer dia UTC empieza mes anterior cerrado; cambio de mes completa noviembre',async()=>{

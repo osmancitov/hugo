@@ -45,7 +45,7 @@ import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
-import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos } from './pre-calculado.mjs';
+import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos, preCalculosFrescos } from './pre-calculado.mjs';
 import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
 
 const execFileP = promisify(execFile);
@@ -83,7 +83,17 @@ export function registrar(ctx) {
   const dirInd = (serie) => path.join(path.dirname(dirBase()), serie);
   const serieDe = (rel) => rel.split('/')[1];
   const pasoInd = () => (pasoIndicador || actualizarIndicadores)({ dirRaiz: path.dirname(dirBase()) });
-  const pasoPre = () => (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
+  // Pre-cálculos: no se rehacen si los del período ya existen y ninguna vela de la ventana se
+  // escribió después (pedido del usuario, 20-nov-2026: lo validado y sin cambios se deja quieto).
+  const pasoPre = async () => {
+    if (!pasoPreCalculo) {
+      try {
+        const f = preCalculosFrescos({ dirRaiz: path.dirname(dirBase()) });
+        if (f.frescos) { console.log('Pre-cálculos del período ya hechos y sin velas nuevas: no se rehacen.'); return { lineas: [], saltado: true }; }
+      } catch (e) { console.error('Comprobación de pre-cálculos al día:', e.message); } // ante la duda, se hacen
+    }
+    return (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
+  };
   const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()), rutaIndex: path.join(clonDir(), 'index.html') });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
