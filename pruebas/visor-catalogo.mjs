@@ -29,3 +29,12 @@ test('guardia del árbol: los indicadores van primero en stocks y cripto', () =>
   assert.ok(inds < emp && inds < tok, 'los indicadores abren la lista del árbol');
   assert.match(src, /Indicadores primero en la lista, en stocks y en cripto/);
 });
+
+test('guardia de la búsqueda: teclear no roba el foco ni brinca la vista', () => {
+  // Fallo del usuario (21-nov-2026): la primera letra sacaba la casilla de la vista y no
+  // dejaba seguir escribiendo. La vista se redibuja bajo la casilla, que conserva foco y
+  // selección, y ya no hay salto a la primera coincidencia.
+  assert.match(src, /devolverFocoBuscar/);
+  assert.match(src, /elBuscar\.focus\(\{ preventScroll: true \}\)/);
+  assert.ok(!src.includes('scrollIntoView'), 'la búsqueda ya no mueve la vista');
+});

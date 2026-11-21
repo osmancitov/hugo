@@ -383,6 +383,11 @@ function nodoArbol(titulo, cuenta, lista, conCap) {
 // La portada de un mercado (decisión del usuario, 20-nov-2026: experiencia separada por
 // mercado, una sola maquinaria): solo su rama y sus indicadores; la búsqueda se limita a él.
 function vistaArbol(q, mercado) {
+  // Al teclear, la casilla no puede perder el foco ni brincar la vista a la primera
+  // coincidencia (fallo del usuario, 21-nov-2026): el árbol se redibuja bajo ella y el foco
+  // y la selección se devuelven, sin mover la página.
+  const teniaFoco = document.activeElement === elBuscar;
+  const selIni = elBuscar.selectionStart, selFin = elBuscar.selectionEnd;
   app.innerHTML = '';
   // Nota de lectura, como la de Variación (decisión del usuario, 20-nov-2026: misma paridad en las dos).
   const nota = document.createElement('p');
@@ -401,7 +406,7 @@ function vistaArbol(q, mercado) {
   } else {
     app.appendChild(nodoArbol('Token', CRIPTOS.length + ' activos', CRIPTOS, true));
   }
-  if (!q) return;
+  if (!q) { devolverFocoBuscar(teniaFoco, selIni, selFin); return; }
   // La búsqueda localiza y resalta dentro del árbol, sin esconder los demás activos.
   const s = q.toLowerCase();
   const hall = [...TODOS.filter((e) => e.clase === mercado), ...inds].filter((e) =>
@@ -412,17 +417,22 @@ function vistaArbol(q, mercado) {
     aviso.className = 'vacio';
     aviso.textContent = 'Nada coincide con esa búsqueda.';
     app.prepend(aviso);
+    devolverFocoBuscar(teniaFoco, selIni, selFin);
     return;
   }
-  let primera = null;
   for (const e of hall) {
     const fila = app.querySelector(`a.activo-fila[href="${e.indicador ? '#/i/' : '#/a/' + e.clase + '/'}${encodeURIComponent(e.codigo)}"]`);
     if (!fila) continue;
     fila.classList.add('resaltado');
     for (let n = fila.closest('.nodo'); n; n = n.parentElement.closest('.nodo')) n.classList.add('abierto');
-    if (!primera) primera = fila;
   }
-  if (primera) primera.scrollIntoView({ block: 'center' });
+  devolverFocoBuscar(teniaFoco, selIni, selFin);
+}
+// El foco se devuelve tras cada redibujado (ver la nota al inicio de vistaArbol).
+function devolverFocoBuscar(teniaFoco, selIni, selFin) {
+  if (!teniaFoco) return;
+  elBuscar.focus({ preventScroll: true });
+  try { elBuscar.setSelectionRange(selIni, selFin); } catch { /* type=search admite selección; si no, el foco basta */ }
 }
 
 /* ---------- datos ---------- */
