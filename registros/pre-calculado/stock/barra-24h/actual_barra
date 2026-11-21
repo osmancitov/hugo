@@ -1,10 +1,10 @@
 # Barra movil de las ultimas 24 h de los stocks (ventana movil de Binance, no el dia cerrado del iceberg).
 # Archivo vivo y desechable: cada consulta lo pisa entero; no es un registro del historico.
-generada: 2026-11-21T02:01:15.215Z
-inicio: 2026-11-20T01:14:37.718Z
-cierre_min: 2026-11-21T01:14:37.718Z
-fin: 2026-11-21T02:01:15.663Z
-dispersion_ms: 2797945
+generada: 2026-11-21T02:56:35.418Z
+inicio: 2026-11-20T02:16:39.616Z
+cierre_min: 2026-11-21T02:16:39.616Z
+fin: 2026-11-21T02:56:35.722Z
+dispersion_ms: 2396106
 consultados: 113
 con_dato: 113
 sin_dato: 0
