@@ -363,9 +363,12 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     assert.equal(ctx.pctTabla(10, 10), '+0%', key);
     assert.equal(ctx.pctTabla(9, 10), '-10%', key);
     assert.equal(ctx.pctTabla(11, 10), '+10%', key);
+    assert.equal(ctx.pctTabla(9.9999, 10), '-0.001%', key); // un rojo minúsculo nunca se disfraza de 0 % verde
     assert.equal(ctx.pctTabla(9, null), 'sin dato', key);
   }
   assert.equal(b.activos.get('AAA').ultimo, '10.00');
+  const filaSinCierre = ctx.defs['barra-movimiento'].fila(b.activos.get('CCC'));
+  assert.equal(filaSinCierre.res, 'Sin cierre nuevo'); // sin comparación: se muestra la causa, no un porcentaje
   delete b.activos.get('AAA').apertura;
   assert.ok(!ctx.defs['barra-24h'].apta(b), 'sin detalle completo no inventa tabla');
 });

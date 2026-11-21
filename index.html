@@ -653,7 +653,19 @@ const BARRAS_TABLA = {
   },
 };
 const precioTabla = (t) => /^\d+\.\d+$/.test(t) ? t.replace(/0+$/, '').replace(/\.$/, '') : t;
-const pctTabla = (ultimo, ref) => !Number.isFinite(ultimo) || !Number.isFinite(ref) || ref === 0 ? 'sin dato' : `${(ultimo - ref) / ref * 100 >= 0 ? '+' : ''}${((ultimo - ref) / ref * 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}%`;
+// El resultado de la tabla es el porcentaje (decisión del usuario, 21-nov-2026): 0 % cuenta
+// verde como en las barras; un negativo tan pequeño que redondea a «-0 %» se escribe con más
+// decimales antes de ocultar que es rojo.
+const pctTabla = (ultimo, ref) => {
+  if (!Number.isFinite(ultimo) || !Number.isFinite(ref) || ref === 0) return 'sin dato';
+  const v = (ultimo - ref) / ref * 100;
+  if (v >= 0) return `+${v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}%`;
+  for (let d = 2; d <= 8; d += 2) {
+    const t = v.toFixed(d).replace(/0+$/, '').replace(/\.$/, '');
+    if (t !== '-0') return `${t}%`;
+  }
+  return `${v.toExponential(2)}%`;
+};
 async function vistaTablaBarra(clave) {
   const def = BARRAS_TABLA[clave];
   if (!def) { location.hash = ''; return; }
@@ -693,7 +705,7 @@ async function vistaTablaBarra(clave) {
     const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;
     const tdU = document.createElement('td'); tdU.textContent = precioTabla(f.ultimoTxt); tdU.title = f.ultimoTxt;
     const tdS = document.createElement('td');
-    if (f.refN !== null && f.refN !== undefined) {
+    if (f.verde !== null && f.refN !== null && f.refN !== undefined) {
       // El porcentaje es el resultado: positivo y 0 % en verde, negativo en rojo (decisión del usuario, 21-nov-2026).
       tdS.textContent = pctTabla(f.ultimoN, f.refN);
       tdS.className = f.verde === true ? 'positivo' : f.verde === false ? 'negativo' : '';
