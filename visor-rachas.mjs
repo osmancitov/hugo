@@ -141,10 +141,11 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
   for (const [v,t] of [['gp','G/P'],['ranking','Ranking del día'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
-  // En el orden G/P no hay opciones de racha (decisión del usuario, 20-nov-2026): queda solo
-  // «todas» y el filtro deja de recortar la lista; al cambiar de orden vuelven las dos opciones.
+  // En el orden G/P el selector de racha desaparece entero (decisión del usuario, 20-nov-2026):
+  // no recorta la lista; al cambiar de orden vuelve con sus dos opciones.
   function pintarFiltroRacha() {
     const soloTodas = orden==='gp';
+    filtroRacha.hidden = soloTodas;
     const ops = soloTodas ? [['todas','Rachas: todas']] : [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']];
     filtroRacha.replaceChildren();
     for (const [v,t] of ops) { const o=texto('option',t); o.value=v; filtroRacha.append(o); }

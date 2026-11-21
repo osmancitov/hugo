@@ -138,8 +138,9 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  // Sin repaso cosmético (decisión del usuario, 20-nov-2026): la lectura precalculada pinta directo;
  // la barra de avance queda solo para el repliegue en vivo.
  assert.ok(!src.includes('Activos analizados'),'sin repaso'); assert.ok(!src.includes('repasar'),'sin repaso');
- // En el orden G/P el filtro de racha solo ofrece «todas» y no recorta (decisión del usuario, 20-nov-2026).
+ // En el orden G/P el selector de racha desaparece entero y no recorta (decisión del usuario, 20-nov-2026).
  assert.ok(src.includes("const soloTodas = orden==='gp'"),'G/P sin opciones de racha');
+ assert.ok(src.includes('filtroRacha.hidden = soloTodas'),'G/P oculta el selector entero');
  assert.ok(src.includes("if (soloTodas) direccionRacha='todas'"),'G/P fuerza todas');
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
  // La nota de racha limitada va bajo el nombre del activo: en la celda estrecha de la racha se partía letra a letra.
