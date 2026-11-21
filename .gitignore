@@ -4,3 +4,6 @@ img/
 node_modules/
 *.log
 .estado-intradia/
+
+# Entrada derivada de index.html al publicar Pages.
+/superficie.html

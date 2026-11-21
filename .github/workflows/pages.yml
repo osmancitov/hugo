@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
+      - name: Generar entrada de superficie con Open Graph propio
+        run: node app/generar-pagina-superficie.mjs
       - name: Preparar Pages
         uses: actions/configure-pages@v5
       - name: Empaquetar el sitio estático
