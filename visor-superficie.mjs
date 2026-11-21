@@ -122,8 +122,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     tramo.style.color=color;
     leyenda.append(tramo);
   });
-  const notas = crear('p', 'superficie-nota', 'Altura: cambio porcentual frente al cierre diario fijo. Color: movimiento desde la lectura anterior.');
-  caja.append(controles, canvas, detalle, leyenda, notas);
+  caja.append(controles, canvas, detalle, leyenda);
   contenedor.append(caja);
   function describir() {
     const p = puntos[ultima]?.[activo];
