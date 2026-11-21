@@ -253,14 +253,15 @@ let estadoLista = null;
 let origenLista = '#/stock';
 let actualizarRachas = () => {};
 app.addEventListener('click', (ev) => {
+  const desdeTabla = ev.target.closest('a.barra-activo-enlace');
+  if (desdeTabla) { origenLista = location.hash; estadoLista = null; return; }
   const fila = ev.target.closest('a.activo-fila');
   if (!fila) return;
   const abiertos = [...app.querySelectorAll('.nodo.abierto > .nodo-tit > span:first-child')]
     .map((s) => s.textContent);
   estadoLista = { abiertos, y: window.scrollY };
   origenLista = location.hash.endsWith('/rachas') ? (location.hash.startsWith('#/cripto') ? '#/cripto/rachas' : '#/stock/rachas') : (location.hash.startsWith('#/cripto') ? '#/cripto' : '#/stock');
-  // Entrar a un activo limpia la casilla de búsqueda.
-  elBuscar.value = '';
+  // Conserva la búsqueda para volver al mismo resultado, sin mover la vista.
 });
 
 /* ---------- catálogo ---------- */
@@ -830,7 +831,12 @@ async function vistaTablaBarra(clave, instante = null) {
   const cuerpo = document.createElement('tbody');
   for (const f of filas) {
     const tr = document.createElement('tr');
-    const tdA = document.createElement('td'); tdA.className = 'col-activo'; tdA.textContent = f.codigo;
+    const tdA = document.createElement('td'); tdA.className = 'col-activo';
+    const enlaceActivo = document.createElement('a');
+    enlaceActivo.className = 'barra-activo-enlace';
+    enlaceActivo.href = '#/a/stock/' + encodeURIComponent(f.codigo);
+    enlaceActivo.textContent = f.codigo;
+    tdA.append(enlaceActivo);
     const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;
     const tdU = document.createElement('td'); tdU.textContent = precioTabla(f.ultimoTxt); tdU.title = f.ultimoTxt;
     const tdS = document.createElement('td');
@@ -1883,11 +1889,11 @@ async function ruta() {
     const guardado = estadoLista;
     estadoLista = null;
     vistaArbol(elBuscar.value.trim(), mercado);
-    // «Volver» recupera las ramas abiertas y el punto exacto de la lista (la búsqueda quedó limpia al entrar).
+    // «Volver» recupera las ramas y el punto exacto de la lista, con búsqueda y resaltado.
     if (guardado) {
       for (const n of app.querySelectorAll('.nodo')) {
         const t = n.querySelector(':scope > .nodo-tit > span:first-child');
-        if (t && guardado.abiertos.includes(t.textContent)) n.classList.add('abierto');
+        if (t) n.classList.toggle('abierto', guardado.abiertos.includes(t.textContent));
       }
       requestAnimationFrame(() => window.scrollTo(0, guardado.y));
     }

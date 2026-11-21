@@ -38,3 +38,15 @@ test('guardia de la búsqueda: teclear no roba el foco ni brinca la vista', () =
   assert.match(src, /elBuscar\.focus\(\{ preventScroll: true \}\)/);
   assert.ok(!src.includes('scrollIntoView'), 'la búsqueda ya no mueve la vista');
 });
+
+test('volver conserva búsqueda sin autoenfoque ni desplazamiento a coincidencia', () => {
+ const entrada=src.slice(src.indexOf("app.addEventListener('click'"),src.indexOf('/* ---------- catálogo'));
+ assert.doesNotMatch(entrada,/elBuscar.value = ''/);
+ assert.match(src,/classList.toggle\('abierto', guardado.abiertos.includes/);
+ assert.doesNotMatch(src,/scrollIntoView/);
+});
+test('tablas de barras enlazan al histórico de stock existente y conservan origen', () => {
+ assert.match(src,/enlaceActivo.href = '#\/a\/stock\/' \+ encodeURIComponent\(f.codigo\)/);
+ assert.match(src,/desdeTabla\) \{ origenLista = location.hash/);
+ assert.match(src,/tdA.append\(enlaceActivo\)/);
+});
