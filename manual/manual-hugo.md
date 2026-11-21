@@ -272,7 +272,7 @@ Las tres barras compartidas por 2D y 3D y sus tablas separan rojo (bajó), gris 
 
 ### Retirar avisos sueltos
 
-El 👍 del usuario retira un aviso propio de Hugo si está suelto, sin respuestas ni archivos. Se conservan las conversaciones, las solicitudes pendientes y los reportes en uso. En una solicitud pendiente, el 👍 aprueba y no borra. Si no se puede comprobar el estado, se conserva. No hay borrado de hilos ni aviso nuevo al retirarlo. Si se retira el reporte intradiario ya terminado, la siguiente lectura real puede abrir uno nuevo; sin retirarlo se sigue usando el mismo.
+El 👍 del usuario retira un aviso propio de Hugo si está suelto, sin respuestas ni archivos, o si es el aviso de ejecución o resultado elegido dentro de un hilo. Solo se retira ese mensaje propio, nunca el hilo ni mensajes o archivos ajenos. Se conservan las solicitudes pendientes y los reportes en uso. En una solicitud pendiente, el 👍 aprueba y no borra. Si no se puede comprobar el estado, se conserva. No hay borrado de hilos ni aviso nuevo al retirarlo. Si se retira el reporte intradiario ya terminado, la siguiente lectura real puede abrir uno nuevo; sin retirarlo se sigue usando el mismo.
 
 ### Menciones y solicitudes
 

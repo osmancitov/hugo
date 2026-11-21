@@ -51,7 +51,7 @@ export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio
  };
 }
 
-// El pulgar del dueño solo retira avisos propios sueltos. Nunca recorre ni borra hilos.
+// El pulgar del dueño retira el aviso propio elegido, raíz suelta o respuesta. Nunca borra el hilo.
 export function registrarRetiro(ctx){
  const {app,botToken}=ctx;const estado=seguimiento(app.client);const vistos=new Set();
  ctx.retirarHuerfano=async event=>{
@@ -63,12 +63,15 @@ export function registrarRetiro(ctx){
   let r;
   try{r=await app.client.conversations.history({token:botToken,channel,latest:ts,inclusive:true,limit:1});}catch{return;}
   const m=r.messages?.find(x=>x.ts===ts);
-  if(!m||m.user!==ctx.botUserId||m.files?.length||(m.thread_ts&&m.thread_ts!==ts)||Number(m.reply_count)>0)return;
+  if(!m||m.user!==ctx.botUserId||m.files?.length||Number(m.reply_count)>0)return;
+  const raiz=m.thread_ts||ts;
   // Segunda lectura del hilo para no confiar solo en reply_count ni en datos antiguos.
-  try{r=await app.client.conversations.replies({token:botToken,channel,ts,limit:2});}catch{return;}
-  if(r.has_more||r.response_metadata?.next_cursor||r.messages?.length!==1)return;
-  const vivo=r.messages[0];
-  if(vivo.ts!==ts||vivo.user!==ctx.botUserId||vivo.files?.length||(vivo.thread_ts&&vivo.thread_ts!==ts)||Number(vivo.reply_count)>0||estado.retiros.has(k)||ocupado())return;
+  try{r=await app.client.conversations.replies({token:botToken,channel,ts:raiz,limit:200});}catch{return;}
+  if(r.has_more||r.response_metadata?.next_cursor)return;
+  if(raiz===ts&&r.messages?.length!==1)return;
+  const vivo=r.messages?.find(x=>x.ts===ts);
+  if(!vivo)return;
+  if(vivo.ts!==ts||vivo.user!==ctx.botUserId||vivo.files?.length||Number(vivo.reply_count)>0||estado.retiros.has(k)||ocupado())return;
   let resolver;const retiro=new Promise(resolve=>{resolver=resolve;});estado.retiros.set(k,retiro);
   try{await app.client.chat.delete({token:botToken,channel,ts});estado.retirados.add(k);vistos.add(k);}
   catch(e){if(e.data?.error!=='message_not_found')console.error('Retiro de aviso:',e.data?.error||e.message);}
