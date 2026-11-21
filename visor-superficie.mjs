@@ -110,9 +110,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const p = proyectar(px(i), .78, 0); p.y = alto - 52; texto(p, codigos[i], '#bbb39e', 'center');
     }
     texto({ x: ancho / 2, y: alto - 18 }, `${codigos.length} activos · orden A → Z`, ORO, 'center');
-    for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
+    if (ancho < 600 && barras.length) {
+      texto({ x: ancho - 10, y: 43 }, `${hora(barras[0].generada)} → ${hora(barras.at(-1).generada)} UTC`, '#bbb39e', 'right');
+    } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
       if (!barras[j]) continue;
-      const p = proyectar(1.04, py(j), 0); texto(p, `${hora(barras[j].generada)} UTC`, '#9aa0ac', ancho < 600 ? 'right' : 'left');
+      const p = proyectar(1.04, py(j), 0); texto(p, `${hora(barras[j].generada)} UTC`);
     }
     const elegido = malla[ultima]?.[activo];
     if (elegido) {
