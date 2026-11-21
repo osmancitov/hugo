@@ -106,7 +106,7 @@ test('automatica: sin nada que copiar, anuncia la comprobacion y cierra con el r
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
     assert.equal(ultimo.ts, posts[0].tsAsignado, 'Sin cambios edita la raíz, sin respuesta en hilo');
-    assert.ok(/^Buscando cambios…\nTodo actualizado\.$/.test(ultimo.text), ultimo.text);
+    assert.ok(/^Buscando cambios…\nTodo ok\.$/.test(ultimo.text), ultimo.text);
   } finally { b.restaurar(); }
 });
 

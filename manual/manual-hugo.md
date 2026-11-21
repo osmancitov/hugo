@@ -248,4 +248,4 @@ Fuentes sobre los límites de avisos: https://docs.slack.dev/apis/web-api/rate-l
 ### Mensajes de la búsqueda de cambios (21-nov-2026)
 La pasada automática de arranque anuncia «Buscando cambios…» y, si no necesita copiar nada ni hay problemas, termina con «Sin cambios». Los avances muestran su fase sin repetir el nombre del proceso; los cambios, conflictos y errores siguen visibles. Solo cambia la presentación, no la comparación, los archivos ni los disparadores.
 
-Si la búsqueda automática termina sin novedades ni problemas, conserva «Buscando cambios…» en su mensaje inicial y añade una segunda línea: «Todo actualizado.», sin respuesta en el hilo. Los trabajos con cambios o problemas conservan su reporte en hilo.
+Si la búsqueda automática termina sin novedades ni problemas, conserva «Buscando cambios…» en su mensaje inicial y añade una segunda línea: «Todo ok.», sin respuesta en el hilo. Los trabajos con cambios o problemas conservan su reporte en hilo.

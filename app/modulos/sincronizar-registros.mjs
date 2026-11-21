@@ -775,7 +775,7 @@ export function registrar(ctx) {
         else await abrirReporte('Buscando cambios…');
       }
       if (reporte) {
-        try { await reporte.final(aviso || 'Buscando cambios…\nTodo actualizado.'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
+        try { await reporte.final(aviso || 'Buscando cambios…\nTodo ok.'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
         ultimoAviso = '';
       } else {
         const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
