@@ -137,3 +137,12 @@ for (const nombre of ['Activo', 'Lectura']) test(`${nombre}: ciclo bidireccional
   pasos.desmontar();
  }finally{global.document=antes;}
 });
+
+
+test('gris representa igualdad exacta y no comparación ausente ni redondeo', async () => {
+ const {colorMovimiento}=await import('../visor-superficie.mjs');
+ assert.equal(colorMovimiento(0),'#9aa0ac');
+ assert.equal(colorMovimiento(null),null);
+ assert.equal(colorMovimiento(.000001),'#25855c');
+ assert.equal(colorMovimiento(-.000001),'#b73d40');
+});

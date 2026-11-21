@@ -7,3 +7,5 @@ node_modules/
 
 # Entrada derivada de index.html al publicar Pages.
 /superficie.html
+
+/iceberg-colores.json

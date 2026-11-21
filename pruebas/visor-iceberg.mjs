@@ -105,7 +105,9 @@ test('el visor lee el iceberg del pre-cálculo diario, con el nombre de los extr
   // La serie mensual anterior ya no alimenta el gráfico.
   assert.ok(!/registros\/iceberg-stock/.test(visor) && !/registros\/iceberg-cripto/.test(visor));
   // La regla vigente se anuncia en la ficha (decisión del usuario, 20-nov-2026).
-  assert.equal(visor.match(/el cero cuenta como verde/g)?.length, 2);
+  assert.doesNotMatch(visor,/el cero cuenta como verde/);
+  assert.match(visor,/separarSerieIceberg/);
+  assert.match(visor,/iceberg-colores.json/);
 });
 
 test('el visor registra un Iceberg por mercado y los dibuja por la pieza común, con hasta', () => {
@@ -123,7 +125,7 @@ test('el visor registra un Iceberg por mercado y los dibuja por la pieza común,
   // los contados, la frontera reparte por proporción, sin línea añadida ni zona neutra, con
   // los dos colores sólidos de la casa (misma decisión: sin atenuaciones).
   for (const d of dibujos) {
-    assert.match(d, /\/ \(sub \+ baj\)/);
+    assert.match(d, /\/ total/); assert.match(d, /COLORES_LECTURA.gris/);
     assert.match(d, /GREEN_S/); assert.match(d, /RED_S/);
     assert.match(d, /if \(!total\) continue/);
     assert.ok(!d.includes('Gradient'), 'sin degradados: colores sólidos');

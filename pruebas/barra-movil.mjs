@@ -3,6 +3,7 @@
 // Binance (no el día cerrado del iceberg), plano cuenta como sube (la regla del iceberg:
 // «solo es pérdida o no»), instantánea desechable que se pisa atómica, un dato por línea,
 // y el bloque del visor solo en el iceberg de stocks y ausente si el archivo falta.
+import { COLORES_LECTURA, separarConteos, cifrasConteos } from '../app/modulos/colores-lectura.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -286,7 +287,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /comparada_con/); // solo se dibuja si la instantánea trae el bloque y cierra
 
   assert.match(visor, /sin cierre nuevo/);
-  assert.match(visor, /Iguales /); // el verde no afirma aumento: incluye la igualdad, explícito
+  assert.match(visor, /cifrasConteos/); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /'24 horas'/);
   assert.match(visor, /Fuente: Binance/);
@@ -296,7 +297,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   for (const ruta of ['barra-dia', 'barra-24h', 'barra-movimiento']) assert.ok(visor.includes(ruta));
   assert.match(visor, /barra-movil-sec/);
   assert.match(visor, /'Ver tabla'/); assert.doesNotMatch(visor, /Ver la tabla/);
-  assert.match(visor, /Verde \(igual\)/);
+  assert.match(visor, /igual: 'Igual'/);
   assert.match(visor, /return py - px/); // de mayor a menor porcentaje, sin comparación al final (decisión del usuario, 21-nov-2026)
   assert.match(visor, /f\.verde === null \|\| f\.refN == null/); // la excepción no entra al orden aunque tenga previo
   assert.match(visor, /pctTabla\(f\.ultimoN, f\.refN\)/); // el resultado de la tabla es el porcentaje, coloreado (decisión del usuario, 21-nov-2026)
@@ -357,7 +358,7 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     const rows = [...b.activos.values()].map(def.fila);
     assert.equal(rows.filter((r) => r.verde === true).length, green, key);
     assert.equal(rows.filter((r) => r.verde === false).length, red, key);
-    assert.equal(rows.filter((r) => r.res === 'Verde (igual)').length, equal, key);
+    assert.equal(rows.filter((r) => r.res === 'Igual').length, equal, key);
     assert.equal(rows.filter((r) => r.verde === null).length, out, key);
     for (const r of rows) assert.ok(r.refN !== undefined, key + ': referencia numérica para el porcentaje');
     assert.equal(rows[0].ref, '10.00', 'conserva el precio comparado exacto');
@@ -411,4 +412,26 @@ test('2D y 3D comparten periodos y tablas, sin Lectura redundante y con navegaci
  assert.ok(vista.includes("compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas'"));
  assert.equal((tablas.match(/nota: \(b\) => periodoBarra\(/g)||[]).length,3);
  assert.doesNotMatch(tablas,/Lectura:|Referencia fija:|toISOString/);
+});
+
+
+test('barras comunes separan igualdad gris de subidas verdes sin cambiar datos guardados', () => {
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const codigo=html.slice(html.indexOf('function vistaBarra('),html.indexOf('// Las tablas de las tres barras'));
+ const crear=()=>({style:{},hijos:[],setAttribute(){},append(...xs){this.hijos.push(...xs);}});
+ const vista=vm.runInNewContext(codigo+';vistaBarra',{document:{createElement:crear,createTextNode:t=>({textContent:t})},COLORES_LECTURA,separarConteos,cifrasConteos,RED_S:'rojo',GREEN_S:'verde',duracionBarra:()=> '1 h',periodoBarra:()=> 'periodo'});
+ const b={generada:1000,inicio:0,fin:1000,suben:2,bajan:1,conDato:3,activos:new Map([['A',{aperturaN:10,ultimoN:10}],['B',{aperturaN:10,ultimoN:11}],['C',{aperturaN:10,ultimoN:9}]]),dia:{ref:'2026-11-20',suben:2,bajan:1,iguales:1},movimiento:{comparadaCon:0,suben:2,bajan:1,iguales:1}};
+ const antes=JSON.stringify({...b,activos:[...b.activos]});
+ for(const compacta of [true,false]){
+  const caja=vista(b,{compacta});
+  const secs=caja.hijos.filter(x=>x.className==='barra-movil-sec');
+  assert.equal(secs.length,3);
+  for(const sec of secs){
+   assert.equal(sec.hijos[2].hijos.map(x=>x.textContent).join(''),'1 · 1 · 1');
+   const colores=sec.hijos[1].hijos;
+   assert.deepEqual(Array.from(colores,x=>x.style.background),[COLORES_LECTURA.rojo,COLORES_LECTURA.gris,COLORES_LECTURA.verde]);
+   for(const x of colores)assert.ok(Math.abs(parseFloat(x.style.width)-100/3)<1e-8);
+  }
+ }
+ assert.equal(JSON.stringify({...b,activos:[...b.activos]}),antes);
 });

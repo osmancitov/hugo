@@ -170,7 +170,7 @@ a.tit-link:hover { text-decoration: none; }
 .rachas-tabla .rachas-enlace { display:inline; color:var(--oro); font-weight:bold; padding:0; }
 .rachas-nombre, .rachas-limite { display:block; font-size:.72rem; color:var(--tenue); margin-top:.25rem; white-space:normal; }
 .rachas-limite { overflow-wrap:anywhere; } /* la nota de la racha no ensancha la columna */
-.negativo { color:#ec9698; } .positivo { color:#78caa4; }
+.negativo { color:#ec9698; } .positivo { color:#78caa4; } .igual { color:#9aa0ac; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
 /* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
 .superficie-reloj { margin: .8rem 0 1rem; border-left: 2px solid var(--oro); padding-left: .8rem; }
@@ -215,8 +215,9 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 
 </script>
 <script type="module">
+import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs';
 import { montarRachas } from './visor-rachas.mjs?v=2'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=7';
+import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=8';
 import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
@@ -328,17 +329,16 @@ const INDICADORES = [
     bandas: BANDAS_MIEDO([24, 44, 55, 74]), clasif: clasifMiedo([24, 44, 55, 74]) },
   // Iceberg: el primer indicador propio (decisión del usuario, 20-nov-2026): por día cerrado
   // en UTC, cuántos activos de su mercado cerraron en alza (verde, sobre el cero) y cuántos a
-  // la baja (rojo, bajo el cero). El cero cuenta como verde (misma decisión: «solo es pérdida o
-  // no», sin tercera categoría). Sin bandas ni escala 0-100: son conteos del registro. Uno por
+  // la baja (rojo), con igualdad separada en gris al presentar. Sin bandas ni escala 0-100: son conteos del registro. Uno por
   // mercado (decisión del usuario, 20-nov-2026: experiencia separada por mercado); dentro de su
   // espacio se llama simplemente «Iceberg». La serie sale del pre-cálculo diario de Hugo
   // (registros/pre-calculado/<mercado>/iceberg-90d/, ventana de 90 días), no de un recorrido del visor.
   { codigo: 'iceberg-stock', tipo: 'conteo diario', indicador: true, iceberg: true, mercado: 'stock',
     fuente: 'Hugo, sobre los registros publicados',
-    notaDias: 'cuenta los stocks con vela cerrada ese día; el cero cuenta como verde' },
+    notaDias: 'cuenta los stocks con vela cerrada ese día' },
   { codigo: 'iceberg-cripto', tipo: 'conteo diario', indicador: true, iceberg: true, mercado: 'cripto',
     fuente: 'Hugo, sobre los registros publicados',
-    notaDias: 'cuenta las cripto con vela cerrada ese día; el cero cuenta como verde' },
+    notaDias: 'cuenta las cripto con vela cerrada ese día' },
 ];
 
 // Rótulos de los indicadores: UNA sola definición en el repositorio
@@ -507,7 +507,11 @@ async function cargarIcebergPre(e) {
     const fin = ultimoCerrado - d * DIA_MS;
     const inicio = Math.max(fin - 89 * DIA_MS, PISO_VISOR_TS);
     const r = await fetch(`${base}/${aammddUTC(inicio)}-${aammddUTC(fin)}_iceberg`);
-    if (r.ok) return r.json();
+    if (r.ok) {
+      const puntos = await r.json();
+      const detalle = await fetch('iceberg-colores.json').then(r => { if (!r.ok) throw Error('No se pudo leer la representación del iceberg'); return r.json(); });
+      try { return separarSerieIceberg(puntos, detalle[e.mercado]); } catch { continue; } // publicación diaria aún en curso: probar el último día compatible
+    }
   }
   return [];
 }
@@ -617,21 +621,29 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}` : '';
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
-  const seccion = (tituloTxt, suben, bajan, base, numsTxt, notaTxt, enlace, periodo) => {
+  const seccion = (tituloTxt, suben, bajan, base, notaTxt, enlace, periodo, iguales = 0) => {
     const t = document.createElement('div');
     t.className = 'barra-movil-titulo';
     t.textContent = tituloTxt;
     const g = document.createElement('div');
     g.className = 'barra-movil-graf';
-    const rojo = document.createElement('span'), verde = document.createElement('span');
-    rojo.style.background = RED_S; verde.style.background = GREEN_S;
+    const rojo = document.createElement('span'), gris = document.createElement('span'), verde = document.createElement('span');
+    rojo.style.background = COLORES_LECTURA.rojo; gris.style.background = COLORES_LECTURA.gris; verde.style.background = COLORES_LECTURA.verde;
+    const c = separarConteos(suben, bajan, iguales);
     const total = Math.max(1, base);
-    rojo.style.width = (bajan / total * 100) + '%';
-    verde.style.width = (suben / total * 100) + '%';
-    g.append(rojo, verde);
+    rojo.style.width = (c.rojos / total * 100) + '%';
+    gris.style.width = (c.grises / total * 100) + '%';
+    verde.style.width = (c.verdes / total * 100) + '%';
+    g.append(rojo, gris, verde);
     const nums = document.createElement('div');
     nums.className = 'barra-movil-nums';
-    nums.textContent = numsTxt;
+    cifrasConteos(suben,bajan,iguales).forEach(({valor,color,nombre},i)=>{
+      if(i)nums.append(document.createTextNode(' · '));
+      const cifra=document.createElement('span');
+      cifra.textContent=valor; cifra.style.color=color;
+      cifra.setAttribute('aria-label',`${nombre}: ${valor}`);
+      nums.append(cifra);
+    });
     const nota = document.createElement('div');
     nota.className = 'barra-movil-nota';
     nota.style.whiteSpace = 'pre-line';
@@ -654,9 +666,8 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     return sec;
   };
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
-  // vela diaria completa del día UTC anterior, referencia FIJA del día. El verde incluye la
-  // igualdad (la misma regla del iceberg, sin tercera categoría) y la nota declara los
-  // iguales aparte. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
+  // vela diaria completa del día UTC anterior, referencia FIJA del día.
+  // Presentación: rojo bajó, gris igual, verde subió; sin alterar el conteo guardado. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
   const d = b.dia;
   if (d) {
     const enlaceSuperficie = document.createElement('a');
@@ -667,28 +678,27 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     caja.append(seccion(
       duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       d.suben, d.bajan, d.suben + d.bajan,
-      `Rojos ${d.bajan} · Verdes ${d.suben} · Iguales ${d.iguales}`,
       '',
       '#/i/iceberg-stock/barra-dia' + sufijo,
-      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000 - 1, b.generada, duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada))
+      periodoBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000 - 1, b.generada, duracionBarra(Date.parse(d.ref + 'T00:00:00Z') + 86400000, b.generada)), d.iguales
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
   // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
   // de cierres, no un corte común que no existe.
+  const iguales24h = b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 0;
   caja.append(seccion(
     '24 horas',
     b.suben, b.bajan, b.conDato,
-    `Rojos ${b.bajan} · Verdes ${b.suben} · Iguales ${b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 'sin dato'}`,
     '',
     '#/i/iceberg-stock/barra-24h' + sufijo,
-    periodoBarra(b.inicio, b.fin, '24 h por activo')
+    periodoBarra(b.inicio, b.fin, '24 h por activo'), iguales24h
   ));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
   // está aumentando, no cuando la referencia bajó»). El verde de la ventana es posición
-  // (cierre sobre apertura); este verde es no haber bajado entre lecturas, medido solo con
-  // cierres nuevos (misma regla del dueño: «solo es pérdida o no», sin tercera categoría).
+  // (cierre sobre apertura); aquí el color muestra movimiento entre lecturas.
+  // Los conteos guardados incluyen igualdad en suben, se separa solo al representar.
   // Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
   // Las tres barras dicen Verdes/Rojos (decisión del usuario, 21-nov-2026: «llamemos verdes
   // y rojos y ya»).
@@ -697,10 +707,9 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     const sec = seccion(
       duracionBarra(m.comparadaCon, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       m.suben, m.bajan, m.suben + m.bajan,
-      `Rojos ${m.bajan} · Verdes ${m.suben} · Iguales ${m.iguales === null ? 'sin dato' : m.iguales}`,
       '',
       '#/i/iceberg-stock/barra-movimiento' + sufijo,
-      periodoBarra(m.comparadaCon, b.generada, duracionBarra(m.comparadaCon, b.generada))
+      periodoBarra(m.comparadaCon, b.generada, duracionBarra(m.comparadaCon, b.generada)), m.iguales ?? 0
     );
     caja.append(sec);
   }
@@ -719,38 +728,38 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
 // no trae el detalle de esa barra, la tabla no se inventa.
 const BARRAS_TABLA = {
   'barra-dia': {
-    titulo: 'Verdes y rojos contra el cierre del día anterior',
+    titulo: 'Rojos, grises y verdes contra el cierre del día anterior',
     nota: (b) => periodoBarra(Date.parse(b.dia.ref + 'T00:00:00Z') + 86400000 - 1, b.generada),
     apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
     fila: (a) => {
       if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null, refN: null };
       const igual = a.ultimoN === a.diaCierreN;
-      return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN, refN: a.diaCierreN };
+      return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Igual' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN, refN: a.diaCierreN };
     },
   },
   'barra-24h': {
-    titulo: 'Verdes y rojos en las últimas 24 h',
+    titulo: 'Rojos, grises y verdes en las últimas 24 h',
     nota: (b) => periodoBarra(b.inicio, b.fin),
     apta: (b) => b.activos && [...b.activos.values()].every((a) => a.apertura !== undefined),
     fila: (a) => {
       if (a.aperturaN === null) return { ref: 'sin dato', res: 'Sin dato', verde: null, refN: null };
       const igual = a.ultimoN === a.aperturaN;
-      return { ref: a.apertura, res: a.ultimoN >= a.aperturaN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.aperturaN, refN: a.aperturaN };
+      return { ref: a.apertura, res: a.ultimoN >= a.aperturaN ? (igual ? 'Igual' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.aperturaN, refN: a.aperturaN };
     },
   },
   'barra-movimiento': {
-    titulo: 'Verdes y rojos entre las dos últimas consultas',
+    titulo: 'Rojos, grises y verdes entre las dos últimas consultas',
     nota: (b) => periodoBarra(b.movimiento.comparadaCon, b.generada),
     apta: (b) => b.movimiento && b.activos && [...b.activos.values()].every((a) => a.mov !== undefined),
     fila: (a) => {
-      const res = { sube: 'Verde', igual: 'Verde (igual)', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];
+      const res = { sube: 'Verde', igual: 'Igual', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];
       return { ref: a.previo ?? 'sin dato', res: res || 'Sin previa', verde: a.mov === 'sube' || a.mov === 'igual' ? true : a.mov === 'baja' ? false : null, refN: a.previoN };
     },
   },
 };
 const precioTabla = (t) => /^\d+\.\d+$/.test(t) ? t.replace(/0+$/, '').replace(/\.$/, '') : t;
-// El resultado de la tabla es el porcentaje (decisión del usuario, 21-nov-2026): 0 % cuenta
-// verde como en las barras; un negativo tan pequeño que redondea a «-0 %» se escribe con más
+// El resultado de la tabla es el porcentaje; igualdad gris como en las barras.
+// Un negativo tan pequeño que redondea a «-0 %» se escribe con más
 // decimales antes de ocultar que es rojo.
 const pctTabla = (ultimo, ref) => {
   if (!Number.isFinite(ultimo) || !Number.isFinite(ref) || ref === 0) return 'sin dato';
@@ -821,9 +830,9 @@ async function vistaTablaBarra(clave, instante = null) {
     const tdU = document.createElement('td'); tdU.textContent = precioTabla(f.ultimoTxt); tdU.title = f.ultimoTxt;
     const tdS = document.createElement('td');
     if (f.verde !== null && f.refN !== null && f.refN !== undefined) {
-      // El porcentaje es el resultado: positivo y 0 % en verde, negativo en rojo (decisión del usuario, 21-nov-2026).
+      // Resultado: positivo verde, igualdad gris, negativo rojo. Solo cambia la presentación.
       tdS.textContent = pctTabla(f.ultimoN, f.refN);
-      tdS.className = f.verde === true ? 'positivo' : f.verde === false ? 'negativo' : '';
+      tdS.className = claseMovimiento(f.ultimoN - f.refN);
     } else {
       tdS.textContent = f.res;
     }
@@ -982,11 +991,32 @@ function graficoIndicador(ctx, puntos, e, hasta) {
 // corren de arriba abajo con sus fechas a la izquierda y el valor 0-100 va en X, con
 // las bandas oficiales como franjas verticales. Mismos datos y mismas bandas, otro eje.
 // Iceberg (decisión del usuario, 20-nov-2026): cada día es una barra completa, el 100 % de
-// los activos con vela ese día (verde = sin pérdida: al alza o planos; rojo = a la baja),
+// los activos con vela ese día (verde subió, gris igual, rojo bajó),
 // repartido en la frontera entre verde (arriba) y rojo (abajo): la frontera dibuja la
 // proporción. Colores sólidos rojo y verde (decisión del usuario, 20-nov-2026: sin
 // atenuaciones). Un día sin velas queda sin fila en la serie, sin inventar.
 // Misma pieza común de trazado, rejilla de días y colores de la casa; hasta recorta igual.
+function pieIceberg(ctx, punto, e, ancho, alto, tamano) {
+  const fecha=new Date(punto[0]);
+  const cifras=cifrasConteos(punto[1]+punto[3],punto[2],punto[3]);
+  const trozos=[{texto:`${fecha.getUTCDate()} ${MESES_ES[fecha.getUTCMonth()]} · `,color:TICK}];
+  cifras.forEach(({valor,color},i)=>{
+    if(i)trozos.push({texto:' · ',color:TICK});
+    trozos.push({texto:String(valor),color});
+  });
+  ctx.font=`${tamano}px ${FUENTE}`;
+  const medida=trozos.reduce((s,t)=>s+ctx.measureText(t.texto).width,0);
+  const ajuste=Math.min(1,(ancho-32)/Math.max(1,medida));
+  ctx.font=`${tamano*ajuste}px ${FUENTE}`;
+  let x=(ancho-medida*ajuste)/2;
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  for(const t of trozos){ctx.fillStyle=t.color;ctx.fillText(t.texto,x,alto-tamano*2-5);x+=ctx.measureText(t.texto).width;}
+  const fuente=`Fuente: ${e.fuente}`;
+  ctx.font=`${tamano}px ${FUENTE}`;
+  const escala=Math.min(1,(ancho-32)/Math.max(1,ctx.measureText(fuente).width));
+  ctx.font=`${tamano*escala}px ${FUENTE}`;ctx.textAlign='center';ctx.fillStyle=TICK;
+  ctx.fillText(fuente,ancho/2,alto-tamano*.6-2);
+}
 function graficoIceberg(ctx, puntos, e, hasta) {
   const n = puntos.length;
   const k = hasta === undefined ? n : Math.min(hasta, n);
@@ -996,12 +1026,14 @@ function graficoIceberg(ctx, puntos, e, hasta) {
   // barras completas: verde desde arriba hasta la frontera, rojo desde la frontera abajo
   const ancho = n === 1 ? PW : Math.max(1, PW / (n - 1));
   for (let i = 0; i < k; i++) {
-    const sub = puntos[i][1], baj = puntos[i][2], total = sub + baj;
+    const sub = puntos[i][1], baj = puntos[i][2], igual = puntos[i][3], total = sub + baj + igual;
     if (!total) continue;
-    const frontera = MT + (sub / (sub + baj)) * PH;
+    const frontera = MT + (sub / total) * PH;
+    const finGris = frontera + (igual / total) * PH;
     const x = X(i) - ancho / 2;
     if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(x, MT, ancho, frontera - MT); }
-    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x, frontera, ancho, MT + PH - frontera); }
+    if (igual) { ctx.fillStyle = COLORES_LECTURA.gris; ctx.fillRect(x, frontera, ancho, finGris - frontera); }
+    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x, finGris, ancho, MT + PH - finGris); }
   }
   // rejilla de días y guías de proporción, por encima como en el Fear & Greed
   for (let i = 0; i < n; i++) {
@@ -1028,16 +1060,16 @@ function graficoIceberg(ctx, puntos, e, hasta) {
   // títulos
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
-  ctx.fillText(`${e.nombre} · activos al alza y a la baja por día`, LW / 2, 15);
+  ctx.fillText(`${e.nombre} · subieron, iguales y bajaron por día`, LW / 2, 15);
   ctx.fillStyle = TICK; ctx.font = '11px ' + FUENTE;
-  ctx.fillText(`cada día es el 100 % de los activos con vela ese día · verde = al alza o planos · rojo = a la baja · ${n} días`, LW / 2, 40);
+  ctx.fillText(`cada día es el 100 % de los activos con vela ese día · ${LEYENDA_LECTURA} · ${n} días`, LW / 2, 40);
   // el último día, al completar el trazado
   if (k >= n) {
     const uf = new Date(puntos[n - 1][0]);
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '13px ' + FUENTE;
-    ctx.fillText(`${fecha} (UTC): ${puntos[n - 1][1]} al alza · ${puntos[n - 1][2]} a la baja · Fuente: ${e.fuente}`, LW / 2, ALTO - 13);
+    pieIceberg(ctx, puntos[n - 1], e, LW, ALTO, 13);
   }
 }
 
@@ -1131,18 +1163,20 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   // títulos
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
-  ctx.fillText(`${e.nombre} · activos al alza y a la baja`, w / 2, 26);
+  ctx.fillText(`${e.nombre} · subieron, iguales y bajaron`, w / 2, 26);
   ctx.fillStyle = TICK; ctx.font = '18px ' + FUENTE;
   ctx.fillText(`cada día es el 100 % de los activos con vela ese día · ${n} días`, w / 2, 58);
   // barras completas: rojo desde la izquierda hasta la frontera, verde hasta la derecha
   const grueso = n === 1 ? (bottom - top) : Math.max(1, (bottom - top) / (n - 1));
   for (let i = 0; i < k; i++) {
-    const sub = puntos[i][1], baj = puntos[i][2], total = sub + baj;
+    const sub = puntos[i][1], baj = puntos[i][2], igual = puntos[i][3], total = sub + baj + igual;
     if (!total) continue;
-    const frontera = left + (baj / (sub + baj)) * (right - left);
+    const frontera = left + (baj / total) * (right - left);
+    const finGris = frontera + (igual / total) * (right - left);
     const y = Y(i) - grueso / 2;
     if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(left, y, frontera - left, grueso); }
-    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(frontera, y, right - frontera, grueso); }
+    if (igual) { ctx.fillStyle = COLORES_LECTURA.gris; ctx.fillRect(frontera, y, finGris - frontera, grueso); }
+    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(finGris, y, right - finGris, grueso); }
   }
   // rejilla de días y fechas a la izquierda, como la radiografía vertical
   ctx.font = '20px ' + FUENTE; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
@@ -1170,7 +1204,7 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '20px ' + FUENTE;
-    ctx.fillText(`${fecha} (UTC): ${puntos[n - 1][1]} al alza · ${puntos[n - 1][2]} a la baja · Fuente: ${e.fuente}`, w / 2, alto - 30);
+    pieIceberg(ctx, puntos[n - 1], e, w, alto, 18);
   }
 }
 

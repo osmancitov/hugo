@@ -267,3 +267,7 @@ Durante esa preparación y la toma, la ingesta y sincronización no se solapan. 
 - Títulos de barras: duración real (horas/minutos), sin duplicarla en el intervalo inferior. La móvil conserva24horas. No cambia la referencia de ninguna barra; las tablas identifican la comparación.
 
 - Formato unificado2D/3D/tablas: periodo abreviado en reloj24hUTC, meses minúsculos y sin segundos; no se repite el renglón Lectura. Las tablas usan el mismo formateador de periodos que las barras. Enlaces recíprocos2D y3D, sin enlace a la propia vista. Solo presentación, sellos y cálculos intactos.
+
+### Colores de las lecturas
+
+Las tres barras compartidas por 2D y 3D y sus tablas separan rojo (bajó), gris (igual) y verde (subió). Los conteos se muestran solo con cifras coloreadas, en orden rojo, verde, gris. La superficie usa la misma regla para el movimiento entre lecturas. La igualdad sale del precio exacto, no del porcentaje redondeado. Los conteos almacenados conservan su formato anterior: la separación es visual y no cambia referencias, precios ni alturas.

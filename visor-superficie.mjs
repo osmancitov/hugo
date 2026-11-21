@@ -1,7 +1,10 @@
 // Superficie 3D del registro real. Proyección y dibujo locales, sin dependencias externas.
 // Las tomas se leen directamente de GitHub; actualizar datos no requiere desplegar este módulo.
 import { terrenoDia } from './app/modulos/intradia-datos.mjs';
-const VERDE = '#25855c', ROJO = '#b73d40', ORO = '#c2a15a', GRIS = '#626b7d';
+import { COLORES_LECTURA, ETIQUETAS_LECTURA, colorMovimiento } from './app/modulos/colores-lectura.mjs';
+export { colorMovimiento } from './app/modulos/colores-lectura.mjs';
+const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
+const ORO = '#c2a15a';
 export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
 export const porcentajeSuperficie = (n) => {
   if (n === null) return 'sin comparación';
@@ -113,10 +116,13 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.setAttribute('aria-label', 'Superficie de variación contra cierre diario fijo. Los selectores permiten leer cada punto. Arrastra para girar.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
   const leyenda = crear('p', 'superficie-leyenda');
-  const verde = crear('span', '', 'Verde: no bajó entre lecturas'); verde.style.color = '#45b381';
-  const rojo = crear('span', '', 'Rojo: bajó entre lecturas'); rojo.style.color = '#ed7477';
-  leyenda.append(verde, document.createTextNode(' · '), rojo, document.createTextNode(' · Gris: sin comparación nueva'));
-  const notas = crear('p', 'superficie-nota', 'Altura: cambio porcentual frente al cierre diario fijo. Color: movimiento desde la lectura anterior. Activos en orden alfabético, sin significado de proximidad. Las caras unen puntos observados; no son lecturas intermedias.');
+  ETIQUETAS_LECTURA.forEach(({texto,color},i) => {
+    if(i)leyenda.append(document.createTextNode(' · '));
+    const tramo=crear('span','',texto);
+    tramo.style.color=color;
+    leyenda.append(tramo);
+  });
+  const notas = crear('p', 'superficie-nota', 'Altura: cambio porcentual frente al cierre diario fijo. Color: movimiento desde la lectura anterior.');
   caja.append(controles, canvas, detalle, leyenda, notas);
   contenedor.append(caja);
   function describir() {
@@ -165,7 +171,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const vertices = [malla[j - 1][i - 1], malla[j - 1][i], malla[j][i], malla[j][i - 1]];
       if (vertices.some((p) => !p)) continue; // sin dato deja un hueco, nunca altura cero
       const nuevos = [puntos[j][i - 1], puntos[j][i]];
-      caras.push({ vertices, colores: [nuevos[0].movimiento, nuevos[1].movimiento].map((m) => m === null ? GRIS : m >= 0 ? VERDE : ROJO), fondo: vertices.reduce((s, p) => s + p.profundidad, 0) / 4 });
+      caras.push({ vertices, colores: [nuevos[0].movimiento, nuevos[1].movimiento].map((m) => colorMovimiento(m) ?? 'transparent'), fondo: vertices.reduce((s, p) => s + p.profundidad, 0) / 4 });
     }
     caras.sort((a, b) => a.fondo - b.fondo);
     for (const cara of caras) {
@@ -179,7 +185,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     // Los carriles de cada activo unen únicamente sus lecturas. Una foto sola no crea terreno.
     for (let i = 0; i < codigos.length; i++) for (let j = 1; j < malla.length; j++) {
       const a = malla[j - 1][i], b = malla[j][i];
-      if (a && b) linea(a, b, b.p.movimiento === null ? GRIS : b.p.movimiento >= 0 ? '#42b582' : '#e06a70', .8);
+      if (a && b && b.p.movimiento !== null) linea(a, b, colorMovimiento(b.p.movimiento), .8);
     }
     const fila = malla[ultima] || [];
     for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], '#ded0a4', 1.2);
