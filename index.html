@@ -691,8 +691,16 @@ async function vistaTablaBarra(clave) {
   meta.textContent = def.nota(b);
   ficha.appendChild(meta);
   const filas = [...b.activos.entries()].map(([codigo, a]) => ({ codigo, ultimoN: a.ultimoN, ...def.fila(a), ultimoTxt: a.ultimo }));
-  const orden = (f) => f.verde === true ? (f.res === 'Verde (igual)' ? 1 : 0) : f.verde === false ? 2 : 3;
-  filas.sort((x, y) => orden(x) - orden(y) || (x.codigo < y.codigo ? -1 : 1));
+  // De mayor a menor porcentaje (decisión del usuario, 21-nov-2026): los que más suben
+  // arriba, los 0 % después y las mayores caídas al final; sin comparación, aparte al final.
+  const pct = (f) => f.refN == null ? null : (f.ultimoN - f.refN) / f.refN;
+  filas.sort((x, y) => {
+    const px = pct(x), py = pct(y);
+    if (px === null && py === null) return x.codigo < y.codigo ? -1 : 1;
+    if (px === null) return 1;
+    if (py === null) return -1;
+    return py - px || (x.codigo < y.codigo ? -1 : 1);
+  });
   const caja = document.createElement('div');
   caja.className = 'rachas-tabla-caja';
   const tabla = document.createElement('table');

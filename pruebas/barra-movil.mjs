@@ -298,6 +298,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /barra-movil-sec/);
   assert.match(visor, /'Ver tabla'/); assert.doesNotMatch(visor, /Ver la tabla/);
   assert.match(visor, /Verde \(igual\)/);
+  assert.match(visor, /return py - px/); // de mayor a menor porcentaje, sin comparación al final (decisión del usuario, 21-nov-2026)
   assert.match(visor, /pctTabla\(f\.ultimoN, f\.refN\)/); // el resultado de la tabla es el porcentaje, coloreado (decisión del usuario, 21-nov-2026)
   assert.doesNotMatch(visor, /<th>Porcentaje<\/th>/); // sin columna extra: se conserva el ancho // el formato del usuario en los dos instantes
 });
