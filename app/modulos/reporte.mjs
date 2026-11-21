@@ -6,16 +6,19 @@
 //   hilo del comando; con canal va al canal de avisos. progreso edita como mucho cada `intervalo`;
 //   final espera el ritmo y deja el resultado en ese mismo mensaje.
 // - crearReporteSync: crearReporte con los textos propios de la sincronizacion.
-// - crearAvisador: el reporte del registro de velas: UN mensaje por activo, con todos sus meses
-//   acumulados (decisión del usuario, 18-nov-2026: «que reporte 1 vez por activo»). Meses y aviso
-//   de activo no tocan Slack: se acumulan en memoria y viajan en el avance. Cada cosa en su
-//   línea: titulo del activo, una línea por mes y una de cierre (decisión del usuario,
-//   18-nov-2026: «usa una línea para cada cosa», «sin tanta verbosidad»). El reporte NUNCA
-//   hace esperar al motor: los reportes se acumulan localmente y se vuelcan cada 5 segundos en
-//   UN envio por volcado (partido por activos completos solo si el lote supera el tamano
-//   seguro), sin pausa ni cola (decisión del usuario, 18-nov-2026: «acumular reportes local por
-//   5 segundos y después volcar»). Errores y aviso final salen garantizados y arrastran lo
-//   acumulado, para que ningún reporte quede sin salir.
+// - crearAvisador: el reporte del registro de velas: UN solo mensaje por recorrido, editado con
+//   lo que va ocurriendo (decisión del usuario, 21-nov-2026: «que edite el mismo mensaje y vaya
+//   poniendo en él lo que va ocurriendo», porque la lista de activos quedaba muy larga; sustituye
+//   para este reporte la de 18-nov-2026 de un mensaje por activo). Meses y aviso de activo no
+//   tocan Slack: se acumulan en memoria y viajan en el avance. Al cerrar cada activo, el mensaje
+//   muestra su bloque: titulo del activo, una línea por mes y una de cierre (decisión del
+//   usuario, 18-nov-2026: «usa una línea para cada cosa», «sin tanta verbosidad»). El reporte
+//   NUNCA hace esperar al motor: los cierres se acumulan en memoria y el mensaje se edita como
+//   mucho cada 5 segundos con lo último (la acumulación local de 18-nov-2026 se conserva; el
+//   volcado ahora es una edición). Una edición fallida no frena nada: la entrega siguiente lleva
+//   lo último. Errores y aviso final salen garantizados como mensajes propios, tras dejar el
+//   progreso al día. Si el recorrido se corta y retoma en otro arranque, el progreso sigue en
+//   un mensaje nuevo (la referencia del anterior no se guarda), sin repetir consultas.
 export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
  const hilo=event?event.thread_ts||event.ts:hiloOpt;
@@ -37,7 +40,7 @@ export function crearReporteSync({inicio,prefijo,...resto}={}) {
  });
 }
 
-// Un mensaje por activo, con ediciones reguladas. No envia mensajes por cada consulta.
+// Abre el hilo de un trabajo y devuelve su referencia. No envia mensajes por cada consulta.
 export async function abrirHilo({client,token,canal,texto}) {
  const m=await client.chat.postMessage({token,channel:canal,text:texto});
  if(!m?.ts)throw Error('Slack no devolvio referencia del hilo.');
@@ -69,49 +72,57 @@ export function crearOjos({client,token}) {
 }
 
 export function crearAvisador({client,token,ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=1500}) {
- let cola=Promise.resolve(),ultimo=-Infinity,pendientes=[],ultimoVuelco=ahora()-5000;
+ let cola=Promise.resolve(),ultimo=-Infinity;
+ const mensajes=new Map(); // canal|hilo -> {ts,texto,sucio,editado}
+ const clave=(channel,hilo)=>`${channel}|${hilo||''}`;
  const enviar=fn=>{
   const tarea=cola.then(async()=>{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);ultimo=ahora();return fn();});
   cola=tarea.catch(()=>{});return tarea;
  };
  const derecho=fn=>{const tarea=cola.then(fn);cola=tarea.catch(()=>{});return tarea;};
- const volcar=async()=>{
-  ultimoVuelco=ahora();
-  if(!pendientes.length)return;
-  const destino={channel:pendientes[0].channel,thread_ts:pendientes[0].thread_ts};
-  const bloques=pendientes.splice(0).map(p=>p.text);
-  // Un envio por volcado: los activos del lote van juntos, cada uno identificado con sus
-  // lineas. Si el lote supera el tamano seguro, se parte por activos completos.
-  const paquetes=[];let actual='';
-  for(const b of bloques) {
-   if(actual&&actual.length+2+b.length>35000){paquetes.push(actual);actual=b;}
-   else actual=actual?actual+'\n\n'+b:b;
-  }
-  if(actual)paquetes.push(actual);
-  for(let i=0;i<paquetes.length;i++) {
-   try { await derecho(async()=>{await client.chat.postMessage({token,...destino,text:paquetes[i]});ultimo=ahora();}); }
-   catch(e) { pendientes.unshift(...paquetes.slice(i).map(text=>({...destino,text}))); throw e; }
-  }
+ // Editar nunca frena el motor: en estricto (cierres y avisos garantizados) el fallo se propaga
+ // como antes lo hacia el volcado; en el cierre de un activo solo deja lo pendiente para la
+ // proxima entrega.
+ const editar=async(k,destino,estricto=false)=>{
+  const m=mensajes.get(k);
+  if(!m||!m.sucio)return;
+  m.sucio=false;m.editado=ahora();
+  try{await derecho(()=>client.chat.update({token,...destino,ts:m.ts,text:m.texto}));}
+  catch(e){m.sucio=true;if(estricto)throw e;console.error('Edicion del reporte del registro:',e.message);}
  };
+ const vaciar=async()=>{for(const k of mensajes.keys()){const [channel,thread_ts]=k.split('|');await editar(k,{channel,thread_ts:thread_ts||undefined},true);}};
  return async(j,text,meta={})=>{
   if(meta.tipo==='consulta')return;
   if(meta.tipo==='activo') {
    if(!j.reporte||j.reporte.indice!==j.indice||j.reporte.codigo!==j.codigos[j.indice]) j.reporte={indice:j.indice,codigo:j.codigos[j.indice],titulo:text,meses:{}};
    return;
   }
-  if(meta.tipo==='mes'||meta.tipo==='fin-activo') {
+  if(meta.tipo==='mes') {
    const r=j.reporte;
    if(!r||!r.meses)throw Error('Falta el reporte del activo en memoria; no duplico el mensaje.');
-   if(meta.tipo==='mes'){r.meses[String(meta.mes)]=meta.linea;return;}
+   r.meses[String(meta.mes)]=meta.linea;return;
+  }
+  if(meta.tipo==='fin-activo') {
+   const r=j.reporte;
+   if(!r||!r.meses)throw Error('Falta el reporte del activo en memoria; no duplico el mensaje.');
    r.fin=meta.linea;
    const cuerpo=[r.titulo,...Object.values(r.meses),r.fin].filter(Boolean).join('\n');
    if(cuerpo.length>35000)throw Error('El reporte supera el tamano seguro; el avance se conserva.');
-   pendientes.push({channel:j.channel,thread_ts:j.thread_ts||j.ts,text:cuerpo});
-   if(ahora()-ultimoVuelco<5000)return 'acumulado'; // acumula local; el motor sigue sin esperar
-   await volcar();
-   return 'volcado';
+   const destino={channel:j.channel,thread_ts:j.thread_ts||j.ts};
+   const k=clave(destino.channel,destino.thread_ts);
+   const m=mensajes.get(k);
+   if(!m) {
+    // Primer cierre del recorrido: se publica el mensaje; si falla, el motor pausa y lo retoma.
+    const ts=await enviar(async()=>{const r0=await client.chat.postMessage({token,...destino,text:cuerpo});if(!r0?.ts)throw Error('Slack no devolvio referencia del reporte.');return r0.ts;});
+    mensajes.set(k,{ts,texto:cuerpo,sucio:false,editado:ahora()});
+    return 'publicado';
+   }
+   m.texto=cuerpo;m.sucio=true;
+   if(ahora()-m.editado<5000)return 'acumulado'; // ventana de acumulacion: el motor sigue sin esperar
+   await editar(k,destino);
+   return m.sucio?'acumulado':'editado';
   }
-  await volcar(); // errores y cierres arrastran lo acumulado: ningun reporte queda sin salir
+  await vaciar(); // errores y cierres dejan el progreso al dia y salen como mensajes propios
   await enviar(()=>client.chat.postMessage({token,channel:j.channel,thread_ts:j.thread_ts||j.ts,text}));
  };
 }

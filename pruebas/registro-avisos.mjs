@@ -1,8 +1,11 @@
 // Sin Slack ni red: envios, reloj y errores simulados.
-// Contrato (decisión del usuario, 18-nov-2026): UN mensaje por activo, publicado una vez al
-// cerrarlo; meses y aviso de activo no tocan Slack. El reporte nunca frena el motor: los
-// reportes se acumulan localmente y se vuelcan cada 5 s; errores y aviso final arrastran lo
-// acumulado. Una línea para cada cosa, sin verbosidad.
+// Contrato (decisión del usuario, 21-nov-2026: «que edite el mismo mensaje y vaya poniendo en él
+// lo que va ocurriendo», porque la lista de activos quedaba muy larga): UN solo mensaje por
+// recorrido; el primer cierre de activo lo publica y los siguientes lo editan, como mucho cada
+// 5 s; meses y aviso de activo no tocan Slack. El reporte nunca frena el motor: dentro de la
+// ventana solo se acumula en memoria; una edición fallida no pausa y la entrega siguiente lleva
+// lo último. Errores y aviso final salen garantizados como mensajes propios, dejando antes el
+// progreso al día. Una línea para cada cosa, sin verbosidad.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,25 +13,54 @@ import os from 'node:os';
 import path from 'node:path';
 import {crearAvisador} from '../app/modulos/reporte.mjs';
 import {crearMotor,leerEstado} from '../app/modulos/registro-motor.mjs';
-function simulado(){let reloj=0;const calls=[];let falla=false;const client={chat:{postMessage:async m=>{if(falla&&String(m.text).startsWith('Activo '))throw Error('Slack simulado');calls.push({tipo:'post',reloj,...m});return{ts:String(calls.length)};},update:async m=>{calls.push({tipo:'update',reloj,...m});return{ts:m.ts};}}};const crear=()=>crearAvisador({client,token:'simulado',ahora:()=>reloj,esperar:async ms=>{reloj+=ms;}});return{calls,crear,fallar:v=>falla=v,avanzar:ms=>reloj+=ms};}
+function simulado(){let reloj=0;const calls=[];let falla=false,fallaEd=false;const client={chat:{postMessage:async m=>{if(falla&&String(m.text).startsWith('Activo '))throw Error('Slack simulado');const ts='msg'+(calls.length+1);calls.push({tipo:'post',reloj,tsEmitido:ts,...m});return{ts};},update:async m=>{if(fallaEd)throw Error('Edicion simulada');calls.push({tipo:'update',reloj,...m});return{ts:m.ts};}}};const crear=()=>crearAvisador({client,token:'simulado',ahora:()=>reloj,esperar:async ms=>{reloj+=ms;}});return{calls,crear,fallar:v=>falla=v,fallarEdicion:v=>fallaEd=v,avanzar:ms=>reloj+=ms};}
 const trabajo=()=>({version:2,indice:0,codigos:['AA','BB','CC'],channel:'canal',thread_ts:'hilo',hasta:Date.UTC(2026,10,16)});
-test('un solo post por activo, al cerrarlo; acumulacion local y vuelco cada 5 s; errores arrastran lo acumulado',async()=>{
+test('un solo mensaje por recorrido: el primer cierre lo publica y los siguientes lo editan, como mucho cada 5 s y sin frenar el motor',async()=>{
  const s=simulado(),avisar=s.crear(),j=trabajo();
  await avisar(j,'Activo AA',{tipo:'activo'});await avisar(j,'Consulto',{tipo:'consulta'});
  await avisar(j,'mes',{tipo:'mes',mes:1,linea:'octubre:31'});await avisar(j,'mes',{tipo:'mes',mes:2,linea:'septiembre:30'});
  assert.equal(s.calls.length,0,'ni activo ni meses ni consultas tocan Slack');
- await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,1);
- assert.ok(s.calls[0].text.includes('Activo AA'));assert.ok(s.calls[0].text.includes('octubre:31\nseptiembre:30\nterminado'));
- assert.equal(s.calls.filter(x=>x.tipo==='update').length,0,'ya no se edita: se publica una vez');
- j.indice++;await avisar(j,'Activo BB',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado BB'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,1,'sin 5 s desde el vuelco, acumula local y el motor sigue sin esperar');
+ const r1=await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado AA'});
+ assert.equal(r1,'publicado');
+ const posts=()=>s.calls.filter(x=>x.tipo==='post'),edits=()=>s.calls.filter(x=>x.tipo==='update');
+ assert.equal(posts().length,1,'el primer cierre publica el mensaje del recorrido');
+ assert.ok(posts()[0].text.includes('Activo AA'));assert.ok(posts()[0].text.includes('octubre:31\nseptiembre:30\nterminado AA'));
+ j.indice++;await avisar(j,'Activo BB',{tipo:'activo'});
+ const r2=await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado BB'});
+ assert.equal(r2,'acumulado','dentro de la ventana solo se acumula: el motor sigue sin esperar');
+ assert.equal(s.calls.length,1,'ni post ni edición dentro de los 5 s');
+ s.avanzar(5100);j.indice++;await avisar(j,'Activo CC',{tipo:'activo'});
+ const r3=await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado CC'});
+ assert.equal(r3,'editado');
+ assert.equal(posts().length,1,'sigue siendo un solo mensaje');
+ assert.equal(edits().length,1);assert.equal(edits()[0].ts,posts()[0].tsEmitido,'la edición cae sobre el mismo mensaje');
+ assert.ok(edits()[0].text.includes('Activo CC')&&edits()[0].text.includes('terminado CC'),'el mensaje muestra lo último');
+ assert.ok(!edits()[0].text.includes('Activo BB'),'los estados intermedios no alargan el mensaje');
+});
+test('un aviso garantizado deja el progreso al día y sale como mensaje propio',async()=>{
+ const s=simulado(),avisar=s.crear(),j=trabajo();
+ await avisar(j,'Activo AA',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo AA'});
+ j.indice++;await avisar(j,'Activo BB',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo BB'});
+ assert.equal(s.calls.length,1,'BB quedó acumulado sin salir');
  await avisar(j,'Ojo: algo importante');
- const posts=s.calls.filter(x=>x.tipo==='post');
- assert.equal(posts.length,3,'un aviso garantizado arrastra lo acumulado');
- assert.ok(posts[1].text.includes('Activo BB')&&posts[2].text.includes('Ojo'),'primero el reporte acumulado, luego el aviso');
- s.avanzar(5100);j.indice++;await avisar(j,'Activo CC',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'terminado CC'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,4,'cumplidos 5 s, el siguiente cierre vuelca');
+ const tipos=s.calls.map(x=>x.tipo);
+ assert.deepEqual(tipos,['post','update','post'],'primero la edición con lo último, luego el aviso');
+ assert.ok(s.calls[1].text.includes('Activo BB')&&s.calls[1].text.includes('listo BB'),'el progreso queda al día antes del aviso');
+ assert.ok(s.calls[2].text.includes('Ojo'));
+});
+test('una edición fallida no frena el motor y la entrega siguiente lleva lo último',async()=>{
+ const s=simulado(),avisar=s.crear(),j=trabajo();
+ await avisar(j,'Activo AA',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo AA'});
+ s.avanzar(5100);s.fallarEdicion(true);
+ j.indice++;await avisar(j,'Activo BB',{tipo:'activo'});
+ const r1=await avisar(j,'fin',{tipo:'fin-activo',linea:'listo BB'});
+ assert.equal(r1,'acumulado','la edición fallida deja el cierre como pendiente, sin lanzar');
+ s.fallarEdicion(false);s.avanzar(5100);j.indice++;await avisar(j,'Activo CC',{tipo:'activo'});
+ const r2=await avisar(j,'fin',{tipo:'fin-activo',linea:'listo CC'});
+ assert.equal(r2,'editado');
+ const edits=s.calls.filter(x=>x.tipo==='update');
+ assert.equal(edits.length,1);assert.ok(edits[0].text.includes('Activo CC'),'lo último llega en la siguiente entrega');
+ assert.equal(s.calls.filter(x=>x.tipo==='post').length,1,'nunca hubo otro mensaje');
 });
 test('al reconstruir avisador conserva meses acumulados en el avance y deduplica por mes',async()=>{
  const s=simulado(),j=trabajo();await s.crear()(j,'Activo AA',{tipo:'activo'});await s.crear()(j,'mes',{tipo:'mes',mes:1,linea:'octubre:31'});
@@ -36,7 +68,7 @@ test('al reconstruir avisador conserva meses acumulados en el avance y deduplica
  assert.equal(Object.keys(restaurado.reporte.meses).length,1,'el mes repetido no se duplica');
  assert.equal(s.calls.length,0);
  await s.crear()(restaurado,'fin',{tipo:'fin-activo',linea:'terminado'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,1);
+ assert.equal(s.calls.filter(x=>x.tipo==='post').length,1,'un avisador sin referencia publica el mensaje del recorrido');
  assert.equal(s.calls[0].text.match(/octubre:31/g).length,1);
 });
 test('240 meses caben en el único mensaje del activo, sin posts intermedios',async()=>{
@@ -45,34 +77,6 @@ test('240 meses caben en el único mensaje del activo, sin posts intermedios',as
  assert.equal(Object.keys(j.reporte.meses).length,240);assert.equal(s.calls.length,0);
  await a(j,'fin',{tipo:'fin-activo',linea:'terminado'});
  assert.equal(s.calls.filter(x=>x.tipo==='post').length,1);assert.ok(s.calls[0].text.length<35000);
-});
-test('un volcado agrupa los activos acumulados en un solo mensaje, cada uno identificado y en orden',async()=>{
- const s=simulado(),avisar=s.crear(),j=trabajo();
- await avisar(j,'Activo AA',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo AA'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,1,'el primero sale en el vuelco inicial');
- j.indice++;await avisar(j,'Activo BB',{tipo:'activo'});await avisar(j,'mes',{tipo:'mes',mes:1,linea:'2611: 30 velas.'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo BB'});
- j.indice++;await avisar(j,'Activo CC',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'listo CC'});
- assert.equal(s.calls.filter(x=>x.tipo==='post').length,1,'dentro de la ventana se acumula sin ráfaga');
- s.avanzar(5100);await avisar(j,'Ojo');
- const posts=s.calls.filter(x=>x.tipo==='post');
- assert.equal(posts.length,3,'un volcado = un envío, luego el aviso');
- assert.ok(posts[1].text.includes('Activo BB')&&posts[1].text.includes('Activo CC')&&posts[1].text.includes('2611: 30 velas.')&&posts[1].text.includes('listo BB')&&posts[1].text.includes('listo CC'),'ambos activos identificados con sus líneas');
- assert.ok(posts[1].text.indexOf('Activo BB')<posts[1].text.indexOf('Activo CC'),'orden conservado');
-});
-test('un lote que supera el tamano seguro se parte por activos completos',async()=>{
- const s=simulado(),avisar=s.crear(),j=trabajo();
- await avisar(j,'Activo AA',{tipo:'activo'});await avisar(j,'fin',{tipo:'fin-activo',linea:'x'});
- for(const [idx,cod] of [[1,'BB'],[2,'CC']]) {
-  j.indice=idx;await avisar(j,`Activo ${cod}`,{tipo:'activo'});
-  for(let i=0;i<700;i++)await avisar(j,'mes',{tipo:'mes',mes:i,linea:`2601: 31 velas; parcial....................${i}`});
-  await avisar(j,'fin',{tipo:'fin-activo',linea:'listo'});
- }
- s.avanzar(5100);await avisar(j,'aviso');
- const posts=s.calls.filter(x=>x.tipo==='post');
- assert.equal(posts.length,4,'AA + dos paquetes + aviso');
- assert.ok(posts[1].text.includes('Activo BB')&&!posts[1].text.includes('Activo CC'),'corte por activos completos');
- assert.ok(posts[2].text.includes('Activo CC')&&!posts[2].text.includes('Activo BB'));
- posts.forEach(p=>assert.ok(p.text.length<35000,'ningún envío supera el tamano seguro'));
 });
 test('fallo del post de cierre pausa; reanudar entrega la línea pendiente sin repetir consulta',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-reporte-')),s=simulado(),estado=path.join(root,'estado'),mes=Date.UTC(2026,10,1),pedidos=[];
