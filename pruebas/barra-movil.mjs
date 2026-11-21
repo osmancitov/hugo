@@ -297,7 +297,9 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   for (const ruta of ['barra-dia', 'barra-24h', 'barra-movimiento']) assert.ok(visor.includes(ruta));
   assert.match(visor, /barra-movil-sec/);
   assert.match(visor, /'Ver tabla'/); assert.doesNotMatch(visor, /Ver la tabla/);
-  assert.match(visor, /Verde \(igual\)/); // el formato del usuario en los dos instantes
+  assert.match(visor, /Verde \(igual\)/);
+  assert.match(visor, /pctTabla\(f\.ultimoN, f\.refN\)/); // el resultado de la tabla es el porcentaje, coloreado (decisión del usuario, 21-nov-2026)
+  assert.doesNotMatch(visor, /<th>Porcentaje<\/th>/); // sin columna extra: se conserva el ancho // el formato del usuario en los dos instantes
 });
 
 test('guardia de la casa: la orden está registrada en la app y documentada en el manual', () => {
@@ -346,7 +348,7 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
   };
   const texto = formatearBarra(base, 4000);
   const ctx = vm.createContext({ RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
-  vm.runInContext(cargar + defs + ';globalThis.defs = BARRAS_TABLA;', ctx);
+  vm.runInContext(cargar + defs + html.slice(html.indexOf('const precioTabla ='), html.indexOf('async function vistaTablaBarra(')) + ';globalThis.defs = BARRAS_TABLA;globalThis.pctTabla = pctTabla;', ctx);
   const b = await vm.runInContext('cargarBarra()', ctx);
   for (const [key, green, red, equal, out] of [['barra-dia',1,1,1,1], ['barra-24h',2,1,1,0], ['barra-movimiento',1,1,1,1]]) {
     const def = ctx.defs[key];
@@ -356,7 +358,12 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     assert.equal(rows.filter((r) => r.verde === false).length, red, key);
     assert.equal(rows.filter((r) => r.res === 'Verde (igual)').length, equal, key);
     assert.equal(rows.filter((r) => r.verde === null).length, out, key);
+    for (const r of rows) assert.ok(r.refN !== undefined, key + ': referencia numérica para el porcentaje');
     assert.equal(rows[0].ref, '10.00', 'conserva el precio comparado exacto');
+    assert.equal(ctx.pctTabla(10, 10), '+0%', key);
+    assert.equal(ctx.pctTabla(9, 10), '-10%', key);
+    assert.equal(ctx.pctTabla(11, 10), '+10%', key);
+    assert.equal(ctx.pctTabla(9, null), 'sin dato', key);
   }
   assert.equal(b.activos.get('AAA').ultimo, '10.00');
   delete b.activos.get('AAA').apertura;

@@ -627,9 +627,9 @@ const BARRAS_TABLA = {
     nota: (b) => `Referencia fija: cierre de la vela diaria del ${b.dia.ref} (UTC) · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
     apta: (b) => b.dia && b.activos && [...b.activos.values()].every((a) => a.dia_cierre !== undefined),
     fila: (a) => {
-      if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null };
+      if (a.diaCierreN === null) return { ref: 'sin vela o dato', res: 'Sin vela o dato', verde: null, refN: null };
       const igual = a.ultimoN === a.diaCierreN;
-      return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN };
+      return { ref: a.dia_cierre, res: a.ultimoN >= a.diaCierreN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.diaCierreN, refN: a.diaCierreN };
     },
   },
   'barra-24h': {
@@ -637,9 +637,9 @@ const BARRAS_TABLA = {
     nota: (b) => `Apertura de la ventana móvil de cada activo contra su último precio · Lectura: ${new Date(b.generada).toISOString().slice(0, 19).replace('T', ' ')} UTC`,
     apta: (b) => b.activos && [...b.activos.values()].every((a) => a.apertura !== undefined),
     fila: (a) => {
-      if (a.aperturaN === null) return { ref: 'sin dato', res: 'Sin dato', verde: null };
+      if (a.aperturaN === null) return { ref: 'sin dato', res: 'Sin dato', verde: null, refN: null };
       const igual = a.ultimoN === a.aperturaN;
-      return { ref: a.apertura, res: a.ultimoN >= a.aperturaN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.aperturaN };
+      return { ref: a.apertura, res: a.ultimoN >= a.aperturaN ? (igual ? 'Verde (igual)' : 'Verde') : 'Rojo', verde: a.ultimoN >= a.aperturaN, refN: a.aperturaN };
     },
   },
   'barra-movimiento': {
@@ -648,11 +648,12 @@ const BARRAS_TABLA = {
     apta: (b) => b.movimiento && b.activos && [...b.activos.values()].every((a) => a.mov !== undefined),
     fila: (a) => {
       const res = { sube: 'Verde', igual: 'Verde (igual)', baja: 'Rojo', sin_cierre_nuevo: 'Sin cierre nuevo', sin_previa: 'Sin previa' }[a.mov];
-      return { ref: a.previo ?? 'sin dato', res: res || 'Sin previa', verde: a.mov === 'sube' || a.mov === 'igual' ? true : a.mov === 'baja' ? false : null };
+      return { ref: a.previo ?? 'sin dato', res: res || 'Sin previa', verde: a.mov === 'sube' || a.mov === 'igual' ? true : a.mov === 'baja' ? false : null, refN: a.previoN };
     },
   },
 };
 const precioTabla = (t) => /^\d+\.\d+$/.test(t) ? t.replace(/0+$/, '').replace(/\.$/, '') : t;
+const pctTabla = (ultimo, ref) => !Number.isFinite(ultimo) || !Number.isFinite(ref) || ref === 0 ? 'sin dato' : `${(ultimo - ref) / ref * 100 >= 0 ? '+' : ''}${((ultimo - ref) / ref * 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}%`;
 async function vistaTablaBarra(clave) {
   const def = BARRAS_TABLA[clave];
   if (!def) { location.hash = ''; return; }
@@ -677,7 +678,7 @@ async function vistaTablaBarra(clave) {
   meta.className = 'meta';
   meta.textContent = def.nota(b);
   ficha.appendChild(meta);
-  const filas = [...b.activos.entries()].map(([codigo, a]) => ({ codigo, ...def.fila(a), ultimoTxt: a.ultimo }));
+  const filas = [...b.activos.entries()].map(([codigo, a]) => ({ codigo, ultimoN: a.ultimoN, ...def.fila(a), ultimoTxt: a.ultimo }));
   const orden = (f) => f.verde === true ? (f.res === 'Verde (igual)' ? 1 : 0) : f.verde === false ? 2 : 3;
   filas.sort((x, y) => orden(x) - orden(y) || (x.codigo < y.codigo ? -1 : 1));
   const caja = document.createElement('div');
@@ -691,9 +692,14 @@ async function vistaTablaBarra(clave) {
     const tdA = document.createElement('td'); tdA.className = 'col-activo'; tdA.textContent = f.codigo;
     const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;
     const tdU = document.createElement('td'); tdU.textContent = precioTabla(f.ultimoTxt); tdU.title = f.ultimoTxt;
-    const tdS = document.createElement('td'); tdS.textContent = f.res;
-    if (f.verde === true) tdS.className = 'positivo';
-    else if (f.verde === false) tdS.className = 'negativo';
+    const tdS = document.createElement('td');
+    if (f.refN !== null && f.refN !== undefined) {
+      // El porcentaje es el resultado: positivo y 0 % en verde, negativo en rojo (decisión del usuario, 21-nov-2026).
+      tdS.textContent = pctTabla(f.ultimoN, f.refN);
+      tdS.className = f.verde === true ? 'positivo' : f.verde === false ? 'negativo' : '';
+    } else {
+      tdS.textContent = f.res;
+    }
     tr.append(tdA, tdR, tdU, tdS);
     cuerpo.appendChild(tr);
   }
