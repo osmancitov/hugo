@@ -50,6 +50,7 @@ import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionInd
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos, preCalculosFrescos } from './pre-calculado.mjs';
 import { esRutaBarra, validarBarra, RUTA_BARRA } from './barra-movil.mjs';
 import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
+import { validarArchivoIntradia, combinarArchivoIntradia } from './registro-intradia.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -151,9 +152,13 @@ export function registrar(ctx) {
     }
   }
   // Deja el clon en la punta de origin/main: descarta cualquier resto de una pasada interrumpida.
-  async function traerPunta(token) {
+  async function traerPunta(token, { acotada = false } = {}) {
     await git(['fetch', '--quiet', '--prune', 'origin'], { token });
-    await git(['reset', '--hard', '--quiet', `origin/${RAMA}`]);
+    if (acotada) {
+      // Mueve solo HEAD y el índice de git. No recorre ni compara los archivos del registro.
+      await git(['reset', '--soft', `origin/${RAMA}`]);
+      await git(['read-tree', '--reset', `origin/${RAMA}`]);
+    } else await git(['reset', '--hard', '--quiet', `origin/${RAMA}`]);
   }
   async function commitGit(mensaje) {
     const autor = ['-c', 'user.name=Osmancito', '-c', 'user.email=osmanvielma@gmail.com'];
@@ -429,9 +434,9 @@ export function registrar(ctx) {
         const shaRemota = actuales.get(f.rel);
         if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel);
-          if (esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
-          if (shaRemota !== undefined && !esCat) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
+          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel), esBarra = esRutaBarra(f.rel);
+          if (esBarra ? !validarBarra(buf) : esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo vacío.');
+          if (shaRemota !== undefined && !esCat && !esBarra) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
             if (esPre) continue; // ya publicado con otro contenido: un pre-cálculo no se pisa (lo anota el plan como conflicto)
             const remoto = await leerBlob(shaRemota);
             const modo = esInd ? relacionIndicador(leerIndicador(remoto), leerIndicador(buf)) : relacion(remoto, buf, f.rel);
@@ -471,6 +476,74 @@ export function registrar(ctx) {
     }
     throw new Error(`GitHub siguio avanzando durante ${INTENTOS_PUSH} intentos de publicar; no subi nada. La proxima pasada lo reintenta.`);
   }
+
+  // Publicación directa: únicamente las rutas producidas por la toma intradiaria.
+  // Reutiliza credencial, clon, commit, reintentos y guardia de la sincronización común.
+  ctx.publicarIntradia = async (archivos) => {
+    if (enCurso) throw Error('Ya hay una sincronización en curso; la lectura queda pendiente.');
+    const rutas = Object.keys(archivos).sort();
+    if (!rutas.length) return { commit: null, subidos: [], archivos: {} };
+    for (const rel of rutas) validarArchivoIntradia(rel, archivos[rel]);
+    const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Falta HUGO_GITHUB para publicar.');
+    const token = ctx.leerClave('.github-key');
+    if (!token) throw Error('Falta keys/.github-key; el registro local se conserva.');
+    enCurso = true;
+    ctx.activas.set('sincronizacion', { que: 'publicar solo las lecturas pendientes', desde: Date.now(), largo: true });
+    const parada = ctx.parada?.n;
+    const verificar = () => { if (ctx.parada?.n !== parada) throw Error('Publicación detenida a pedido; la cola se conserva.'); };
+    try {
+      if (!(await hayGit())) throw Error('No encuentro git; el registro local se conserva.');
+      await asegurarClon(repo, token);
+      for (let intento = 1; intento <= INTENTOS_PUSH; intento++) {
+        verificar();
+        await traerPunta(token, { acotada: true });
+        // ls-tree con rutas exactas, sin -r: no inventario remoto ni comparación histórica.
+        const salida = String(await git(['ls-tree', `origin/${RAMA}`, '--', ...rutas]));
+        const remotas = new Map();
+        for (const linea of salida.split('\n')) {
+          const m = /^\d+ blob ([0-9a-f]{40})\t(.+)$/.exec(linea);
+          if (m) remotas.set(m[2], m[1]);
+        }
+        const finales = {}, items = [];
+        for (const rel of rutas) {
+          verificar();
+          let remoto = null;
+          const sha = remotas.get(rel);
+          if (sha) {
+            const buf = await git(['cat-file', 'blob', sha], { buffer: true });
+            if (buf.length > 64 * 1024 * 1024 || shaBlob(buf) !== sha) throw Error('Registro remoto demasiado grande o huella distinta.');
+            remoto = buf.toString('utf8');
+          }
+          const texto = combinarArchivoIntradia(rel, archivos[rel], remoto);
+          if (Buffer.byteLength(texto) > 64 * 1024 * 1024) throw Error('Registro del día supera 64 MB; requiere revisar frecuencia o formato. No lo borro.');
+          finales[rel] = texto;
+          if (remoto === texto) continue;
+          const destino = path.join(clonDir(), rel);
+          fs.mkdirSync(path.dirname(destino), { recursive: true });
+          fs.writeFileSync(destino, texto);
+          items.push(rel);
+        }
+        if (!items.length) return { commit: null, subidos: [], archivos: finales };
+        verificar();
+        await git(['add', '--', ...items]);
+        // El índice parte del árbol remoto exacto; solo estas rutas entran al commit.
+        const sha = await commitGit(`Lecturas intradiarias: ${items.length} archivo(s), publicación directa`);
+        verificar();
+        try {
+          await git(['push', 'origin', `HEAD:${RAMA}`], { token });
+          return { commit: sha, subidos: items, archivos: finales };
+        } catch (e) {
+          if (!e.sinPermiso && intento < INTENTOS_PUSH && /non-fast-forward|fetch first|stale info|\[rejected\]/i.test(e.salidaGit || '')) continue;
+          throw e;
+        }
+      }
+      throw Error('GitHub siguió avanzando; la cola conserva las lecturas para reintentar.');
+    } catch (e) {
+      // No devuelve stderr con una posible credencial ni borra la cola del llamador.
+      throw Error(e.sinPermiso ? 'El token no tiene escritura; el registro queda pendiente.' : String(e.message).split(token).join('***'));
+    } finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
+  };
 
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
   // pasada: mantiene la sincronizacion automatica configurada. No se
@@ -616,7 +689,7 @@ export function registrar(ctx) {
 
   // Orden manual: corre una pasada ya, sin 👍, y contesta en el hilo.
   ctx.comando(/^\s*sincroniz\w*\s+registros?\s*[.!?]*\s*$/i, async (event) => {
-    if (enCurso) return decir(event, 'Ya estoy sincronizando registros; espera a que termine.');
+    if (enCurso || ctx.intradiaInfo?.().ocupado) return decir(event, 'Ya estoy sincronizando registros o tomando una lectura; espera a que termine.');
     enCurso = true;
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
     let reporte;
@@ -640,7 +713,7 @@ export function registrar(ctx) {
   // Un fallo del propio reporte nunca interrumpe la copia.
   let ultimoAviso = '';
   async function automatica() {
-    if (enCurso) return;
+    if (enCurso || ctx.intradiaInfo?.().ocupado) return;
     enCurso = true;
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros (autom\u00e1tica)', desde: Date.now(), largo: true });
     try {
@@ -714,7 +787,7 @@ export function registrar(ctx) {
   // Costuras para la corrida diaria (ciclo-diario.mjs): pasada completa con el guardia compartido.
   ctx.sincronizacionEnCurso = () => enCurso;
   ctx.correrPasada = async (progreso = async () => {}) => {
-    if (enCurso) return { error: 'Ya hay una sincronización de registros en curso.' };
+    if (enCurso || ctx.intradiaInfo?.().ocupado) return { error: 'Ya hay una sincronización de registros o lectura intradiaria en curso.' };
     enCurso = true;
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
     try { return await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat }); }

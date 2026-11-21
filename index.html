@@ -171,6 +171,17 @@ a.tit-link:hover { text-decoration: none; }
 .rachas-limite { overflow-wrap:anywhere; } /* la nota de la racha no ensancha la columna */
 .negativo { color:#ec9698; } .positivo { color:#78caa4; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
+/* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
+.superficie-caja { margin: 1rem 0; border-top: 1px solid var(--borde); padding-top: .8rem; }
+.superficie-controles { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: .75rem 0; font-size: .82rem; color: var(--tenue); }
+.superficie-controles label { display: flex; align-items: center; gap: .4rem; }
+.superficie-controles select, .superficie-controles button { font: inherit; color: var(--texto); background: var(--panel); border: 1px solid var(--borde); border-radius: 3px; padding: .35rem .5rem; }
+.superficie-controles button { cursor: pointer; color: var(--oro); }
+.superficie-controles input { width: 95px; accent-color: var(--oro); }
+.superficie-canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+.superficie-canvas:active { cursor: grabbing; }
+.superficie-detalle { color: var(--texto); font-size: .85rem; line-height: 1.6; padding: .7rem 0; border-top: 1px solid var(--borde); min-height: 3.8rem; }
+.superficie-leyenda, .superficie-nota { color: var(--tenue); font-size: .78rem; line-height: 1.6; margin: .5rem 0; }
 </style>
 </head>
 <body>
@@ -190,6 +201,8 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 </script>
 <script type="module">
 import { montarRachas } from './visor-rachas.mjs?v=2'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarSuperficie } from './visor-superficie.mjs?v=1';
+import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
 
@@ -490,12 +503,45 @@ async function cargarIcebergPre(e) {
 // registros/pre-calculado/stock/barra-24h/actual_barra; si el archivo no está publicado,
 // el bloque no aparece (lo que falta se muestra como que falta).
 const RUTA_BARRA = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/pre-calculado/stock/barra-24h/actual_barra';
+const BASE_INTRADIA_WEB = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/intradia/stock';
+const cacheIntradia = new Map();
+async function cargarRegistroIntradia(diaElegido = null) {
+  const clave = diaElegido || 'ultima';
+  if (cacheIntradia.has(clave)) return cacheIntradia.get(clave);
+  const promesa = (async () => {
+    const marca = `?t=${Math.floor(Date.now() / 60000)}`;
+    const r = await fetch(`${BASE_INTRADIA_WEB}/indice.json${marca}`);
+    if (r.status === 404) return null;
+    if (!r.ok) throw Error('No pude leer el índice intradiario.');
+    const indice = leerIndice(await r.text());
+    const elegido = diaElegido || diaUTC(Date.parse(indice.ultima));
+    if (!indice.dias.includes(elegido)) throw Error('No hay registro publicado para ese día.');
+    const nombre = rutaDia(elegido).split('/').at(-1);
+    const d = await fetch(`${BASE_INTRADIA_WEB}/${nombre}${marca}`);
+    if (!d.ok) throw Error('El índice existe, pero no pude traer sus lecturas.');
+    const dia = leerDia(await d.text(), (texto) => {
+      const b = parsearBarraVisor(texto);
+      if (!b?.dia || !b.activos?.size) throw Error('Lectura intradiaria sin referencia o activos.');
+    });
+    if (dia.dia !== elegido || !dia.lecturas.length) throw Error('Registro intradiario vacío o de otro día.');
+    if (!diaElegido && dia.lecturas.at(-1).generada !== indice.ultima) throw Error('Índice y última lectura no coinciden; vuelve a cargar.');
+    return { indice, dia };
+  })();
+  cacheIntradia.set(clave, promesa);
+  try { return await promesa; } catch (e) { cacheIntradia.delete(clave); throw e; }
+}
 async function cargarBarra() {
+  const registro = await cargarRegistroIntradia();
+  if (registro) return parsearBarraVisor(registro.dia.lecturas.at(-1).texto);
+  // Compatibilidad: solo cuando todavía no existe el registro nuevo.
   const r = await fetch(`${RUTA_BARRA}?t=${Math.floor(Date.now() / 60000)}`);
   if (!r.ok) return null;
+  return parsearBarraVisor(await r.text());
+}
+function parsearBarraVisor(texto) {
   const campos = {};
   const activos = new Map(); // detalle por activo: las tablas de las tres barras
-  for (const linea of (await r.text()).split('\n')) {
+  for (const linea of texto.split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
     if (m) { campos[m[1]] = m[2]; continue; }
     const a = linea.match(/^([A-Z0-9]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/);
@@ -535,7 +581,8 @@ async function cargarBarra() {
   }
   return b;
 }
-function vistaBarra(b) {
+function vistaBarra(b, { historica = false } = {}) {
+  const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}` : '';
   // Los dos instantes, visibles (decisión del usuario, 21-nov-2026: en UTC, «sin el cero»,
   // como el iceberg y la API): el de ESTA lectura arriba del bloque y el de la lectura
   // anterior dentro de la barra de movimiento, que es su referencia.
@@ -582,12 +629,17 @@ function vistaBarra(b) {
   // iguales aparte. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
   const d = b.dia;
   if (d) {
+    const enlaceSuperficie = document.createElement('a');
+    enlaceSuperficie.className = 'barra-movil-enlace';
+    enlaceSuperficie.href = '#/i/iceberg-stock/superficie';
+    enlaceSuperficie.textContent = 'Ver superficie 3D y lecturas';
+    caja.append(enlaceSuperficie);
     caja.append(seccion(
       `Cierre del día anterior (${d.ref}) a ${hora(b.generada)} UTC`,
       d.suben, d.bajan, d.suben + d.bajan,
       `Verdes ${d.suben} · Rojos ${d.bajan} (${d.suben + d.bajan} con vela)`,
       `Cierre de la vela diaria del ${d.ref} (UTC), referencia fija del día · iguales entre verdes: ${d.iguales}` + (d.sinDato ? ` · sin vela o sin dato: ${d.sinDato}` : ''),
-      '#/i/iceberg-stock/barra-dia'
+      '#/i/iceberg-stock/barra-dia' + sufijo
     ));
   }
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
@@ -598,7 +650,7 @@ function vistaBarra(b) {
     b.suben, b.bajan, b.conDato,
     `Verdes ${b.suben} · Rojos ${b.bajan} (${b.conDato} con dato de ${b.consultados})`,
     `Cierres de la ventana entre ${hora(b.cierreMin)} y ${hora(b.fin)} (UTC) · Fuente: ticker 24 h de Binance`,
-    '#/i/iceberg-stock/barra-24h'
+    '#/i/iceberg-stock/barra-24h' + sufijo
   ));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
@@ -615,7 +667,7 @@ function vistaBarra(b) {
       m.suben, m.bajan, m.suben + m.bajan,
       `Verdes ${m.suben} · Rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo)`,
       `Cada activo se mide con el cierre de su propia ventana` + (m.iguales === null ? '' : ` · iguales entre verdes: ${m.iguales}`) + (m.sinCierreNuevo ? ` · sin cierre nuevo: ${m.sinCierreNuevo}` : '') + (m.sinPrevia ? ` · sin previa: ${m.sinPrevia}` : ''),
-      '#/i/iceberg-stock/barra-movimiento'
+      '#/i/iceberg-stock/barra-movimiento' + sufijo
     );
     const ref = document.createElement('div');
     ref.className = 'barra-movil-nota';
@@ -677,7 +729,7 @@ const pctTabla = (ultimo, ref) => {
   }
   return `${v.toExponential(2)}%`;
 };
-async function vistaTablaBarra(clave) {
+async function vistaTablaBarra(clave, instante = null) {
   const def = BARRAS_TABLA[clave];
   if (!def) { location.hash = ''; return; }
   app.innerHTML = '';
@@ -691,7 +743,18 @@ async function vistaTablaBarra(clave) {
   const estado = document.createElement('p');
   estado.className = 'estado'; estado.textContent = 'Trayendo la instantánea…';
   app.append(volver, ficha, estado);
-  const b = await cargarBarra();
+  let b;
+  try {
+    if (instante) {
+      const ms = Date.parse(decodeURIComponent(instante));
+      if (!Number.isFinite(ms)) throw Error('Instante de lectura inválido.');
+      const registro = await cargarRegistroIntradia(diaUTC(ms));
+      const lectura = registro?.dia.lecturas.find((l) => Date.parse(l.generada) === ms);
+      if (!lectura) throw Error('Esa lectura no está publicada.');
+      b = parsearBarraVisor(lectura.texto);
+    } else b = await cargarBarra();
+  } catch (e) { if (estado.isConnected) estado.textContent = e.message; return; }
+  if (!estado.isConnected) return;
   estado.remove();
   if (!b || !def.apta(b)) {
     app.append(Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Esta instantánea no trae el detalle de esta barra; la próxima consulta lo incluirá.' }));
@@ -737,6 +800,54 @@ async function vistaTablaBarra(clave) {
   tabla.appendChild(cuerpo);
   caja.appendChild(tabla);
   app.append(caja);
+}
+
+async function vistaSuperficie() {
+  app.replaceChildren();
+  const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/i/iceberg-stock', textContent: 'volver' });
+  const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
+  const titulo = Object.assign(document.createElement('h1'), { textContent: 'Superficie del día' });
+  const meta = Object.assign(document.createElement('p'), { className: 'meta', textContent: 'Stocks · referencia diaria fija · horas UTC' });
+  ficha.append(titulo, meta);
+  const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
+  const cuerpo = document.createElement('section');
+  app.append(volver, ficha, estado, cuerpo);
+  let grafica = null, turno = 0;
+  limpiarGrafica = () => { turno++; grafica?.desmontar(); };
+  async function mostrar(registro) {
+    grafica?.desmontar(); cuerpo.replaceChildren();
+    const lecturas = registro.dia.lecturas;
+    meta.textContent = `${registro.dia.dia} UTC · ${lecturas.length} ${lecturas.length === 1 ? 'lectura real guardada' : 'lecturas reales guardadas'} · referencia fija: cierre del día anterior`;
+    if (lecturas.length === 1) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Solo hay una lectura guardada para este día. Se muestra su perfil; el terreno temporal necesita al menos dos. No se reconstruyen fotos anteriores.' }));
+    const zona = document.createElement('div'), barra = document.createElement('div');
+    cuerpo.append(zona, barra);
+    grafica = montarSuperficie(zona, lecturas, parsearBarraVisor, { alSeleccionar: (i) => {
+      const b = parsearBarraVisor(lecturas[i].texto);
+      barra.replaceChildren(vistaBarra(b, { historica: true }));
+    } });
+  }
+  try {
+    const registro = await cargarRegistroIntradia();
+    if (!cuerpo.isConnected) return;
+    estado.remove();
+    if (!registro) { cuerpo.textContent = 'Todavía no hay registro intradiario publicado. La instantánea anterior no contiene un historial temporal.'; return; }
+    const controles = Object.assign(document.createElement('div'), { className: 'superficie-controles' });
+    const etiqueta = Object.assign(document.createElement('label'), { textContent: 'Día UTC ' });
+    const elegirDia = document.createElement('select');
+    for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: dia }));
+    elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
+    const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Cargar lo publicado' });
+    recargar.onclick = () => { cacheIntradia.clear(); vistaSuperficie(); };
+    controles.append(etiqueta, recargar); ficha.append(controles);
+    elegirDia.onchange = async () => {
+      const este = ++turno;
+      try {
+        const r = await cargarRegistroIntradia(elegirDia.value);
+        if (este === turno && cuerpo.isConnected) await mostrar(r);
+      } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
+    };
+    await mostrar(registro);
+  } catch (e) { if (estado.isConnected) estado.textContent = `No pude cargar la superficie: ${e.message}`; }
 }
 
 async function cargarIndicador(codigo) {
@@ -1091,7 +1202,9 @@ function vistaIndicador(codigo) {
     } else nota.append(e.fuente);
     pie.append(nota);
     if (e.codigo === 'iceberg-stock') {
-      cargarBarra().then((b) => { if (b && pie.isConnected) pie.append(vistaBarra(b)); }).catch(() => {});
+      cargarBarra().then((b) => { if (b && pie.isConnected) pie.append(vistaBarra(b)); }).catch(() => {
+        if (pie.isConnected) pie.append(Object.assign(document.createElement('p'), { className: 'estado', textContent: 'No pude leer el registro de las barras. Vuelve a cargar para comprobar lo publicado.' }));
+      });
     }
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').';
@@ -1654,7 +1767,7 @@ async function ruta() {
   limpiarGrafica(); limpiarGrafica = () => {};
   const m = location.hash.match(/^#\/a\/(cripto|stock)\/(.+)$/);
   const mi = location.hash.match(/^#\/i\/(.+)$/);
-  const tb = location.hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)$/);
+  const tb = location.hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   // Espacios por mercado (decisión del usuario, 20-nov-2026): la entrada y la variación viven
   // bajo #/stock o #/cripto; las rutas sin mercado llevan al espacio inicial, Stocks.
   if (!m && !mi) {
@@ -1683,7 +1796,8 @@ async function ruta() {
   document.getElementById('vista-cap').classList.toggle('actual', !fuera && !enRachas);
   document.getElementById('vista-rachas').classList.toggle('actual', !fuera && enRachas);
   if (m) vistaActivo(m[1], decodeURIComponent(m[2]));
-  else if (tb) vistaTablaBarra(tb[1]);
+  else if (location.hash === '#/i/iceberg-stock/superficie') vistaSuperficie();
+  else if (tb) vistaTablaBarra(tb[1], tb[2]);
   else if (mi) vistaIndicador(decodeURIComponent(mi[1]));
   else if (enRachas) {
     const guardado = estadoLista; estadoLista = null;

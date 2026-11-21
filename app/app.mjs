@@ -21,6 +21,7 @@ import * as sincronizarRegistros from './modulos/sincronizar-registros.mjs';
 import * as radiografias from './modulos/radiografias.mjs';
 import * as barraMovil from './modulos/barra-movil.mjs';
 import * as cicloDiario from './modulos/ciclo-diario.mjs';
+import * as registroIntradia from './modulos/registro-intradia.mjs';
 import * as reporte from './modulos/reporte.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -78,7 +79,7 @@ const ctx = {
 const ojos = reporte.crearOjos({ client: app.client, token: botToken });
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias, barraMovil, cicloDiario]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias, barraMovil, registroIntradia, cicloDiario]) m.registrar(ctx);
 
 app.event('app_mention', async ({ event }) => {
   const texto = (event.text || '').replace(/<@[A-Z0-9]+>/g, ' ').trim();

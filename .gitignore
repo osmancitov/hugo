@@ -3,3 +3,4 @@ keys/
 img/
 node_modules/
 *.log
+.estado-intradia/

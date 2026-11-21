@@ -16,11 +16,10 @@
 // ningun lado; contradice esa decision y no es el origen del iceberg publicado (lo calcula
 // pre-calculado.mjs con cero = verde). Pendiente de unificar; aqui manda la decision.
 //
-// Instantanea: un archivo de texto vivo, UN dato por linea, desechable (decision del
-// usuario, 20-nov-2026: almacenamiento temporal); se pisa atomico en cada consulta. NO es
-// un registro del historico: no guarda series ni reconstruye ventanas pasadas.
-// Publicacion al visor: pendiente de decision (frecuencia de generacion y de subida); la
-// sincronizacion diaria todavia no recoge esta carpeta (esRutaPre no la conoce).
+// Instantanea: copia viva en texto, UN dato por linea; se pisa atomico en cada consulta.
+// Desde el 21-nov, registro-intradia.mjs conserva cada lectura completa antes de actualizar
+// esta copia y publica solo sus rutas pendientes mediante el transporte comun.
+// La frecuencia automatica sigue sin elegirse: no hay reloj activo por defecto.
 //
 // Movimiento entre lecturas (decision del usuario, 20-nov-2026: «quiero ver cuando la
 // cuestion realmente esta aumentando, no cuando la referencia bajo»): el verde de la
@@ -378,7 +377,7 @@ export function escribirBarra(dirRegistros, texto) {
 // La consulta completa: universo del registro, dos tandas, barra, comparacion con la
 // lectura anterior guardada en la propia instantanea (si la hay y es legible; si no, no se
 // compara ni se inventa) e instantanea nueva en disco.
-export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now() } = {}) {
+export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), guardarInstantanea = true } = {}) {
   const universo = universoBarra(dirVelas);
   if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
   const dirRegistros = path.dirname(dirVelas);
@@ -400,7 +399,7 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
     }
   }
   const texto = formatearBarra(barra, ahora);
-  const rel = escribirBarra(dirRegistros, texto);
+  const rel = guardarInstantanea ? escribirBarra(dirRegistros, texto) : RUTA_BARRA;
   return { barra, texto, rel, generada: ahora };
 }
 
@@ -417,7 +416,8 @@ export function registrar(ctx) {
     const decir = (text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text });
     try {
       const host = process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST || HOST_POR_DEFECTO;
-      const { barra, rel, generada } = await generarBarra({ dirVelas: dirVelas(), host });
+      const tomar = ctx.tomarBarra || generarBarra;
+      const { barra, rel, generada, registro, publicacion, pendiente } = await tomar({ dirVelas: dirVelas(), host });
       const l = [
         `Barra móvil 24 h (stocks), consultada ahora a Binance:`,
       ];
@@ -439,6 +439,9 @@ export function registrar(ctx) {
       if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
       l.push(`· Tablas del visor (qué activos quedaron verdes): <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-dia|día anterior> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-24h|24 h> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-movimiento|movimiento>.`);
       l.push(`· Instantánea guardada en ${rel} (archivo vivo, se pisa en cada consulta).`);
+      if (registro) l.push(`· Registro intradiario: ${registro.lecturas} lectura(s) del día guardada(s).`);
+      if (publicacion) l.push(publicacion.commit ? `· Publicada en el commit ${publicacion.commit.slice(0, 7)}.` : '· Publicación confirmada, sin cambios nuevos.');
+      if (pendiente) l.push(`· Guardada, pero pendiente de publicar: ${pendiente}. Reintentar con «intradia publica», sin otra consulta.`);
       await decir(l.join('\n'));
     } catch (e) {
       await decir(`No pude consultar la barra: ${e.message}`);

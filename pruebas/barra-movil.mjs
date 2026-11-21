@@ -349,7 +349,7 @@ test('tablas del visor: miembros, precios, iguales y exclusiones coinciden con c
     ],
   };
   const texto = formatearBarra(base, 4000);
-  const ctx = vm.createContext({ RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
+  const ctx = vm.createContext({ cargarRegistroIntradia: async () => null, RUTA_BARRA: 'fixture', fetch: async () => ({ ok: true, text: async () => texto }) });
   vm.runInContext(cargar + defs + html.slice(html.indexOf('const precioTabla ='), html.indexOf('async function vistaTablaBarra(')) + ';globalThis.defs = BARRAS_TABLA;globalThis.pctTabla = pctTabla;', ctx);
   const b = await vm.runInContext('cargarBarra()', ctx);
   for (const [key, green, red, equal, out] of [['barra-dia',1,1,1,1], ['barra-24h',2,1,1,0], ['barra-movimiento',1,1,1,1]]) {
