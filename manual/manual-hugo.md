@@ -43,7 +43,7 @@ Se escriben mencionando `@Hugo`. Cualquiera puede pedir cualquier comando (decis
 Cualquier otro texto: Hugo responde que no reconoce la orden y apunta a `ayuda`. Lo recibe cualquiera que lo mencione, y no ejecuta nada.
 
 ### Confirmación
-Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`restart` / `reiniciar`) se preguntan en el hilo, mencionando al usuario que debe confirmar, y solo se hacen con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Regla común de `registra`, por decisión del usuario (15-nov-2026): ejecuta directamente la orden del usuario o del asistente autorizado, sin pedir 👍, con independencia de la clase del activo. No cambia la confirmación de las actualizaciones del programa. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado` y `ayuda` no piden confirmación. La parada es única (decisión del usuario, 15-nov-2026): `stop` y `restart` suben el mismo contador (`ctx.parada`) y cada trabajo largo lo mira en cada paso; lo ya hecho nunca se deshace.
+Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`restart` / `reiniciar`) se preguntan en el canal, mencionando al usuario que debe confirmar, y solo se hacen con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Regla común de `registra`, por decisión del usuario (15-nov-2026): ejecuta directamente la orden del usuario o del asistente autorizado, sin pedir 👍, con independencia de la clase del activo. No cambia la confirmación de las actualizaciones del programa. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado` y `ayuda` no piden confirmación. La parada es única (decisión del usuario, 15-nov-2026): `stop` y `restart` suben el mismo contador (`ctx.parada`) y cada trabajo largo lo mira en cada paso; lo ya hecho nunca se deshace.
 
 ## Consola de la Debian (no son órdenes de Slack)
 - Estado: `systemctl --user status hugo.service`
@@ -273,3 +273,7 @@ Las tres barras compartidas por 2D y 3D y sus tablas separan rojo (bajó), gris 
 ### Retirar avisos sueltos
 
 El 👍 del usuario retira un aviso propio de Hugo si está suelto, sin respuestas ni archivos. Se conservan las conversaciones, las solicitudes pendientes y los reportes en uso. En una solicitud pendiente, el 👍 aprueba y no borra. Si no se puede comprobar el estado, se conserva. No hay borrado de hilos ni aviso nuevo al retirarlo. Si se retira el reporte intradiario ya terminado, la siguiente lectura real puede abrir uno nuevo; sin retirarlo se sigue usando el mismo.
+
+### Menciones y solicitudes
+
+Todo mensaje de Hugo que menciona al usuario sale en el mismo canal, fuera del hilo. Las solicitudes de aprobación se retiran al aceptar su 👍, después de guardar la aprobación en el registro local `~/.local/share/hugo/aprobaciones.jsonl`. El trabajo y su resultado conservan el hilo de origen. Si no se puede guardar la aprobación, no se ejecuta ni se retira la solicitud; si solo falla el retiro en Slack, el trabajo aprobado continúa y no se repite.

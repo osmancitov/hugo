@@ -95,11 +95,16 @@ export async function abrirHilo({client,token,canal,texto}) {
 // edita ese mismo mensaje en vez de abrir otro. Se instala una sola vez (app.mjs) envolviendo
 // postMessage: el primer mensaje al hilo de la mencion se convierte en edicion de los ojitos;
 // todo lo demas (avisos de canal, preguntas de 👍, mensajes siguientes) pasa igual que antes.
-export function crearOjos({client,token}) {
+export function crearOjos({client,token,usuario}) {
  const pendientes=new Map(); // canal|hilo -> ts del mensaje 👀 a la espera de respuesta
  const clave=(channel,hilo)=>`${channel}|${hilo||''}`;
  const publicar=client.chat.postMessage.bind(client.chat);
  client.chat.postMessage=async m=>{
+  // Toda mención al dueño sale al canal, nunca se convierte en edición de los ojos.
+  if(usuario&&String(m.text||'').includes(`<@${usuario}>`)){
+   const {thread_ts,...raiz}=m;
+   return publicar(raiz);
+  }
   const k=clave(m.channel,m.thread_ts);
   const ts=m.thread_ts&&pendientes.get(k);
   if(ts){pendientes.delete(k);await client.chat.update({token:m.token||token,channel:m.channel,ts,text:m.text});return{ts};}

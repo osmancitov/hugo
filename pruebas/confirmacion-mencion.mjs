@@ -4,12 +4,12 @@ import { registrar, _prueba } from '../app/modulos/confirmacion.mjs';
 
 test('la solicitud menciona al aprobador y solo su pulgar confirma', async () => {
   const posts=[]; let reaccion, si=0;
-  const ctx={botToken:'prueba',activas:new Map(),app:{client:{chat:{postMessage:async m=>{posts.push(m);return {ts:'1.2'};}}},event:(_nombre,fn)=>{reaccion=fn;}}};
+  const ctx={guardarAprobacion:()=>{},botToken:'prueba',activas:new Map(),app:{client:{chat:{postMessage:async m=>{posts.push(m);return {ts:'1.2'};}}},event:(_nombre,fn)=>{reaccion=fn;}}};
   registrar(ctx);
   try {
     await ctx.confirmar({channel:'C1',thread_ts:'1.0',user:'UDUENO',texto:'Solicitud. ¿Aplico?',alSi:async()=>{si++;},alNo:async()=>{}});
     assert.equal(posts.length,1);
-    assert.equal(posts[0].thread_ts,'1.0');
+    assert.equal(posts[0].thread_ts,undefined);
     assert.match(posts[0].text,/^<@UDUENO> Solicitud/);
     assert.equal((posts[0].text.match(/<@UDUENO>/g)||[]).length,1);
     await reaccion({event:{item:{type:'message',channel:'C1',ts:'1.2'},reaction:'+1',user:'UASISTENTE'}});

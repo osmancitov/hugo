@@ -76,7 +76,7 @@ const ctx = {
 
 // Los ojitos: cada mencion autorizada recibe de inmediato un mensaje 👀 y la primera respuesta
 // del comando edita ese mismo mensaje. La caja envuelve postMessage una sola vez.
-const ojos = reporte.crearOjos({ client: app.client, token: botToken });
+const ojos = reporte.crearOjos({ client: app.client, token: botToken, usuario: USUARIO });
 
 // Orden: confirmacion primero (los demas la usan).
 for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias, barraMovil, registroIntradia, cicloDiario]) m.registrar(ctx);
