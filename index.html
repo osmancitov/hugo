@@ -178,6 +178,16 @@ a.tit-link:hover { text-decoration: none; }
 .superficie-controles select, .superficie-controles button { font: inherit; color: var(--texto); background: var(--panel); border: 1px solid var(--borde); border-radius: 3px; padding: .35rem .5rem; }
 .superficie-controles button { cursor: pointer; color: var(--oro); }
 .superficie-controles input { width: 95px; accent-color: var(--oro); }
+.superficie-pasos { display: inline-flex; align-items: stretch; gap: .25rem; }
+.superficie-pasos select { min-width: 5.3rem; }
+.superficie-pasos .superficie-flecha { min-width: 2.2rem; min-height: 2.2rem; padding: .25rem; font: 1.1rem Arial, sans-serif; }
+.superficie-flecha:disabled { opacity: .3; cursor: default; }
+@media (max-width: 600px) {
+  .superficie-controles:has(.superficie-pasos) { gap: .6rem; }
+  .superficie-controles label:has(.superficie-pasos) { flex: 1 1 100%; justify-content: space-between; }
+  .superficie-pasos .superficie-flecha { min-width: 2.5rem; min-height: 2.5rem; }
+  .superficie-pasos select { width: 7.5rem; }
+}
 .superficie-canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
 .superficie-canvas:active { cursor: grabbing; }
 .superficie-detalle { color: var(--texto); font-size: .85rem; line-height: 1.6; padding: .7rem 0; border-top: 1px solid var(--borde); min-height: 3.8rem; }
@@ -201,7 +211,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 </script>
 <script type="module">
 import { montarRachas } from './visor-rachas.mjs?v=2'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie } from './visor-superficie.mjs?v=2';
+import { montarSuperficie } from './visor-superficie.mjs?v=3';
 import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';

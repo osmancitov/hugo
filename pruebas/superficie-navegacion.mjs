@@ -1,0 +1,53 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { montarPasos } from '../visor-superficie.mjs';
+
+class Elemento {
+  constructor(tag) { this.tagName = tag; this.hijos = []; this.atributos = {}; }
+  append(...hijos) { this.hijos.push(...hijos); }
+  setAttribute(k, v) { this.atributos[k] = v; }
+}
+function banco(cantidad, inicial = 0) {
+  const anterior = global.document;
+  global.document = { createElement: (tag) => new Elemento(tag) };
+  const selector = { selectedIndex: inicial, options: Array(cantidad) };
+  let pasos;
+  const llamados = [];
+  try {
+    pasos = montarPasos(selector, 'Activo', (i) => { selector.selectedIndex = i; llamados.push(i); pasos.actualizar(); });
+  } finally { global.document = anterior; }
+  const [previo, lista, siguiente] = pasos.grupo.hijos;
+  return { selector, pasos, previo, lista, siguiente, llamados };
+}
+test('flechas y selector comparten posición; los extremos no se envuelven', () => {
+  const b = banco(3);
+  assert.equal(b.lista, b.selector);
+  assert.equal(b.previo.disabled, true); assert.equal(b.siguiente.disabled, false);
+  b.previo.onclick(); assert.deepEqual(b.llamados, []);
+  b.siguiente.onclick(); assert.equal(b.selector.selectedIndex, 1);
+  b.siguiente.onclick(); assert.equal(b.selector.selectedIndex, 2);
+  assert.equal(b.siguiente.disabled, true);
+  b.siguiente.onclick(); assert.deepEqual(b.llamados, [1, 2]);
+  b.previo.onclick(); assert.equal(b.selector.selectedIndex, 1);
+  assert.equal(b.previo.disabled, false); assert.equal(b.siguiente.disabled, false);
+});
+test('cambiar el desplegable actualiza los límites y continúa desde su nueva posición', () => {
+  const b = banco(113);
+  b.selector.selectedIndex = 75; b.pasos.actualizar(); b.previo.onclick();
+  assert.equal(b.selector.selectedIndex, 74);
+  b.selector.selectedIndex = 112; b.pasos.actualizar();
+  assert.equal(b.siguiente.disabled, true); assert.equal(b.previo.disabled, false);
+});
+test('una sola lectura o una lista vacía desactiva ambas flechas', () => {
+  for (const [n, i] of [[1, 0], [0, -1]]) {
+    const b = banco(n, i);
+    assert.equal(b.previo.disabled, true); assert.equal(b.siguiente.disabled, true);
+    b.previo.onclick(); b.siguiente.onclick(); assert.deepEqual(b.llamados, []);
+  }
+});
+test('cada flecha tiene nombre accesible y no envía formularios', () => {
+  const b = banco(2);
+  assert.equal(b.previo.atributos['aria-label'], 'Activo anterior');
+  assert.equal(b.siguiente.atributos['aria-label'], 'Activo siguiente');
+  assert.equal(b.previo.type, 'button'); assert.equal(b.siguiente.type, 'button');
+});

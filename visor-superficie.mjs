@@ -9,6 +9,31 @@ const pct = (n) => {
 };
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
+// Misma navegación para activos y lecturas: los extremos no saltan al otro lado.
+export function montarPasos(selector, nombre, mover) {
+  const grupo = crear('span', 'superficie-pasos');
+  const anterior = crear('button', 'superficie-flecha', '←');
+  const siguiente = crear('button', 'superficie-flecha', '→');
+  for (const [boton, direccion] of [[anterior, 'anterior'], [siguiente, 'siguiente']]) {
+    boton.type = 'button';
+    boton.setAttribute('aria-label', `${nombre} ${direccion}`);
+    boton.title = `${nombre} ${direccion}`;
+  }
+  const actualizar = () => {
+    anterior.disabled = selector.selectedIndex <= 0;
+    siguiente.disabled = selector.selectedIndex < 0 || selector.selectedIndex >= selector.options.length - 1;
+  };
+  const paso = (delta) => {
+    const indice = selector.selectedIndex + delta;
+    if (indice >= 0 && indice < selector.options.length) mover(indice);
+  };
+  anterior.onclick = () => paso(-1);
+  siguiente.onclick = () => paso(1);
+  grupo.append(anterior, selector, siguiente);
+  actualizar();
+  return { grupo, actualizar };
+}
+
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
   let giro = -0.34, inclinacion = 0.68, amplitud = 1, ultima = barras.length - 1, activo = 0, arrastre = null, proyecciones = [], viva = true;
@@ -19,10 +44,12 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
   barras.forEach((b, i) => { const o = crear('option', '', `${hora(b.generada)} UTC`); o.value = i; elegirLectura.append(o); });
   elegirLectura.value = ultima;
-  etiquetaLectura.append(elegirLectura);
+  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo));
+  etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
-  etiquetaActivo.append(elegirActivo);
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i));
+  etiquetaActivo.append(pasosActivo.grupo);
   const reiniciar = crear('button', '', 'Restablecer vista'); reiniciar.type = 'button';
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
@@ -124,7 +151,17 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     texto({ x: 12, y: alto - 34 }, barras.length < 2 ? 'Una lectura: aún sin superficie temporal.' : `${barras.length} lecturas reales · arrastra para girar`, '#9aa0ac');
     describir();
   }
-  const seleccionar = (j, i) => { ultima = j; activo = i; elegirLectura.value = j; elegirActivo.value = i; dibujar(); alSeleccionar(j); };
+  const seleccionar = (j, i) => {
+    if (j < 0 || j >= barras.length || i < 0 || i >= codigos.length) return;
+    const x = window.scrollX, y = window.scrollY;
+    ultima = j; activo = i;
+    elegirLectura.value = j; elegirActivo.value = i;
+    pasosLectura.actualizar(); pasosActivo.actualizar();
+    // Se conservan los mismos controles y el mismo terreno: no se reinicia su ángulo,
+    // relieve, foco o posición al avanzar o usar un desplegable.
+    dibujar(); alSeleccionar(j);
+    if (window.scrollX !== x || window.scrollY !== y) window.scrollTo({ left: x, top: y, behavior: 'instant' });
+  };
   elegirLectura.onchange = () => seleccionar(Number(elegirLectura.value), activo);
   elegirActivo.onchange = () => seleccionar(ultima, Number(elegirActivo.value));
   relieve.oninput = () => { amplitud = Number(relieve.value); dibujar(); };
