@@ -76,7 +76,7 @@ test('automatica: un mensaje editado por minuto con estimacion y cierre con el r
     assert.ok(posts.length >= 4 && posts.length <= 9, `mensajes abiertos: ${posts.length}`);
     // El primer mensaje avisa en el canal que empieza la pasada; los avances son respuestas en su hilo.
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
-    assert.ok(/Buscando cambios…/.test(posts[0].text), posts[0].text);
+    assert.ok(/Verificando cambios…/.test(posts[0].text), posts[0].text);
     assert.ok(posts.slice(1).every((p) => p.thread_ts === posts[0].tsAsignado), 'los avances cuelgan del aviso inicial');
     assert.ok(posts.slice(1).every((p) => p.channel === 'avisos' && !p.text.includes('Sincronización automática de registros')));
     // A 30 s por archivo, tras el primero el ritmo permite estimar: alguna edicion muestra el tiempo aproximado.
@@ -102,11 +102,11 @@ test('automatica: sin nada que copiar, anuncia la comprobacion y cierra con el r
     // La senal de arranque es lo primero que sale, antes de clonar y comparar: un aviso en el canal.
     assert.equal(posts.length, 1, `mensajes abiertos: ${posts.length}`);
     assert.equal(posts[0].thread_ts, undefined, 'el aviso inicial va al canal, sin hilo');
-    assert.ok(/Buscando cambios…/.test(posts[0].text), posts[0].text);
+    assert.ok(/Verificando cambios…/.test(posts[0].text), posts[0].text);
     const ultimo = b.llamadas.at(-1);
     assert.equal(ultimo.tipo, 'update');
     assert.equal(ultimo.ts, posts[0].tsAsignado, 'Sin cambios edita la raíz, sin respuesta en hilo');
-    assert.ok(/^Buscando cambios…\nTodo ok\.$/.test(ultimo.text), ultimo.text);
+    assert.ok(/^Verificando cambios…\nTodo OK$/.test(ultimo.text), ultimo.text);
   } finally { b.restaurar(); }
 });
 

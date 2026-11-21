@@ -724,7 +724,7 @@ export function registrar(ctx) {
       let reporte = null, ociosa = false, abiertoEn = 0, fase = '', faseInicio = 0, faseBase = 0, padre = null;
       const abrirReporte = async (texto) => {
         if (!padre) {
-          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Buscando cambios…' });
+          padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Verificando cambios…' });
         }
         reporte = await ctx.reporte.crearSync({ canal: ctx.canal, hilo: padre, inicio: texto });
         abiertoEn = Date.now();
@@ -760,7 +760,7 @@ export function registrar(ctx) {
       };
       // Aviso ANTES de clonar y comparar: sin esta señal no se distingue «en curso» de «no arranco».
       if (ctx.canal) {
-        try { padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Buscando cambios…' }); }
+        try { padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Verificando cambios…' }); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
       const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
@@ -772,10 +772,10 @@ export function registrar(ctx) {
         // Sin novedades: reutiliza la raíz, sin crear una respuesta para decirlo.
         // Con resultado material conserva el reporte en hilo.
         if (!aviso) reporte = await ctx.reporte.crearSync({ canal: ctx.canal, mensajeTs: padre });
-        else await abrirReporte('Buscando cambios…');
+        else await abrirReporte('Verificando cambios…');
       }
       if (reporte) {
-        try { await reporte.final(aviso || 'Buscando cambios…\nTodo ok.'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
+        try { await reporte.final(aviso || 'Verificando cambios…\nTodo OK'); } catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); }
         ultimoAviso = '';
       } else {
         const firma = aviso ? aviso.replace(/ en [\d.]+ s/, '').replace(/commit [0-9a-f]{7}/, '') : '';
