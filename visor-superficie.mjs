@@ -159,7 +159,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const p = proyectar(-1.03, -.7, z);
       texto(p, pct(z * maximo), z === 0 ? ORO : '#9aa0ac', 'right');
     }
-    texto({ x: 12, y: 22 }, 'Altura frente al cierre fijo (%)', ORO);
     const malla = puntos.map((fila, j) => fila.map((p, i) => p ? { ...proyectar(px(i), py(j), p.altura / maximo), p, i, j } : null));
     proyecciones = malla.flat().filter(Boolean);
     const caras = [];
