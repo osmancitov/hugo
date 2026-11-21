@@ -143,6 +143,9 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  assert.ok(src.includes('filtroRacha.hidden = soloTodas'),'G/P oculta el selector entero');
  assert.ok(src.includes("if (soloTodas) direccionRacha='todas'"),'G/P fuerza todas');
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
+ // La importación del módulo lleva versión en la URL para que cada publicación llegue sin esperar la caché de Pages (10 min).
+ const ind=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.ok(ind.includes("./visor-rachas.mjs?v="),'importación versionada');
  // La nota de racha limitada va bajo el nombre del activo: en la celda estrecha de la racha se partía letra a letra.
  assert.ok(src.includes("id.append(texto('small',d.motivo,'rachas-limite'))"),'nota bajo el nombre');
  assert.ok(!src.includes("dias.append(texto('small',d.motivo,'rachas-limite'))"),'nota fuera de la celda estrecha');
