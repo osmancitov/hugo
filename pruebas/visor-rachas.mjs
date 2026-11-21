@@ -134,7 +134,13 @@ test('la ventana del día: fin es el último día UTC cerrado e inicio cuenta 90
 });
 test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el árbol de GitHub',()=>{
  const src=fs.readFileSync(new URL('../visor-rachas.mjs',import.meta.url),'utf8');
- for(const marca of ['registros/pre-calculado/','lectura-dia-90d','ranking-24h','Activos analizados','Sin lectura en la ventana']) assert.ok(src.includes(marca),marca);
+ for(const marca of ['registros/pre-calculado/','lectura-dia-90d','ranking-24h','Analizando los registros','Sin lectura en la ventana']) assert.ok(src.includes(marca),marca);
+ // Sin repaso cosmético (decisión del usuario, 20-nov-2026): la lectura precalculada pinta directo;
+ // la barra de avance queda solo para el repliegue en vivo.
+ assert.ok(!src.includes('Activos analizados'),'sin repaso'); assert.ok(!src.includes('repasar'),'sin repaso');
+ // En el orden G/P el filtro de racha solo ofrece «todas» y no recorta (decisión del usuario, 20-nov-2026).
+ assert.ok(src.includes("const soloTodas = orden==='gp'"),'G/P sin opciones de racha');
+ assert.ok(src.includes("if (soloTodas) direccionRacha='todas'"),'G/P fuerza todas');
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
  // La nota de racha limitada va bajo el nombre del activo: en la celda estrecha de la racha se partía letra a letra.
  assert.ok(src.includes("id.append(texto('small',d.motivo,'rachas-limite'))"),'nota bajo el nombre');

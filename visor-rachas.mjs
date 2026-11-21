@@ -132,7 +132,7 @@ function textoFuente(origen) {
 
 export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null) {
   if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
-  const titulo = texto('h2', 'Variación y rachas');
+  // Sin título propio (decisión del usuario, 20-nov-2026): el título combinado del espacio (p. ej. «Stocks Variación») ya corona la vista.
   const nota = texto('p', 'Lectura del día sobre la ventana de 90 días terminada en la última vela cerrada; no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
   const controles = texto('div', '', 'rachas-controles');
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
@@ -141,7 +141,17 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
   for (const [v,t] of [['gp','G/P'],['ranking','Ranking del día'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
-  for (const [v,t] of [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']]) { const o=texto('option',t); o.value=v; filtroRacha.append(o); } filtroRacha.value=direccionRacha;
+  // En el orden G/P no hay opciones de racha (decisión del usuario, 20-nov-2026): queda solo
+  // «todas» y el filtro deja de recortar la lista; al cambiar de orden vuelven las dos opciones.
+  function pintarFiltroRacha() {
+    const soloTodas = orden==='gp';
+    const ops = soloTodas ? [['todas','Rachas: todas']] : [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']];
+    filtroRacha.replaceChildren();
+    for (const [v,t] of ops) { const o=texto('option',t); o.value=v; filtroRacha.append(o); }
+    if (soloTodas) direccionRacha='todas';
+    filtroRacha.value=direccionRacha;
+  }
+  pintarFiltroRacha();
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Preparando la lectura…','rachas-nota'); estado.setAttribute('role','status');
   let avanceNum=null, avanceBarra=null, avanceCod=null;
@@ -159,27 +169,13 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
     avanceBarra.style.width=(n/total*100)+'%';
   }
   function finCarga() { avanceNum=avanceBarra=avanceCod=null; estado.className='rachas-nota'; }
-  // Repaso de presentación (decisión del usuario, 20-nov-2026): la lectura ya viene analizada
-  // por Hugo, así que el visor muestra todos los códigos en unos 5 segundos con el aviso
-  // «analizados» en lugar de repetir el análisis en vivo.
-  function repasar(lista) {
-    const codigos = lista.map((x) => x.activo.codigo);
-    return new Promise((listo) => {
-      if (!codigos.length) return listo();
-      const t0 = Date.now();
-      const pasos = Math.max(1, Math.ceil(codigos.length / 90)); // ~90 pasos de 55 ms ≈ 5 s
-      let k = 0;
-      const reloj = setInterval(() => {
-        k = Math.min(codigos.length, k + pasos);
-        avanzar(k, codigos.length, codigos[k - 1], 'Activos analizados');
-        if (k >= codigos.length || Date.now() - t0 >= 5000) { clearInterval(reloj); listo(); }
-      }, 55);
-    });
-  }
+  // Sin repaso de presentación (decisión del usuario, 20-nov-2026): la lectura ya viene
+  // analizada por Hugo y la tabla sale directo; la barra de avance queda solo para el
+  // repliegue en vivo, que sí trabaja en la visita.
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
-  reglas.append(texto('p','Lectura del día: Hugo deja calculadas estas métricas cada día sobre la ventana de 90 días y el visor las presenta con un repaso de segundos. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
+  reglas.append(texto('p','Lectura del día: Hugo deja calculadas estas métricas cada día sobre la ventana de 90 días. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
   reglas.append(texto('p','Activo: el código del activo; su fila abre su gráfica habitual.'));
   reglas.append(texto('p','R %: rango del día, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio de la ventana.'));
@@ -189,7 +185,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   reglas.append(texto('p','Ranking del día: posición única por variación de la jornada (cierre frente a apertura), de la mayor caída a la mayor subida; un empate exacto se ordena por código.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
-  contenedor.append(titulo,nota,controles,estado,fuente,reglas,cuerpo);
+  contenedor.append(nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
     if (!ultimo || !contenedor.isConnected) return;
     const todos=ultimo.resultados.filter(x=>clase==='todos'||x.activo.clase===clase);
@@ -234,18 +230,13 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       const ul=document.createElement('ul'); for(const x of incidencias) ul.append(texto('li',x.activo.codigo+' · '+x.activo.clase+': '+(x.datos?'última vela '+fecha(x.datos.fecha)+' UTC':x.error))); det.append(ul); cuerpo.append(det);
     }
   }
-  selector.onchange=()=>{clase=selector.value;pintar();}; clasificar.onchange=()=>{orden=clasificar.value;pintar();}; filtroRacha.onchange=()=>{direccionRacha=filtroRacha.value;pintar();};
+  selector.onchange=()=>{clase=selector.value;pintar();}; clasificar.onchange=()=>{orden=clasificar.value;pintarFiltroRacha();pintar();}; filtroRacha.onchange=()=>{direccionRacha=filtroRacha.value;pintar();};
   async function iniciar(forzar=false) {
     recargar.disabled=true;
     if(forzar) {ultimo=null;pendiente=null;cuerpo.replaceChildren();}
     try {
       if(!pendiente) pendiente=cargar(catalogo,avanzar);
       ultimo=await pendiente;
-      // El repaso solo aplica a la lectura ya calculada; el repliegue en vivo ya mostró su avance.
-      if (ultimo.origen[clase]==='archivo'||(clase==='todos'&&(ultimo.origen.stock==='archivo'||ultimo.origen.cripto==='archivo'))) {
-        finCarga(); estado.textContent='';
-        await repasar(ultimo.resultados.filter(x=>clase==='todos'||x.activo.clase===clase));
-      }
       pintar();
     } catch(err) {pendiente=null;finCarga();estado.textContent='No pude completar la lectura: '+err.message+'. No se muestra un orden parcial como completo.';}
     finally {recargar.disabled=false;}

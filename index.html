@@ -125,18 +125,14 @@ a.tit-link:hover { text-decoration: none; }
 .cap-fecha { color: var(--tenue); font-size: .68rem; }
 
 .vistas, .mercados { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
-.vistas { gap:.9rem; }
 .mercados { margin-bottom:.55rem; }
 .vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
-/* Dos niveles (decisión del usuario, 20-nov-2026): el mercado es el modo principal, con botones;
-   la vista (Capitalización / Variación) es secundaria, como pestañas sin recuadro que no compiten
-   con él. Ninguno de los dos niveles subraya su texto, ni al pasar el dedo o el ratón. */
-.mercados a { border:1px solid var(--oro); border-radius:3px; font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); }
-.mercados a.actual { background:var(--oro); color:var(--tinta); }
-.vistas a { padding:.15rem .2rem; border-bottom:2px solid transparent; font-size:.8rem; color:var(--tenue); }
-.vistas a.actual { color:var(--oro); border-bottom-color:var(--oro); }
+/* Los dos niveles como botones idénticos (decisión del usuario, 20-nov-2026): misma forma y
+   mismo dorado; la vista en curso se distingue por el título combinado bajo los botones.
+   Ninguno subraya su texto, ni al pasar el ratón. */
+.mercados a, .vistas a { border:1px solid var(--oro); border-radius:3px; font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); }
+.mercados a.actual, .vistas a.actual { background:var(--oro); color:var(--tinta); }
 .mercados a:hover, .vistas a:hover { text-decoration:none; }
-.vistas a:hover { color:var(--oro); }
 #rotulo-mercado { font-family:'Cinzel','Lora',serif; font-weight:600; font-size:1.15rem; letter-spacing:.06em; color:var(--oro); margin:.1rem 0 .6rem; }
 .rachas-nota { color:var(--tenue); font-size:.85rem; line-height:1.6; margin:.65rem 0; }
 .rachas-controles { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; margin:1rem 0; }
@@ -377,7 +373,11 @@ function nodoArbol(titulo, cuenta, lista, conCap) {
 // mercado, una sola maquinaria): solo su rama y sus indicadores; la búsqueda se limita a él.
 function vistaArbol(q, mercado) {
   app.innerHTML = '';
-  app.append(elBuscar);
+  // Nota de lectura, como la de Variación (decisión del usuario, 20-nov-2026: misma paridad en las dos).
+  const nota = document.createElement('p');
+  nota.className = 'rachas-nota';
+  nota.textContent = 'Capitalización del token y, en su caso, de la base (la empresa en bolsa o los activos del fondo), con la fecha de cada cifra; no cotizaciones en vivo.';
+  app.append(nota, elBuscar);
   if (mercado === 'stock') {
     const nEmp = nodoArbol('Empresas', EMPRESAS.length + ' activos', EMPRESAS, true);
     nEmp.querySelector('.hijos').prepend(cabCaps());
@@ -1389,7 +1389,9 @@ async function ruta() {
   elBuscar.hidden = fuera;
   const rotuloMercado = document.getElementById('rotulo-mercado');
   rotuloMercado.hidden = fuera;
-  rotuloMercado.textContent = mercado === 'stock' ? 'Stocks' : 'Cripto';
+  // El título combina mercado y vista (decisión del usuario, 20-nov-2026: los botones son idénticos;
+  // lo que cambia es este título): Stocks Capitalización, Stocks Variación, y así con Cripto.
+  rotuloMercado.textContent = (mercado === 'stock' ? 'Stocks' : 'Cripto') + ' ' + (enRachas ? 'Variación' : 'Capitalización');
   document.getElementById('mercado-stock').classList.toggle('actual', !fuera && mercado === 'stock');
   document.getElementById('mercado-cripto').classList.toggle('actual', !fuera && mercado === 'cripto');
   const otro = mercado === 'stock' ? 'cripto' : 'stock';
