@@ -15,11 +15,11 @@ const hora = horaSuperficie, pct = porcentajeSuperficie;
 
 export function montarRelojObservatorio(contenedor, { ahora = Date.now, programar = setTimeout, cancelar = clearTimeout } = {}) {
   const caja = crear('div', 'superficie-reloj');
-  const titulo = crear('p', 'superficie-reloj-titulo', 'Reloj del observatorio');
-  const linea = crear('p', 'superficie-reloj-hora');
+  const titulo = crear('p', 'superficie-reloj-titulo');
+  const linea = crear('p', 'superficie-reloj-hora', 'Tiempo Universal Coordinado (UTC)');
   const tiempo = crear('time');
   tiempo.title = 'Hora del dispositivo expresada en UTC, no una cotización en vivo';
-  linea.append(document.createTextNode('Hora actual: '), tiempo, document.createTextNode(' · Tiempo Universal Coordinado (UTC)'));
+  titulo.append(document.createTextNode('Reloj del observatorio: '), tiempo);
   const nota = crear('p', 'superficie-nota', 'Todas las lecturas usan esta referencia horaria. La hora de cada foto se muestra por separado.');
   caja.append(titulo, linea, nota); contenedor.append(caja);
   let temporizador = null, vivo = true;

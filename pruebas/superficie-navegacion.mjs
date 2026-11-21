@@ -70,7 +70,9 @@ test('reloj del observatorio actualiza el minuto sin red y se desmonta sin dejar
   global.document = { createElement: (tag) => new Elemento(tag), createTextNode: (textContent) => ({ textContent }) };
   try {
     const reloj = montarRelojObservatorio(contenedor, { ahora: () => ms, programar: (fn, espera) => { pendientes.push({ fn, espera }); return pendientes.length; }, cancelar: (id) => cancelados.push(id) });
-    const tiempo = contenedor.hijos[0].hijos[1].hijos[1];
+    const tiempo = contenedor.hijos[0].hijos[0].hijos[1];
+    assert.equal(contenedor.hijos[0].hijos[0].hijos[0].textContent,'Reloj del observatorio: ');
+    assert.equal(contenedor.hijos[0].hijos[1].textContent,'Tiempo Universal Coordinado (UTC)');
     assert.equal(tiempo.textContent, '13:07'); assert.equal(tiempo.dateTime, '2026-11-21T13:07:52.736Z');
     assert.equal(pendientes[0].espera, 7264);
     ms = Date.parse('2026-11-21T13:08:00.000Z'); pendientes[0].fn();
