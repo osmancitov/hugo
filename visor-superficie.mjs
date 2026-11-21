@@ -200,7 +200,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       c.beginPath(); c.arc(elegido.x, elegido.y, 4, 0, Math.PI * 2); c.fillStyle = '#fff1cb'; c.fill(); c.strokeStyle = '#080604'; c.lineWidth = 1.4; c.stroke();
       texto({ x: elegido.x + 8, y: elegido.y - 9 }, `${elegido.p.codigo} ${pct(elegido.p.altura)}`, '#fff1cb');
     }
-    texto({ x: 12, y: alto - 34 }, barras.length < 2 ? 'Una lectura: aún sin superficie temporal.' : `${barras.length} lecturas reales · arrastra para girar`, '#9aa0ac');
     describir();
   }
   const seleccionar = (j, i) => {
