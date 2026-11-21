@@ -215,8 +215,9 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 
 </script>
 <script type="module">
+import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs';
-import { montarRachas } from './visor-rachas.mjs?v=2'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarRachas } from './visor-rachas.mjs?v=3'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=13';
 import { leerDia, leerIndice, rutaDia, diaUTC } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
@@ -861,7 +862,7 @@ async function vistaSuperficie() {
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren();
     const lecturas = registro.dia.lecturas;
-    meta.textContent = `${registro.dia.dia} · ${lecturas.length} ${lecturas.length === 1 ? 'lectura real guardada' : 'lecturas reales guardadas'} · referencia fija: cierre del día anterior`;
+    meta.textContent = `${fechaLegibleUTC(registro.dia.dia)} · ${lecturas.length} ${lecturas.length === 1 ? 'lectura real guardada' : 'lecturas reales guardadas'} · referencia fija: cierre del día anterior`;
     if (lecturas.length === 1) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Solo hay una lectura guardada para este día. Se muestra su perfil; el terreno temporal necesita al menos dos. No se reconstruyen fotos anteriores.' }));
     const zona = document.createElement('div'), barra = document.createElement('div');
     cuerpo.append(zona, barra);
@@ -878,7 +879,7 @@ async function vistaSuperficie() {
     const controles = Object.assign(document.createElement('div'), { className: 'superficie-controles' });
     const etiqueta = Object.assign(document.createElement('label'), { textContent: 'Día ' });
     const elegirDia = document.createElement('select');
-    for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: dia }));
+    for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: fechaLegibleUTC(dia) }));
     elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
     const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Actualizar' });
     recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); vistaSuperficie(); };

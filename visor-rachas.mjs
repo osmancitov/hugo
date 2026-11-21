@@ -1,10 +1,11 @@
+import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './app/modulos/visor-rachas-datos.mjs';
 const RAW = 'https://raw.githubusercontent.com/osmancitov/hugo/main';
 const PISO_TS = Date.UTC(2026, 7, 1); // el mismo piso del registro que usa el bot (PISO_DIA)
 const aammdd = (ts) => new Date(ts).toISOString().slice(2, 10).replace(/-/g, '');
 const aamm = (ts) => aammdd(ts).slice(0, 4);
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const fecha = t => new Date(t).toISOString().slice(0, 10);
+const fecha = fechaLegibleUTC;
 const fechaCorta = t => { const f = new Date(t); return f.getUTCDate() + ' ' + MESES[f.getUTCMonth()]; };
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct0 = n => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('es');
