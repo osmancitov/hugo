@@ -661,7 +661,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   const lectura = document.createElement('div');
   lectura.className = 'barra-movil-nums';
   lectura.textContent = `Lectura: ${hora(b.generada)}${zona}`;
-  caja.append(lectura);
+  if (!compacta) caja.append(lectura);
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
   // vela diaria completa del día UTC anterior, referencia FIJA del día. El verde incluye la
   // igualdad (la misma regla del iceberg, sin tercera categoría) y la nota declara los
