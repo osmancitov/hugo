@@ -255,3 +255,5 @@ La pasada automática de arranque anuncia «Verificando cambios…» y, si no ne
 Si la búsqueda automática termina sin novedades ni problemas, conserva «Verificando cambios…» en su mensaje inicial y añade una segunda línea: «Todo OK», sin respuesta en el hilo. Los trabajos con cambios o problemas conservan su reporte en hilo.
 
 - Texto bajo las barras (21-nov-2026): Rojos, Verdes e Iguales en una línea, separados por puntos medios, sin totales entre paréntesis; Fuente en la línea siguiente. La primera combina vela diaria y ticker de Binance; las otras usan ticker 24 h. Iguales se toma de la comparación propia de cada barra, nunca se copia de otra; si una lectura antigua no lo permite saber, dice sin dato. El detalle de cobertura y referencias sigue disponible en Ver tabla.
+
+- Fuente visible del conjunto: una sola línea tenue «Fuente: Binance», sin repetirla bajo cada barra. Los datos y las tablas conservan referencias y procedencia detalladas.

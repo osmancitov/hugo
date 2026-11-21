@@ -289,7 +289,7 @@ test('guardia del visor: la barra solo en el iceberg de stocks, colores de la ca
   assert.match(visor, /Iguales:/); // el verde no afirma aumento: incluye la igualdad, explícito
   assert.match(visor, /dia_ref/); // tercera barra: solo se dibuja si la instantánea trae el bloque y cierra
   assert.match(visor, /Cierre del día anterior/);
-  assert.match(visor, /Fuente: vela diaria y ticker de Binance/);
+  assert.match(visor, /Fuente: Binance/);
   assert.match(visor, /Lectura: \$\{hora\(b\.generada\)\}\$\{zona\}/); // instante visible; superficie usa su nota única
   assert.match(visor, /const zona = compacta \? '' : ' UTC'/); // otras vistas conservan su zona explícita
   assert.match(visor, /compacta \? 16 : 19/); // segundos solo se omiten dentro de la superficie
