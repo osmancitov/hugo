@@ -647,7 +647,7 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     fechas.className = 'barra-movil-periodo';
     fechas.style.whiteSpace = 'pre-line';
     fechas.textContent = periodo;
-    sec.append(t, fechas, g, nums);
+    sec.append(t, g, nums, fechas);
     if (notaTxt) sec.append(nota);
     if (enlace) {
       const a = document.createElement('a');
