@@ -301,6 +301,9 @@ const FICHAS_VERIFICADAS = new Set("AAOI AAPL ADBE AGPU ALAB AMAT AMC AMD AMZN A
 // Gráficas externas (decisión del usuario, 22-nov-2026): cada stock enlaza su gráfica en
 // TradingView con su ticker bursátil (BRKB se escribe BRK.B; TradingView resuelve la plaza) y en
 // Binance con su par bStock CODIGO + B + USDT, el mismo que registra Hugo.
+// Webs oficiales de las empresas (destino comprobado 22-nov-2026 desde la ficha de cada
+// empresa en stockanalysis.com). Solo empresas: los fondos no llevan enlace Oficial.
+const WEB_OFICIAL = new Map(Object.entries({"AAOI":"https://www.ao-inc.com","AAPL":"https://www.apple.com","ADBE":"https://www.adobe.com","AGPU":"https://axecompute.com","ALAB":"https://www.asteralabs.com","AMAT":"https://www.appliedmaterials.com","AMC":"https://www.amctheatres.com","AMD":"https://www.amd.com","AMZN":"https://www.amazon.com","APP":"https://www.applovin.com","ARM":"https://www.arm.com","ASML":"https://www.asml.com","ASTS":"https://ast-science.com","AVGO":"https://www.broadcom.com","AXTI":"https://www.axt.com","BABA":"https://www.alibabagroup.com","BB":"https://www.blackberry.com","BE":"https://www.bloomenergy.com","BMNR":"https://bitminetech.io","BNC":"https://www.bnbstandard.com","BOT":"https://robostrategy.co","BRKB":"https://www.berkshirehathaway.com","BSP":"https://www.bendingspoons.com","CBRS":"https://www.cerebras.ai","COHR":"https://www.coherent.com","COIN":"https://www.coinbase.com","CRCL":"https://www.circle.com","CRDO":"https://credosemi.com","CRM":"https://www.salesforce.com","CRWD":"https://www.crowdstrike.com","CRWV":"https://www.coreweave.com","CYPH":"https://www.cypherpunk.com","DELL":"https://www.dell.com","DJT":"https://tmtgcorp.com","FLNC":"https://fluenceenergy.com","FWDI":"https://forwardindustries.com","GEV":"https://www.gevernova.com","GLW":"https://www.corning.com","GME":"https://www.gamestop.com","GOOGL":"https://abc.xyz","GPRO":"https://www.gopro.com","GS":"https://www.goldmansachs.com","HIMS":"https://www.hims.com","HOOD":"https://robinhood.com","HPE":"https://www.hpe.com","IBM":"https://www.ibm.com","INTC":"https://www.intel.com","IREN":"https://iren.com","JPM":"https://www.jpmorganchase.com","LITE":"https://www.lumentum.com","LLY":"https://www.lilly.com","MDB":"https://www.mongodb.com","MELI":"https://www.mercadolibre.com","META":"https://www.meta.com","MRNA":"https://www.modernatx.com","MRVL":"https://www.marvell.com","MSFT":"https://www.microsoft.com","MSTR":"https://www.strategy.com","MU":"https://www.micron.com","NBIS":"https://nebius.com","NFLX":"https://www.netflix.com","NOK":"https://www.nokia.com","NU":"https://nubank.com.br","NVDA":"https://www.nvidia.com","ORCL":"https://www.oracle.com","PDD":"https://www.pddholdings.com","PENG":"https://www.penguinsolutions.com","PLTR":"https://www.palantir.com","PYPL":"https://www.paypal.com","QCOM":"https://www.qualcomm.com","QNT":"https://www.quantinuum.com","RDDT":"https://redditinc.com","RKLB":"https://rocketlabcorp.com","SECZ":"https://securitize.io","SHAZ":"https://www.sharonai.com","SKHY":"https://www.skhynix.com","SMCI":"https://www.supermicro.com","SNDK":"https://www.sandisk.com","SPCX":"https://www.spacex.com","STX":"https://www.seagate.com","TSLA":"https://www.tesla.com","TSM":"https://www.tsmc.com","USAR":"https://www.usare.com","USDE":"https://stablecoinx.com","VST":"https://vistracorp.com","WDC":"https://www.westerndigital.com","WEN":"https://www.wendys.com","ZM":"https://www.zoom.com"}));
 function fichasExternas(e) {
   const enlaces = [];
   if (FICHAS_VERIFICADAS.has(e.codigo)) {
@@ -1784,17 +1787,19 @@ function vistaActivo(clase, codigo) {
   bits.push(`<span>${clase === 'cripto' ? 'cripto' : 'stock'}</span>`);
   meta.innerHTML = bits.join('');
   if (e.tipo) meta.querySelector('.tipo').textContent = e.tipo;
-  if (clase === 'stock') for (const [rotulo, destino] of fichasExternas(e)) {
-    const a = document.createElement('a');
-    a.href = destino; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = rotulo;
-    meta.appendChild(a);
-  }
-  if (e.edgar) {
-    const a = document.createElement('a');
-    a.href = e.edgar; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = 'EDGAR ↗';
-    meta.appendChild(a);
+  if (clase === 'stock') {
+    const enlacesMeta = [];
+    // Orden acordado (22-nov-2026): Gobierno de primero (sus registros ante la SEC),
+    // luego Stock Analysis, TipRanks, TradingView y Binance, y Oficial de último (su web).
+    if (e.edgar) enlacesMeta.push(['Gobierno ↗', e.edgar]);
+    for (const par of fichasExternas(e)) enlacesMeta.push(par);
+    if (WEB_OFICIAL.has(e.codigo)) enlacesMeta.push(['Oficial ↗', WEB_OFICIAL.get(e.codigo)]);
+    for (const [rotulo, destino] of enlacesMeta) {
+      const a = document.createElement('a');
+      a.href = destino; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = rotulo;
+      meta.appendChild(a);
+    }
   }
   ficha.appendChild(meta);
 
