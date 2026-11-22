@@ -97,7 +97,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
-  let giro = -0.34, inclinacion = 0.68, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
+  let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
   const caja = crear('div', 'superficie-caja');
@@ -122,8 +122,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   acercar.type = 'range'; acercar.min = '0.6'; acercar.max = '2'; acercar.step = '.05'; acercar.value = '1'; acercar.setAttribute('aria-label', 'Acercar o alejar la superficie');
   acercar.oninput = () => { zoom = Number(acercar.value); dibujar(); };
   etiquetaZoom.append(acercar);
-  // Tres vistas con nombre: la inicial oblicua y las dos perspectivas que pidio el usuario (22-nov-2026).
-  const vistas = [['Oblicua', -0.34, 0.68], ['Cascada', 0, 0.9], ['Telar', -1.5708, 1.55]];
+  // Tres vistas con nombre: la inicial oblicua, afinada isometrica a pedido del usuario (22-nov-2026), y las dos perspectivas que pidio (cascada y telar intactas).
+  const vistas = [['Oblicua', -0.7854, 0.5774], ['Cascada', 0, 0.9], ['Telar', -1.5708, 1.55]];
   const botonesVista = vistas.map(([nombre, g, inc]) => {
     const b = crear('button', '', nombre);
     b.type = 'button';

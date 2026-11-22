@@ -21,6 +21,7 @@
   --panel: #131722;
   --borde: #2a3140;
   --oro: #c2a15a;
+  --naranja: #cf7f32;
   --texto: #e8eaed;
   --tenue: #9aa0ac;
 }
@@ -139,11 +140,14 @@ a.tit-link:hover { text-decoration: none; }
 .vistas, .mercados { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
 .mercados { margin-bottom:.55rem; }
 .vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
-/* Los dos niveles como botones idénticos (decisión del usuario, 20-nov-2026): misma forma y
-   mismo dorado; la vista en curso se distingue por el título combinado bajo los botones.
-   Ninguno subraya su texto, ni al pasar el ratón. */
+/* Los dos niveles con la misma forma (decisión del usuario, 20-nov-2026); la vista en curso
+   se distingue por el título combinado bajo los botones. Acento naranja compatible con el
+   dorado para los principales Stocks/Cripto; los secundarios conservan el dorado
+   (decisión del usuario, 22-nov-2026). Ninguno subraya su texto, ni al pasar el ratón. */
 .mercados a, .vistas a { border:1px solid var(--oro); border-radius:3px; font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); }
 .mercados a.actual, .vistas a.actual { background:var(--oro); color:var(--tinta); }
+.mercados a { border-color:var(--naranja); color:var(--naranja); }
+.mercados a.actual { background:var(--naranja); }
 .mercados a:hover, .vistas a:hover { text-decoration:none; }
 #rotulo-mercado { font-family:'Cinzel','Lora',serif; font-weight:600; font-size:1.15rem; letter-spacing:.06em; color:var(--oro); margin:.1rem 0 .6rem; }
 .rachas-nota { color:var(--tenue); font-size:.85rem; line-height:1.6; margin:.65rem 0; }
@@ -217,7 +221,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
 import { montarRachas } from './visor-rachas.mjs?v=3'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=24';
+import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
