@@ -213,7 +213,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 
 </script>
 <script type="module">
-import { montarPersistencia } from './visor-persistencia.mjs?v=1';
+import { montarPersistencia } from './visor-persistencia.mjs?v=2';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
@@ -390,7 +390,7 @@ function filaActivo(e, conCap) {
     a.querySelector('.cap').textContent = fmtCap(e.cap);
     if (e.cap_fecha) {
       const f = document.createElement('span');
-      f.className = 'cap-fecha'; f.textContent = ' ' + e.cap_fecha;
+      f.className = 'cap-fecha'; f.textContent = ' ' + (/^\d{4}-\d{2}-\d{2}$/.test(e.cap_fecha) ? fechaLegibleUTC(e.cap_fecha) : e.cap_fecha);
       a.querySelector('.cap').appendChild(f);
     }
   } else if (der === 'tipo') a.querySelector('.tipo').textContent = e.tipo;

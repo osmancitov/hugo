@@ -14,3 +14,11 @@ test('fechas visibles UTC legibles sin cambiar identificadores',()=>{
  const r=fs.readFileSync(new URL('../visor-rachas.mjs',import.meta.url),'utf8');
  assert.match(r,/const fecha = fechaLegibleUTC/);
 });
+
+test('Persistencia muestra extremos legibles con el mismo formato UTC',()=>{
+ const src=fs.readFileSync(new URL('../visor-persistencia.mjs',import.meta.url),'utf8');
+ assert.match(src,/fechaLegibleUTC\(j.ventana.inicio\)/);
+ assert.match(src,/fechaLegibleUTC\(j.ventana.fin\)/);
+ assert.doesNotMatch(src,/toISOString/);
+ assert.equal(fechaLegibleUTC('2026-08-24'),'24 ago 2026');
+});
