@@ -11,7 +11,7 @@ export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,
     cuerpo.replaceChildren();
     const caja=texto('div','','rachas-tabla-caja'),tabla=document.createElement('table');tabla.className='rachas-tabla';
     const cab=document.createElement('thead'),tr=document.createElement('tr');
-    for(const t of ['#','Activo','Promedio','Carreras','Global','Stocks'])tr.append(texto('th',t));cab.append(tr);
+    for(const t of ['#','Activo','Promedio','Días','Global','Stocks'])tr.append(texto('th',t));cab.append(tr);
     const body=document.createElement('tbody');
     for(const x of visibles){
       const r=document.createElement('tr'),id=texto('td','','col-activo'),a=texto('a',x.activo.codigo,'activo-fila rachas-enlace');
