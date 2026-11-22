@@ -172,20 +172,23 @@ test('git reintenta un avance ajeno y conserva ambos registros sin pisar código
     // Hook local provoca un avance después del commit y antes del primer push.
     await ctx.publicarIntradia(pendientesIntradia(raiz));
     const antiguos = pendientesIntradia(raiz);
-    guardarLectura(raiz, foto(T + 60000, 90, 100));
+    guardarLectura(raiz, foto(T + 3600000, 90, 100)); // otra hora: el remoto no la cubre y se conserva
     rem.avanceAjeno('codigo-ajeno.mjs', 'export const intacto = true;\n');
     const r = await ctx.publicarIntradia(pendientesIntradia(raiz));
     assert.ok(r.commit); assert.equal(rem.arbol()['codigo-ajeno.mjs'], 'export const intacto = true;\n');
     const viejo = await ctx.publicarIntradia(antiguos); assert.equal(viejo.commit, null);
     assert.equal(leerDia(rem.arbol()[rutaDia('2026-11-21')]).lecturas.length, 2);
+    assert.equal(JSON.parse(rem.arbol()[RUTA_INDICE]).ultima, new Date(T + 3600000).toISOString());
   } finally { rem.destruir(); limpiar(p); }
 });
 
-test('rechaza publicación sin credencial, conflictos remotos y otro trabajo en curso', async () => {
+test('el remoto manda por hora: la pendiente de una hora ya publicada se retira sin pisar el remoto', async () => {
   const p = temp(), rem = crearRemoto({ [rutaDia('2026-11-21')]: JSON.stringify({ version:1,dia:'2026-11-21',lecturas:[{generada:new Date(T).toISOString(),texto:foto(T,90)}]}) }), ctx = contexto(p, rem), raiz = path.join(p, 'registros');
   try {
     guardarLectura(raiz, foto()); registrarSync(ctx);
-    await assert.rejects(() => ctx.publicarIntradia(pendientesIntradia(raiz)), /Conflicto/);
+    // La hora ya está publicada (con otro contenido): la pendiente se retira y el remoto queda intacto.
+    const r = await ctx.publicarIntradia(pendientesIntradia(raiz));
+    assert.equal(r.retiradas.length, 1);
     assert.equal(JSON.parse(rem.arbol()[rutaDia('2026-11-21')]).lecturas[0].texto, foto(T, 90));
     ctx.leerClave = () => ''; await assert.rejects(() => ctx.publicarIntradia(pendientesIntradia(raiz)), /Falta/);
     assert.equal(Object.keys(pendientesIntradia(raiz)).length, 2);

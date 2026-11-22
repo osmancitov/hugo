@@ -7,28 +7,19 @@
 //   duplica. La corrida empieza unos minutos antes del minuto 00 para absorber
 //   la demora de GitHub; si aun así llega tarde, toma la lectura en cuanto
 //   puede, con su hora real.
-// - La cola de corridas anteriores se publica COMBINADA con el remoto recién
-//   traído, con prioridad de la Debian por hora: si el remoto ya cubre la hora
-//   de una lectura pendiente, esa lectura se retira de la cola. Nunca se pisa
-//   lo que la Debian subió mientras una corrida no lograba publicar.
-// La cola y la pausa 429 viajan en la caché de Actions (.estado-intradia), como
-// en la Debian viajan en disco.
+// - La cola se publica recombinada contra origin/main antes de cada intento, con
+//   prioridad del remoto por hora (cola-horaria.mjs): nunca se pisa ni se
+//   duplica lo que la Debian subió mientras una corrida no lograba publicar.
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { generarBarra, leerBarra, RUTA_BARRA } from '../app/modulos/barra-movil.mjs';
+import { generarBarra, leerBarra } from '../app/modulos/barra-movil.mjs';
 import { fetchConPausa } from '../app/modulos/intradia-fuente.mjs';
-import { guardarLectura, pendientesIntradia, combinarArchivoIntradia, siguienteHitoUTC, intervaloIntradia, ultimaLecturaLocal, primeraLecturaDelDia } from '../app/modulos/registro-intradia.mjs';
-import { leerIndice, leerDia, unirDias, RUTA_INDICE, diaUTC } from '../app/modulos/intradia-datos.mjs';
+import { guardarLectura, siguienteHitoUTC, intervaloIntradia, ultimaLecturaLocal, primeraLecturaDelDia } from '../app/modulos/registro-intradia.mjs';
+import { RUTA_INDICE, diaUTC } from '../app/modulos/intradia-datos.mjs';
 import { guardarEstado } from '../app/modulos/registro-motor.mjs';
+import { RAIZ, COLA, COLA_JSON, salida, dormir, traerRemoto, ultimaRemota, materializarCola } from './cola-horaria.mjs';
 
-const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'registros');
-const REPO = path.join(RAIZ, '..');
 const DIR_VELAS = path.join(RAIZ, 'velas-24h');
-const COLA = path.join(RAIZ, '..', '.estado-intradia');
-const COLA_JSON = path.join(COLA, 'pendientes.json');
 // La corrida empieza unos minutos antes del minuto 00; si GitHub la retrasa más de
 // esta espera, toma la lectura ya, con su hora real, en vez de esperar a la siguiente.
 const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || 13 * 60000);
@@ -38,12 +29,6 @@ const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || 13 * 6000
 // nuestra se descarta antes de publicar.
 const ESPERA_PUBLICACION_MS = Number(process.env.HUGO_HORARIA_ESPERA_PUBLICACION_MS || 8 * 60000);
 const ahora = () => Date.now();
-const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
-const ex = promisify(execFile);
-const git = async (args) => (await ex('git', args, { cwd: REPO, timeout: 60000 })).stdout;
-
-const salida = (k, v) => { if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${k}=${v}\n`); console.log(`${k}=${v}`); };
-const leerOpcional = (r) => { try { return fs.readFileSync(r, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
 
 // Fuente pública de solo lectura: data-api.binance.vision es el host documentado
 // para datos públicos de mercado; api.binance.com responde 451 (ubicación
@@ -57,53 +42,6 @@ async function elegirHost() {
     } catch (e) { console.log(`${host} no respondió (${e.message}); pruebo la siguiente fuente.`); }
   }
   throw Error('Ninguna fuente pública de Binance respondió; no tomo la lectura.');
-}
-
-const traerRemoto = () => git(['fetch', '--quiet', 'origin', 'main']);
-async function leerRemoto(rel) {
-  try { return await git(['show', `origin/main:${rel}`]); }
-  catch { return null; }
-}
-async function ultimaRemota() {
-  const indice = await leerRemoto(RUTA_INDICE);
-  if (indice === null) return null;
-  try { return Date.parse(leerIndice(indice).ultima); } catch { return null; }
-}
-
-// La cola pendiente se materializa COMBINADA con origin/main recién traído (no con
-// la copia de trabajo, que puede ser más vieja). Prioridad de la Debian por hora:
-// una lectura pendiente cuya hora el remoto ya cubre se retira de la cola.
-async function materializarCola() {
-  const pendientes = pendientesIntradia(RAIZ);
-  if (!Object.keys(pendientes).length) return {};
-  const resultado = {};
-  for (const [rel, texto] of Object.entries(pendientes)) {
-    if (rel === RUTA_INDICE) continue; // se reconstruye abajo desde lo que quede
-    const disco = await leerRemoto(rel);
-    if (disco === null) { resultado[rel] = texto; continue; }
-    if (rel === RUTA_BARRA) { resultado[rel] = combinarArchivoIntradia(rel, texto, disco); continue; }
-    const diaCola = leerDia(texto, (t) => leerBarra(t));
-    const diaDisco = leerDia(disco, (t) => leerBarra(t));
-    const horas = new Set(diaDisco.lecturas.map((l) => Math.floor(Date.parse(l.generada) / 3600000)));
-    const restantes = diaCola.lecturas.filter((l) => !horas.has(Math.floor(Date.parse(l.generada) / 3600000)));
-    if (restantes.length < diaCola.lecturas.length) console.log(`El remoto ya cubre ${diaCola.lecturas.length - restantes.length} lectura(s) pendiente(s) de ${diaCola.dia}; las retiro de la cola (la Debian manda).`);
-    resultado[rel] = restantes.length ? unirDias(JSON.stringify({ version: 1, dia: diaCola.dia, lecturas: restantes }) + '\n', disco, (t) => leerBarra(t)) : disco;
-  }
-  // Índice coherente con lo conservado: unión de días y última más reciente entre
-  // remoto y cola filtrada. Si la cola no aporta nada, queda el índice del remoto.
-  const indiceDisco = await leerRemoto(RUTA_INDICE);
-  const dias = new Set(indiceDisco === null ? [] : leerIndice(indiceDisco).dias);
-  let ultimaTx = indiceDisco === null ? null : leerIndice(indiceDisco).ultima;
-  for (const [rel, texto] of Object.entries(resultado)) {
-    if (rel === RUTA_BARRA || rel === RUTA_INDICE) continue;
-    const d = leerDia(texto, (t) => leerBarra(t));
-    dias.add(d.dia);
-    if (ultimaTx === null || Date.parse(d.lecturas.at(-1).generada) > Date.parse(ultimaTx)) ultimaTx = d.lecturas.at(-1).generada;
-  }
-  if (ultimaTx !== null) resultado[RUTA_INDICE] = JSON.stringify({ version: 1, dias: [...dias].sort(), ultima: ultimaTx }) + '\n';
-  guardarEstado(COLA_JSON, { version: 1, archivos: resultado });
-  for (const [rel, texto] of Object.entries(resultado)) guardarEstado(path.join(RAIZ, rel.slice('registros/'.length)), JSON.parse(texto));
-  return resultado;
 }
 
 fs.mkdirSync(COLA, { recursive: true });

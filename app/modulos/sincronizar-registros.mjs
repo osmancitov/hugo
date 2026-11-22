@@ -47,7 +47,8 @@ import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './regist
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos, preCalculosFrescos } from './pre-calculado.mjs';
 import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
-import { validarArchivoIntradia, combinarArchivoIntradia } from './registro-intradia.mjs';
+import { validarArchivoIntradia, combinarArchivoIntradia, combinarIntradiaPorHora, reconstruirIndice } from './registro-intradia.mjs';
+import { RUTA_INDICE, leerIndice, unirIndices } from './intradia-datos.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -497,6 +498,8 @@ export function registrar(ctx) {
           if (m) remotas.set(m[2], m[1]);
         }
         const finales = {}, items = [];
+        const retiradas = [];
+        let indiceRemoto = null, indiceLocal = null;
         for (const rel of rutas) {
           verificar();
           let remoto = null;
@@ -506,7 +509,15 @@ export function registrar(ctx) {
             if (buf.length > 64 * 1024 * 1024 || shaBlob(buf) !== sha) throw Error('Registro remoto demasiado grande o huella distinta.');
             remoto = buf.toString('utf8');
           }
-          const texto = combinarArchivoIntradia(rel, archivos[rel], remoto);
+          // El índice se reconstruye al final, coherente con lo conservado.
+          if (rel === RUTA_INDICE) { indiceRemoto = remoto; indiceLocal = archivos[rel]; continue; }
+          // Prioridad del remoto por hora: si otro escritor (la corrida horaria de
+          // Actions) ya publicó la hora de una lectura pendiente, la pendiente se
+          // retira en vez de duplicar el tramo. Se evalúa en cada intento, así un
+          // avance remoto entre intentos nunca reintroduce la lectura.
+          const r = combinarIntradiaPorHora(rel, archivos[rel], remoto);
+          if (r.retiradas.length) retiradas.push(...r.retiradas.map((g) => `${rel} ${g}`));
+          const texto = r.texto;
           if (Buffer.byteLength(texto) > 64 * 1024 * 1024) throw Error('Registro del día supera 64 MB; requiere revisar frecuencia o formato. No lo borro.');
           finales[rel] = texto;
           if (remoto === texto) continue;
@@ -515,7 +526,25 @@ export function registrar(ctx) {
           fs.writeFileSync(destino, texto);
           items.push(rel);
         }
-        if (!items.length) return { commit: null, subidos: [], archivos: finales };
+        if (indiceLocal !== null) {
+          // Unión de días del índice local y remoto; la última sale de lo conservado.
+          const combinado = unirIndices(indiceLocal, indiceRemoto ?? indiceLocal);
+          const reconstruido = reconstruirIndice(finales, indiceRemoto);
+          let texto = combinado;
+          if (reconstruido !== null) {
+            const d = new Set([...leerIndice(combinado).dias, ...leerIndice(reconstruido).dias]);
+            const u1 = leerIndice(combinado).ultima, u2 = leerIndice(reconstruido).ultima;
+            texto = JSON.stringify({ version: 1, dias: [...d].sort(), ultima: Date.parse(u2) > Date.parse(u1) ? u2 : u1 }) + '\n';
+          }
+          finales[RUTA_INDICE] = texto;
+          if (indiceRemoto !== texto) {
+            const destino = path.join(clonDir(), RUTA_INDICE);
+            fs.mkdirSync(path.dirname(destino), { recursive: true });
+            fs.writeFileSync(destino, texto);
+            items.push(RUTA_INDICE);
+          }
+        }
+        if (!items.length) return { commit: null, subidos: [], archivos: finales, retiradas };
         verificar();
         await git(['add', '--', ...items]);
         // El índice parte del árbol remoto exacto; solo estas rutas entran al commit.
@@ -523,7 +552,7 @@ export function registrar(ctx) {
         verificar();
         try {
           await git(['push', 'origin', `HEAD:${RAMA}`], { token });
-          return { commit: sha, subidos: items, archivos: finales };
+          return { commit: sha, subidos: items, archivos: finales, retiradas };
         } catch (e) {
           if (!e.sinPermiso && intento < INTENTOS_PUSH && /non-fast-forward|fetch first|stale info|\[rejected\]/i.test(e.salidaGit || '')) continue;
           throw e;

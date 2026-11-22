@@ -120,13 +120,44 @@ export function guardarLectura(raiz, texto) {
   encolar(raiz, archivos);
   return { rel, lecturas: leerDia(registro, validar).lecturas.length, rutas: Object.keys(archivos) };
 }
+// Prioridad por hora frente a otro escritor (la corrida horaria de Actions o la
+// propia Debian): si el remoto ya cubre la hora de una lectura pendiente, la
+// pendiente se retira en vez de sumar otra del mismo tramo. Manda la primera
+// publicación de cada hora; la lectura retirada no se pierde sin más: solo se
+// descarta cuando el remoto ya publicó esa hora.
+export function combinarIntradiaPorHora(rel, local, remoto) {
+  if (rel === RUTA_INDICE || rel === RUTA_BARRA || remoto === null) return { texto: combinarArchivoIntradia(rel, local, remoto), retiradas: [] };
+  const diaLocal = validarArchivoIntradia(rel, local);
+  const diaRemoto = validarArchivoIntradia(rel, remoto);
+  const horas = new Set(diaRemoto.lecturas.map((l) => Math.floor(Date.parse(l.generada) / 3600000)));
+  const restantes = diaLocal.lecturas.filter((l) => !horas.has(Math.floor(Date.parse(l.generada) / 3600000)));
+  const retiradas = diaLocal.lecturas.filter((l) => horas.has(Math.floor(Date.parse(l.generada) / 3600000))).map((l) => l.generada);
+  if (!restantes.length) return { texto: remoto, retiradas };
+  const texto = unirDias(JSON.stringify({ version: 1, dia: diaLocal.dia, lecturas: restantes }) + '\n', remoto, validar);
+  return { texto, retiradas };
+}
+// Índice coherente con las lecturas conservadas: unión de días y última más
+// reciente entre el remoto y lo combinado. Sin aportes, queda el índice remoto.
+export function reconstruirIndice(finales, indiceRemoto) {
+  const dias = new Set(indiceRemoto === null ? [] : leerIndice(indiceRemoto).dias);
+  let ultima = indiceRemoto === null ? null : leerIndice(indiceRemoto).ultima;
+  for (const [rel, texto] of Object.entries(finales)) {
+    if (rel === RUTA_INDICE || rel === RUTA_BARRA) continue;
+    const d = leerDia(texto, validar);
+    dias.add(d.dia);
+    const m = d.lecturas.at(-1).generada;
+    if (ultima === null || Date.parse(m) > Date.parse(ultima)) ultima = m;
+  }
+  return ultima === null ? null : JSON.stringify({ version: 1, dias: [...dias].sort(), ultima }) + '\n';
+}
 // Confirma solo la versión enviada. Si entró otra lectura, su cola sigue pendiente.
+// Lo publicado ya viene combinado con el remoto (prioridad por hora): se materializa
+// tal cual, sin reintroducir lecturas retiradas.
 export function confirmarIntradia(raiz, enviados, publicados = enviados) {
   const actuales = pendientesIntradia(raiz);
   for (const [rel, texto] of Object.entries(enviados)) {
     if (actuales[rel] === texto) {
-      const combinado = combinarArchivoIntradia(rel, texto, publicados[rel] ?? null);
-      materializar(raiz, { [rel]: combinado });
+      materializar(raiz, { [rel]: publicados[rel] ?? texto });
       delete actuales[rel];
     }
   }

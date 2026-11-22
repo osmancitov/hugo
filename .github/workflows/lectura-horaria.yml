@@ -46,17 +46,20 @@ jobs:
           set -e
           git config user.name Osmancito
           git config user.email osmanvielma@gmail.com
-          git add registros/
-          if git diff --cached --quiet; then
-            echo "Sin cambios que publicar."
-            exit 0
-          fi
-          git commit -m "Guardar lectura horaria de las $(date -u +'%H:%M') UTC desde Actions"
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin main && git push origin HEAD:main; then
+            git fetch --quiet origin main
+            git reset --hard origin/main
+            node .github/recombinar-horaria.mjs
+            git add registros/
+            if git diff --cached --quiet; then
+              echo "Sin cambios que publicar; el remoto ya cubre la cola."
               exit 0
             fi
-            echo "Reintento $i de publicación tras avance ajeno."
+            git commit -m "Guardar lectura horaria de las $(date -u +'%H:%M') UTC desde Actions"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "El remoto avanzó durante el intento $i; recombinando la cola antes de reintentar."
             sleep $((i * 10))
           done
           echo "GitHub siguió avanzando durante los reintentos; la cola queda pendiente."
