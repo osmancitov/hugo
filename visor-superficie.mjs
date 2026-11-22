@@ -174,7 +174,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const vertices = [malla[j - 1][i - 1], malla[j - 1][i], malla[j][i], malla[j][i - 1]];
       if (vertices.some((p) => !p)) continue; // sin dato deja un hueco, nunca altura cero
       const nuevos = [puntos[j][i - 1], puntos[j][i]];
-      caras.push({ vertices, colores: [nuevos[0].movimiento, nuevos[1].movimiento].map((m) => colorMovimiento(m) ?? 'transparent'), fondo: vertices.reduce((s, p) => s + p.profundidad, 0) / 4 });
+      caras.push({ vertices, colores: [nuevos[0].movimiento, nuevos[1].movimiento].map((m) => colorMovimiento(m) ?? 'transparent'), fondo: vertices.reduce((s, p) => s + p.profundidad, 0) / 4, j });
     }
     caras.sort((a, b) => a.fondo - b.fondo);
     for (const cara of caras) {
@@ -182,8 +182,10 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const a = cara.vertices[3], b = cara.vertices[2];
       const gradiente = c.createLinearGradient(a.x, a.y, b.x === a.x && b.y === a.y ? b.x + 1 : b.x, b.y);
       gradiente.addColorStop(0, cara.colores[0]); gradiente.addColorStop(1, cara.colores[1]);
-      c.fillStyle = gradiente; c.globalAlpha = .66; c.fill();
-      c.globalAlpha = .46; c.strokeStyle = '#c6bc9b'; c.lineWidth = .45; c.stroke(); c.globalAlpha = 1;
+      const marcada = cara.j === ultima && ultima > 0; // la franja que termina en la lectura elegida se enciende
+      c.fillStyle = gradiente; c.globalAlpha = marcada ? .97 : .66; c.fill();
+      if (marcada) { c.globalAlpha = .22; c.fillStyle = '#fff3cf'; c.fill(); }
+      c.globalAlpha = marcada ? .95 : .46; c.strokeStyle = marcada ? '#ffe9ad' : '#c6bc9b'; c.lineWidth = marcada ? 1.2 : .45; c.stroke(); c.globalAlpha = 1;
     }
     // Los carriles de cada activo unen únicamente sus lecturas. Una foto sola no crea terreno.
     for (let i = 0; i < codigos.length; i++) for (let j = 1; j < malla.length; j++) {
@@ -191,7 +193,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       if (a && b && b.p.movimiento !== null) linea(a, b, colorMovimiento(b.p.movimiento), .8);
     }
     const fila = malla[ultima] || [];
-    for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ded0a4', 1.2);
+    for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ffe9ad', 1.8);
     if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = GRIS; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
     if (ancho < 600 && barras.length) {
       texto({ x: ancho - 10, y: 43 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)}`, '#bbb39e', 'right');
