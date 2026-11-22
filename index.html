@@ -298,11 +298,19 @@ for (const e of STOCKS) TODOS.push(e);
 // Fichas de Stock Analysis y TipRanks: solo para los códigos cuyo destino se comprobó el 18-nov-2026 (cargan y el título coincide con el activo).
 // Empresas: /stocks/<ticker>/ y /stocks/<ticker>; fondos: /etf/<ticker>/ y /etf/<ticker>. BRKB se escribe brk.b en ambos sitios.
 const FICHAS_VERIFICADAS = new Set("AAOI AAPL ADBE AGPU ALAB AMAT AMC AMD AMZN APP ARM ASML ASTS AVGO AXTI BABA BB BE BMNR BNC BOT BRKB BSP CBRS COHR COIN CRCL CRDO CRM CRWD CRWV CYPH DELL DJT DRAM EWJ EWT EWY EWZ EWZS FLNC FWDI GEV GLW GME GOOGL GPRO GS HIMS HOOD HPE IBM INTC INTW IREN IWM JPM KORU KSTR LITE LLY MDB MELI META MRNA MRVL MSFT MSTR MU MUU MVLL NBIS NFLX NOK NU NVDA ORCL PDD PENG PLTR PYPL QCOM QNT QQQ RDDT RKLB SECZ SHAZ SKDD SKHY SKUU SMCI SMH SNDK SNXX SOXL SOXS SPCX SPY SQQQ STX TMF TQQQ TSLA TSM USAR USDE UVXY VST WDC WEN ZM".split(' '));
+// Gráficas externas (decisión del usuario, 22-nov-2026): cada stock enlaza su gráfica en
+// TradingView con su ticker bursátil (BRKB se escribe BRK.B; TradingView resuelve la plaza) y en
+// Binance con su par bStock CODIGO + B + USDT, el mismo que registra Hugo.
 function fichasExternas(e) {
-  if (!FICHAS_VERIFICADAS.has(e.codigo)) return [];
-  const t = e.codigo === 'BRKB' ? 'brk.b' : e.codigo.toLowerCase();
-  const ruta = e.tipo === 'empresa' ? 'stocks' : 'etf';
-  return [['Stock Analysis ↗', `https://stockanalysis.com/${ruta}/${t}/`], ['TipRanks ↗', `https://www.tipranks.com/${ruta}/${t}`]];
+  const enlaces = [];
+  if (FICHAS_VERIFICADAS.has(e.codigo)) {
+    const t = e.codigo === 'BRKB' ? 'brk.b' : e.codigo.toLowerCase();
+    const ruta = e.tipo === 'empresa' ? 'stocks' : 'etf';
+    enlaces.push(['Stock Analysis ↗', `https://stockanalysis.com/${ruta}/${t}/`], ['TipRanks ↗', `https://www.tipranks.com/${ruta}/${t}`]);
+  }
+  enlaces.push(['TradingView ↗', `https://www.tradingview.com/chart/?symbol=${e.codigo === 'BRKB' ? 'BRK.B' : e.codigo}`],
+    ['Binance ↗', `https://www.binance.com/trade/${e.codigo}B_USDT`]);
+  return enlaces;
 }
 const EMPRESAS = STOCKS.filter((e) => e.tipo === 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
 const FONDOS = STOCKS.filter((e) => e.tipo !== 'empresa').sort((a, b) => (b.cap || 0) - (a.cap || 0));
