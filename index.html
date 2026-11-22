@@ -145,7 +145,7 @@ a.tit-link:hover { text-decoration: none; }
 
 .vistas, .mercados { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
 .mercados { margin-bottom:.55rem; }
-.vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
+.vistas a[hidden], .mercados a[hidden], .vistas[hidden], .mercados[hidden], #buscar[hidden], #rotulo-mercado[hidden] { display:none; }
 /* Todos los botones vuelven al dorado original (22-nov-2026). */
 .mercados a, .vistas a { border:1px solid var(--oro); border-radius:3px; font-family:'Cinzel','Lora',serif; font-size:1.05rem; padding:.5rem .95rem; color:var(--oro); }
 .mercados a.actual, .vistas a.actual { background:var(--oro); color:var(--tinta); }
@@ -444,7 +444,7 @@ function vistaArbol(q, mercado) {
   // Nota de lectura, como la de Variación (decisión del usuario, 20-nov-2026: misma paridad en las dos).
   const nota = document.createElement('p');
   nota.className = 'rachas-nota';
-  nota.textContent = 'Capitalización del token y, en su caso, de la base (la empresa en bolsa o los activos del fondo), con la fecha de cada cifra; no cotizaciones en vivo.';
+  nota.hidden = true;
   app.append(nota, elBuscar);
   // Indicadores primero en la lista, en stocks y en cripto (decisión del usuario, 21-nov-2026).
   const inds = INDICADORES.filter((e) => e.mercado === mercado).sort((a,b)=>Number(Boolean(b.iceberg))-Number(Boolean(a.iceberg))).map(e=>e.iceberg?{...e,nombre:'Iceberg 2D'}:e);
@@ -1891,6 +1891,14 @@ function botonNav(nav, titulo, href, actual=false) {
   const a=document.createElement('a');a.textContent=titulo;a.href=href;
   a.classList.toggle('actual',actual);nav.append(a);return a;
 }
+function contraerNavegacion(nav, seleccion, volver) {
+  if(!seleccion)return;
+  for(const a of [...nav.children]) {
+    a.hidden=!a.classList.contains('actual');
+    if(a.classList.contains('actual'))
+    { a.href=volver;a.title='Cambiar selección'; }
+  }
+}
 function vistaIndicadoresMercado(mercado) {
   app.replaceChildren();
   const inds=INDICADORES.filter(e=>e.mercado===mercado).sort((a,b)=>Number(Boolean(b.iceberg))-Number(Boolean(a.iceberg)));
@@ -1899,7 +1907,7 @@ function vistaIndicadoresMercado(mercado) {
 }
 function vistaCapitalizacion(lista) {
   app.replaceChildren(elBuscar);
-  const nota=document.createElement('p');nota.className='rachas-nota';nota.textContent='Capitalización del token y, en su caso, de la base, con la fecha de cada cifra; no cotizaciones en vivo.';app.append(nota,cabCaps());
+  app.append(cabCaps());
   const q=elBuscar.value.trim().toLowerCase();
   for(const e of [...lista].sort((a,b)=>(b.cap||0)-(a.cap||0)))if(!q||[e.codigo,e.nombre,e.lectura||''].some(t=>t.toLowerCase().includes(q)))app.append(filaActivo(e,true));
 }
@@ -1919,7 +1927,7 @@ async function ruta() {
   if(r&&((mercado==='cripto'&&categoria)||(mercado==='stock'&&ranking&&ranking!=='indicadores'&&!categoria))){location.replace('#/'+mercado);return;}
   document.getElementById('portada-observatorio').hidden=hash!=='#/';
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
-  navMerc.hidden=fuera;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
+  navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.getElementById('mercado-stock').href='#/stock';document.getElementById('mercado-cripto').href='#/cripto';
   document.getElementById('mercado-stock').classList.toggle('actual',mercado==='stock');document.getElementById('mercado-cripto').classList.toggle('actual',mercado==='cripto');
   if(!fuera&&mercado==='stock'){
@@ -1930,7 +1938,10 @@ async function ruta() {
     for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Promedio']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
-  elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=fuera||!mercado;
+  contraerNavegacion(navMerc,mercado,'#/');
+  contraerNavegacion(navCat,categoria||(mercado==='stock'&&ranking==='indicadores'),'#/stock');
+  contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
+  elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',persistencia:'Promedio',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
