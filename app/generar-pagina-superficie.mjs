@@ -6,7 +6,7 @@ export function paginaSuperficie(html) {
     .replace('<title>Hugo · Observatorio Bursátil</title>', '<title>Superficie 3D · Hugo · Observatorio Bursátil</title>')
     .replace('property="og:title" content="Hugo · Observatorio Bursátil"', 'property="og:title" content="Superficie 3D · Hugo · Observatorio Bursátil"')
     .replace('property="og:description" content="Empresas y fondos · stocks y cripto"', 'property="og:description" content="El mercado como un paisaje: lecturas reales, relieve en tres dimensiones y una referencia diaria fija."')
-    .replace('https://osmancitov.github.io/hugo/hugo3.jpg', 'https://osmancitov.github.io/hugo/superficie-og.jpg')
+    .replace('https://osmancitov.github.io/hugo/identidad/tarjeta.jpg', 'https://osmancitov.github.io/hugo/superficie-og.jpg')
     .replace('property="og:url" content="https://osmancitov.github.io/hugo/"', 'property="og:url" content="https://osmancitov.github.io/hugo/superficie.html"')
     .replace('<meta property="og:type" content="website">', '<meta property="og:type" content="website">\n<meta property="og:image:width" content="1280">\n<meta property="og:image:height" content="640">\n<meta property="og:image:type" content="image/jpeg">\n<meta property="og:image:alt" content="Paisaje fantástico de pliegues rojos y verdes, inspirado en la Superficie 3D de Hugo.">')
     .replace('href="#/"', 'href="index.html#/"')
