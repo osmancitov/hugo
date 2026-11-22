@@ -10,6 +10,11 @@ on:
   schedule:
     - cron: '47 * * * *'
   workflow_dispatch:
+    inputs:
+      intrahora:
+        description: 'Toma la lectura ya, con su instante real, aunque la hora ya tenga lectura (prueba manual autorizada)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,9 +44,13 @@ jobs:
           restore-keys: intradia-estado-
       - name: Tomar la lectura (o saltarla si hay una de esa hora)
         id: lectura
+        env:
+          HUGO_HORARIA_MANUAL: ${{ github.event.inputs.intrahora || '' }}
         run: node .github/lectura-horaria.mjs
       - name: Publicar en el repositorio
         if: steps.lectura.outputs.cambios == 'si'
+        env:
+          HUGO_HORARIA_MANUAL: ${{ github.event.inputs.intrahora || '' }}
         run: |
           set -e
           git config user.name Osmancito

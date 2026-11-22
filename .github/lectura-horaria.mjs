@@ -29,6 +29,10 @@ const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || 13 * 6000
 // nuestra se descarta antes de publicar.
 const ESPERA_PUBLICACION_MS = Number(process.env.HUGO_HORARIA_ESPERA_PUBLICACION_MS || 8 * 60000);
 const ahora = () => Date.now();
+// Corrida manual autorizada (workflow_dispatch con intrahora): toma la lectura ya,
+// con su instante real, aunque la hora ya esté cubierta, y la publica sin esperas.
+// La deduplicación por hora de las corridas automáticas no se toca.
+const MANUAL = Boolean(process.env.HUGO_HORARIA_MANUAL) && process.env.HUGO_HORARIA_MANUAL !== 'false' && process.env.HUGO_HORARIA_MANUAL !== '0';
 
 // Fuente pública de solo lectura: data-api.binance.vision es el host documentado
 // para datos públicos de mercado; api.binance.com responde 451 (ubicación
@@ -58,7 +62,7 @@ console.log(`Hora objetivo de la lectura: ${new Date(objetivo).toISOString()}.`)
 
 await traerRemoto();
 const ultima = await ultimaRemota();
-if (ultima !== null && ultima >= objetivo) {
+if (!MANUAL && ultima !== null && ultima >= objetivo) {
   console.log(`El remoto ya tiene lectura de esta hora (${new Date(ultima).toISOString()}); no duplico.`);
   const p = await materializarCola();
   salida('cambios', Object.keys(p).length ? 'si' : 'no');
@@ -66,9 +70,9 @@ if (ultima !== null && ultima >= objetivo) {
 }
 
 const espera = objetivo - ahora();
-if (espera > 0) { console.log(`Esperando al minuto 00 (${Math.ceil(espera / 1000)} s).`); await dormir(espera); }
+if (!MANUAL && espera > 0) { console.log(`Esperando al minuto 00 (${Math.ceil(espera / 1000)} s).`); await dormir(espera); }
 await traerRemoto();
-if ((await ultimaRemota()) >= objetivo) {
+if (!MANUAL && (await ultimaRemota()) >= objetivo) {
   console.log('La Debian publicó la lectura de esta hora mientras esperaba; no tomo otra.');
   const p = await materializarCola();
   salida('cambios', Object.keys(p).length ? 'si' : 'no');
@@ -90,9 +94,9 @@ console.log(`Lectura ${new Date(r.generada).toISOString()} guardada localmente: 
 // Margen de cortesía: cubre el ciclo de reintentos de la Debian. Si ella estaba
 // viva y publica la lectura de esta hora, la suya queda; la mía se retira de la
 // cola y del disco, y no se publica.
-await dormir(ESPERA_PUBLICACION_MS);
+if (!MANUAL) await dormir(ESPERA_PUBLICACION_MS);
 await traerRemoto();
-if ((await ultimaRemota()) >= objetivo) {
+if (!MANUAL && (await ultimaRemota()) >= objetivo) {
   guardarEstado(COLA_JSON, { version: 1, archivos: respaldoCola });
   for (const [rel, texto] of Object.entries(respaldoCola)) guardarEstado(path.join(RAIZ, rel.slice('registros/'.length)), JSON.parse(texto));
   console.log('La Debian publicó la lectura de esta hora en el margen; descarto la mía y conservo la cola anterior combinada.');

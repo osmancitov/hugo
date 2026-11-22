@@ -10,7 +10,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { RUTA_BARRA } from '../app/modulos/barra-movil.mjs';
-import { pendientesIntradia, combinarIntradiaPorHora, reconstruirIndice } from '../app/modulos/registro-intradia.mjs';
+import { pendientesIntradia, combinarArchivoIntradia, combinarIntradiaPorHora, reconstruirIndice } from '../app/modulos/registro-intradia.mjs';
 import { leerIndice, RUTA_INDICE } from '../app/modulos/intradia-datos.mjs';
 import { guardarEstado } from '../app/modulos/registro-motor.mjs';
 
@@ -43,10 +43,14 @@ export async function ultimaRemota() {
 export async function materializarCola() {
   const pendientes = pendientesIntradia(RAIZ);
   if (!Object.keys(pendientes).length) return {};
+  // Corrida manual autorizada: la lectura intra-hora es explícita, se conserva por
+  // instante junto a la que ya cubre la hora. La deduplicación automática no cambia.
+  const MANUAL = Boolean(process.env.HUGO_HORARIA_MANUAL) && process.env.HUGO_HORARIA_MANUAL !== 'false' && process.env.HUGO_HORARIA_MANUAL !== '0';
   const resultado = {};
   for (const [rel, texto] of Object.entries(pendientes)) {
     if (rel === RUTA_INDICE) continue; // se reconstruye abajo
-    const r = combinarIntradiaPorHora(rel, texto, await leerRemoto(rel));
+    const r = MANUAL ? { texto: combinarArchivoIntradia(rel, texto, await leerRemoto(rel)), retiradas: [] }
+      : combinarIntradiaPorHora(rel, texto, await leerRemoto(rel));
     if (r.retiradas.length) console.log(`El remoto ya cubre ${r.retiradas.length} lectura(s) pendiente(s) (${r.retiradas.join(', ')}); las retiro de la cola (el remoto manda por hora).`);
     resultado[rel] = r.texto;
   }
