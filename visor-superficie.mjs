@@ -97,15 +97,17 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
-  let giro = -0.34, inclinacion = 0.68, amplitud = 1, zoom = 1, ultima = barras.length - 1, activo = -1, arrastre = null, proyecciones = [], viva = true;
+  let giro = -0.34, inclinacion = 0.68, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
   const caja = crear('div', 'superficie-caja');
   const controles = crear('div', 'superficie-controles');
-  const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
+  const etiquetaLectura = crear('label', '', 'Franja '), elegirLectura = crear('select');
+  // «Elegir» no fija franja: resalta todas a la vez (decisión del usuario, 22-nov-2026).
+  const elegirTodas = crear('option', '', 'Elegir'); elegirTodas.value = -1; elegirLectura.append(elegirTodas);
   barras.forEach((b, i) => { const o = crear('option', '', `${horaVista(b.generada)} UTC`); o.value = i; elegirLectura.append(o); });
-  elegirLectura.value = ultima;
-  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo), { repetir: true, ciclar: true });
+  elegirLectura.selectedIndex = 0;
+  const pasosLectura = montarPasos(elegirLectura, 'Franja', (i) => seleccionar(i - 1, activo), { repetir: true, ciclar: true });
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
@@ -195,7 +197,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       c.beginPath(); cara.vertices.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.closePath();
       const a = cara.vertices[3], b = cara.vertices[2];
       const gradiente = c.createLinearGradient(a.x, a.y, b.x === a.x && b.y === a.y ? b.x + 1 : b.x, b.y);
-      const marcada = cara.j === ultima && ultima > 0; // la franja que termina en la lectura elegida, con sus colores intensos
+      const marcada = cara.j > 0 && (todas || cara.j === ultima); // la franja que termina en la lectura elegida (o todas con «Elegir»), con sus colores intensos
       gradiente.addColorStop(0, marcada ? INTENSOS[cara.colores[0]] ?? cara.colores[0] : cara.colores[0]);
       gradiente.addColorStop(1, marcada ? INTENSOS[cara.colores[1]] ?? cara.colores[1] : cara.colores[1]);
       c.fillStyle = gradiente; c.globalAlpha = marcada ? 1 : .66; c.fill();
@@ -223,15 +225,17 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     describir();
   }
   const seleccionar = (j, i) => {
-    if (j < 0 || j >= barras.length || i < -1 || i >= codigos.length) return;
+    if (j < -1 || j >= barras.length || i < -1 || i >= codigos.length) return;
     const x = window.scrollX, y = window.scrollY;
-    ultima = j; activo = i;
+    todas = j < 0;
+    if (j >= 0) ultima = j;
+    activo = i;
     elegirLectura.value = j;
     if (i < 0) elegirActivo.selectedIndex = 0; else elegirActivo.value = i;
     pasosLectura.actualizar(); pasosActivo.actualizar();
     // Se conservan los mismos controles y el mismo terreno: no se reinicia su ángulo,
     // relieve, foco o posición al avanzar o usar un desplegable.
-    dibujar(); alSeleccionar(j);
+    dibujar(); alSeleccionar(ultima);
     if (window.scrollX !== x || window.scrollY !== y) window.scrollTo({ left: x, top: y, behavior: 'instant' });
   };
   elegirLectura.onchange = () => seleccionar(Number(elegirLectura.value), activo);
