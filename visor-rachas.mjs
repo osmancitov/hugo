@@ -132,7 +132,7 @@ function textoFuente(origen) {
   return 'Lectura del día. ' + notas[0] + '.';
 }
 
-export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null) {
+export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null, filtroActivos = () => true) {
   if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
   // Sin título propio (decisión del usuario, 20-nov-2026): el título combinado del espacio (p. ej. «Stocks Variación») ya corona la vista.
   const nota = texto('p', 'Lectura del día sobre la ventana de 90 días terminada en la última vela cerrada; no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
@@ -192,7 +192,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   contenedor.append(nota,controles,estado,fuente,reglas,cuerpo);
   function pintar() {
     if (!ultimo || !contenedor.isConnected) return;
-    const todos=ultimo.resultados.filter(x=>clase==='todos'||x.activo.clase===clase);
+    const todos=ultimo.resultados.filter(x=>(clase==='todos'||x.activo.clase===clase)&&filtroActivos(x.activo));
     const partes=separar(todos), q=consulta().toLowerCase();
     const coincide=x=>!q||[x.activo.codigo,x.activo.nombre,x.activo.lectura||''].some(t=>t.toLowerCase().includes(q));
     const visibles=partes.comparables.filter(coincide).filter(x=>direccionRacha==='todas'||(direccionRacha==='bajan'?x.datos.direccion<0:x.datos.direccion>0));

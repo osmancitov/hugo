@@ -139,19 +139,16 @@ test('los rótulos visibles de los icebergs viven en la fuente única de rótulo
   assert.equal(rotulos['iceberg'], undefined);
 });
 
-test('la separación por mercado: selector sobre las vistas, entrada en Stocks y rutas por espacio', () => {
-  // Selector de mercados encima de las vistas (decisión del usuario, 20-nov-2026).
+test('revelado progresivo: entrada limpia, rankings e Indicadores por mercado', () => {
   assert.match(visor, /<nav class="mercados" aria-label="Mercados">/);
   assert.equal(visor.match(/id="mercado-stock"/g)?.length, 1);
   assert.equal(visor.match(/id="mercado-cripto"/g)?.length, 1);
-  assert.ok(visor.indexOf('class="mercados"') < visor.indexOf('class="vistas"'), 'mercados encima de vistas');
-  // Rutas por espacio y redirección de las rutas sin mercado al espacio inicial, Stocks.
-  assert.match(visor, /location\.replace\(location\.hash === '#\/rachas' \? '#\/stock\/rachas' : '#\/stock'\)/);
-  assert.match(visor, /'#\/' \+ mercado \+ '\/rachas'/);
-  assert.match(visor, /location\.hash\.startsWith\('#\/cripto'\) \? 'cripto' : 'stock'/);
-  // La portada de un mercado solo lista su clase y sus indicadores.
-  assert.match(visor, /INDICADORES\.filter\(\(e\) => e\.mercado === mercado\)/);
-  assert.match(visor, /TODOS\.filter\(\(e\) => e\.clase === mercado\)/);
-  // La vista Variación recibe el catálogo completo (una sola lectura sirve a ambos espacios) y fija el mercado.
-  assert.match(visor, /montarRachas\(seccion, TODOS/);
+  assert.match(visor, /navCat.hidden=true;navV.hidden=true/);
+  assert.match(visor, /botonNav\(navCat,'Empresas'/);
+  assert.match(visor, /botonNav\(navCat,'Fondos'/);
+  assert.match(visor, /botonNav\(navCat,'Indicadores'/);
+  assert.match(visor, /botonNav\(navV,'Indicadores'/);
+  assert.match(visor, /vistaIndicadoresMercado\(mercado\)/);
+  assert.match(visor, /montarRachas\(seccion,TODOS/);
+  assert.match(visor, /montarPersistencia\(seccion,TODOS/);
 });
