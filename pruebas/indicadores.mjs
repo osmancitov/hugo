@@ -276,7 +276,7 @@ test('los rotulos de los indicadores tienen una sola fuente: app/modulos/indicad
   assert.doesNotMatch(bot, /etiqueta: '/);
   // El visor (menu y graficos) los importa del mismo archivo, no los escribe a mano.
   const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(visor, /import\('\.\/app\/modulos\/indicadores-rotulos\.mjs'\)/);
+  assert.match(visor, /import\('\.\/app\/modulos\/indicadores-rotulos\.mjs(\?v=\d+)?'\)/);
   assert.doesNotMatch(visor, /nombre: 'Fear/);
   // Viaja como .mjs: el instalador de GitHub copia los modulos .mjs, asi que llega a la Debian
   // en cualquier «actualiza» (un .json quedaba fuera y los reportes caian a las claves tecnicas).
