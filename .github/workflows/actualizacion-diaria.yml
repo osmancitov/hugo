@@ -1,15 +1,14 @@
 # Puesta al día diaria de Hugo desde la nube (decisión del usuario, 22-nov-2026): Google Apps
-# Script dispara el flujo entre las 00:05 y las 00:14 UTC, con la vela diaria ya cerrada y
-# asentada; el cron queda de respaldo hacia la 01:00 UTC por si el disparador falta (una
-# corrida programada puede demorarse o descartarse). Idempotente por contenido: si el día ya
-# está cubierto y publicado, la corrida no cambia nada; si hubo noches sin correr, la corrida
-# alcanza los días pendientes. El aviso de inicio y resultado llega a Slack por la app oficial
-# de GitHub. No toca la lectura horaria ni el bot de la Debian.
+# Script disparará el flujo entre las 00:05 y las 00:14 UTC, con la vela diaria ya cerrada y
+# asentada. Mientras la diaria automática de la Debian siga activa, el flujo SOLO corre a mano
+# (workflow_dispatch): sin cron, para no duplicar responsabilidad. Al confirmar la pausa de la
+# Debian se activa el disparo de Google y, si se quiere, un cron de respaldo. Idempotente por
+# contenido: si el día ya está cubierto y publicado, la corrida no cambia nada; si hubo noches
+# sin correr, la corrida alcanza los días pendientes. El aviso de inicio y resultado llega a
+# Slack por la app oficial de GitHub. No toca la lectura horaria ni el bot de la Debian.
 name: Puesta al día diaria de Hugo
 
 on:
-  schedule:
-    - cron: '58 0 * * *'
   workflow_dispatch: {}
 
 permissions:
