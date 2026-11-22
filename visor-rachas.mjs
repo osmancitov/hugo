@@ -179,12 +179,12 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
   reglas.append(texto('p','Lectura del día: Hugo deja calculadas estas métricas cada día sobre la ventana de 90 días. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
   reglas.append(texto('p','Activo: el código del activo; su fila abre su gráfica habitual.'));
-  reglas.append(texto('p','R %: rango del día, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
+  reglas.append(texto('p','R %: rango diario, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio de la ventana.'));
   reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
   reglas.append(texto('p','G/P: la razón de variación sobre la ventana de la lectura: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
-  reglas.append(texto('p','C: cambios de dirección en la ventana: cada vez que un día verde sigue a uno rojo o al revés.'));
-  reglas.append(texto('p','Ranking del día: posición única por variación de la jornada (cierre frente a apertura), de la mayor caída a la mayor subida; un empate exacto se ordena por código.'));
+  reglas.append(texto('p','OSC: oscilación, cambios de dirección en la ventana: cada vez que un día verde sigue a uno rojo o al revés.'));
+  reglas.append(texto('p','Día: posición única por variación de la jornada (cierre frente a apertura), de la mayor caída a la mayor subida; un empate exacto se ordena por código.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
   contenedor.append(nota,controles,estado,fuente,reglas,cuerpo);
