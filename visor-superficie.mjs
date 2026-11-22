@@ -1,11 +1,12 @@
 // Superficie 3D del registro real. Proyección y dibujo locales, sin dependencias externas.
 // Las tomas se leen directamente de GitHub; actualizar datos no requiere desplegar este módulo.
 import { terrenoDia } from './app/modulos/intradia-datos.mjs';
-import { COLORES_LECTURA, TINTAS_LECTURA, colorMovimiento } from './app/modulos/colores-lectura.mjs';
+import { COLORES_LECTURA, colorMovimiento } from './app/modulos/colores-lectura.mjs';
 export { colorMovimiento } from './app/modulos/colores-lectura.mjs';
 const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
-// Franja seleccionada: los mismos verde, rojo y gris en su version intensa (las tintas del criterio visual).
-const INTENSOS = { [COLORES_LECTURA.rojo]: TINTAS_LECTURA.rojo, [COLORES_LECTURA.verde]: TINTAS_LECTURA.verde, [COLORES_LECTURA.gris]: '#cdd3dc', transparent: 'transparent' };
+// Franja seleccionada: el mismo tono de cada color con la saturacion al tope (HLS), sin aclarar hacia el blanco.
+// rojo #b73d40 -> #ff0a10 y verde #25855c -> #00c470 (mismo matiz, saturacion 100%); el gris solo sube un poco su luz.
+const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '#00c470', [COLORES_LECTURA.gris]: '#a5abb5', transparent: 'transparent' };
 const ORO = '#c2a15a';
 export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
 export const porcentajeSuperficie = (n) => {
