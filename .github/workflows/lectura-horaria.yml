@@ -1,0 +1,72 @@
+# Lectura horaria de Hugo mientras la Debian está apagada. Gratuita en este
+# repositorio público (ejecutores estándar). GitHub puede demorar o descartar
+# una corrida programada; la lectura guarda su hora real, nunca una forzada.
+# Frontera con la Debian: si el repositorio ya trae una lectura de esa hora, la
+# corrida no toma otra. El cron va unos minutos antes de la hora en punto para
+# absorber la demora de GitHub; la lectura se toma al minuto 00.
+name: Lectura horaria de Hugo
+
+on:
+  schedule:
+    - cron: '47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lectura-horaria
+  cancel-in-progress: false
+
+jobs:
+  lectura:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Node 22, como la Debian
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restaurar cola y pausa de corridas anteriores
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado-intradia
+          key: intradia-estado-${{ github.run_id }}
+          restore-keys: intradia-estado-
+      - name: Tomar la lectura (o saltarla si hay una de esa hora)
+        id: lectura
+        run: node .github/lectura-horaria.mjs
+      - name: Publicar en el repositorio
+        if: steps.lectura.outputs.cambios == 'si'
+        run: |
+          set -e
+          git config user.name Osmancito
+          git config user.email osmanvielma@gmail.com
+          git add registros/
+          if git diff --cached --quiet; then
+            echo "Sin cambios que publicar."
+            exit 0
+          fi
+          git commit -m "Guardar lectura horaria de las $(date -u +'%H:%M') UTC desde Actions"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Reintento $i de publicación tras avance ajeno."
+            sleep $((i * 10))
+          done
+          echo "GitHub siguió avanzando durante los reintentos; la cola queda pendiente."
+          exit 1
+      - name: Confirmar la cola publicada
+        if: steps.lectura.outputs.cambios == 'si'
+        run: node .github/confirmar-horaria.mjs
+      - name: Guardar cola y pausa para la próxima corrida
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .estado-intradia
+          key: intradia-estado-${{ github.run_id }}
