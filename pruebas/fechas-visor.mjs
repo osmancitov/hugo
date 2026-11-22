@@ -28,3 +28,8 @@ test('ventana de Persistencia omite el año solo al mostrar',()=>{
  assert.equal((src.match(/replace\(\/ /g)||[]).length,2);
  assert.equal(fechaLegibleUTC('2026-08-24').replace(/ \d{4}$/, ''),'24 ago');
 });
+
+test('Persistencia presenta solo fechas y cantidad, sin explicación de fórmula',()=>{
+ const src=fs.readFileSync(new URL('../visor-persistencia.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(src,/participantes globales|no se recalcula al filtrar|Menor promedio/);
+});
