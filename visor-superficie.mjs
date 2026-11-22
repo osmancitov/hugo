@@ -120,13 +120,19 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   acercar.type = 'range'; acercar.min = '0.6'; acercar.max = '2'; acercar.step = '.05'; acercar.value = '1'; acercar.setAttribute('aria-label', 'Acercar o alejar la superficie');
   acercar.oninput = () => { zoom = Number(acercar.value); dibujar(); };
   etiquetaZoom.append(acercar);
-  const recentrar = crear('button', '', 'Recentrar');
-  recentrar.type = 'button';
-  recentrar.onclick = () => { giro = -0.34; inclinacion = 0.68; amplitud = 1; zoom = 1; relieve.value = '1'; acercar.value = '1'; dibujar(); };
-  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, recentrar);
+  // Tres vistas con nombre: la inicial oblicua y las dos perspectivas que pidio el usuario (22-nov-2026).
+  const vistas = [['Oblicua', -0.34, 0.68], ['Cascada', 0, 0.9], ['Telar', -1.5708, 1.55]];
+  const botonesVista = vistas.map(([nombre, g, inc]) => {
+    const b = crear('button', '', nombre);
+    b.type = 'button';
+    b.setAttribute('aria-label', `Vista ${nombre.toLowerCase()} de la superficie`);
+    b.onclick = () => { giro = g; inclinacion = inc; amplitud = 1; zoom = 1; relieve.value = '1'; acercar.value = '1'; dibujar(); };
+    return b;
+  });
+  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, ...botonesVista);
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y Recentrar devuelve la vista inicial.');
+  canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y los botones Oblicua, Cascada y Telar llevan a vistas fijas.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
   caja.append(controles, canvas, detalle);
   contenedor.append(caja);
@@ -139,7 +145,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   }
   function dibujar() {
     if (!viva) return;
-    const ancho = Math.max(280, caja.clientWidth), alto = ancho < 600 ? 370 : 500, dpr = Math.min(2, window.devicePixelRatio || 1);
+    const ancho = Math.max(280, caja.clientWidth), alto = ancho < 600 ? 560 : 640, dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = ancho * dpr; canvas.height = alto * dpr;
     canvas.style.height = `${alto}px`;
     const c = canvas.getContext('2d'); c.scale(dpr, dpr);
@@ -230,8 +236,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.onpointermove = (e) => {
     if (!arrastre) return;
     if (Math.abs(e.clientX - arrastre.x) + Math.abs(e.clientY - arrastre.y) > 4) arrastre.movido = true;
-    giro = arrastre.giro + (e.clientX - arrastre.x) / 250;
-    inclinacion = Math.max(.05, Math.min(1.5, arrastre.inclinacion + (e.clientY - arrastre.y) / 300)); dibujar();
+    giro = arrastre.giro + (e.clientX - arrastre.x) / 170;
+    inclinacion = Math.max(.05, Math.min(1.7, arrastre.inclinacion + (e.clientY - arrastre.y) / 210)); dibujar();
   };
   canvas.onpointerup = (e) => {
     if (arrastre && !arrastre.movido) {
