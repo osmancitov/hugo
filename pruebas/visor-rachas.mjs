@@ -112,11 +112,11 @@ test('todos los registros del catálogo real se validan y resumen sin alterar ar
 test('puestos del día: el archivo de ranking manda; sin archivo se deriva con la misma regla',()=>{
  const c=corteUTC()-DIA;
  const archivo=puestosDelDia([['BBB',-3],['AAA',1]],{},{});
- assert.equal(archivo.get('BBB'),1); assert.equal(archivo.get('AAA'),2);
+ assert.equal(archivo.get('AAA'),1); assert.equal(archivo.get('BBB'),2);
  const activos={X:{fecha:c,variacion:1},Y:{fecha:c,variacion:-2},Z:{fecha:c,variacion:1},W:{fecha:c-DIA,variacion:9}};
  const derivado=puestosDelDia(null,activos,c);
- assert.equal(derivado.get('Y'),1); // la mayor caída primero
- assert.equal(derivado.get('X'),2); assert.equal(derivado.get('Z'),3); // empate exacto: por código
+ assert.equal(derivado.get('Y'),3); // mayores subidas primero
+ assert.equal(derivado.get('X'),1); assert.equal(derivado.get('Z'),2); // empate exacto: por código
  assert.ok(!derivado.has('W')); // sin vela ese día no ocupa puesto
 });
 test('resultado desde la lectura: gp null es infinito, falta es error de ventana, puesto incluido',()=>{
@@ -177,8 +177,18 @@ test('Día descarta una racha filtrada y vuelve a mostrar todos los puestos, sin
   modo.value='dias';modo.onchange(); filtro.value='suben';filtro.onchange();
   assert.equal(filtro.hidden,false); assert.deepEqual(codigos(),['BBB','CCC']);
   modo.value='ranking';modo.onchange();
-  assert.equal(filtro.hidden,true); assert.equal(filtro.value,'todas'); assert.deepEqual(codigos(),['AAA','BBB','CCC']);
+  assert.equal(filtro.hidden,true); assert.equal(filtro.value,'todas'); assert.deepEqual(codigos(),['CCC','BBB','AAA']);
   modo.value='dias';modo.onchange(); assert.equal(filtro.value,'todas');
   modo.value='gp';modo.onchange(); assert.equal(filtro.hidden,true); assert.deepEqual(codigos(),['AAA','BBB','CCC']);
  } finally {globalThis.document=anteriorDocumento;globalThis.fetch=anteriorFetch;}
+});
+
+
+test('porcentajes enteros: ceros grises sin signo y mitades simétricas; no cambia el valor real', async()=>{
+ const {porcentajeEntero,clasePorcentaje}=await import('../visor-rachas.mjs');
+ for (const n of [0,-0,0.4,-0.4,0.499,-0.499]) { assert.equal(porcentajeEntero(n),'0');assert.equal(clasePorcentaje(n),'igual'); }
+ for (const [n,t,c] of [[0.5,'+1','positivo'],[-0.5,'-1','negativo'],[1.5,'+2','positivo'],[-1.5,'-2','negativo']]) {assert.equal(porcentajeEntero(n),t);assert.equal(clasePorcentaje(n),c);}
+ const filas=[['ZZZ',0.49],['AAA',0.41],['BBB',0.49],['CCC',-0.4]];
+ const antes=JSON.stringify(filas),p=puestosDelDia(filas,{},0);
+ assert.deepEqual([...p.keys()],['BBB','ZZZ','AAA','CCC']);assert.equal(JSON.stringify(filas),antes);
 });

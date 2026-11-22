@@ -8,7 +8,11 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 const fecha = fechaLegibleUTC;
 const fechaCorta = t => { const f = new Date(t); return f.getUTCDate() + ' ' + MESES[f.getUTCMonth()]; };
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const pct0 = n => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('es');
+// Solo presentación: redondeo simétrico; ±0,5 se muestra ±1 y los ceros no llevan signo.
+export const enteroPorcentaje = n => Math.sign(n) * Math.round(Math.abs(n));
+export const clasePorcentaje = n => enteroPorcentaje(n) === 0 ? 'igual' : n < 0 ? 'negativo' : 'positivo';
+export const porcentajeEntero = n => { const v = enteroPorcentaje(n); return v === 0 ? '0' : (v > 0 ? '+' : '') + v.toLocaleString('es'); };
+const pct0 = porcentajeEntero;
 const texto = (tag, valor, clase = '') => { const n = document.createElement(tag); n.textContent = valor; if (clase) n.className = clase; return n; };
 let pendiente, ultimo, clase = 'todos', orden = 'gp', direccionRacha = 'todas';
 async function json(url) {
@@ -39,19 +43,16 @@ async function leerRankingPre(mercado, fin) {
   return r.ok ? r.json() : null;
 }
 
-// Posición única por activo (decisión del usuario, 20-nov-2026: «tiene que ser posición única,
-// no puede haber ambigüedad»): el puesto es el lugar en la lista del día, de la mayor caída a
-// la mayor subida, y un empate exacto en la variación se ordena por código. Sale del archivo
-// de ranking y, si falta, se deriva de la misma lectura con la misma regla.
+// Puestos únicos: desde el 22-nov-2026 el usuario pide mayores subidas primero.
+// Se ordena por variación real, nunca por el entero visible; empate exacto por código.
+// El archivo conserva su formato y orden de almacenamiento, sin reescribir históricos.
 export function puestosDelDia(ranking, activos, corte) {
   const puestos = new Map();
-  if (Array.isArray(ranking) && ranking.length) {
-    ranking.forEach((f, i) => puestos.set(f[0], i + 1));
-    return puestos;
-  }
-  const delDia = Object.entries(activos).filter(([, d]) => d.fecha === corte);
-  delDia.sort((a, b) => a[1].variacion - b[1].variacion || (a[0] < b[0] ? -1 : 1));
-  delDia.forEach(([cod], i) => puestos.set(cod, i + 1));
+  const delDia = Array.isArray(ranking) && ranking.length
+    ? ranking.map(([cod, variacion]) => [cod, variacion])
+    : Object.entries(activos).filter(([, d]) => d.fecha === corte).map(([cod,d]) => [cod,d.variacion]);
+  delDia.sort((a,b) => b[1]-a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  delDia.forEach(([cod],i) => puestos.set(cod,i+1));
   return puestos;
 }
 export function resultadoDesdeLectura(activo, pre, puestos) {
@@ -182,9 +183,10 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   reglas.append(texto('p','R %: rango diario, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio de la ventana.'));
   reglas.append(texto('p','A %: variación acumulada, el cambio del precio durante la racha, desde la apertura del primer día hasta el cierre del último, con su signo.'));
+  reglas.append(texto('p','Los porcentajes enteros que redondean a cero se muestran como 0 en gris, sin signo. ±0,5 redondea a ±1. El orden usa el valor real, no el redondeado.'));
   reglas.append(texto('p','G/P: la razón de variación sobre la ventana de la lectura: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
   reglas.append(texto('p','OSC: oscilación, cambios de dirección en la ventana: cada vez que un día verde sigue a uno rojo o al revés.'));
-  reglas.append(texto('p','Día: posición única por variación de la jornada (cierre frente a apertura), de la mayor caída a la mayor subida; un empate exacto se ordena por código.'));
+  reglas.append(texto('p','Día: posición única por variación de la jornada (cierre frente a apertura), de la mayor subida a la mayor caída; un empate exacto se ordena por código.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
   contenedor.append(nota,controles,estado,fuente,reglas,cuerpo);
@@ -215,7 +217,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
       const id=texto('td','','col-activo'); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
-      const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),d.dias?(d.acumulado<0?'negativo':d.acumulado>0?'positivo':''):'');
+      const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),clasePorcentaje(d.dias ? d.acumulado : 0));
       if(d.limitada) { id.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; } // la nota va bajo el nombre: en la celda de la racha se partía letra a letra
       const rango=texto('td',Math.round(d.rango).toLocaleString('es'));
       const gp=texto('td',d.gp===Infinity?'∞':(Math.round(d.gp*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2}));
