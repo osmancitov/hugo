@@ -14,14 +14,14 @@ test('superficie tiene entrada estática con metadatos propios antes de ejecutar
  const { paginaSuperficie } = await import('../app/generar-pagina-superficie.mjs');
  const original = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
  const html = paginaSuperficie(original), head = html.slice(0, html.indexOf('</head>'));
- assert.match(head, /og:title" content="Superficie 3D · Hugo · Observatorio Bursátil/);
+ assert.match(head, /og:title" content="Superficie del día · Hugo · Observatorio Bursátil/);
  assert.match(head, /og:image" content="https:\/\/osmancitov.github.io\/hugo\/superficie-og.jpg/);
  assert.match(head, /og:url" content="https:\/\/osmancitov.github.io\/hugo\/superficie.html/);
  assert.match(html, /if \(!location.hash\) history.replaceState/);
  assert.match(html, /href="index.html#\/"/);
- assert.match(html, /href: 'index.html#\/i\/iceberg-stock'/);
- assert.ok(html.includes("enlaceSuperficie.href = compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html'"));
+ assert.match(html, /href: 'index.html#\/stock'/);
+ assert.ok(!html.includes('enlaceSuperficie')); // sin enlaces entre las vistas (decisión del usuario, 21-nov-2026)
  assert.doesNotMatch(head, /twitter:/);
  assert.equal((html.match(/function vistaSuperficie\(/g) || []).length, 1);
- assert.ok(original.includes("enlaceSuperficie.href = compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html'"));
+ assert.ok(!original.includes('enlaceSuperficie'));
 });

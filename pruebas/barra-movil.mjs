@@ -264,10 +264,11 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('guardia del visor: la barra solo en el iceberg de stocks, colores de la casa, ausente si el archivo falta', () => {
+test('guardia del visor: las barras solo en la Superficie del día, colores de la casa, ausentes si el archivo falta', () => {
   const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(visor, /actual_barra/);
-  assert.match(visor, /e\.codigo === 'iceberg-stock'/); // ni cripto ni otras vistas
+  assert.match(visor, /vistaBarra\(b, \{ historica: true, compacta: true \}\)/); // solo dentro de la Superficie del día (decisión del usuario, 21-nov-2026)
+  assert.doesNotMatch(visor, /cargarBarra\(\)\.then/); // fuera del Iceberg: las vistas no se enlazan
   assert.match(visor, /return null; \/\/ Sin historial/); // sin archivo publicado, sin bloque
   assert.match(visor, /ventana móvil/);
   assert.match(visor, /Movimiento entre las dos últimas consultas/); // segunda barra: movimiento medido entre lecturas
@@ -385,13 +386,13 @@ test('periodos unificados con meses legibles y reloj de24horasUTC', () => {
  assert.match(html,/24 h por activo/);
 });
 
-test('2D y 3D comparten periodos y tablas, sin Lectura redundante y con navegación recíproca', () => {
+test('las barras comparten periodos y tablas, sin Lectura redundante ni enlaces entre las vistas', () => {
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const vista=html.slice(html.indexOf('function vistaBarra('),html.indexOf('const BARRAS_TABLA'));
  const tablas=html.slice(html.indexOf('const BARRAS_TABLA'),html.indexOf('const precioTabla'));
  assert.doesNotMatch(vista,/Lectura:/);
- assert.ok(vista.includes("compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html'"));
- assert.ok(vista.includes("compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas'"));
+ assert.ok(!vista.includes('enlaceSuperficie')); // las vistas no se comunican (decisión del usuario, 21-nov-2026)
+ assert.ok(!vista.includes('Ver iceberg 2D') && !vista.includes('Ver superficie 3D'));
  assert.equal((tablas.match(/nota: \(b\) => periodoBarra\(/g)||[]).length,3);
  assert.doesNotMatch(tablas,/Lectura:|Referencia fija:|toISOString/);
 });

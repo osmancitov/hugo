@@ -2,8 +2,9 @@
 // dibuja la frontera suben/bajan de la ventana MOVIL (las ultimas 24 h hasta el instante de
 // la consulta, no el dia cerrado en UTC que cuenta el iceberg). Nace del estudio horario de
 // candidatos (decision del usuario, 20-nov-2026: dos tandas equilibradas, menor proceso y
-// recursos, sin construir un registro propio ni reconstruir nada; la barra acompana al
-// iceberg de stocks para ver moverse la frontera durante el dia).
+// recursos, sin construir un registro propio ni reconstruir nada. Nacio acompanando al
+// iceberg de stocks; desde el 21-nov-2026 se muestra en la Superficie del dia (decision
+// del usuario: las vistas no se enlazan, son cosas distintas).
 //
 // Una consulta por tanda a /api/v3/ticker?windowSize=1d, calculada desde Database.
 // Binance cierra al pedirla y redondea el inicio al minuto: 24 h + hasta 59 999 ms.

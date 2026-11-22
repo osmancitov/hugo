@@ -425,8 +425,8 @@ function vistaArbol(q, mercado) {
   nota.textContent = 'Capitalización del token y, en su caso, de la base (la empresa en bolsa o los activos del fondo), con la fecha de cada cifra; no cotizaciones en vivo.';
   app.append(nota, elBuscar);
   // Indicadores primero en la lista, en stocks y en cripto (decisión del usuario, 21-nov-2026).
-  const inds = INDICADORES.filter((e) => e.mercado === mercado).sort((a,b)=>Number(Boolean(b.iceberg))-Number(Boolean(a.iceberg))).map(e=>e.iceberg?{...e,nombre:'Iceberg 2D'}:e);
-  if(mercado==='stock')inds.unshift({indicador:true,codigo:'iceberg-stock/superficie',nombre:'Iceberg 3D'});
+  const inds = INDICADORES.filter((e) => e.mercado === mercado).sort((a,b)=>Number(Boolean(b.iceberg))-Number(Boolean(a.iceberg))).map(e=>e.iceberg?{...e,nombre:'Iceberg'}:e);
+  if(mercado==='stock')inds.unshift({indicador:true,codigo:'iceberg-stock/superficie',nombre:'Superficie del día'});
   app.appendChild(nodoArbol('Indicadores', inds.length + (inds.length === 1 ? ' indicador' : ' indicadores'), inds));
   if (mercado === 'stock') {
     const nEmp = nodoArbol('Empresas', EMPRESAS.length + ' activos', EMPRESAS, true);
@@ -687,11 +687,6 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
   // Presentación: rojo bajó, gris igual, verde subió; sin alterar el conteo guardado. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
   const d = b.dia;
   if (d) {
-    const enlaceSuperficie = document.createElement('a');
-    enlaceSuperficie.className = 'barra-movil-enlace';
-    enlaceSuperficie.href = compacta ? 'index.html#/i/iceberg-stock' : 'superficie.html';
-    enlaceSuperficie.textContent = compacta ? 'Ver iceberg 2D' : 'Ver superficie 3D y lecturas';
-    caja.append(enlaceSuperficie);
     caja.append(seccion(
       duracionBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       d.suben, d.bajan, d.suben + d.bajan,
@@ -793,7 +788,7 @@ async function vistaTablaBarra(clave, instante = null) {
   if (!def) { location.hash = ''; return; }
   app.innerHTML = '';
   const volver = document.createElement('a');
-  volver.className = 'volver'; volver.href = '#/i/iceberg-stock'; volver.textContent = 'volver';
+  volver.className = 'volver'; volver.href = '#/i/iceberg-stock/superficie'; volver.textContent = 'volver';
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
   const h1 = document.createElement('h1');
@@ -869,7 +864,7 @@ async function vistaTablaBarra(clave, instante = null) {
 
 async function vistaSuperficie() {
   app.replaceChildren();
-  const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/i/iceberg-stock', textContent: 'volver' });
+  const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/stock', textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const titulo = Object.assign(document.createElement('h1'), { textContent: 'Superficie del día' });
   ficha.append(titulo);
@@ -1314,11 +1309,6 @@ function vistaIndicador(codigo) {
       nota.append(enlace);
     } else nota.append(e.fuente);
     pie.append(nota);
-    if (e.codigo === 'iceberg-stock') {
-      cargarBarra().then((b) => { if (b && pie.isConnected) pie.append(vistaBarra(b)); }).catch(() => {
-        if (pie.isConnected) pie.append(Object.assign(document.createElement('p'), { className: 'estado', textContent: 'No pude leer el registro de las barras. Vuelve a cargar para comprobar lo publicado.' }));
-      });
-    }
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').';
   });
