@@ -28,7 +28,7 @@ export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,
     let nStocks=0;
     const global=j.activos.map((d,i)=>({...d,activo:porId.get(d.id),puestoGlobal:i+1})).filter(x=>x.activo).map(x=>({...x,puestoStocks:x.activo.clase==='stock'?++nStocks:null}));
     filas=global.filter(x=>seleccion(x.activo)).map((x,i)=>({...x,puestoLista:i+1}));
-    estado.textContent=fechaLegibleUTC(j.ventana.inicio).replace(/ \d{4}$/, '')+' → '+fechaLegibleUTC(j.ventana.fin).replace(/ \d{4}$/, '')+' · '+filas.length+' '+(filas[0]?.activo.clase==='cripto'?'criptos':filas[0]?.activo.tipo==='empresa'?'empresas':'fondos');
+    estado.textContent=fechaLegibleUTC(j.ventana.inicio).replace(/ \d{4}$/, '')+' → '+fechaLegibleUTC(j.ventana.fin).replace(/ \d{4}$/, '')+' · '+global.length+' activos · '+filas.length+' '+(filas[0]?.activo.clase==='cripto'?'criptos':filas[0]?.activo.tipo==='empresa'?'empresas':'fondos');
     pintar();
   }catch(e){estado.textContent='No pude completar Persistencia: '+e.message+'. No se muestra un ranking parcial.';}
   return pintar;
