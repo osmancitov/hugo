@@ -94,28 +94,36 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
 export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
-  let giro = -0.34, inclinacion = 0.68, amplitud = 1, ultima = barras.length - 1, activo = -1, arrastre = null, proyecciones = [], viva = true;
+  let giro = -0.34, inclinacion = 0.68, amplitud = 1, zoom = 1, ultima = barras.length - 1, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
   const caja = crear('div', 'superficie-caja');
   const controles = crear('div', 'superficie-controles');
   const etiquetaLectura = crear('label', '', 'Lectura '), elegirLectura = crear('select');
-  barras.forEach((b, i) => { const o = crear('option', '', `${horaVista(b.generada)}`); o.value = i; elegirLectura.append(o); });
+  barras.forEach((b, i) => { const o = crear('option', '', `${horaVista(b.generada)} UTC`); o.value = i; elegirLectura.append(o); });
   elegirLectura.value = ultima;
   const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i, activo), { repetir: true, ciclar: true });
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
+  const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
   codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
-  elegirActivo.selectedIndex = -1;
-  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i), { repetir: true, ciclar: true });
+  elegirActivo.selectedIndex = 0;
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i - 1), { repetir: true, ciclar: true });
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
   etiquetaAltura.append(relieve);
-  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura);
+  const etiquetaZoom = crear('label', '', 'Zoom '), acercar = crear('input');
+  acercar.type = 'range'; acercar.min = '0.6'; acercar.max = '2'; acercar.step = '.05'; acercar.value = '1'; acercar.setAttribute('aria-label', 'Acercar o alejar la superficie');
+  acercar.oninput = () => { zoom = Number(acercar.value); dibujar(); };
+  etiquetaZoom.append(acercar);
+  const recentrar = crear('button', '', 'Recentrar');
+  recentrar.type = 'button';
+  recentrar.onclick = () => { giro = -0.34; inclinacion = 0.68; amplitud = 1; zoom = 1; relieve.value = '1'; acercar.value = '1'; dibujar(); };
+  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, recentrar);
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar.');
+  canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y Recentrar devuelve la vista inicial.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
   caja.append(controles, canvas, detalle);
   contenedor.append(caja);
@@ -139,7 +147,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const minX = Math.min(...esquinas.map((p) => p.u)), maxX = Math.max(...esquinas.map((p) => p.u));
     const minY = Math.min(...esquinas.map((p) => p.v)), maxY = Math.max(...esquinas.map((p) => p.v));
     const izq = ancho < 600 ? 54 : 82, der = ancho < 600 ? 26 : 95, arriba = 38, abajo = 67;
-    const escalaX = (ancho - izq - der) / (maxX - minX), escalaY = (alto - arriba - abajo) / (maxY - minY);
+    const escalaX = zoom * (ancho - izq - der) / (maxX - minX), escalaY = zoom * (alto - arriba - abajo) / (maxY - minY);
     const centroX = izq + (ancho - izq - der) / 2, centroY = arriba + (alto - arriba - abajo) / 2;
     const proyectar = (x, y, z) => {
       const p = crudo(x, y, z);
@@ -203,7 +211,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const x = window.scrollX, y = window.scrollY;
     ultima = j; activo = i;
     elegirLectura.value = j;
-    if (i < 0) elegirActivo.selectedIndex = -1; else elegirActivo.value = i;
+    if (i < 0) elegirActivo.selectedIndex = 0; else elegirActivo.value = i;
     pasosLectura.actualizar(); pasosActivo.actualizar();
     // Se conservan los mismos controles y el mismo terreno: no se reinicia su ángulo,
     // relieve, foco o posición al avanzar o usar un desplegable.
@@ -217,8 +225,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.onpointermove = (e) => {
     if (!arrastre) return;
     if (Math.abs(e.clientX - arrastre.x) + Math.abs(e.clientY - arrastre.y) > 4) arrastre.movido = true;
-    giro = Math.max(-1.1, Math.min(1.1, arrastre.giro + (e.clientX - arrastre.x) / 250));
-    inclinacion = Math.max(.25, Math.min(1.1, arrastre.inclinacion + (e.clientY - arrastre.y) / 300)); dibujar();
+    giro = arrastre.giro + (e.clientX - arrastre.x) / 250;
+    inclinacion = Math.max(.05, Math.min(1.5, arrastre.inclinacion + (e.clientY - arrastre.y) / 300)); dibujar();
   };
   canvas.onpointerup = (e) => {
     if (arrastre && !arrastre.movido) {
