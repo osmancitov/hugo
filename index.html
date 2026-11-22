@@ -213,7 +213,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 
 </script>
 <script type="module">
-import { montarPersistencia } from './visor-persistencia.mjs?v=6';
+import { montarPersistencia } from './visor-persistencia.mjs?v=7';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
@@ -1915,11 +1915,11 @@ async function ruta() {
   }
   if(!fuera&&((mercado==='stock'&&categoria)||mercado==='cripto')){
     navV.hidden=false;const base='#/'+mercado+(categoria?'/'+categoria:'');
-    for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Persistencia']])botonNav(navV,t,base+'/'+v,ranking===v);
+    for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Promedio']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=fuera||!mercado;
-  const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',persistencia:'Persistencia',indicadores:'Indicadores'};
+  const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',persistencia:'Promedio',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}

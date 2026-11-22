@@ -1,7 +1,7 @@
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 const texto=(tag,valor,clase='')=>{const e=document.createElement(tag);e.textContent=valor;if(clase)e.className=clase;return e;};
 export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,buscador) {
-  const estado=texto('p','Preparando Persistencia…','rachas-nota');estado.setAttribute('role','status');
+  const estado=texto('p','Preparando Promedio…','rachas-nota');estado.setAttribute('role','status');
   const cuerpo=texto('div','','rachas-cuerpo');
   contenedor.append(buscador,estado,cuerpo);
   let filas=[];
@@ -28,8 +28,10 @@ export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,
     let nStocks=0;
     const global=j.activos.map((d,i)=>({...d,activo:porId.get(d.id),puestoGlobal:i+1})).filter(x=>x.activo).map(x=>({...x,puestoStocks:x.activo.clase==='stock'?++nStocks:null}));
     filas=global.filter(x=>seleccion(x.activo)).map((x,i)=>({...x,puestoLista:i+1}));
-    estado.textContent=fechaLegibleUTC(j.ventana.inicio).replace(/ \d{4}$/, '')+' → '+fechaLegibleUTC(j.ventana.fin).replace(/ \d{4}$/, '')+' · '+global.length+' activos · '+filas.length+' '+(filas[0]?.activo.clase==='cripto'?'criptos':filas[0]?.activo.tipo==='empresa'?'empresas':'fondos');
+    const categoria=catalogo.filter(seleccion);
+    const nombreLista=categoria[0]?.clase==='cripto'?'criptos':categoria[0]?.tipo==='empresa'?'empresas':'fondos';
+    estado.textContent='Lugar promedio en el ranking de '+global.length+' activos. Máx 90 días ('+fechaLegibleUTC(j.ventana.inicio).replace(/ \d{4}$/, '')+' → '+fechaLegibleUTC(j.ventana.fin).replace(/ \d{4}$/, '')+') · Lista de '+filas.length+' '+nombreLista+'.';
     pintar();
-  }catch(e){estado.textContent='No pude completar Persistencia: '+e.message+'. No se muestra un ranking parcial.';}
+  }catch(e){estado.textContent='No pude completar Promedio: '+e.message+'. No se muestra un ranking parcial.';}
   return pintar;
 }

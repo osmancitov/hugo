@@ -29,7 +29,14 @@ test('ventana de Persistencia omite el año solo al mostrar',()=>{
  assert.equal(fechaLegibleUTC('2026-08-24').replace(/ \d{4}$/, ''),'24 ago');
 });
 
-test('Persistencia presenta solo fechas y cantidad, sin explicación de fórmula',()=>{
+test('Promedio presenta explicación solicitada con cifras y fechas dinámicas',()=>{
  const src=fs.readFileSync(new URL('../visor-persistencia.mjs',import.meta.url),'utf8');
- assert.doesNotMatch(src,/participantes globales|no se recalcula al filtrar|Menor promedio/);
+ assert.match(src,/Lugar promedio en el ranking de /);
+ assert.match(src,/global.length/);
+ assert.match(src,/Máx 90 días/);
+ assert.match(src,/Lista de /);
+ assert.match(src,/filas.length/);
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/'persistencia','Promedio'/);
+ assert.match(html,/persistencia:'Promedio'/);
 });
