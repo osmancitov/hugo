@@ -40,3 +40,11 @@ test('Promedio presenta explicación solicitada con cifras y fechas dinámicas',
  assert.match(html,/'persistencia','Promedio'/);
  assert.match(html,/persistencia:'Promedio'/);
 });
+
+test('Promedio redondea solo al presentar',()=>{
+ const src=fs.readFileSync(new URL('../visor-persistencia.mjs',import.meta.url),'utf8');
+ assert.match(src,/minimumFractionDigits:0,maximumFractionDigits:0/);
+ assert.doesNotMatch(src,/Math.round/);
+ assert.equal((197.49).toLocaleString('es',{maximumFractionDigits:0}),'197');
+ assert.equal((197.69).toLocaleString('es',{maximumFractionDigits:0}),'198');
+});

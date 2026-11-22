@@ -16,7 +16,7 @@ export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,
     for(const x of visibles){
       const r=document.createElement('tr'),id=texto('td','','col-activo'),a=texto('a',x.activo.codigo,'activo-fila rachas-enlace');
       a.href='#/a/'+x.activo.clase+'/'+encodeURIComponent(x.activo.codigo);id.append(a,texto('span',x.activo.nombre,'rachas-nombre'));
-      r.append(texto('td',String(x.puestoLista)),id,texto('td',x.promedio.toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})),texto('td',String(x.carreras)),texto('td',String(x.puestoGlobal)),texto('td',x.puestoStocks==null?'—':String(x.puestoStocks)));body.append(r);
+      r.append(texto('td',String(x.puestoLista)),id,texto('td',x.promedio.toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0})),texto('td',String(x.carreras)),texto('td',String(x.puestoGlobal)),texto('td',x.puestoStocks==null?'—':String(x.puestoStocks)));body.append(r);
     }
     tabla.append(cab,body);caja.append(tabla);cuerpo.append(caja);
     if(!visibles.length)cuerpo.append(texto('p','Ningún activo coincide con la búsqueda.','vacio'));
