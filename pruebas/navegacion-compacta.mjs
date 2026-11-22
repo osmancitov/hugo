@@ -14,3 +14,9 @@ test('capitalización sin explicación eliminada, Promedio conserva su módulo',
  assert.doesNotMatch(html,/Capitalización del token y, en su caso/);
  assert.match(html,/montarPersistencia\(seccion,TODOS/);
 });
+
+test('Variación sin párrafo introductorio eliminado',()=>{
+ const src=fs.readFileSync(new URL('../visor-rachas.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(src,/Lectura del día sobre la ventana de 90 días terminada/);
+ assert.match(src,/contenedor.append\(controles,estado,fuente,reglas,cuerpo\)/);
+});

@@ -171,7 +171,7 @@ test('Día descarta una racha filtrada y vuelve a mostrar todos los puestos, sin
   const contenedor=new Elemento('main');
   montarRachas(contenedor,catalogo,()=>'', 'stock');
   await new Promise(r=>setImmediate(r));
-  const controles=contenedor.hijos[1], modo=controles.hijos[1], filtro=controles.hijos[2], cuerpo=contenedor.hijos.at(-1);
+  const controles=contenedor.hijos[0], modo=controles.hijos[1], filtro=controles.hijos[2], cuerpo=contenedor.hijos.at(-1);
   const codigos=()=>cuerpo.hijos[0].hijos[0].hijos[1].hijos.map(f=>f.hijos.find(td=>td.className==='col-activo').hijos[0].textContent);
   assert.equal(modo.value,'gp'); assert.equal(filtro.hidden,true);
   modo.value='dias';modo.onchange(); filtro.value='suben';filtro.onchange();

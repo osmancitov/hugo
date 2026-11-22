@@ -135,7 +135,6 @@ function textoFuente(origen) {
 export function montarRachas(contenedor, catalogo, consulta, mercado = null, buscador = null, filtroActivos = () => true) {
   if (mercado) clase = mercado; // espacio por mercado (decisión del usuario, 20-nov-2026): el selector de clase no aplica; el catálogo llega completo y la lectura se reutiliza al cambiar de espacio
   // Sin título propio (decisión del usuario, 20-nov-2026): el título combinado del espacio (p. ej. «Stocks Variación») ya corona la vista.
-  const nota = texto('p', 'Lectura del día sobre la ventana de 90 días terminada en la última vela cerrada; no cotizaciones en vivo. Una racha, al alza o a la baja, no anuncia lo que viene después.', 'rachas-nota');
   const controles = texto('div', '', 'rachas-controles');
   const selector = document.createElement('select'); selector.setAttribute('aria-label', 'Clase de activos');
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
@@ -189,7 +188,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   reglas.append(texto('p','Día: posición única por variación de la jornada (cierre frente a apertura), de la mayor subida a la mayor caída; un empate exacto se ordena por código.'));
   controles.append(selector,clasificar,filtroRacha,recargar);
   if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
-  contenedor.append(nota,controles,estado,fuente,reglas,cuerpo);
+  contenedor.append(controles,estado,fuente,reglas,cuerpo);
   function pintar() {
     if (!ultimo || !contenedor.isConnected) return;
     const todos=ultimo.resultados.filter(x=>(clase==='todos'||x.activo.clase===clase)&&filtroActivos(x.activo));
