@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {fechasAviso} from '../app/modulos/fechas-aviso.mjs';import {crearOjos} from '../app/modulos/reporte.mjs';
+test('fecha legible, hora y zona conservadas',()=>{assert.equal(fechasAviso('Hasta 2026-11-21; corte 2026-11-22T00:00:00.062Z. Última 2026-11-21 20:00:00 UTC.'),'Hasta nov 21; corte nov 22 00:00:00.062Z. Última nov 21 20:00:00 UTC.');});
+test('enlaces, archivos, código y fechas inválidas no se alteran',()=>{const s='https://x.com/2026-11-21.json registros/2026-11-21.json `2026-11-21` ```2026-11-21``` 2026-02-30 2026-13-01';assert.equal(fechasAviso(s),s);});
+test('leap day y días sin cero inicial',()=>{assert.equal(fechasAviso('2028-02-29 2026-01-02'),'feb 29 ene 2');});
+test('formatea publicación y edición sin mutar cuerpo original',async()=>{const p=[],u=[];const client={chat:{postMessage:async m=>{p.push(m);return{ts:'1'};},update:async m=>u.push(m)}};crearOjos({client,token:'falso',usuario:'DUENO'});const original={channel:'C',text:'Hasta 2026-11-21'};await client.chat.postMessage(original);await client.chat.update({channel:'C',ts:'1',text:'Hasta 2026-11-22'});assert.equal(p[0].text,'Hasta nov 21');assert.equal(u[0].text,'Hasta nov 22');assert.equal(original.text,'Hasta 2026-11-21');});

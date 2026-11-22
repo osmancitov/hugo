@@ -277,3 +277,7 @@ El 👍 del usuario retira un aviso propio de Hugo si está suelto, sin respuest
 ### Menciones y solicitudes
 
 Todo mensaje de Hugo que menciona al usuario sale en el mismo canal, fuera del hilo. Las solicitudes de aprobación se retiran al aceptar su 👍, después de guardar la aprobación en el registro local `~/.local/share/hugo/aprobaciones.jsonl`. El trabajo y su resultado conservan el hilo de origen. Si no se puede guardar la aprobación, no se ejecuta ni se retira la solicitud; si solo falla el retiro en Slack, el trabajo aprobado continúa y no se repite.
+
+### Fechas en avisos
+
+Los avisos muestran mes abreviado y día, por ejemplo `nov 21`. Si hay hora o zona, se conservan. Las fechas internas, archivos, consultas, enlaces y bloques de código permanecen intactos.

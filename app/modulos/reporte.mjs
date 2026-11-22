@@ -1,3 +1,4 @@
+import {fechasAviso} from './fechas-aviso.mjs';
 // La caja unica de reportes de Hugo. Todo aviso de un trabajo sale de aqui, para que ningun
 // comando remiende sus propios mensajes. Dos formas, misma regla: avisar al empezar, editar el
 // mismo mensaje con ritmo regulado (sin inundar el hilo) y cerrar con el resultado ahi mismo.
@@ -102,7 +103,10 @@ export function crearOjos({client,token,usuario}) {
  const pendientes=new Map(); // canal|hilo -> ts del mensaje 👀 a la espera de respuesta
  const clave=(channel,hilo)=>`${channel}|${hilo||''}`;
  const publicar=client.chat.postMessage.bind(client.chat);
+ const actualizar=client.chat.update.bind(client.chat);
+ client.chat.update=async m=>actualizar({...m,text:fechasAviso(m.text)});
  client.chat.postMessage=async m=>{
+  m={...m,text:fechasAviso(m.text)};
   // Toda mención al dueño sale al canal, nunca se convierte en edición de los ojos.
   if(usuario&&String(m.text||'').includes(`<@${usuario}>`)){
    const {thread_ts,...raiz}=m;
