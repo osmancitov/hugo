@@ -3,13 +3,14 @@
 // bot, sin Slack. Reglas del dueño:
 // - La lectura se toma a la hora en punto UTC (minuto 00) y guarda su instante
 //   real de consulta; nunca se fuerza ni se arrastra una hora distinta.
-// - La Debian manda cuando está viva: si ella ya publicó la lectura de esa hora,
-//   esta corrida no duplica. La corrida empieza unos minutos antes del minuto 00
-//   para absorber la demora de GitHub; si aun así llega tarde, toma la lectura
-//   en cuanto puede, con su hora real.
-// - La cola de corridas anteriores se publica COMBINADA con el remoto (unirDias
-//   por instante): nunca se pisa lo que la Debian subió mientras una corrida no
-//   lograba publicar.
+// - La Debian manda cuando está viva: una hora que ella ya publicó nunca se
+//   duplica. La corrida empieza unos minutos antes del minuto 00 para absorber
+//   la demora de GitHub; si aun así llega tarde, toma la lectura en cuanto
+//   puede, con su hora real.
+// - La cola de corridas anteriores se publica COMBINADA con el remoto recién
+//   traído, con prioridad de la Debian por hora: si el remoto ya cubre la hora
+//   de una lectura pendiente, esa lectura se retira de la cola. Nunca se pisa
+//   lo que la Debian subió mientras una corrida no lograba publicar.
 // La cola y la pausa 429 viajan en la caché de Actions (.estado-intradia), como
 // en la Debian viajan en disco.
 import fs from 'node:fs';
@@ -17,10 +18,10 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { generarBarra, leerBarra } from '../app/modulos/barra-movil.mjs';
+import { generarBarra, leerBarra, RUTA_BARRA } from '../app/modulos/barra-movil.mjs';
 import { fetchConPausa } from '../app/modulos/intradia-fuente.mjs';
-import { guardarLectura, recuperarIntradia, siguienteHitoUTC, intervaloIntradia, ultimaLecturaLocal, primeraLecturaDelDia } from '../app/modulos/registro-intradia.mjs';
-import { leerIndice, RUTA_INDICE, diaUTC } from '../app/modulos/intradia-datos.mjs';
+import { guardarLectura, pendientesIntradia, combinarArchivoIntradia, siguienteHitoUTC, intervaloIntradia, ultimaLecturaLocal, primeraLecturaDelDia } from '../app/modulos/registro-intradia.mjs';
+import { leerIndice, leerDia, unirDias, RUTA_INDICE, diaUTC } from '../app/modulos/intradia-datos.mjs';
 import { guardarEstado } from '../app/modulos/registro-motor.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'registros');
@@ -31,15 +32,18 @@ const COLA_JSON = path.join(COLA, 'pendientes.json');
 // La corrida empieza unos minutos antes del minuto 00; si GitHub la retrasa más de
 // esta espera, toma la lectura ya, con su hora real, en vez de esperar a la siguiente.
 const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || 13 * 60000);
-// Tras tomar la foto, margen para que la Debian publique la suya si está viva; si el
-// remoto ya tiene lectura de esta hora, la nuestra se descarta antes de publicar.
-const ESPERA_PUBLICACION_MS = Number(process.env.HUGO_HORARIA_ESPERA_PUBLICACION_MS || 45000);
+// Tras tomar la foto, margen para que la Debian publique la suya si está viva. Cubre
+// su ciclo completo de reintentos de captura (5 intentos separados 1 minuto) más la
+// publicación: si al cumplirse el margen el remoto ya tiene lectura de esta hora, la
+// nuestra se descarta antes de publicar.
+const ESPERA_PUBLICACION_MS = Number(process.env.HUGO_HORARIA_ESPERA_PUBLICACION_MS || 8 * 60000);
 const ahora = () => Date.now();
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const ex = promisify(execFile);
 const git = async (args) => (await ex('git', args, { cwd: REPO, timeout: 60000 })).stdout;
 
 const salida = (k, v) => { if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${k}=${v}\n`); console.log(`${k}=${v}`); };
+const leerOpcional = (r) => { try { return fs.readFileSync(r, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
 
 // Fuente pública de solo lectura: data-api.binance.vision es el host documentado
 // para datos públicos de mercado; api.binance.com responde 451 (ubicación
@@ -66,11 +70,41 @@ async function ultimaRemota() {
   try { return Date.parse(leerIndice(indice).ultima); } catch { return null; }
 }
 
-// La cola pendiente se materializa COMBINADA con el disco (origin/main recién
-// traído): si la Debian subió lecturas mientras una corrida anterior no lograba
-// publicar, se conservan ambas. Es la misma fusión del registro en la Debian.
-const materializarCola = async () => recuperarIntradia(RAIZ);
-const publicables = (archivos) => Object.keys(archivos).length;
+// La cola pendiente se materializa COMBINADA con origin/main recién traído (no con
+// la copia de trabajo, que puede ser más vieja). Prioridad de la Debian por hora:
+// una lectura pendiente cuya hora el remoto ya cubre se retira de la cola.
+async function materializarCola() {
+  const pendientes = pendientesIntradia(RAIZ);
+  if (!Object.keys(pendientes).length) return {};
+  const resultado = {};
+  for (const [rel, texto] of Object.entries(pendientes)) {
+    if (rel === RUTA_INDICE) continue; // se reconstruye abajo desde lo que quede
+    const disco = await leerRemoto(rel);
+    if (disco === null) { resultado[rel] = texto; continue; }
+    if (rel === RUTA_BARRA) { resultado[rel] = combinarArchivoIntradia(rel, texto, disco); continue; }
+    const diaCola = leerDia(texto, (t) => leerBarra(t));
+    const diaDisco = leerDia(disco, (t) => leerBarra(t));
+    const horas = new Set(diaDisco.lecturas.map((l) => Math.floor(Date.parse(l.generada) / 3600000)));
+    const restantes = diaCola.lecturas.filter((l) => !horas.has(Math.floor(Date.parse(l.generada) / 3600000)));
+    if (restantes.length < diaCola.lecturas.length) console.log(`El remoto ya cubre ${diaCola.lecturas.length - restantes.length} lectura(s) pendiente(s) de ${diaCola.dia}; las retiro de la cola (la Debian manda).`);
+    resultado[rel] = restantes.length ? unirDias(JSON.stringify({ version: 1, dia: diaCola.dia, lecturas: restantes }) + '\n', disco, (t) => leerBarra(t)) : disco;
+  }
+  // Índice coherente con lo conservado: unión de días y última más reciente entre
+  // remoto y cola filtrada. Si la cola no aporta nada, queda el índice del remoto.
+  const indiceDisco = await leerRemoto(RUTA_INDICE);
+  const dias = new Set(indiceDisco === null ? [] : leerIndice(indiceDisco).dias);
+  let ultimaTx = indiceDisco === null ? null : leerIndice(indiceDisco).ultima;
+  for (const [rel, texto] of Object.entries(resultado)) {
+    if (rel === RUTA_BARRA || rel === RUTA_INDICE) continue;
+    const d = leerDia(texto, (t) => leerBarra(t));
+    dias.add(d.dia);
+    if (ultimaTx === null || Date.parse(d.lecturas.at(-1).generada) > Date.parse(ultimaTx)) ultimaTx = d.lecturas.at(-1).generada;
+  }
+  if (ultimaTx !== null) resultado[RUTA_INDICE] = JSON.stringify({ version: 1, dias: [...dias].sort(), ultima: ultimaTx }) + '\n';
+  guardarEstado(COLA_JSON, { version: 1, archivos: resultado });
+  for (const [rel, texto] of Object.entries(resultado)) guardarEstado(path.join(RAIZ, rel.slice('registros/'.length)), JSON.parse(texto));
+  return resultado;
+}
 
 fs.mkdirSync(COLA, { recursive: true });
 const host = await elegirHost();
@@ -89,7 +123,7 @@ const ultima = await ultimaRemota();
 if (ultima !== null && ultima >= objetivo) {
   console.log(`El remoto ya tiene lectura de esta hora (${new Date(ultima).toISOString()}); no duplico.`);
   const p = await materializarCola();
-  salida('cambios', publicables(p) ? 'si' : 'no');
+  salida('cambios', Object.keys(p).length ? 'si' : 'no');
   process.exit(0);
 }
 
@@ -99,7 +133,7 @@ await traerRemoto();
 if ((await ultimaRemota()) >= objetivo) {
   console.log('La Debian publicó la lectura de esta hora mientras esperaba; no tomo otra.');
   const p = await materializarCola();
-  salida('cambios', publicables(p) ? 'si' : 'no');
+  salida('cambios', Object.keys(p).length ? 'si' : 'no');
   process.exit(0);
 }
 
@@ -115,15 +149,16 @@ const r = await generarBarra({ dirVelas: DIR_VELAS, host, fetchImpl: fetchPausa,
 const reg = guardarLectura(RAIZ, r.texto);
 console.log(`Lectura ${new Date(r.generada).toISOString()} guardada localmente: ${reg.lecturas} lectura(s) del día.`);
 
-// Margen de cortesía: si la Debian estaba viva y publica la lectura de esta hora,
-// la suya queda; la mía se retira de la cola y del disco, y no se publica.
+// Margen de cortesía: cubre el ciclo de reintentos de la Debian. Si ella estaba
+// viva y publica la lectura de esta hora, la suya queda; la mía se retira de la
+// cola y del disco, y no se publica.
 await dormir(ESPERA_PUBLICACION_MS);
 await traerRemoto();
 if ((await ultimaRemota()) >= objetivo) {
   guardarEstado(COLA_JSON, { version: 1, archivos: respaldoCola });
   for (const [rel, texto] of Object.entries(respaldoCola)) guardarEstado(path.join(RAIZ, rel.slice('registros/'.length)), JSON.parse(texto));
   console.log('La Debian publicó la lectura de esta hora en el margen; descarto la mía y conservo la cola anterior combinada.');
-  salida('cambios', publicables(respaldoCola) ? 'si' : 'no');
+  salida('cambios', Object.keys(respaldoCola).length ? 'si' : 'no');
   process.exit(0);
 }
 console.log(`Rutas por publicar: ${reg.rutas.join(', ')}.`);

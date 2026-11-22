@@ -21,7 +21,7 @@ concurrency:
 jobs:
   lectura:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 29
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
