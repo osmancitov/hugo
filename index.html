@@ -364,7 +364,7 @@ function fmtCap(v) {
 function filaActivo(e, conCap) {
   const a = document.createElement('a');
   a.className = 'activo-fila';
-  a.href = e.indicador ? '#/i/' + encodeURIComponent(e.codigo) : '#/a/' + e.clase + '/' + encodeURIComponent(e.codigo);
+  a.href = e.indicador ? '#/i/' + (e.codigo==='iceberg-stock/superficie'?e.codigo:encodeURIComponent(e.codigo)) : '#/a/' + e.clase + '/' + encodeURIComponent(e.codigo);
   // Indicadores: una sola pieza de título (decisión del usuario, 19-nov-2026); sin código técnico a la vista.
   if (e.indicador) { a.innerHTML = '<span class="cod"></span>'; a.querySelector('.cod').textContent = e.nombre; return a; }
   const lectura = e.lectura ? ` · ${e.lectura}` : '';
@@ -425,7 +425,8 @@ function vistaArbol(q, mercado) {
   nota.textContent = 'Capitalización del token y, en su caso, de la base (la empresa en bolsa o los activos del fondo), con la fecha de cada cifra; no cotizaciones en vivo.';
   app.append(nota, elBuscar);
   // Indicadores primero en la lista, en stocks y en cripto (decisión del usuario, 21-nov-2026).
-  const inds = INDICADORES.filter((e) => e.mercado === mercado);
+  const inds = INDICADORES.filter((e) => e.mercado === mercado).sort((a,b)=>Number(Boolean(b.iceberg))-Number(Boolean(a.iceberg))).map(e=>e.iceberg?{...e,nombre:'Iceberg 2D'}:e);
+  if(mercado==='stock')inds.unshift({indicador:true,codigo:'iceberg-stock/superficie',nombre:'Iceberg 3D'});
   app.appendChild(nodoArbol('Indicadores', inds.length + (inds.length === 1 ? ' indicador' : ' indicadores'), inds));
   if (mercado === 'stock') {
     const nEmp = nodoArbol('Empresas', EMPRESAS.length + ' activos', EMPRESAS, true);
