@@ -22,3 +22,9 @@ test('Persistencia muestra extremos legibles con el mismo formato UTC',()=>{
  assert.doesNotMatch(src,/toISOString/);
  assert.equal(fechaLegibleUTC('2026-08-24'),'24 ago 2026');
 });
+
+test('ventana de Persistencia omite el año solo al mostrar',()=>{
+ const src=fs.readFileSync(new URL('../visor-persistencia.mjs',import.meta.url),'utf8');
+ assert.equal((src.match(/replace\(\/ /g)||[]).length,2);
+ assert.equal(fechaLegibleUTC('2026-08-24').replace(/ \d{4}$/, ''),'24 ago');
+});
