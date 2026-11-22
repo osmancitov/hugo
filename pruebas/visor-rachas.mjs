@@ -139,7 +139,7 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  // la barra de avance queda solo para el repliegue en vivo.
  assert.ok(!src.includes('Activos analizados'),'sin repaso'); assert.ok(!src.includes('repasar'),'sin repaso');
  // En el orden G/P el selector de racha desaparece entero y no recorta (decisión del usuario, 20-nov-2026).
- assert.ok(src.includes("const soloTodas = orden==='gp'"),'G/P sin opciones de racha');
+ assert.ok(src.includes("const soloTodas = orden==='gp' || orden==='ranking'"),'G/P y Día sin opciones de racha');
  assert.ok(src.includes('filtroRacha.hidden = soloTodas'),'G/P oculta el selector entero');
  assert.ok(src.includes("if (soloTodas) direccionRacha='todas'"),'G/P fuerza todas');
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
@@ -149,4 +149,36 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  // La nota de racha limitada va bajo el nombre del activo: en la celda estrecha de la racha se partía letra a letra.
  assert.ok(src.includes("id.append(texto('small',d.motivo,'rachas-limite'))"),'nota bajo el nombre');
  assert.ok(!src.includes("dias.append(texto('small',d.motivo,'rachas-limite'))"),'nota fuera de la celda estrecha');
+});
+
+test('Día descarta una racha filtrada y vuelve a mostrar todos los puestos, sin alterar G/P', async () => {
+ const anteriorDocumento=globalThis.document, anteriorFetch=globalThis.fetch;
+ class Elemento {
+  constructor(tag) { this.tagName=tag; this.hijos=[]; this.atributos={}; this.isConnected=true; }
+  append(...n) { this.hijos.push(...n); }
+  appendChild(n) { this.append(n); }
+  replaceChildren(...n) { this.hijos=[...n]; }
+  setAttribute(k,v) { this.atributos[k]=v; }
+ }
+ try {
+  globalThis.document={createElement:t=>new Elemento(t),createTextNode:t=>({textContent:t})};
+  const fin=corteUTC()-DIA;
+  const catalogo=['AAA','BBB','CCC'].map(codigo=>({codigo,nombre:codigo,clase:'stock'}));
+  const activos=Object.fromEntries(catalogo.map((a,i)=>[a.codigo,{fecha:fin,direccion:i===0?-1:1,dias:1,acumulado:i-1,rango:3-i,gp:3-i,puesto:i+1}]));
+  const pre={corte:fin,ventana:{inicio:fin-89*DIA,fin},activos};
+  globalThis.fetch=async url=>({ok:true,json:async()=>String(url).includes('ranking-24h')?[['AAA',-1],['BBB',0],['CCC',1]]:pre});
+  const {montarRachas}=await import('../visor-rachas.mjs?prueba-dia-sin-filtro');
+  const contenedor=new Elemento('main');
+  montarRachas(contenedor,catalogo,()=>'', 'stock');
+  await new Promise(r=>setImmediate(r));
+  const controles=contenedor.hijos[1], modo=controles.hijos[1], filtro=controles.hijos[2], cuerpo=contenedor.hijos.at(-1);
+  const codigos=()=>cuerpo.hijos[0].hijos[0].hijos[1].hijos.map(f=>f.hijos.find(td=>td.className==='col-activo').hijos[0].textContent);
+  assert.equal(modo.value,'gp'); assert.equal(filtro.hidden,true);
+  modo.value='dias';modo.onchange(); filtro.value='suben';filtro.onchange();
+  assert.equal(filtro.hidden,false); assert.deepEqual(codigos(),['BBB','CCC']);
+  modo.value='ranking';modo.onchange();
+  assert.equal(filtro.hidden,true); assert.equal(filtro.value,'todas'); assert.deepEqual(codigos(),['AAA','BBB','CCC']);
+  modo.value='dias';modo.onchange(); assert.equal(filtro.value,'todas');
+  modo.value='gp';modo.onchange(); assert.equal(filtro.hidden,true); assert.deepEqual(codigos(),['AAA','BBB','CCC']);
+ } finally {globalThis.document=anteriorDocumento;globalThis.fetch=anteriorFetch;}
 });
