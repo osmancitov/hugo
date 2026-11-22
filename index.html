@@ -175,7 +175,7 @@ a.tit-link:hover { text-decoration: none; }
 .rachas-tabla .rachas-enlace { display:inline; color:var(--oro); font-weight:bold; padding:0; }
 .rachas-nombre, .rachas-limite { display:block; font-size:.72rem; color:var(--tenue); margin-top:.25rem; white-space:normal; }
 .rachas-limite { overflow-wrap:anywhere; } /* la nota de la racha no ensancha la columna */
-.promedio-dias-rojo { color:#ec9698; } .promedio-dias-amarillo { color:var(--oro); }
+.promedio-dias-rojo { color:#ec9698; }
 .negativo { color:#ec9698; } .positivo { color:#78caa4; } .igual { color:#9aa0ac; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
 /* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
@@ -225,7 +225,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 
 </script>
 <script type="module">
-import { montarPersistencia } from './visor-persistencia.mjs?v=9';
+import { montarPersistencia } from './visor-persistencia.mjs?v=10';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
