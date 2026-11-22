@@ -141,7 +141,12 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     if (activo < 0) { detalle.textContent = ''; return; }
     const p = puntos[ultima]?.[activo];
     const fecha = barras[ultima] ? `${horaVista(barras[ultima].generada)}` : 'sin lectura';
-    detalle.textContent = p ? `${codigos[activo]} · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : `${codigos[activo] || 'Sin activos'} · ${fecha} · sin cierre diario o sin precio comparable`;
+    const codigo = codigos[activo] || 'Sin activos';
+    // El nombre del activo enlaza a su ficha (decisión del usuario, 22-nov-2026).
+    const enlace = crear('a', 'barra-activo-enlace', codigo);
+    enlace.href = '#/a/stock/' + encodeURIComponent(codigo);
+    detalle.textContent = '';
+    detalle.append(enlace, document.createTextNode(p ? ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : ` · ${fecha} · sin cierre diario o sin precio comparable`));
   }
   function dibujar() {
     if (!viva) return;
