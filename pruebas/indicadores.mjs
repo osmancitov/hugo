@@ -217,9 +217,9 @@ test('sincronizacion: la pasada actualiza ambas series, las sube en el mismo com
     assert.deepEqual(JSON.parse(arbol[`registros/${BOLSA}/2611`]), bolsa.slice(0, 2), 'bolsa sin el valor vivo de hoy');
     assert.ok(arbol['registros/velas-24h/cripto/AAA/2611_AAA'], 'las velas subieron igual');
     const cierre = b.textos.join('\n');
-    assert.match(cierre, /Fear & Greed Index \(Cripto\): 1 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear and greed: 1 día\(s\) nuevo\(s\)/);
     assert.match(cierre, /último 2026-11-18 con valor 12/);
-    assert.match(cierre, /Fear & Greed Index \(Stock\): 2 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear and greed: 2 día\(s\) nuevo\(s\)/);
     assert.match(cierre, /último 2026-11-18 con valor 29/);
     assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${SERIE}`)), 'el commit menciona el cripto');
     assert.ok(b.rem.commits().some((c) => c.includes(`Indicadores ${BOLSA}`)), 'el commit menciona la bolsa');
@@ -239,8 +239,8 @@ test('sincronizacion: si una fuente falla, la otra serie y las velas siguen y el
     assert.ok(!arbol[`registros/${SERIE}/2611`], 'no se invento indicador cripto');
     assert.ok(arbol[`registros/${BOLSA}/2611`], 'la bolsa subio pese al fallo del cripto');
     const cierre = b.textos.join('\n');
-    assert.match(cierre, /Fear & Greed Index \(Cripto\) sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
-    assert.match(cierre, /Fear & Greed Index \(Stock\): 1 día\(s\) nuevo\(s\)/);
+    assert.match(cierre, /Fear and greed sin actualizar \(.*HTTP 503.*\); sigo con las velas/);
+    assert.match(cierre, /Fear and greed: 1 día\(s\) nuevo\(s\)/);
   } finally { b.restaurar(); }
 });
 
@@ -268,8 +268,8 @@ test('sincronizacion: un archivo de indicador nuevo en el remoto baja a la Debia
 test('los rotulos de los indicadores tienen una sola fuente: app/modulos/indicadores-rotulos.mjs', async () => {
   const { default: rotulos } = await import('../app/modulos/indicadores-rotulos.mjs');
   // Nombres finales decididos por el usuario (19-nov-2026).
-  assert.equal(rotulos['feargreedchart-bolsa'], 'Fear & Greed Index (Stock)');
-  assert.equal(rotulos['alternative-fear-greed'], 'Fear & Greed Index (Cripto)');
+  assert.equal(rotulos['feargreedchart-bolsa'], 'Fear and greed');
+  assert.equal(rotulos['alternative-fear-greed'], 'Fear and greed');
   // El bot los importa de ahi, no los escribe a mano.
   const bot = fs.readFileSync(new URL('../app/modulos/indicadores.mjs', import.meta.url), 'utf8');
   assert.match(bot, /indicadores-rotulos\.mjs/);
