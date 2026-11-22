@@ -1,3 +1,4 @@
+import {recuperarCiclo} from './intradia-reintentos.mjs';
 // Registro intradiario: conserva lecturas reales, sin reconstruir precios anteriores.
 // Reutiliza la toma de barra y el transporte de sincronizar-registros. Sin frecuencia por defecto.
 import fs from 'node:fs';
@@ -250,7 +251,12 @@ export function registrar(ctx) {
         // saltarlo. No se toman fotos atrasadas ni se lanzan ciclos para recuperar.
         if (ahora() < objetivo || ahora() >= siguienteHitoUTC(objetivo, minutos)) { programar(); return; }
         try {
-          const lectura = tomar(); // Inicia la consulta sin esperar el reporte de Slack.
+          const marcaParada=ctx.parada?.n;
+          const lectura = recuperarCiclo({capturar:()=>tomar(),publicar:()=>ctx.reintentarIntradia(),
+            esperar:ctx.esperarIntradia||((ms)=>new Promise(r=>{const t=setTimeout(r,ms);t.unref?.();})),ahora,
+            pausa:()=>pausaFuente(raiz()),detenido:()=>ctx.parada?.n!==marcaParada,
+            avisar:({intento,maximo,demora,error:fallo,guardada})=>informarAutomatico(`${guardada?'Lectura guardada; falta publicar':'Lectura sin completar'}: ${fallo}. Reintento ${intento+1}/${maximo} en ${Math.ceil(demora/1000)} s.`,true),
+          }); // Empieza la consulta sin esperar a Slack.
           const reporte = informarAutomatico('Lectura intradiaria automática en curso. Registro y publicación se comprueban por separado.', true);
           const r = await lectura;
           await reporte;
@@ -261,11 +267,12 @@ export function registrar(ctx) {
           let recuperacion = '';
           // La publicación pendiente no depende del éxito de una consulta nueva.
           try {
+            if(e.fotoGuardada)throw e;
             const r = await ctx.reintentarIntradia();
             recuperacion = r.commit ? ` Cola anterior publicada: ${r.commit.slice(0, 7)}.` : '';
           } catch (x) { recuperacion = ` Cola pendiente: ${x.message}.`; }
           error = e.message;
-          await informarAutomatico(`No completé la lectura intradiaria: ${e.message}. Los registros anteriores se conservan; reintento en el próximo intervalo.${recuperacion}`);
+          await informarAutomatico(`No completé la lectura intradiaria: ${e.message}. Los registros anteriores se conservan; se agotaron los reintentos o la fuente requiere esperar/revisión. Siguiente ciclo según programación.${recuperacion}`);
         } finally { await programar(); }
       }, Math.max(1, objetivo - ahora()));
       t.unref?.();

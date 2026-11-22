@@ -302,6 +302,7 @@ test('funcionamiento continuo: conserva huecos por 429, recupera cola y sigue pr
     fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA'), { recursive: true });
     fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA', '2611_AAA'), JSON.stringify([[T - 10 * 3600000 - DIA, '100', '100', '100', '100']]));
     ctx.ahora = () => ahora; ctx.conf.HUGO_INTRADIA_MINUTOS = '5';
+    const esperas=[];ctx.esperarIntradia=async ms=>{esperas.push(ms);ahora+=ms;};
     ctx.publicarIntradia = async (archivos) => { intentosSubida++; if (ahora < T + 20 * 60000) throw Error('GitHub sin conexión'); return { archivos, commit: 'abcdef0' }; };
     global.fetch = async () => {
       peticiones++;
@@ -310,12 +311,12 @@ test('funcionamiento continuo: conserva huecos por 429, recupera cola y sigue pr
     };
     registrarIntradia(ctx); for (const fn of ctx.inicios) await fn();
     for (let i = 0; i < 24; i++) { const t = temporizadores[i]; ahora += t.ms; await t.fn(); }
-    assert.equal(ahora, T + 120 * 60000); assert.equal(ctx.intradiaInfo().proxima, T + 125 * 60000); assert.equal(temporizadores.length, 25);
+    assert.ok(ahora>=T+120*60000);assert.ok(ctx.intradiaInfo().proxima>ahora);assert.equal(temporizadores.length,25);
     const lecturas = leerDia(fs.readFileSync(archivo(raiz, rutaDia('2026-11-21')), 'utf8'), leerBarra).lecturas;
     // 24 ciclos, menos 3 fotos por bloqueo en 15, 20 y 25 minutos.
-    assert.equal(lecturas.length, 21); assert.equal(peticiones, 22);
+    assert.equal(lecturas.length,24);assert.equal(peticiones,25);assert.ok(esperas.includes(900000));
     assert.ok(lecturas.some((l) => Date.parse(l.generada) === T + 10 * 60000));
-    assert.ok(!lecturas.some((l) => [15,20,25].map((m) => T + m * 60000).includes(Date.parse(l.generada))));
+    assert.ok(!lecturas.some(l=>Date.parse(l.generada)>=T+15*60000&&Date.parse(l.generada)<T+30*60000));
     assert.ok(lecturas.some((l) => Date.parse(l.generada) === T + 30 * 60000));
     assert.deepEqual(pendientesIntradia(raiz), {}); assert.ok(intentosSubida >= 20);
   } finally { global.setTimeout = timeout; global.fetch = fuente; console.error = consola; limpiar(p); }

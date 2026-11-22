@@ -877,8 +877,8 @@ async function vistaSuperficie() {
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
   app.append(volver, ficha, estado, cuerpo);
-  let grafica = null, turno = 0;
-  limpiarGrafica = () => { turno++; grafica?.desmontar(); reloj.desmontar(); };
+  let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false;
+  limpiarGrafica = () => { turno++;clearTimeout(automatico);grafica?.desmontar();reloj.desmontar(); };
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren();
     const lecturas = registro.dia.lecturas;
@@ -904,6 +904,7 @@ async function vistaSuperficie() {
     recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); vistaSuperficie(); };
     controles.append(etiqueta, recargar); ficha.append(controles);
     elegirDia.onchange = async () => {
+      manual=true;
       const este = ++turno;
       try {
         const r = await cargarDiaObservatorio(elegirDia.value);
@@ -911,6 +912,29 @@ async function vistaSuperficie() {
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };
     await mostrar(registro);
+    let ultimaVista=registro.indice.ultima;
+    const revisar=async()=>{
+      if(!cuerpo.isConnected)return;
+      try{
+        if(document.visibilityState!=='hidden'&&!refrescando){
+          refrescando=true;
+          const r=await fetch(`${BASE_INTRADIA_WEB}/indice.json?t=${Math.floor(Date.now()/60000)}`,{cache:'no-cache'});
+          if(!r.ok)throw Error('Índice todavía no disponible.');
+          const indice=leerIndice(await r.text());
+          if(indice.ultima!==ultimaVista){
+            cacheIntradia.clear();const este=++turno;
+            const nuevo=await cargarDiaObservatorio(manual?elegirDia.value:null);
+            if(este===turno&&cuerpo.isConnected){
+              for(const dia of nuevo.indice.dias)if(![...elegirDia.options].some(o=>o.value===dia))elegirDia.append(Object.assign(document.createElement('option'),{value:dia,textContent:fechaLegibleUTC(dia)}));
+              elegirDia.value=nuevo.dia.dia;
+              await mostrar(nuevo);ultimaVista=nuevo.indice.ultima;
+            }
+          }
+        }
+      }catch(e){console.warn('Actualización del observatorio: se conserva la vista.',e.message);}
+      finally{refrescando=false;if(cuerpo.isConnected)automatico=setTimeout(revisar,60000);}
+    };
+    automatico=setTimeout(revisar,60000);
   } catch (e) { if (estado.isConnected) estado.textContent = `No pude cargar la superficie: ${e.message}`; }
 }
 

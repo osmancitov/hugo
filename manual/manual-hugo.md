@@ -281,3 +281,11 @@ Todo mensaje de Hugo que menciona al usuario sale en el mismo canal, fuera del h
 ### Fechas en avisos
 
 Los avisos muestran mes abreviado y día, por ejemplo `nov 21`. Si hay hora o zona, se conservan. Las fechas internas, archivos, consultas, enlaces y bloques de código permanecen intactos.
+
+### Recuperación intradiaria automática
+
+Si falla una consulta por un error temporal de red o servidor, Hugo reintenta un minuto después de terminar el intento fallido. Hay hasta cinco intentos por ciclo, sin solaparlos. Al conseguir y guardar una foto, los reintentos restantes son solo de publicación, sin volver a consultar precios. Se para al publicar. El siguiente horario se calcula desde el reloj real, sin reconstruir horas perdidas.
+
+HTTP 429 o 418 conserva su pausa duradera: nunca se consulta antes de Retry-After; sin plazo válido hace falta revisión. Al agotar cinco intentos conserva lo guardado e informa el problema. Stop o reinicio no fabrican fotos de los horarios que pasaron.
+
+La superficie abierta comprueba el índice cada minuto mientras está visible y actualiza el dato publicado. Pasa al día nuevo con dos fotos reales, aunque la segunda llegue tarde. Elegir manualmente un día conserva esa selección. Al salir de la superficie se cancela la comprobación. Si falla la lectura del índice, conserva lo mostrado y vuelve a comprobar al minuto.
