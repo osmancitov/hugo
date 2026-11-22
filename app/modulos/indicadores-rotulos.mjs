@@ -8,8 +8,8 @@ export default {
   'alternative-fear-greed': 'Fear & Greed Index (Cripto)',
   // Iceberg: el nombre provisional que le dio el usuario (20-nov-2026), hasta mudarlo si
   // encuentra un indicador ya hecho con otro nombre. Uno por mercado; dentro de su espacio
-  // se llama simplemente «Iceberg», porque el mercado ya está indicado (decisión del usuario,
-  // 20-nov-2026).
-  'iceberg-stock': 'Iceberg',
-  'iceberg-cripto': 'Iceberg',
+  // se llama «Iceberg 2D», porque el mercado ya está indicado (renombrado por el usuario,
+  // 22-nov-2026, junto con «Superficie 3D»).
+  'iceberg-stock': 'Iceberg 2D',
+  'iceberg-cripto': 'Iceberg 2D',
 };
