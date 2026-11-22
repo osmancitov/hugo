@@ -8,6 +8,9 @@
 // marca de la última corrida completa vive fuera de las rutas sincronizadas.
 // Reporte para depurar: un hilo por corrida con la ingesta, la publicación y el cierre; cada
 // fallo dice la causa y qué lo reintenta (próxima corrida o próximo arranque).
+// Interruptor (decisión del usuario, 22-nov-2026): HUGO_DIARIA_AUTO vacío (o «0»/«no») deja la
+// corrida automática en pausa —la programada y la de arranque—; «pon al día» manual no cambia.
+// Sin la variable la diaria sigue activa; el entorno del servicio manda sobre config.env.
 import fs from 'node:fs';
 import path from 'node:path';
 import { guardarEstado, leerEstado } from './registro-motor.mjs';
@@ -32,6 +35,12 @@ export const proximaCorrida = (ahora) => { let t = Math.floor(ahora / DIA) * DIA
 export function registrar(ctx) {
   const ahora = ctx.ahora || Date.now;
   const esperar = ctx.esperar || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const diariaAuto = () => {
+    const v = process.env.HUGO_DIARIA_AUTO ?? (ctx.conf || {}).HUGO_DIARIA_AUTO;
+    if (v === undefined) return true;
+    const t = String(v).trim().toLowerCase();
+    return t !== '' && t !== '0' && t !== 'no';
+  };
   const archivoMarca = () => path.join(path.dirname(ctx.registroArchivoEstado()), 'ciclo-diario.json');
   const leerMarca = () => {
     try {
@@ -99,8 +108,9 @@ export function registrar(ctx) {
   }
   ctx.cicloDiario = ciclo; // para pruebas
   // Lo que el ciclo sabe de sí mismo, para que «estado» lo cuente: próxima corrida y último día completo.
-  ctx.cicloInfo = () => ({ proxima: proximaCorrida(ahora()), ultimo: leerMarca() || null });
+  ctx.cicloInfo = () => ({ proxima: proximaCorrida(ahora()), ultimo: leerMarca() || null, activa: diariaAuto() });
   ctx.alIniciar(() => {
+    if (!diariaAuto()) return; // pausada por HUGO_DIARIA_AUTO: ni programada ni de arranque
     // Programada: una vez al día tras el cierre UTC.
     const programar = () => {
       const t = setTimeout(() => { ciclo('programada').catch((e) => console.error('Ciclo diario:', e.message)).finally(programar); }, proximaCorrida(ahora()) - ahora());

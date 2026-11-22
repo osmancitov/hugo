@@ -40,7 +40,9 @@ export function registrar(ctx) {
       try { info = ctx.cicloInfo ? ctx.cicloInfo() : null; } catch {}
       if (info) {
         if (info.ultimo) l.push(`Última corrida diaria completa: registros hasta el ${new Date(info.ultimo).toISOString().slice(0, 10)}.`);
-        if (Number.isInteger(info.proxima)) {
+        if (info.activa === false) {
+          l.push('Puesta al día diaria automática en pausa; `pon al día` sigue manual.');
+        } else if (Number.isInteger(info.proxima)) {
           const cuando = diaLocal(info.proxima) === diaLocal(ahora) ? 'hoy' : diaLocal(info.proxima) === diaLocal(ahora + DIA) ? 'mañana' : `el ${diaLocal(info.proxima)}`;
           l.push(`Próxima puesta al día diaria: ${cuando} a las ${horaLocal(info.proxima)}.`);
         }

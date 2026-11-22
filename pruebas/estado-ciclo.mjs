@@ -75,3 +75,12 @@ test('ocupado: las líneas del ciclo no se mezclan con el trabajo en curso', asy
  assert.ok(!/Libre/.test(t));
  assert.ok(!/Próxima puesta al día/.test(t), 'ocupado no habla de la próxima corrida');
 });
+
+test('ciclo en pausa: lo anuncia y no promete próxima corrida', async () => {
+ const b = banco(() => ({ proxima: Date.UTC(2026, 10, 21, 0, 5, 0), ultimo: MARCA, activa: false }));
+ await b.run();
+ const lineas = b.enviados.join('\n').split('\n');
+ assert.ok(lineas.includes('Última corrida diaria completa: registros hasta el 2026-11-19.'));
+ assert.ok(lineas.includes('Puesta al día diaria automática en pausa; `pon al día` sigue manual.'));
+ assert.ok(!lineas.some((t) => t.startsWith('Próxima puesta al día diaria')), 'sin promesa de próxima corrida');
+});

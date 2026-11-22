@@ -157,3 +157,23 @@ test('diaria espera a la preparación del cierre antes de iniciar ingesta', asyn
   assert.ok(comprobaciones>=2);assert.deepEqual(b.llamadas,['ingesta','pasada']);
  }finally{fs.rmSync(b.root,{recursive:true,force:true});}
 });
+
+test('interruptor: HUGO_DIARIA_AUTO vacío pausa la automática y cicloInfo lo anuncia', async () => {
+  process.env.HUGO_DIARIA_AUTO = '';
+  const b = banco();
+  try {
+    assert.equal(b.ctx.cicloInfo().activa, false, 'cicloInfo anuncia la pausa');
+    assert.equal(b.arranques.length, 1, 'la función de arranque se registró');
+    b.arranques.forEach((fn) => fn());
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(b.llamadas, [], 'ni ingesta ni pasada con la pausa');
+    assert.equal(b.postes.length, 0, 'sin avisos');
+  } finally { delete process.env.HUGO_DIARIA_AUTO; fs.rmSync(b.root, { recursive: true, force: true }); }
+});
+
+test('sin la variable la diaria sigue activa', async () => {
+  const b = banco();
+  try {
+    assert.equal(b.ctx.cicloInfo().activa, true);
+  } finally { fs.rmSync(b.root, { recursive: true, force: true }); }
+});
