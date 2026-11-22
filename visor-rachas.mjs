@@ -140,7 +140,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   if (mercado) selector.hidden = true;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','G/P'],['ranking','Ranking del día'],['cambios','Cambios'],['rango','Rango del día'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
+  for (const [v,t] of [['gp','G/P'],['ranking','Día'],['cambios','Oscilación'],['rango','Rango diario'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
   // En el orden G/P el selector de racha desaparece entero (decisión del usuario, 20-nov-2026):
   // no recorta la lista; al cambiar de orden vuelve con sus dos opciones.
@@ -209,7 +209,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
     fuente.textContent=textoFuente(ultimo.origen);
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
-    for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','C']:['Activo','R %','Racha','A %','G/P','C'])) { const th=texto('th',t); th.scope='col'; if(t==='Activo') th.className='col-activo'; tr.append(th); } cab.append(tr);
+    for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','OSC']:['Activo','R %','Racha','A %','G/P','OSC'])) { const th=texto('th',t); th.scope='col'; if(t==='Activo') th.className='col-activo'; tr.append(th); } cab.append(tr);
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';

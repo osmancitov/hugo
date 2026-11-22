@@ -170,7 +170,7 @@ a.tit-link:hover { text-decoration: none; }
 .rachas-tabla .col-activo { text-align:left; }
 .rachas-tabla td, .rachas-tabla th { border-bottom:1px solid var(--borde); padding:.7rem .45rem; }
 .rachas-tabla td:not(.col-activo) { text-align:right; white-space:nowrap; }
-.rachas-tabla th:not(.col-activo), .rachas-tabla td:not(.col-activo) { width:1%; } /* columnas numéricas y el puesto a su contenido: sin hueco entre Rango del día y Racha; el ancho sobrante es del activo */
+.rachas-tabla th:not(.col-activo), .rachas-tabla td:not(.col-activo) { width:1%; } /* columnas numéricas y el puesto a su contenido: sin hueco entre Rango diario y Racha; el ancho sobrante es del activo */
 .rachas-tabla .rachas-enlace { display:inline; color:var(--oro); font-weight:bold; padding:0; }
 .rachas-nombre, .rachas-limite { display:block; font-size:.72rem; color:var(--tenue); margin-top:.25rem; white-space:normal; }
 .rachas-limite { overflow-wrap:anywhere; } /* la nota de la racha no ensancha la columna */
@@ -220,7 +220,7 @@ const CATALOGO = {"cripto":[{"codigo":"0G","nombre":"0G","meses":["2608","2609",
 <script type="module">
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
-import { montarRachas } from './visor-rachas.mjs?v=3'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarRachas } from './visor-rachas.mjs?v=4'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
