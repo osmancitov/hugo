@@ -4,6 +4,10 @@ Bot pequeño de Slack (Socket Mode, Node.js) que corre en una Debian como servic
 
 Este repositorio es la fuente del código y del manual. La Debian descarga de aquí; nunca sube.
 
+## Estado de cuenta
+
+[Consultar los movimientos de la cuenta](https://osmancitov.github.io/hugo/cuenta/), del aporte inicial a las operaciones más recientes.
+
 ## Contenido
 - `app/app.mjs`: arranca Hugo y conecta los módulos.
 - `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `detener`, `velas`, `registro-motor`, `registro-serie`, `radiografias`, `sincronizar-registros`; `reporte`, la caja única de reportes que usan todos los trabajos; y la biblioteca `activos`, que resuelve el código de un activo a su instrumento de Binance).

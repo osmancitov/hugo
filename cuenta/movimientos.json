@@ -1,0 +1,90 @@
+{
+  "currency": "USD",
+  "year": 2026,
+  "records": [
+    {
+      "date": "2026-11-23",
+      "label": "23 de noviembre",
+      "asset": "CRWD",
+      "change": 4,
+      "approximate": true,
+      "balance": null,
+      "percent": null,
+      "buy": 210,
+      "sell": 213.45,
+      "buy_time": "ocho y treinta y cinco de la mañana"
+    },
+    {
+      "date": "2026-11-23",
+      "label": "23 de noviembre",
+      "asset": "SPCX",
+      "change": -4.0,
+      "balance": 237,
+      "percent": -1.74
+    },
+    {
+      "date": "2026-11-20",
+      "label": "20 de noviembre",
+      "asset": "MSTR",
+      "change": -11.0,
+      "balance": 241,
+      "percent": -4.37
+    },
+    {
+      "date": "2026-11-20",
+      "label": "20 de noviembre",
+      "asset": "AAOI",
+      "change": -5.0,
+      "balance": 252,
+      "percent": -1.95
+    },
+    {
+      "date": "2026-11-18",
+      "label": "18 de noviembre",
+      "asset": "AGPU",
+      "change": 10.0,
+      "balance": 257,
+      "percent": 4.05
+    },
+    {
+      "date": "2026-11-17",
+      "label": "17 de noviembre",
+      "asset": "NVIDIA",
+      "change": -15.0,
+      "balance": 247,
+      "percent": -5.73
+    },
+    {
+      "date": "2026-11-12",
+      "label": "12 de noviembre",
+      "asset": "Nebius",
+      "change": -45.0,
+      "balance": 262,
+      "percent": -14.66
+    },
+    {
+      "date": "2026-11-05",
+      "label": "5 de noviembre",
+      "asset": "ZEC",
+      "change": -5.0,
+      "balance": 307,
+      "percent": -1.6
+    },
+    {
+      "date": "2026-11-03",
+      "label": "3 de noviembre",
+      "asset": "BMT",
+      "change": -1.0,
+      "balance": 312,
+      "percent": -0.32
+    },
+    {
+      "date": "2026-10-23",
+      "label": "23 de octubre",
+      "asset": "Aporte",
+      "change": 313,
+      "balance": 313,
+      "percent": null
+    }
+  ]
+}
