@@ -2,7 +2,7 @@
 
 Del 23 de octubre al 23 de noviembre de 2026.
 
-Inicio, 23 de octubre: 313,00 USD. Actual, 23 de noviembre: aproximadamente 241,00 USD.
+Inicio, 23 de octubre: 313,00 USD. Actual, 23 de noviembre: aproximadamente 241,00 USD. Variación del 23 de octubre al 23 de noviembre: −23%.
 
 ## 23 de noviembre: CRWD
 
