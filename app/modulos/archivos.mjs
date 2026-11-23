@@ -1,7 +1,7 @@
 // Modulo archivos: recibir y servir archivos por Slack.
 // - Recibir: mencionar a Hugo con un archivo adjunto. Pide confirmacion (modulo comun) y lo guarda en Descargas
 //   (la carpeta de descargas del usuario; HUGO_RECIBIDOS en config.env la cambia), sin pisar otro.
-// - Servir: "@hugo envia archivo" pide confirmacion y sube ese archivo al hilo desde donde este, sin copiarlo.
+// - Servir: "@hugo enviar archivo" pide confirmacion y sube ese archivo al hilo desde donde este, sin copiarlo.
 //   Un nombre sin ruta se busca en Descargas. La ruta y el tamano se muestran en la pregunta.
 // - No sirve secretos: keys/ de Hugo, ~/.ssh, ~/.gnupg y archivos cuyo nombre indica clave, token o contrasena.
 // Este modulo solo guarda y entrega. Aplicar una actualizacion recibida es del modulo actualizar.
@@ -120,8 +120,8 @@ export function registrar(ctx) {
   });
 
   // Servir: desde la ruta indicada.
-  ctx.comando(/^\s*(env[i\u00ed]a|manda)\s+\S/i, async (event, texto) => {
-    const pedido = texto.replace(/^\s*(env[i\u00ed]a|manda)\s+/i, '').trim().replace(/^[`"'\u201c\u00ab]+|[`"'\u201d\u00bb]+$/g, '');
+  ctx.comando(/^\s*enviar\s+\S/i, async (event, texto) => {
+    const pedido = texto.replace(/^\s*enviar\s+/i, '').trim().replace(/^[`"'\u201c\u00ab]+|[`"'\u201d\u00bb]+$/g, '');
     const r = resolverEnvio(pedido);
     if (r.error) return decir(event, r.error);
     const nombre = path.basename(r.ruta);
