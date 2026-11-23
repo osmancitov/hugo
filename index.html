@@ -42,7 +42,7 @@ a:hover { text-decoration: underline; }
 .cabecera h1 { font-size: 1.35rem; letter-spacing: .04em; }
 #portada-observatorio { position:relative; margin:.5rem 0 1.6rem; }
 #portada-observatorio[hidden] { display:none; }
-#portada-observatorio img { display:block; width:100%; height:auto; }
+#portada-observatorio img { display:block; width:100%; height:auto; aspect-ratio: 1440 / 810; }
 .portada-titulo { position:absolute; top:33%; left:3.5%; font-family:'Lora',Georgia,serif; font-size:clamp(1rem,2.8vw,2rem); line-height:1.45; text-transform:uppercase; }
 .portada-titulo span { color:var(--oro); }
 @media(max-width:560px) { .cabecera h1 { font-size:1rem; } .avatar { flex-shrink:0; } #portada-observatorio { margin-bottom:1rem; } .portada-titulo { font-size:clamp(.8rem,3.6vw,1.25rem); } }
@@ -224,6 +224,11 @@ a.tit-link:hover { text-decoration: none; }
 <img src="identidad/portada.jpg" alt="Observatorio astronómico dorado bajo un cielo de estrellas y pequeñas velas rojas y verdes." width="1440" height="810" fetchpriority="high">
 <div class="portada-titulo" aria-hidden="true">Observatorio<br><span>Bursátil</span></div>
 </section>
+<script>
+// La portada se decide antes del primer pintado para que los botones no salten:
+// solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
+document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
+</script>
 <nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
