@@ -112,18 +112,21 @@ export function registrar(ctx) {
 
   // Ejecuta un instalador ya guardado (ruta) fuera del servicio y deja el aviso final pendiente. Lo usan "actualiza" con .sh
   // y el modulo github (con args, etiqueta y carpeta temporal a limpiar al terminar).
-  async function lanzar({ channel, hilo, ruta, args = [], etiqueta = '', sha = null, limpiar = '' }) {
+  async function lanzar({ channel, hilo, ruta, args = [], etiqueta = '', sha = null, limpiar = '', mensajeTs: solicitudTs }) {
+    const informar = text => solicitudTs ? app.client.chat.update({ token: botToken, channel, ts: solicitudTs, text }) : decir(channel, hilo, text);
     const quitarTmp = () => { if (limpiar) fs.rmSync(limpiar, { recursive: true, force: true }); };
-    if (await enCurso()) { quitarTmp(); return decir(channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.'); }
+    if (await enCurso()) { quitarTmp(); return informar('Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.'); }
     const shaV = sha || crypto.createHash('sha256').update(fs.readFileSync(ruta)).digest('hex').slice(0, 8);
     fs.mkdirSync(base(), { recursive: true });
     const unidad = `hugo-actualizacion-${Date.now()}`;
     const log = path.join(base(), `${unidad}.log`), rc = path.join(base(), `${unidad}.rc`);
     // Reserva el estado de forma exclusiva: si otro lo creo entre medias, no se lanza nada.
-    try { fs.writeFileSync(PEND(), JSON.stringify({ channel, thread_ts: hilo, nombre: path.basename(ruta), sha: shaV, etiqueta, limpiar, unidad, log, rc }), { flag: 'wx' }); }
-    catch { quitarTmp(); return decir(channel, hilo, 'Ya hay una actualizaci\u00f3n en curso; no empiezo otra.'); }
+    try { fs.writeFileSync(PEND(), JSON.stringify({ channel, thread_ts: hilo, nombre: path.basename(ruta), sha: shaV, etiqueta, limpiar, unidad, log, rc, ...(solicitudTs ? { mensajeTs: solicitudTs } : {}) }), { flag: 'wx' }); }
+    catch { quitarTmp(); return informar('Ya hay una actualizaci\u00f3n en curso; no empiezo otra.'); }
     try {
-      const reporte = await ctx.reporte.crear({ canal: channel, hilo, fijo: true, inicio: etiqueta ? `Ejecutando ${etiqueta}; Hugo se reinicia y el resultado queda en este mensaje.` : `Guardado ${ruta} (sha256 ${shaV}). Ejecutando; el resultado queda en este mensaje.` });
+      const inicio = etiqueta ? `Ejecutando ${etiqueta}; Hugo se reinicia y el resultado queda en este mensaje.` : `Guardado ${ruta} (sha256 ${shaV}). Ejecutando; el resultado queda en este mensaje.`;
+      const reporte = await ctx.reporte.crear({ canal: channel, hilo, mensajeTs: solicitudTs, fijo: true, inicio });
+      if (solicitudTs) await reporte.iniciar(inicio);
       const mensajeTs = reporte.ts();
       if (!mensajeTs) throw Error('sin referencia del mensaje de ejecucion');
       guardarEstado(PEND(), { ...leer(PEND()), mensajeTs });
@@ -158,13 +161,15 @@ export function registrar(ctx) {
     if (!/\.sh$/i.test(f.name || '')) return decir(event.channel, hilo, `\u00ab${f.name}\u00bb no es un instalador .sh; no lo aplico.`);
     if (await enCurso()) return decir(event.channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
     await ctx.confirmar({
-      que: 'aplicar una actualizaci\u00f3n', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true, // el 👍 que cuenta es siempre el del usuario
+      que: 'aplicar una actualizaci\u00f3n', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true, conservar: true, // el 👍 que cuenta es siempre el del usuario
       texto: `Solicitud.\n\u00bfAplico ${ctx.archivos.limpio(f.name)} (${ctx.archivos.kb(f.size || 0)}${quien ? `, subida por <@${quien}>` : ''})?`,
-      alSi: async () => {
-        if (await enCurso()) return decir(event.channel, hilo, 'Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
+      alSi: async ({ ts }) => {
+        const informar = text => app.client.chat.update({ token: botToken, channel: event.channel, ts, text });
+        if (await enCurso()) return informar('Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
         let ruta;
-        try { ruta = await ctx.archivos.guardar(f, ctx.archivos.descargas()); } catch (e) { return decir(event.channel, hilo, `No pude guardar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`); }
-        await lanzar({ channel: event.channel, hilo, ruta });
+        try { ruta = await ctx.archivos.guardar(f, ctx.archivos.descargas()); } catch (e) { return informar(`No pude guardar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`); }
+        try { await lanzar({ channel: event.channel, hilo, ruta, mensajeTs: ts }); }
+        catch(e) { await informar(`No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`); }
       },
       alNo: async () => { await decir(event.channel, hilo, 'Sin respuesta: no apliqu\u00e9 nada.'); },
     });

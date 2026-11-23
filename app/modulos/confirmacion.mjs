@@ -24,7 +24,7 @@ export function registrar(ctx) {
   // `tambien`: id de Slack opcional que tambien confirma con su pulgar (sin usos actuales).
   // `largo`: el trabajo que arranca el pulgar es largo y se puede cortar con stop o restart (lo miran esos modulos).
   // `corta`: la orden interrumpe el trabajo largo que este en curso (reinicio); se avisa en la pregunta.
-  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false, corta = false }) => {
+  ctx.confirmar = async ({ channel, thread_ts, user, texto, alSi, alNo, minutos = 10, que = 'una orden', tambien = '', largo = false, corta = false, conservar = false }) => {
     const ocupado = corta ? [...ctx.activas.values()].filter((a) => a.largo) : [];
     const aviso = ocupado.length ? `\nOjo: ahora estoy en:\n${ocupado.map((a) => `\u00b7 ${a.que} (desde hace ${Math.max(1, Math.round((Date.now() - a.desde) / 60000))} min)`).join('\n')}\nSi aplicas, me reinicio y ese trabajo se corta: lo ya guardado se conserva; lo que estaba a medias habr\u00e1 que repetirlo.` : '';
     const r = await app.client.chat.postMessage({
@@ -36,7 +36,7 @@ export function registrar(ctx) {
       if (!pendientes.delete(clave)) return;
       try { await alNo({ motivo: 'sin-respuesta', ts: r.ts }); } catch (e) { console.error('alNo:', e.data?.error || e.message); }
     }, minutos * 60 * 1000);
-    pendientes.set(clave, { user, tambien, alSi, alNo, timer, que, desde: Date.now(), largo, channel, thread_ts, texto });
+    pendientes.set(clave, { user, tambien, alSi, alNo, timer, que, desde: Date.now(), largo, channel, thread_ts, texto, conservar });
     return r.ts;
   };
 
@@ -62,7 +62,7 @@ export function registrar(ctx) {
     ctx.activas.set(idAct, { que: p.que, desde: Date.now(), largo: !!p.largo });
     // El registro local ya quedó confirmado en disco antes de retirar la solicitud.
     // Fallar al retirar no cancela ni repite el trabajo aprobado.
-    try { await app.client.chat.delete({token:botToken,channel:event.item.channel,ts:event.item.ts}); }
+    try { if (!p.conservar) await app.client.chat.delete({token:botToken,channel:event.item.channel,ts:event.item.ts}); }
     catch(e){console.error('Solicitud aprobada conservada en Slack:',e.data?.error||e.message);}
     try { await p.alSi({ ts: event.item.ts }); } catch (e) { console.error('alSi:', e.data?.error || e.message); }
     finally { ctx.activas.delete(idAct); aceptando.delete(clave); }

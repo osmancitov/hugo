@@ -157,16 +157,16 @@ export function registrar(ctx) {
   async function proponer(repo, r, channel, hilo, { silenciarNo = false } = {}) {
     const { sha, titulo, tmp, src, dif } = r;
     await ctx.confirmar({
-      que: 'actualizar desde GitHub', channel, thread_ts: hilo, user: ctx.usuario, corta: true,
+      que: 'actualizar desde GitHub', channel, thread_ts: hilo, user: ctx.usuario, corta: true, conservar: true,
       texto: `Solicitud.\n\u00bfAplico desde GitHub ${repo} el commit ${sha.slice(0, 7)} \u00ab${titulo}\u00bb?\nCambia:\n${resumenDe(dif)}`,
-      alSi: async () => {
+      alSi: async ({ ts }) => {
         try {
           const script = path.join(base(), `instalar-github-${sha.slice(0, 7)}.sh`);
           fs.writeFileSync(script, INSTALADOR, { mode: 0o700 });
-          await ctx.lanzarInstalacion({ channel, hilo, ruta: script, args: [src, sha.slice(0, 7)], etiqueta: `commit ${sha.slice(0, 7)} de ${repo}`, sha: sha.slice(0, 7), limpiar: tmp });
+          await ctx.lanzarInstalacion({ channel, hilo, mensajeTs: ts, ruta: script, args: [src, sha.slice(0, 7)], etiqueta: `commit ${sha.slice(0, 7)} de ${repo}`, sha: sha.slice(0, 7), limpiar: tmp });
         } catch (e) {
           fs.rmSync(tmp, { recursive: true, force: true });
-          await decir(channel, hilo, `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`);
+          await app.client.chat.update({ token: botToken, channel, ts, text: `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.` });
         }
       },
       alNo: async () => { fs.rmSync(tmp, { recursive: true, force: true }); if (!silenciarNo) await decir(channel, hilo, 'Sin respuesta: no apliqu\u00e9 nada.'); },
