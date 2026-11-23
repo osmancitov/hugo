@@ -48,7 +48,7 @@ a:hover { text-decoration: underline; }
 @media(max-width:560px) { .cabecera h1 { font-size:1rem; } .avatar { flex-shrink:0; } #portada-observatorio { margin-bottom:1rem; } .portada-titulo { font-size:clamp(.8rem,3.6vw,1.25rem); } }
 .cabecera p { color: var(--tenue); font-size: .85rem; margin-top: .15rem; }
 
-#buscar {
+#buscar, #buscar-global {
   width: 100%;
   background: var(--panel);
   border: 1px solid var(--borde);
@@ -60,8 +60,19 @@ a:hover { text-decoration: underline; }
   max-width: 17rem;
   margin-bottom: .9rem;
 }
-#buscar:focus { outline: 1px solid var(--oro); }
+#buscar:focus, #buscar-global:focus { outline: 1px solid var(--oro); }
 
+#busqueda-global { margin:1rem 0; }
+#busqueda-global[hidden], #resultados-global[hidden] { display:none; }
+#busqueda-global label { display:block; font-size:.85rem; color:var(--tenue); margin-bottom:.4rem; }
+#buscar-global { max-width:26rem; margin-bottom:.35rem; }
+#cuenta-global { color:var(--tenue); font-size:.8rem; margin:.25rem 0; }
+#resultados-global .activo-fila { flex-wrap:wrap; }
+#resultados-global .tipo { font-size:.75rem; }
+@media(max-width:560px) {
+  #resultados-global .nom { white-space:normal; }
+  #resultados-global .tipo { flex-basis:100%; margin-left:3.85rem; }
+}
 .nodo { border-bottom: 1px solid var(--borde); }
 .nodo > .nodo-tit {
   display: flex; align-items: baseline; gap: .6rem;
@@ -213,11 +224,19 @@ a.tit-link:hover { text-decoration: none; }
 <img src="identidad/portada.jpg" alt="Observatorio astronómico dorado bajo un cielo de estrellas y pequeñas velas rojas y verdes." width="1440" height="810" fetchpriority="high">
 <div class="portada-titulo" aria-hidden="true">Observatorio<br><span>Bursátil</span></div>
 </section>
+<section id="busqueda-global" aria-label="Búsqueda global de activos">
+<label for="buscar-global">Buscar en todo el catálogo</label>
+<input id="buscar-global" type="search" placeholder="Código o nombre: empresas, fondos y criptos…" autocomplete="off" aria-controls="resultados-global">
+<div id="resultados-global" hidden>
+<p id="cuenta-global" role="status" aria-live="polite"></p>
+<div id="filas-global"></div>
+</div>
+</section>
 <nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <h2 id="rotulo-mercado" hidden></h2>
-<input id="buscar" hidden type="search" placeholder="Buscar por código o nombre…" autocomplete="off">
+<input id="buscar" hidden type="search" placeholder="Filtrar esta lista…" aria-label="Filtrar esta lista por código o nombre" autocomplete="off">
 <main id="app"></main>
 <script>
 // Catalogo del visualizador: generado desde osmancitov/hugo (registros + ACTIVOS_INFO) y sec.gov. cap = capitalizacion de la ficha (CoinGecko bstocks-ecosystem, 16-nov-2026; BABA = snapshot 11-nov, marcado en su fila). cap_sub = capitalizacion del subyacente en bolsa o activos del fondo (stockanalysis.com, cierre 13-nov-2026). EWJ, EWT, EWZ, EWZS, IWM, MELI y NU (altas 18-nov-2026): cap_sub al cierre 17/18-nov-2026; sin cap de ficha hasta que CoinGecko las cubra. Cripto: cap = capitalizacion del activo (ranking Tesoreria 11-nov-2026, CoinGecko y CoinMarketCap). Excluidos: EUR y stablecoins de objetivo USD, segun app/modulos/exclusiones.mjs (18-nov-2026). Sus registros se retiran por completo. USDT se conserva como cotizacion, no como activo base.
@@ -488,6 +507,38 @@ function devolverFocoBuscar(teniaFoco, selIni, selFin) {
   elBuscar.focus({ preventScroll: true });
   try { elBuscar.setSelectionRange(selIni, selFin); } catch { /* type=search admite selección; si no, el foco basta */ }
 }
+
+/* ---------- localizador global: no modifica filtros ni rankings ---------- */
+const elBuscarGlobal = $('#buscar-global');
+const resultadosGlobal = $('#resultados-global');
+const filasGlobal = $('#filas-global');
+function coincidenciasGlobales(consulta, catalogo = TODOS) {
+  const normalizar = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const q = normalizar(consulta.trim());
+  if (!q) return [];
+  return catalogo.filter(e => [e.codigo, e.nombre || '', e.lectura || ''].some(s => normalizar(s).includes(q)))
+    .sort((a,b) => Number(normalizar(b.codigo) === q) - Number(normalizar(a.codigo) === q)
+      || a.codigo.localeCompare(b.codigo) || a.clase.localeCompare(b.clase));
+}
+function pintarBusquedaGlobal() {
+  const q = elBuscarGlobal.value.trim();
+  resultadosGlobal.hidden = !q;
+  filasGlobal.replaceChildren();
+  if (!q) { $('#cuenta-global').textContent = ''; return; }
+  const hallados = coincidenciasGlobales(q);
+  $('#cuenta-global').textContent = hallados.length ? hallados.length + (hallados.length === 1 ? ' activo' : ' activos') : 'Ningún activo coincide.';
+  for (const e of hallados) {
+    const etiqueta = e.clase === 'cripto' ? 'Criptos' : e.tipo === 'empresa' ? 'Empresas' : 'Fondos';
+    const fila = filaActivo({ ...e, cap: null, tipo: etiqueta }, false);
+    filasGlobal.append(fila);
+  }
+}
+elBuscarGlobal.addEventListener('input', pintarBusquedaGlobal);
+filasGlobal.addEventListener('click', ev => {
+  if (!ev.target.closest('a.activo-fila')) return;
+  origenLista = location.hash || '#/';
+  estadoLista = { abiertos: [], y: window.scrollY };
+});
 
 /* ---------- datos ---------- */
 const cacheRegistros = new Map();
@@ -1935,6 +1986,7 @@ async function ruta() {
   const mercado=r?.[1]||null,categoria=r?.[2]||null,ranking=r?.[3]||null;
   if(r&&((mercado==='cripto'&&categoria)||(mercado==='stock'&&ranking&&ranking!=='indicadores'&&!categoria))){location.replace('#/'+mercado);return;}
   document.getElementById('portada-observatorio').hidden=Boolean(m||mi);
+  document.getElementById('busqueda-global').hidden=Boolean(m||mi);
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.getElementById('mercado-stock').href='#/stock';document.getElementById('mercado-cripto').href='#/cripto';
@@ -1958,7 +2010,11 @@ async function ruta() {
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
   app.replaceChildren();
-  if(!ranking)return;
+  if(!ranking){
+    const guardado=estadoLista;estadoLista=null;
+    if(guardado)requestAnimationFrame(()=>window.scrollTo(0,guardado.y));
+    return;
+  }
   if(ranking==='indicadores'){vistaIndicadoresMercado(mercado);return;}
   const lista=mercado==='stock'?listaStocks(TODOS,categoria):CRIPTOS;
   const ids=new Set(lista.map(e=>e.clase+':'+e.codigo)),seleccion=e=>ids.has(e.clase+':'+e.codigo);
@@ -1989,6 +2045,8 @@ elBuscar.addEventListener('input', () => {
 document.querySelector('.tit-link').addEventListener('click', () => {
   estadoLista = null;
   elBuscar.value = '';
+  elBuscarGlobal.value = '';
+  pintarBusquedaGlobal();
   if (location.hash === '' || location.hash === '#/') ruta();
 });
 window.addEventListener('hashchange', ruta);
