@@ -6,7 +6,7 @@ Inicio, 23 de octubre: 313,00 USD. Actual, 23 de noviembre: aproximadamente 241,
 
 ## 23 de noviembre: CRWD
 
-Aproximadamente +4,00 USD. Saldo por confirmar. Compra: 210,00 USD a las ocho y treinta y cinco de la mañana. Venta: 213,45 USD; hora sin precisar.
+Aproximadamente +4,00 USD. Compra: 210,00 USD. Venta: 213,45 USD.
 
 ## 23 de noviembre: SPCX
 
