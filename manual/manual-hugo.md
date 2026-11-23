@@ -21,7 +21,7 @@ Se escriben mencionando `@Hugo`. Cualquiera puede pedir cualquier comando (decis
 | --- | --- |
 | `borrar hilo` | Dentro de un hilo. Pregunta y borra lo que Slack permita. |
 | archivos adjuntos | Pregunta y los guarda en Descargas, sin pisar uno existente. |
-| `envia ruta` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
+| `envia archivo` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta completa se busca en Descargas. |
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
@@ -190,7 +190,7 @@ La superficie tiene enlace propio `superficie.html`, con título e imagen Open G
 - `app/`: `app.mjs`, `modulos/`, `config.env` (valores no secretos), `package.json`, `node_modules/`.
 - `keys/`: `.bot-token` y `.app-token` (al arrancar), `.user-token` (solo para borrar hilos) y `.github-key` (la usaba la sincronización de registros, ya retirada; sigue en la carpeta y no se ha tocado).
 - `manual/`: este manual y el historial.
-- Datos locales retirados el 23-nov-2026 (decisión del usuario): `registros/`, `.estado-intradia/`, `~/.local/share/hugo-registro/` y `~/.local/share/hugo-radiografias/` se borraron de la Debian; los datos viven en GitHub. Siguen por ahora, pendientes de decisión del usuario: `graficas/` (imágenes de radiografías) y `~/.local/share/hugo/repo-sync` (clon antiguo de sincronización). Se conservan `img/`, `keys/` y `~/.local/share/hugo/aprobaciones.jsonl`.
+- Datos locales retirados el 23-nov-2026 (decisión del usuario): `registros/`, `.estado-intradia/`, `~/.local/share/hugo-registro/` y `~/.local/share/hugo-radiografias/` se borraron de la Debian; los datos viven en GitHub. También se borraron ese día, por decisión del usuario ("borra esos archivos viejos"): `graficas/` (1016 archivos, 67 MB, imágenes de radiografías), `~/.local/share/hugo/repo-sync` (6589 archivos, 52 MB, clon antiguo con velas de enero a abril sin copia en GitHub) y `hugo-git-askpass.sh`. Se conservan `img/`, `keys/` y `~/.local/share/hugo/aprobaciones.jsonl`.
 - Servicio: `~/.config/systemd/user/hugo.service` (arranca al encender la Debian con `linger`; aún no se ha comprobado reiniciando la Debian).
 - Respaldos y estado de actualizaciones: `~/.local/share/hugo-respaldo/`, fuera de `hugo/`.
 - Configuración (`app/config.env`, plantilla en `app/config.ejemplo.env`): `HUGO_AVISO_CANAL`, `HUGO_USUARIO`, `HUGO_DELEGADO`, `HUGO_GITHUB`; `HUGO_RECIBIDOS` solo para recibir en otra carpeta que Descargas. Tras cambiarla, reiniciar.

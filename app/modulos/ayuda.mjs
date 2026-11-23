@@ -2,7 +2,7 @@
 const TEXTO = [
   '*Comandos de Hugo* - escribe @Hugo y la orden:',
   '`estado` - que hago y que confirmaciones espero.',
-  '`envia ruta` - enviar un archivo al hilo.',
+  '`envia archivo` - enviar un archivo al hilo.',
   '`borrar hilo` - borrar el hilo actual.',
   '`actualiza` - instalar la version de GitHub.',
   '`stop` - detener el trabajo en curso.',
