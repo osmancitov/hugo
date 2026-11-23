@@ -1,4 +1,6 @@
-# Estado de cuenta
+# Proyecto Cimiento
+
+Aprender el oficio y construir las herramientas.
 
 [![Cuaderno y observatorio nocturno](recorrido.jpg)](recorrido.jpg)
 

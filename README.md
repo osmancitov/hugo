@@ -4,9 +4,9 @@ Bot pequeño de Slack (Socket Mode, Node.js) que corre en una Debian como servic
 
 Este repositorio es la fuente del código y del manual. La Debian descarga de aquí; nunca sube.
 
-## Estado de cuenta
+## Proyecto Cimiento
 
-[Consultar los movimientos de la cuenta](https://osmancitov.github.io/hugo/cuenta/), del aporte inicial a las operaciones más recientes.
+[Aprender el oficio y construir las herramientas](https://osmancitov.github.io/hugo/cuenta/), del aporte inicial a las operaciones más recientes.
 
 ## Contenido
 - `app/app.mjs`: arranca Hugo y conecta los módulos.

@@ -1,4 +1,6 @@
-# Estado de cuenta
+# Proyecto Cimiento
+
+Aprender el oficio y construir las herramientas.
 
 `movimientos.json` conserva el registro y sus datos conocidos. `generar.mjs` produce `index.html` y `estado-de-cuenta.md`; la publicación de Pages lo ejecuta antes de empaquetar. La vista omite horas y pendientes por decisión de Osmancito, sin borrar esos datos de la fuente.
 
