@@ -1887,6 +1887,7 @@ function vistaActivo(clase, codigo) {
 }
 
 /* ---------- arranque ---------- */
+let actualizarCapitalizacion = () => {};
 let actualizarPersistencia = () => {};
 function botonNav(nav, titulo, href, actual=false) {
   const a=document.createElement('a');a.textContent=titulo;a.href=href;
@@ -1907,10 +1908,17 @@ function vistaIndicadoresMercado(mercado) {
   for(const e of inds)app.append(filaActivo(e,false));
 }
 function vistaCapitalizacion(lista) {
-  app.replaceChildren(elBuscar);
-  app.append(cabCaps());
-  const q=elBuscar.value.trim().toLowerCase();
-  for(const e of [...lista].sort((a,b)=>(b.cap||0)-(a.cap||0)))if(!q||[e.codigo,e.nombre,e.lectura||''].some(t=>t.toLowerCase().includes(q)))app.append(filaActivo(e,true));
+  const cuerpo = document.createElement('div');
+  app.replaceChildren(elBuscar, cuerpo);
+  // Al escribir solo cambian las filas. Desconectar el buscador cierra el teclado y pierde el foco.
+  actualizarCapitalizacion = () => {
+    const q = elBuscar.value.trim().toLowerCase();
+    cuerpo.replaceChildren(cabCaps());
+    for (const e of [...lista].sort((a,b)=>(b.cap||0)-(a.cap||0)))
+      if (!q || [e.codigo,e.nombre,e.lectura||''].some(t=>t.toLowerCase().includes(q)))
+        cuerpo.append(filaActivo(e,true));
+  };
+  actualizarCapitalizacion();
 }
 async function ruta() {
   await rotulosListos;
@@ -1972,6 +1980,7 @@ elBuscar.addEventListener('input', () => {
     if (elBuscar.value.trim()) location.hash = '#/';
     return;
   }
+  if (location.hash.endsWith('/capitalizacion')) { actualizarCapitalizacion(); return; }
   if (location.hash.endsWith('/variacion')) { actualizarRachas(); return; }
   if (location.hash.endsWith('/persistencia')) { actualizarPersistencia(); return; }
   ruta();
