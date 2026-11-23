@@ -9,3 +9,5 @@ Aprender el oficio y construir las herramientas.
 La ilustración propia es `recorrido.jpg`, sin recorte ni redimensionamiento y comprimida al 75 %. Es también la imagen de preview de la página.
 
 Pruebas: `node --test pruebas/estado-de-cuenta.mjs`, desde la raíz del repositorio.
+
+Las barras históricas completas representan el 100% del capital de cada movimiento. La base amarilla lleva a la derecha un segmento del porcentaje registrado: rojo para pérdidas y verde para ganancias. Inicio usa verde completo. Un movimiento sin porcentaje registrado, como CRWD, no recibe una barra calculada a partir del precio o de cifras aproximadas.
