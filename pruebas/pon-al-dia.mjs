@@ -157,8 +157,7 @@ test('la orden existe, ya sin marca delegable, y la ayuda la distingue de la rev
  assert.ok(!velas.includes('delegable'), 'sin marca delegable: cualquiera puede pedirla (decisión del usuario, 20-nov-2026)');
  assert.match(velas, /rapido:true/);
  const ayuda = fs.readFileSync(new URL('../app/modulos/ayuda.mjs', import.meta.url), 'utf8');
- assert.match(ayuda, /pon al dia/);
- assert.match(ayuda, /registra todo.*revision completa/);
+ assert.ok(!/pon al dia|registra todo/.test(ayuda), 'la ayuda ya no lista ordenes de registro local (retirada, decisión del usuario, 23-nov-2026)');
 });
 
 test('registra continuar retoma una puesta al dia pausada en el mismo modo', async () => {

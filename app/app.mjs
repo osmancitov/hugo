@@ -12,16 +12,9 @@ import * as actualizar from './modulos/actualizar.mjs';
 import * as saludo from './modulos/saludo.mjs';
 import * as github from './modulos/github.mjs';
 import * as estado from './modulos/estado.mjs';
-import * as estadoRegistro from './modulos/estado-registro.mjs';
 import * as ayuda from './modulos/ayuda.mjs';
 import * as reiniciar from './modulos/reiniciar.mjs';
 import * as detener from './modulos/detener.mjs';
-import * as velas from './modulos/velas.mjs';
-import * as sincronizarRegistros from './modulos/sincronizar-registros.mjs';
-import * as radiografias from './modulos/radiografias.mjs';
-import * as barraMovil from './modulos/barra-movil.mjs';
-import * as cicloDiario from './modulos/ciclo-diario.mjs';
-import * as registroIntradia from './modulos/registro-intradia.mjs';
 import * as reporte from './modulos/reporte.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -79,7 +72,7 @@ const ctx = {
 const ojos = reporte.crearOjos({ client: app.client, token: botToken, usuario: USUARIO });
 
 // Orden: confirmacion primero (los demas la usan).
-for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, estadoRegistro, ayuda, reiniciar, detener, saludo, velas, sincronizarRegistros, radiografias, barraMovil, registroIntradia, cicloDiario]) m.registrar(ctx);
+for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, detener, saludo]) m.registrar(ctx);
 
 reporte.registrarRetiro(ctx);
 

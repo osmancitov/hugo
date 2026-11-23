@@ -39,7 +39,6 @@
 // El origen compara la foto consigo misma, sin inventar precios ni cierres.
 // Los cálculos diarios antiguos siguen exportados para leer datos históricos.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 // Solo migración de instalaciones anteriores; nunca se vuelve a escribir.
@@ -389,51 +388,4 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   }
   const texto = formatearBarra(barra, ahora);
   return { barra, texto, generada: ahora };
-}
-
-// --- La orden ---
-
-// Mismo instante, fecha y segundos en UTC en todo el bloque.
-const fechaHora = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
-
-export function registrar(ctx) {
-  const { app, botToken } = ctx;
-  const dirVelas = () => process.env.HUGO_VELAS_DIR || ctx.conf.HUGO_VELAS_DIR || path.join(os.homedir(), 'Documents', 'hugo', 'registros', 'velas-24h');
-  ctx.comando(/^\s*barra\s*[.!?]*\s*$/i, async (event) => {
-    const hilo = event.thread_ts || event.ts;
-    const decir = (text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text });
-    try {
-      const host = process.env.HUGO_BARRA_HOST || ctx.conf.HUGO_BARRA_HOST || HOST_POR_DEFECTO;
-      if (!ctx.tomarBarra) throw Error('El registro intradiario no está disponible; no tomo una foto sin guardarla.');
-      const tomar = ctx.tomarBarra;
-      const { barra, generada, registro, publicacion, pendiente } = await tomar({ dirVelas: dirVelas(), host });
-      const l = [
-        `Barra móvil 24 h (stocks), consultada ahora a Binance:`,
-      ];
-      if (barra.dia) {
-        const d = barra.dia;
-        l.push(`· Desde la primera lectura del día (${fechaHora(d.base ?? Date.parse(d.ref)+DIA_MS)}): verdes ${d.suben} · rojos ${d.bajan} (${d.suben + d.bajan} comparables; iguales: ${d.iguales}).`);
-        if (d.sinDato) l.push(`· Sin referencia inicial o sin dato: ${d.sinDato} (fuera de la frontera, no inventados).`);
-      }
-      l.push(`· Verdes ${barra.suben} · rojos ${barra.bajan} (${barra.conDato} con dato de ${barra.consultados}).`);
-      l.push(`· Consulta: ${fechaHora(generada)}.`);
-      if (barra.cierreMin !== null && barra.fin !== null) l.push(`· Cierres de la ventana entre ${fechaHora(barra.cierreMin)} y ${fechaHora(barra.fin)} (cada activo trae el suyo).`);
-      if (barra.movimiento) {
-        const m = barra.movimiento;
-        l.push(`· Desde la lectura anterior (${fechaHora(barra.comparadaCon)}): verdes ${m.suben} · rojos ${m.bajan} (${m.suben + m.bajan} con cierre nuevo${m.iguales === null ? '' : `; iguales: ${m.iguales}`}).`);
-        if (m.sinCierreNuevo) l.push(`· Sin cierre nuevo: ${m.sinCierreNuevo} (la respuesta no ofrece uno más reciente; fuera de la frontera, como el sin dato).`);
-        if (m.sinPrevia) l.push(`· Sin lectura previa: ${m.sinPrevia} (fuera de la frontera, no inventados).`);
-      }
-      if (barra.dispersionMs !== null) l.push(`· Dispersión entre cierres de la ventana: ${barra.dispersionMs} ms.`);
-      if (barra.sinDato) l.push(`· Sin dato: ${barra.sinDato} (fuera de la frontera, no inventados).`);
-      l.push(`· Tablas del visor (qué activos quedaron verdes): <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-dia|día anterior> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-24h|24 h> · <https://osmancitov.github.io/hugo/#/i/iceberg-stock/barra-movimiento|movimiento>.`);
-      if (registro) l.push(`· Historial guardado en ${registro.rel}.`);
-      if (registro) l.push(`· Registro intradiario: ${registro.lecturas} lectura(s) del día guardada(s).`);
-      if (publicacion) l.push(publicacion.commit ? `· Publicada en el commit ${publicacion.commit.slice(0, 7)}.` : '· Publicación confirmada, sin cambios nuevos.');
-      if (pendiente) l.push(`· Guardada, pero pendiente de publicar: ${pendiente}. Reintentar con «intradia publica», sin otra consulta.`);
-      await decir(l.join('\n'));
-    } catch (e) {
-      await decir(`No pude consultar la barra: ${e.message}`);
-    }
-  }, { nombre: 'barra' });
 }
