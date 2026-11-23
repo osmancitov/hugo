@@ -10,7 +10,8 @@ test('la solicitud menciona al aprobador y solo su pulgar confirma', async () =>
     await ctx.confirmar({channel:'C1',thread_ts:'1.0',user:'UDUENO',texto:'Solicitud. ¿Aplico?',alSi:async()=>{si++;},alNo:async()=>{}});
     assert.equal(posts.length,1);
     assert.equal(posts[0].thread_ts,'1.0');
-    assert.match(posts[0].text,/^<@UDUENO> Solicitud/);
+    assert.match(posts[0].text,/^🔶 Solicitud\n<@UDUENO> ¿Aplico/);
+    assert.equal((posts[0].text.match(/Solicitud/g)||[]).length,1);
     assert.equal((posts[0].text.match(/<@UDUENO>/g)||[]).length,1);
     await reaccion({event:{item:{type:'message',channel:'C1',ts:'1.2'},reaction:'+1',user:'UASISTENTE'}});
     assert.equal(si,0); assert.equal(ctx.esperando().length,1);
