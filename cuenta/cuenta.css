@@ -3,3 +3,7 @@
 .nota-aproximacion{color:#9aa0ac;font-size:.72rem;line-height:1.6;margin:12px 0 -12px}
 
 .corte .puente{align-self:center;align-items:center;gap:12px;text-align:center}.corte .variacion-total{font-size:1.1rem;color:#df9b91}.corte .puente .flecha{font-size:1.4rem}
+
+.ventana h2{color:#c2a15a;font-size:.85rem;margin:0 0 10px}.ventana{padding-top:20px}.ventana:first-child{padding-top:0}.ventana .corte{border-top:0;padding-top:0;padding-bottom:20px}.corte .variacion-total.igual{color:#e8eaed}.corte .variacion-total.sube{color:#b1c8b0}
+
+.ilustracion{margin:0 0 30px}.ilustracion img{display:block;width:100%;height:auto}

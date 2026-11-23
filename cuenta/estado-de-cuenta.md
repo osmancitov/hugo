@@ -1,8 +1,20 @@
 # Estado de cuenta
 
-Del 23 de octubre al 23 de noviembre de 2026.
+[![Cuaderno y observatorio nocturno](recorrido.jpg)](recorrido.jpg)
 
-Inicio, 23 de octubre: 313,00 USD. Actual, 23 de noviembre: aproximadamente 241,00 USD. Variación del 23 de octubre al 23 de noviembre: −23%.
+Operaciones cerradas. Cifras aproximadas.
+
+## Día: 22 nov → 23 nov
+
+241,00 USD → 241,00 USD. Variación: 0%.
+
+## 7 días: 16 nov → 23 nov
+
+262,00 USD → 241,00 USD. Variación: −8%.
+
+## Mes: 23 oct → 23 nov
+
+313,00 USD → 241,00 USD. Variación: −23%.
 
 ## 23 de noviembre: CRWD
 
