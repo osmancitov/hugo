@@ -224,7 +224,10 @@ a.tit-link:hover { text-decoration: none; }
 <img src="identidad/portada.jpg" alt="Observatorio astronómico dorado bajo un cielo de estrellas y pequeñas velas rojas y verdes." width="1440" height="810" fetchpriority="high">
 <div class="portada-titulo" aria-hidden="true">Observatorio<br><span>Bursátil</span></div>
 </section>
-<section id="busqueda-global" aria-label="Búsqueda global de activos">
+<nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
+<nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
+<section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
 <label for="buscar-global">Buscar en todo el catálogo</label>
 <input id="buscar-global" type="search" placeholder="Código o nombre: empresas, fondos y criptos…" autocomplete="off" aria-controls="resultados-global">
 <div id="resultados-global" hidden>
@@ -232,9 +235,6 @@ a.tit-link:hover { text-decoration: none; }
 <div id="filas-global"></div>
 </div>
 </section>
-<nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a></nav>
-<nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
-<nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <h2 id="rotulo-mercado" hidden></h2>
 <input id="buscar" hidden type="search" placeholder="Filtrar esta lista…" aria-label="Filtrar esta lista por código o nombre" autocomplete="off">
 <main id="app"></main>
@@ -1978,7 +1978,8 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|persistencia|indicadores))?$/);
-  if(!m&&!mi&&!r&&hash!=='#/') {
+  const esBusqueda=hash==='#/buscar';
+  if(!m&&!mi&&!r&&!esBusqueda&&hash!=='#/') {
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
     location.replace('#/');return;
@@ -1986,11 +1987,13 @@ async function ruta() {
   const mercado=r?.[1]||null,categoria=r?.[2]||null,ranking=r?.[3]||null;
   if(r&&((mercado==='cripto'&&categoria)||(mercado==='stock'&&ranking&&ranking!=='indicadores'&&!categoria))){location.replace('#/'+mercado);return;}
   document.getElementById('portada-observatorio').hidden=Boolean(m||mi);
-  document.getElementById('busqueda-global').hidden=Boolean(m||mi);
+  document.getElementById('busqueda-global').hidden=!esBusqueda;
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.getElementById('mercado-stock').href='#/stock';document.getElementById('mercado-cripto').href='#/cripto';
   document.getElementById('mercado-stock').classList.toggle('actual',mercado==='stock');document.getElementById('mercado-cripto').classList.toggle('actual',mercado==='cripto');
+  document.getElementById('mercado-buscar').href='#/buscar';
+  document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
   }
@@ -1999,7 +2002,7 @@ async function ruta() {
     for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Promedio']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
-  contraerNavegacion(navMerc,mercado,'#/');
+  contraerNavegacion(navMerc,mercado||esBusqueda,'#/');
   contraerNavegacion(navCat,categoria||(mercado==='stock'&&ranking==='indicadores'),'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=true;

@@ -26,8 +26,13 @@ test('código exacto primero y catálogo original sin mutaciones',()=>{
   assert.deepEqual(buscar('n'),['N','BTC','NU','WBTC']);
   assert.deepEqual(catalogo.map(e=>e.codigo),['NU','SPY','BTC','WBTC','N']);
 });
-test('localizador separado de filtros y rankings, antes de mercados',()=>{
-  assert.ok(html.indexOf('<section id="busqueda-global"') < html.indexOf('<nav class="mercados"'));
+test('localizador separado de filtros y rankings, tras la navegación',()=>{
+  assert.ok(html.indexOf('<section id="busqueda-global"') > html.indexOf('<nav class="mercados"'));
+  assert.match(html, /id="mercado-buscar">Buscar<\/a>/);
+  assert.match(html, /<section id="busqueda-global" hidden/);
+  assert.match(html, /const esBusqueda=hash==='#\/buscar'/);
+  assert.match(html, /!m&&!mi&&!r&&!esBusqueda/);
+  assert.match(html, /getElementById\('busqueda-global'\).hidden=!esBusqueda/);
   assert.match(html,/id="buscar"[^>]+placeholder="Filtrar esta lista/);
   assert.match(html,/elBuscarGlobal.addEventListener\('input', pintarBusquedaGlobal\)/);
   const pintar = html.slice(html.indexOf('function pintarBusquedaGlobal('),html.indexOf("elBuscarGlobal.addEventListener"));
