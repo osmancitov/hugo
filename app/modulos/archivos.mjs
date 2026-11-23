@@ -1,7 +1,7 @@
 // Modulo archivos: recibir y servir archivos por Slack.
 // - Recibir: mencionar a Hugo con un archivo adjunto. Pide confirmacion (modulo comun) y lo guarda en Descargas
 //   (la carpeta de descargas del usuario; HUGO_RECIBIDOS en config.env la cambia), sin pisar otro.
-// - Servir: "@hugo envia RUTA" pide confirmacion y sube ese archivo al hilo desde donde este, sin copiarlo.
+// - Servir: "@hugo envia ruta" pide confirmacion y sube ese archivo al hilo desde donde este, sin copiarlo.
 //   Un nombre sin ruta se busca en Descargas. La ruta y el tamano se muestran en la pregunta.
 // - No sirve secretos: keys/ de Hugo, ~/.ssh, ~/.gnupg y archivos cuyo nombre indica clave, token o contrasena.
 // Este modulo solo guarda y entrega. Aplicar una actualizacion recibida es del modulo actualizar.

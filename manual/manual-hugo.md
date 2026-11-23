@@ -21,7 +21,7 @@ Se escriben mencionando `@Hugo`. Cualquiera puede pedir cualquier comando (decis
 | --- | --- |
 | `borrar hilo` | Dentro de un hilo. Pregunta y borra lo que Slack permita. |
 | archivos adjuntos | Pregunta y los guarda en Descargas, sin pisar uno existente. |
-| `envia RUTA` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
+| `envia ruta` | Pregunta y sube ese archivo al hilo. También `envía` y `manda`. Un nombre sin ruta se busca en Descargas. |
 | `actualiza` | Sin adjunto: baja la última versión de GitHub (también `actualiza github`), pregunta y la instala. |
 | `actualiza` + `.sh` adjunto | Pregunta y ejecuta ese instalador. También basta un archivo llamado `actualizar-hugo*.sh`. |
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
