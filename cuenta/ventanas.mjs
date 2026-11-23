@@ -6,7 +6,7 @@ export function ventanasCerradas(records){
  const date=new Date(end+'T12:00:00Z');
  const cutoff=(unit,n)=>{const d=new Date(date);if(unit==='month'){const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-n);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));}else d.setUTCDate(d.getUTCDate()-n);return d.toISOString().slice(0,10)};
  const current=at(end);
- return [['Día','day',1],['7 días','day',7],['Mes','month',1]].map(([label,unit,n])=>{
+ return [['1 día','day',1],['7 días','day',7],['1 mes','month',1]].map(([label,unit,n])=>{
   const start=cutoff(unit,n),base=at(start);
   return {label,start,end,base,current,percent:base?Math.round((current/base-1)*100):null,approximate:ordered.some(r=>r.date>start&&r.date<=end&&r.approximate)};
  });

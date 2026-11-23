@@ -9,3 +9,5 @@ test('ventanas por cierres, no valoración de abiertas ni solo última operació
 test('mes calendario termina en fecha válida al cruzar febrero',()=>{const r=[{date:'2026-03-31',change:10},{date:'2026-02-01',change:100}];assert.equal(ventanasCerradas(r)[2].start,'2026-02-28')});
 
 test('identidad elegida sin renombrar el Observatorio',()=>{const html=fs.readFileSync(new URL('../cuenta/index.html',import.meta.url),'utf8');assert.ok(html.includes('<h1>Proyecto Cimiento</h1>'));assert.ok(html.includes('Aprender el oficio y construir las herramientas.'));assert.ok(html.includes('Observatorio Bursátil'));assert.ok(html.includes('og:title" content="Proyecto Cimiento'))});
+
+test('etiquetas uniformes',()=>assert.deepEqual(ventanasCerradas(data.records).map(w=>w.label),['1 día','7 días','1 mes']));

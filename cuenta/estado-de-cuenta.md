@@ -6,7 +6,7 @@ Aprender el oficio y construir las herramientas.
 
 ## Rendimiento de la cuenta
 
-## Día: 22 nov → 23 nov
+## 1 día: 22 nov → 23 nov
 
 241,00 USD → 241,00 USD. Variación: 0%.
 
@@ -14,7 +14,7 @@ Aprender el oficio y construir las herramientas.
 
 262,00 USD → 241,00 USD. Variación: −8%.
 
-## Mes: 23 oct → 23 nov
+## 1 mes: 23 oct → 23 nov
 
 313,00 USD → 241,00 USD. Variación: −23%.
 
