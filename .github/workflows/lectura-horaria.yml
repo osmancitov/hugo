@@ -2,13 +2,11 @@
 # repositorio público (ejecutores estándar). GitHub puede demorar o descartar
 # una corrida programada; la lectura guarda su hora real, nunca una forzada.
 # Frontera con la Debian: si el repositorio ya trae una lectura de esa hora, la
-# corrida no toma otra. El cron va unos minutos antes de la hora en punto para
-# absorber la demora de GitHub; la lectura se toma al minuto 00.
+# corrida no toma otra. El reloj de Google despacha este workflow; no hay cron
+# de respaldo en GitHub. Se conserva siempre el instante real de la lectura.
 name: Lectura horaria de Hugo
 
 on:
-  schedule:
-    - cron: '47 * * * *'
   workflow_dispatch:
     inputs:
       intrahora:
