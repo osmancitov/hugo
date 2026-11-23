@@ -17,6 +17,7 @@ import { registrar as registrarSincronizar } from '../app/modulos/sincronizar-re
 import { leerEstado } from '../app/modulos/registro-motor.mjs';
 import { ultimoCerrado } from '../app/modulos/ciclo-diario.mjs';
 import { fetchDatosPublicos } from './datos-publicos-diaria.mjs';
+import { eventoDiaria } from './contexto-diaria.mjs';
 
 // Solo esta entrada de Actions cambia de host público. La Debian queda intacta.
 globalThis.fetch = fetchDatosPublicos(globalThis.fetch);
@@ -49,7 +50,7 @@ const fecha = new Date(objetivo).toISOString().slice(0, 10);
 console.log(`Puesta al día diaria desde Actions: registros hasta el ${fecha}.`);
 
 // 1) Ingesta: la misma vía de «pon al día» de la corrida diaria (origen 'diaria').
-await ctx.ponerAlDiaDiaria({ channel: '', ts: '' });
+await ctx.ponerAlDiaDiaria(eventoDiaria());
 const est = leerEstado(archivoEstado);
 if (!est || est.estado !== 'terminado') {
   console.error(`El registro quedó ${est ? est.estado : 'sin estado'}${est && est.error ? `: ${est.error}` : ''}. No publico; la próxima corrida lo retoma.`);
