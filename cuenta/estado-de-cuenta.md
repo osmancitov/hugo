@@ -2,7 +2,7 @@
 
 Del 23 de octubre al 23 de noviembre de 2026.
 
-Aporte inicial: 313,00 USD. Corte anterior a CRWD: 237,00 USD. Variación en ese corte: −76,00 USD.
+Inicio, 23 de octubre: 313,00 USD. Actual, 23 de noviembre: aproximadamente 241,00 USD. Variación desde el inicio: aproximadamente −72,00 USD.
 
 ## 23 de noviembre: CRWD
 
