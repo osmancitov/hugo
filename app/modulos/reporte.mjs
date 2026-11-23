@@ -27,7 +27,7 @@ function seguimiento(client){
  return seguimientos.get(client);
 }
 
-export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,mensajeTs,prefijo='',ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
+export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio,mensajeTs,prefijo='',fijo=false,ahora=Date.now,esperar=ms=>new Promise(r=>setTimeout(r,ms)),intervalo=5000}) {
  const channel=event?event.channel:canal;
  const hilo=event?event.thread_ts||event.ts:hiloOpt;
  let m=mensajeTs?{ts:mensajeTs}:await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text:inicio});
@@ -39,6 +39,7 @@ export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio
   const k=claveReporte(channel,m.ts);
   const retiro=estado.retiros.get(k);if(retiro)await retiro;
   if(estado.retirados.has(k)){
+   if(fijo)throw Error('El mensaje fijo fue retirado; no creo otro.');
    m=await client.chat.postMessage({token,channel,...(hilo?{thread_ts:hilo}:{}),text});
    if(!m?.ts)throw Error('Slack no devolvio referencia del nuevo reporte.');
    estado.activos.delete(k);marcar();
@@ -46,9 +47,10 @@ export async function crearReporte({client,token,event,canal,hilo:hiloOpt,inicio
   ultimo=ahora();
  };
  return {
+  ts:()=>m.ts,
   iniciar:async text=>{marcar();await editar(text);},
   progreso:async text=>{marcar();if(ahora()-ultimo<intervalo)return;await editar(`${prefijo}${text}`);},
-  final:async text=>{marcar();try{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);await editar(text);}finally{estado.activos.delete(claveReporte(channel,m.ts));}}
+  final:async text=>{marcar();let listo=false;try{const falta=intervalo-(ahora()-ultimo);if(falta>0)await esperar(falta);await editar(text);listo=true;}finally{if(listo||!fijo)estado.activos.delete(claveReporte(channel,m.ts));}}
  };
 }
 

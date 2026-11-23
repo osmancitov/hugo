@@ -33,6 +33,19 @@ export function registrar(ctx) {
   const { app, botToken } = ctx;
   const decir = (channel, thread_ts, text) => app.client.chat.postMessage({ token: botToken, channel, thread_ts, text });
   let finalizando = false;
+  let reintento = null;
+  const reintentar = () => {
+    if (reintento) return;
+    reintento = setTimeout(() => { reintento = null; finalizar().catch(e => console.error('cierre pendiente:', e.message)); }, 60000);
+    reintento.unref?.();
+  };
+  const guardarEstado = (ruta, datos) => {
+    const tmp = ruta + '.tmp-' + crypto.randomBytes(6).toString('hex');
+    const fd = fs.openSync(tmp, 'w', 0o600);
+    try { fs.writeFileSync(fd, JSON.stringify(datos)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fs.renameSync(tmp, ruta);
+  };
+  const reporteGuardado = p => ctx.reporte.crear({ canal: p.channel, hilo: p.thread_ts, mensajeTs: p.mensajeTs, intervalo: 0, fijo: true });
   ctx.actualizacionEnCurso = () => enCurso();
 
   // Hay una actualizacion en curso si existe estado vigente (se esta aplicando o falta su aviso).
@@ -40,7 +53,7 @@ export function registrar(ctx) {
     for (const f of [PEND(), AVIS()]) {
       const p = leer(f);
       if (!p) continue;
-      if (edad(f) < VIGENTE_MS || await unidadActiva(p.unidad)) return true;
+      if (p.mensajeTs || edad(f) < VIGENTE_MS || await unidadActiva(p.unidad)) return true;
       fs.rmSync(f, { force: true }); // abandonado: ni activo ni reciente
     }
     return false;
@@ -77,15 +90,21 @@ export function registrar(ctx) {
         texto = `La actualizaci\u00f3n fall\u00f3, c\u00f3digo de salida ${rc} (${ficha}).${revirtio}${bloque}`;
       }
       try {
-        await decir(p.channel, p.thread_ts, texto);
+        if (p.mensajeTs) {
+          const reporte = await reporteGuardado(p);
+          if (rc === null) await reporte.progreso(texto); else await reporte.final(texto);
+        } else await decir(p.channel, p.thread_ts, texto); // Estado de una version anterior.
+
       } catch (e) {
         console.error('aviso final:', e.data?.error || e.message);
         try { fs.renameSync(AVIS(), PEND()); } catch {}   // el aviso no sali: queda para el proximo intento
+        reintentar();
         return;
       }
-      if (rc === null) { try { fs.renameSync(AVIS(), PEND()); } catch {} return; }
+      if (rc === null) { try { fs.renameSync(AVIS(), PEND()); } catch {} reintentar(); return; }
       if (p.limpiar) fs.rmSync(p.limpiar, { recursive: true, force: true });
       fs.rmSync(AVIS(), { force: true });
+      if (reintento) { clearTimeout(reintento); reintento = null; }
     } finally {
       finalizando = false;
     }
@@ -103,17 +122,27 @@ export function registrar(ctx) {
     // Reserva el estado de forma exclusiva: si otro lo creo entre medias, no se lanza nada.
     try { fs.writeFileSync(PEND(), JSON.stringify({ channel, thread_ts: hilo, nombre: path.basename(ruta), sha: shaV, etiqueta, limpiar, unidad, log, rc }), { flag: 'wx' }); }
     catch { quitarTmp(); return decir(channel, hilo, 'Ya hay una actualizaci\u00f3n en curso; no empiezo otra.'); }
-    await decir(channel, hilo, etiqueta ? `Ejecutando ${etiqueta}; Hugo se reinicia y te aviso aqu\u00ed cuando termine.` : `Guardado ${ruta} (sha256 ${shaV}). Ejecutando; Hugo se reinicia y te aviso aqu\u00ed cuando termine.`).catch(() => {});
+    try {
+      const reporte = await ctx.reporte.crear({ canal: channel, hilo, fijo: true, inicio: etiqueta ? `Ejecutando ${etiqueta}; Hugo se reinicia y el resultado queda en este mensaje.` : `Guardado ${ruta} (sha256 ${shaV}). Ejecutando; el resultado queda en este mensaje.` });
+      const mensajeTs = reporte.ts();
+      if (!mensajeTs) throw Error('sin referencia del mensaje de ejecucion');
+      guardarEstado(PEND(), { ...leer(PEND()), mensajeTs });
+    } catch(e) {
+      fs.rmSync(PEND(), { force: true }); quitarTmp();
+      throw e; // No se ejecuta si no se conserva el mensaje para el cierre.
+    }
     const PATH = [path.dirname(process.execPath), process.env.PATH || ''].filter(Boolean).join(':');
     try {
       await ex('systemd-run', ['--user', '--collect', '--quiet', `--unit=${unidad}`, `--setenv=PATH=${PATH}`, '--working-directory=' + path.dirname(ruta),
         'bash', '-c', '{ bash "$0" "${@:3}"; echo $? > "$2"; } > "$1" 2>&1', ruta, log, rc, ...args]);
     } catch (e) {
-      fs.rmSync(PEND(), { force: true });
-      quitarTmp();
-      return decir(channel, hilo, `No pude lanzar la actualizaci\u00f3n (${sinClaves(e.stderr || e.message).trim().slice(0, 200)}). El archivo qued\u00f3 en ${ruta}; no cambi\u00e9 nada.`);
+      // El error tambien cierra el mismo mensaje y sobrevive a un fallo de Slack.
+      fs.writeFileSync(log, `No pude lanzar la actualizacion (${sinClaves(e.stderr || e.message).trim().slice(0, 200)}). No cambie nada.`);
+      fs.writeFileSync(rc, '1');
+      finalizar().catch(e => { console.error('cierre pendiente:', e.message); reintentar(); });
+      return;
     }
-    finalizar(); // si el instalador falla antes de reiniciar, este mismo Hugo sigue vivo y avisa
+    finalizar().catch(e => { console.error('cierre pendiente:', e.message); reintentar(); }); // si el instalador falla antes de reiniciar, este mismo Hugo sigue vivo y avisa
   }
   ctx.lanzarInstalacion = lanzar;
 
@@ -168,6 +197,6 @@ export function registrar(ctx) {
 
   // Al arrancar: si quedo un aviso sin dar (actualizacion que reinicio, o aviso que no salio), darlo ahora.
   ctx.alIniciar(async () => {
-    finalizar();
+    finalizar().catch(e => { console.error('cierre pendiente:', e.message); reintentar(); });
   });
 }
