@@ -8,83 +8,216 @@
       "asset": "CRWD",
       "change": 4,
       "approximate": true,
-      "balance": null,
+      "balance": 240.71,
       "percent": null,
       "buy": 210,
       "sell": 213.45,
-      "buy_time": "ocho y treinta y cinco de la mañana"
+      "buy_time": "08:34",
+      "buy_date": "2026-11-23",
+      "sell_date": "2026-11-23",
+      "sell_time": "09:57",
+      "source_timezone": null,
+      "sell_executions": [
+        213.44,
+        213.45
+      ],
+      "sell_reference": "Precio de la orden mayor, no promedio ponderado de todas las ejecuciones.",
+      "balance_confirmed": true
     },
     {
       "date": "2026-11-23",
       "label": "23 de noviembre",
       "asset": "SPCX",
       "change": -4.0,
-      "balance": 237,
-      "percent": -1.74
+      "balance": 236.71,
+      "percent": -1.74,
+      "buy": 133.27,
+      "sell": 131.08,
+      "buy_date": "2026-11-20",
+      "sell_date": "2026-11-23",
+      "buy_time": "10:56",
+      "sell_time": "08:33",
+      "source_timezone": null
     },
     {
       "date": "2026-11-20",
       "label": "20 de noviembre",
       "asset": "MSTR",
       "change": -11.0,
-      "balance": 241,
-      "percent": -4.37
+      "balance": 240.71,
+      "percent": -4.37,
+      "buy": 86.06,
+      "sell": 84.33,
+      "buy_date": "2026-11-20",
+      "sell_date": "2026-11-20",
+      "buy_time": "06:38",
+      "sell_time": "08:28",
+      "source_timezone": null
     },
     {
       "date": "2026-11-20",
       "label": "20 de noviembre",
       "asset": "AAOI",
       "change": -5.0,
-      "balance": 252,
-      "percent": -1.95
+      "balance": 251.71,
+      "percent": -1.95,
+      "buy": 39.33,
+      "sell": 37.75,
+      "buy_date": "2026-11-19",
+      "sell_date": "2026-11-20",
+      "buy_time": "18:52",
+      "sell_time": "06:38",
+      "source_timezone": null
     },
     {
       "date": "2026-11-18",
       "label": "18 de noviembre",
       "asset": "AGPU",
       "change": 10.0,
-      "balance": 257,
-      "percent": 4.05
+      "balance": 256.71,
+      "percent": 4.05,
+      "buy": 6.96,
+      "sell": 7.24,
+      "buy_date": "2026-11-18",
+      "sell_date": "2026-11-18",
+      "buy_time": "08:02",
+      "sell_time": "11:14",
+      "source_timezone": null
     },
     {
       "date": "2026-11-17",
       "label": "17 de noviembre",
       "asset": "NVIDIA",
       "change": -15.0,
-      "balance": 247,
-      "percent": -5.73
+      "balance": 246.71,
+      "percent": -5.73,
+      "price_references": {
+        "initial_buy": 167.35,
+        "initial_buy_date": "2026-11-12",
+        "initial_buy_time": "18:44",
+        "reported_sell": 160.15,
+        "reported_sell_date": "2026-11-17",
+        "reported_sell_time": "18:32",
+        "reported_sell_fragments": 3,
+        "later_round_trip_near": 160,
+        "source_timezone": null,
+        "approximate": true,
+        "final_close_time_confirmed": false,
+        "consolidation_status": "No consolidado: faltan cantidades y comisiones de ventas y recompras; los niveles citados no son precios medios ponderados."
+      }
     },
     {
       "date": "2026-11-12",
       "label": "12 de noviembre",
       "asset": "Nebius",
       "change": -45.0,
-      "balance": 262,
-      "percent": -14.66
+      "balance": 261.71,
+      "percent": -14.66,
+      "buy": 151.98,
+      "sell": 129.45,
+      "buy_date": "2026-11-11",
+      "sell_date": "2026-11-12",
+      "buy_time": "18:54",
+      "sell_time": "18:42",
+      "source_timezone": null
     },
     {
       "date": "2026-11-05",
       "label": "5 de noviembre",
       "asset": "ZEC",
       "change": -5.0,
-      "balance": 307,
-      "percent": -1.6
+      "balance": 306.71,
+      "percent": -1.6,
+      "buy": 1257.99,
+      "sell": 1252.94,
+      "prices_approximate": true,
+      "buy_time": "15:48",
+      "sell_time": "15:57",
+      "source_timezone": null,
+      "price_note": "Precios aproximados por ejecuciones fraccionadas, pendientes de conciliación con el historial detallado."
     },
     {
       "date": "2026-11-03",
       "label": "3 de noviembre",
       "asset": "BMT",
       "change": -1.0,
-      "balance": 312,
-      "percent": -0.32
+      "balance": 311.71,
+      "percent": -0.32,
+      "buy": 0.03059,
+      "sell": 0.03025,
+      "price_decimals": 5,
+      "buy_time": "22:37",
+      "sell_time": "22:50",
+      "source_date": "11/03",
+      "source_timezone": null
     },
     {
       "date": "2026-10-23",
       "label": "23 de octubre",
       "asset": "Inicio",
-      "change": 313,
-      "balance": 313,
+      "change": 312.71,
+      "balance": 312.71,
       "percent": null
     }
-  ]
+  ],
+  "reconciliation": {
+    "date": "2026-11-23",
+    "current_balance": 240.71,
+    "initial_balance": 312.71,
+    "status": "Saldos reconstruidos revisados y aprobados por Osmancito.",
+    "method": "Reconstrucción retrospectiva desde el saldo final confirmado, conservando resultados monetarios anteriores; sin otros flujos declarados. No deriva cantidades ni medias ponderadas de los precios unitarios.",
+    "prior_values": {
+      "CRWD": {
+        "change": 4,
+        "balance": null,
+        "percent": null
+      },
+      "SPCX": {
+        "change": -4.0,
+        "balance": 237,
+        "percent": -1.74
+      },
+      "MSTR": {
+        "change": -11.0,
+        "balance": 241,
+        "percent": -4.37
+      },
+      "AAOI": {
+        "change": -5.0,
+        "balance": 252,
+        "percent": -1.95
+      },
+      "AGPU": {
+        "change": 10.0,
+        "balance": 257,
+        "percent": 4.05
+      },
+      "NVIDIA": {
+        "change": -15.0,
+        "balance": 247,
+        "percent": -5.73
+      },
+      "Nebius": {
+        "change": -45.0,
+        "balance": 262,
+        "percent": -14.66
+      },
+      "ZEC": {
+        "change": -5.0,
+        "balance": 307,
+        "percent": -1.6
+      },
+      "BMT": {
+        "change": -1.0,
+        "balance": 312,
+        "percent": -0.32
+      },
+      "Inicio": {
+        "change": 313,
+        "balance": 313,
+        "percent": null
+      }
+    },
+    "percent_note": "Porcentajes del registro anterior; no recalculados a partir de precios unitarios ni presentados como rendimientos exactos de cada ejecución."
+  }
 }
