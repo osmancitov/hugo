@@ -2,7 +2,7 @@
 
 [![Cuaderno y observatorio nocturno](recorrido.jpg)](recorrido.jpg)
 
-Operaciones cerradas. Cifras aproximadas.
+## Rendimiento de la cuenta
 
 ## Día: 22 nov → 23 nov
 
@@ -15,6 +15,8 @@ Operaciones cerradas. Cifras aproximadas.
 ## Mes: 23 oct → 23 nov
 
 313,00 USD → 241,00 USD. Variación: −23%.
+
+## Historial de movimientos
 
 ## 23 de noviembre: CRWD
 
