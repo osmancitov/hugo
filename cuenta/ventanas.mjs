@@ -8,7 +8,7 @@ export function ventanasCerradas(records){
  const current=at(end);
  return [['Día','day',1],['Semana','day',7],['Mes','month',1]].map(([label,unit,n])=>{
   const start=cutoff(unit,n),base=at(start);
-  return {label,start,end,base,current,percent:base?Math.round((current/base-1)*100):null,approximate:ordered.some(r=>r.date>start&&r.date<=end&&r.approximate)};
+  return {label,start,end,base,current,percent:base?Math.round((current/base-1)*10000)/100:null,approximate:ordered.some(r=>r.date>start&&r.date<=end&&r.approximate)};
  });
 }
 export const fechaBreve=iso=>{const [,m,d]=iso.split('-').map(Number);return `${d} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][m-1]}`};
