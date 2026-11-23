@@ -10,4 +10,6 @@ test('mes calendario termina en fecha válida al cruzar febrero',()=>{const r=[{
 
 test('identidad elegida sin renombrar el Observatorio',()=>{const html=fs.readFileSync(new URL('../cuenta/index.html',import.meta.url),'utf8');assert.ok(html.includes('<h1>Proyecto Cimiento</h1>'));assert.ok(html.includes('Aprender el oficio y construir las herramientas.'));assert.ok(html.includes('Observatorio Bursátil'));assert.ok(html.includes('og:title" content="Proyecto Cimiento'))});
 
-test('etiquetas uniformes',()=>assert.deepEqual(ventanasCerradas(data.records).map(w=>w.label),['1 día','7 días','1 mes']));
+test('etiquetas uniformes',()=>assert.deepEqual(ventanasCerradas(data.records).map(w=>w.label),['Día','Semana','Mes']));
+
+test('inicio y pie elegidos, sin avisos de pendientes',()=>{assert.equal(data.records.at(-1).asset,'Inicio');const html=fs.readFileSync(new URL('../cuenta/index.html',import.meta.url),'utf8');assert.ok(html.includes('Cifras del registro personal de Osmancito.'));assert.ok(!html.includes('Precios y horas no anotados'))});

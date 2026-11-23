@@ -6,15 +6,15 @@ Aprender el oficio y construir las herramientas.
 
 ## Rendimiento de la cuenta
 
-## 1 día: 22 nov → 23 nov
+## Día: 22 nov → 23 nov
 
 241,00 USD → 241,00 USD. Variación: 0%.
 
-## 7 días: 16 nov → 23 nov
+## Semana: 16 nov → 23 nov
 
 262,00 USD → 241,00 USD. Variación: −8%.
 
-## 1 mes: 23 oct → 23 nov
+## Mes: 23 oct → 23 nov
 
 313,00 USD → 241,00 USD. Variación: −23%.
 
@@ -56,10 +56,10 @@ Aproximadamente +4,00 USD. Compra: 210,00 USD. Venta: 213,45 USD.
 
 −1,00 USD. −0,32 %. Saldo: 312,00 USD.
 
-## 23 de octubre: Aporte
+## 23 de octubre: Inicio
 
 +313,00 USD. Saldo: 313,00 USD.
 
-Cifras del registro de Osmancito. Precios y horas no anotados quedan sin completar.
+Cifras del registro personal de Osmancito.
 
 © 2026 Osmancito
