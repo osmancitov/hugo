@@ -16,6 +16,10 @@ import { registrar as registrarVelas } from '../app/modulos/velas.mjs';
 import { registrar as registrarSincronizar } from '../app/modulos/sincronizar-registros.mjs';
 import { leerEstado } from '../app/modulos/registro-motor.mjs';
 import { ultimoCerrado } from '../app/modulos/ciclo-diario.mjs';
+import { fetchDatosPublicos } from './datos-publicos-diaria.mjs';
+
+// Solo esta entrada de Actions cambia de host público. La Debian queda intacta.
+globalThis.fetch = fetchDatosPublicos(globalThis.fetch);
 
 const DIA = 86400000;
 const RAIZ = process.cwd();
