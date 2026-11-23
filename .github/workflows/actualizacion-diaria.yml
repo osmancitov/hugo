@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: actualizacion-diaria
@@ -34,3 +35,16 @@ jobs:
           HUGO_GH_KEY: ${{ secrets.GITHUB_TOKEN }}
           HUGO_GITHUB: osmancitov/hugo
         run: node .github/actualizacion-diaria.mjs
+      - name: Publicar el visor con los registros actualizados
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/actions/workflows/pages.yml/dispatches`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.GH_TOKEN}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github+json' },
+            body: JSON.stringify({ ref: 'main' }),
+          });
+          if (r.status !== 204) throw Error(`No pude solicitar Pages: HTTP ${r.status}. ${await r.text()}`);
+          console.log('Publicación del visor solicitada con los datos ya guardados en main.');
+          JS
