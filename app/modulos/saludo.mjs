@@ -7,7 +7,7 @@ const MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'O
 export const horaArranque = (ms = Date.now()) => {
   const d = new Date(ms - 4 * 3600 * 1000);
   const h = d.getUTCHours();
-  return `${DIAS[d.getUTCDay()]} ${MESES[d.getUTCMonth()]} ${d.getUTCDate()} - ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  return `🤖 ${DIAS[d.getUTCDay()]} ${MESES[d.getUTCMonth()]} ${d.getUTCDate()} - ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
 export function registrar(ctx) {
