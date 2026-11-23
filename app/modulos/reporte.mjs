@@ -107,11 +107,8 @@ export function crearOjos({client,token,usuario}) {
  client.chat.update=async m=>actualizar({...m,text:fechasAviso(m.text)});
  client.chat.postMessage=async m=>{
   m={...m,text:fechasAviso(m.text)};
-  // Toda mención al dueño sale al canal, nunca se convierte en edición de los ojos.
-  if(usuario&&String(m.text||'').includes(`<@${usuario}>`)){
-   const {thread_ts,...raiz}=m;
-   return publicar(raiz);
-  }
+  // Una mención al dueño sale como mensaje nuevo en su hilo (decisión del usuario, 23-nov-2026); no edita los ojos.
+  if(usuario&&String(m.text||'').includes(`<@${usuario}>`))return publicar(m);
   const k=clave(m.channel,m.thread_ts);
   const ts=m.thread_ts&&pendientes.get(k);
   if(ts){pendientes.delete(k);await client.chat.update({token:m.token||token,channel:m.channel,ts,text:m.text});return{ts};}

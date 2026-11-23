@@ -28,7 +28,7 @@ export function registrar(ctx) {
     const ocupado = corta ? [...ctx.activas.values()].filter((a) => a.largo) : [];
     const aviso = ocupado.length ? `\nOjo: ahora estoy en:\n${ocupado.map((a) => `\u00b7 ${a.que} (desde hace ${Math.max(1, Math.round((Date.now() - a.desde) / 60000))} min)`).join('\n')}\nSi aplicas, me reinicio y ese trabajo se corta: lo ya guardado se conserva; lo que estaba a medias habr\u00e1 que repetirlo.` : '';
     const r = await app.client.chat.postMessage({
-      token: botToken, channel,
+      token: botToken, channel, thread_ts,
       text: `${user ? `<@${user}> ` : ''}${texto}${aviso}\n\u{1F44D} = s\u00ed.`,
     });
     const clave = `${channel}:${r.ts}`;
