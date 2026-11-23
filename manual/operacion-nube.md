@@ -9,7 +9,7 @@ Documento de referencia, escrito el 23-nov-2026 tras dejar a Hugo (el bot de la 
 ## Reparto de responsabilidades
 - **Nube (GitHub Actions + Pages)**: lectura horaria, puesta al día diaria, publicación del visor. Es la única que produce datos de mercado.
 - **Hugo en la Debian**: bot de Slack. Órdenes vigentes: `estado`, `ayuda`, `hola`, `envia`, `borrar hilo`, `actualiza`, `stop`, `restart`. No registra, no sincroniza, no dibuja radiografías. Su manual es `manual/manual-hugo.md`.
-- **Disparo por reloj de Google (Apps Script)**: los flujos solo tienen `workflow_dispatch`, sin cron en GitHub. Quien los lanza es un script de Google fuera de este repositorio. Su configuración (horas, cuenta, token) no está aquí: no verificado aquí.
+- **Disparo por reloj de Google (Apps Script)**: los flujos solo tienen `workflow_dispatch`, sin cron en GitHub. Quien los lanza es un script de Google fuera de este repositorio. Su configuración (horas, cuenta, token) no está aquí y no se pudo leer desde este repositorio. Constancia del seguimiento del 22-nov-2026 (nota del trabajo previo, no comprobada directamente en Google): se activó un disparador existente cada 5 minutos, encadenado a la diaria entre las 00:05 y las 00:14 UTC, con control de fecha para no repetir. Indicios coherentes en este repositorio: commits horarios de Actions a los :08 de cada hora UTC y una diaria con commit 0af46b9 (22-nov). Para ver o cambiar los disparadores hay que entrar al proyecto de Apps Script de la cuenta de Google del dueño.
 
 ## Flujos (`.github/workflows/`)
 ### 1. Lectura horaria (`lectura-horaria.yml`)
