@@ -19,10 +19,10 @@ test('app.mjs conecta la caja una sola vez en el contexto comun', () => {
  assert.match(fuente, /reporte\.crearAvisador\(/);
 });
 
-test('toda mencion autorizada abre un mensaje 👀 que la primera respuesta edita', () => {
+test('menciones sin acuse de ojos conservan formato de avisos', () => {
  const fuente = fs.readFileSync(path.join(app, 'app.mjs'), 'utf8');
  assert.match(fuente, /reporte\.crearOjos\(/);
- assert.match(fuente, /ojos\.anunciar\(event\)/);
+ assert.doesNotMatch(fuente, /\.anunciar\(event\)|event\.ojos/);
  const caja = leer('reporte.mjs');
  assert.match(caja, /export function crearOjos/);
  assert.match(caja, /text:'👀'/);

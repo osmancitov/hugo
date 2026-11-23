@@ -67,9 +67,8 @@ const ctx = {
   },
 };
 
-// Los ojitos: cada mencion autorizada recibe de inmediato un mensaje 👀 y la primera respuesta
-// del comando edita ese mismo mensaje. La caja envuelve postMessage una sola vez.
-const ojos = reporte.crearOjos({ client: app.client, token: botToken, usuario: USUARIO });
+// Conserva el formato de fechas de los avisos sin emitir acuse de lectura.
+reporte.crearOjos({ client: app.client, token: botToken, usuario: USUARIO });
 
 // Orden: confirmacion primero (los demas la usan).
 for (const m of [confirmacion, borrarHilo, actualizar, github, archivos, estado, ayuda, reiniciar, detener, saludo]) m.registrar(ctx);
@@ -86,12 +85,10 @@ app.event('app_mention', async ({ event }) => {
       // tienen sus comandos y ya). Las ordenes que comprometen piden confirmación y el 👍 que
       // cuenta es siempre el de HUGO_USUARIO (lo fija cada módulo con user: ctx.usuario).
       const delegado = !!DELEGADO && event.user === DELEGADO;
-      try { event.ojos = await ojos.anunciar(event); } catch (e) { console.error('Ojitos:', e.data?.error || e.message); }
       const idAct = `${Date.now()}-${Math.random()}`;
       activas.set(idAct, { que: c.nombre || 'atender una orden', desde: Date.now() });
       try { await c.fn(event, texto, { delegado }); } finally { activas.delete(idAct); }
     } else if (ctx._defecto) {
-      try { event.ojos = await ojos.anunciar(event); } catch (e) { console.error('Ojitos:', e.data?.error || e.message); }
       await ctx._defecto(event, texto);
     }
   } catch (e) {

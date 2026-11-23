@@ -166,7 +166,7 @@ export function registrar(ctx) {
           await ctx.lanzarInstalacion({ channel, hilo, mensajeTs: ts, ruta: script, args: [src, sha.slice(0, 7)], etiqueta: `commit ${sha.slice(0, 7)} de ${repo}`, sha: sha.slice(0, 7), limpiar: tmp });
         } catch (e) {
           fs.rmSync(tmp, { recursive: true, force: true });
-          await app.client.chat.update({ token: botToken, channel, ts, text: `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.` });
+          await ctx.cerrarActualizacion({ channel, hilo, ts, texto: `No pude lanzar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.` });
         }
       },
       alNo: async () => { fs.rmSync(tmp, { recursive: true, force: true }); if (!silenciarNo) await decir(channel, hilo, 'Sin respuesta: no apliqu\u00e9 nada.'); },

@@ -113,7 +113,11 @@ export function registrar(ctx) {
   // Ejecuta un instalador ya guardado (ruta) fuera del servicio y deja el aviso final pendiente. Lo usan "actualiza" con .sh
   // y el modulo github (con args, etiqueta y carpeta temporal a limpiar al terminar).
   async function lanzar({ channel, hilo, ruta, args = [], etiqueta = '', sha = null, limpiar = '', mensajeTs: solicitudTs }) {
-    const informar = text => solicitudTs ? app.client.chat.update({ token: botToken, channel, ts: solicitudTs, text }) : decir(channel, hilo, text);
+    const informar = async text => {
+      if (!solicitudTs) return decir(channel, hilo, text);
+      const r = await ctx.reporte.crear({ canal: channel, hilo, mensajeTs: solicitudTs, fijo: true, intervalo: 0 });
+      await r.final(text);
+    };
     const quitarTmp = () => { if (limpiar) fs.rmSync(limpiar, { recursive: true, force: true }); };
     if (await enCurso()) { quitarTmp(); return informar('Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.'); }
     const shaV = sha || crypto.createHash('sha256').update(fs.readFileSync(ruta)).digest('hex').slice(0, 8);
@@ -148,6 +152,10 @@ export function registrar(ctx) {
     finalizar().catch(e => { console.error('cierre pendiente:', e.message); reintentar(); }); // si el instalador falla antes de reiniciar, este mismo Hugo sigue vivo y avisa
   }
   ctx.lanzarInstalacion = lanzar;
+  ctx.cerrarActualizacion = async ({ channel, hilo, ts, texto }) => {
+    const r = await ctx.reporte.crear({ canal: channel, hilo, mensajeTs: ts, fijo: true, intervalo: 0 });
+    await r.final(texto);
+  };
 
   const esActualizacion = (texto, event) => Array.isArray(event.files) && event.files.length > 0
     && (/actualiz/i.test(texto) || event.files.some((f) => /^actualizar-hugo.*\.sh$/i.test(f.name || '')));
@@ -164,7 +172,10 @@ export function registrar(ctx) {
       que: 'aplicar una actualizaci\u00f3n', channel: event.channel, thread_ts: hilo, user: ctx.usuario, corta: true, conservar: true, // el 👍 que cuenta es siempre el del usuario
       texto: `Solicitud.\n\u00bfAplico ${ctx.archivos.limpio(f.name)} (${ctx.archivos.kb(f.size || 0)}${quien ? `, subida por <@${quien}>` : ''})?`,
       alSi: async ({ ts }) => {
-        const informar = text => app.client.chat.update({ token: botToken, channel: event.channel, ts, text });
+        const informar = async text => {
+          const r = await ctx.reporte.crear({ canal: event.channel, hilo, mensajeTs: ts, fijo: true, intervalo: 0 });
+          await r.final(text);
+        };
         if (await enCurso()) return informar('Ya hay una actualizaci\u00f3n en curso o sin avisar; no empiezo otra.');
         let ruta;
         try { ruta = await ctx.archivos.guardar(f, ctx.archivos.descargas()); } catch (e) { return informar(`No pude guardar la actualizaci\u00f3n: ${sinClaves(e.message)}. No cambi\u00e9 nada.`); }

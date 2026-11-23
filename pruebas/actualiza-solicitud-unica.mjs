@@ -18,3 +18,11 @@ for(const modo of ['exito','lanzamiento','red','disco','otro','normal'])test('so
  }finally{for(const p of _prueba.pendientes.values())clearTimeout(p.timer);_prueba.pendientes.clear();process.env.HOME=anterior;fs.rmSync(home,{recursive:true,force:true});}
 });
 test('GitHub conserva solicitud y entrega su referencia al instalador',()=>{const s=fs.readFileSync(new URL('../app/modulos/github.mjs',import.meta.url),'utf8');assert.match(s,/conservar: true/);assert.match(s,/alSi: async \(\{ ts \}\)/);assert.match(s,/lanzarInstalacion\(\{ channel, hilo, mensajeTs: ts/);});
+test('cierre de error común edita referencia fija sin publicación nueva',async()=>{
+ const anterior=process.env.HOME,home=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-error-'));process.env.HOME=home;const posts=[],updates=[];
+ try{
+  const ctx=conectarCaja({botToken:'falso',comando:()=>{},alIniciar:()=>{},app:{client:{chat:{postMessage:async m=>posts.push(m),update:async m=>updates.push(m)}}}});
+  const mod=await import('data:text/javascript;base64,'+Buffer.from(fuente.replace('const ex = promisify(execFile);','const ex = ()=>{};')+'\n//'+home).toString('base64'));mod.registrar(ctx);
+  await ctx.cerrarActualizacion({channel:'C',hilo:'H',ts:'1795463000.000001',texto:'No pude lanzar. No cambié nada.'});assert.equal(posts.length,0);assert.equal(updates.length,1);assert.equal(updates[0].ts,'1795463000.000001');
+ }finally{process.env.HOME=anterior;fs.rmSync(home,{recursive:true,force:true});}
+});
