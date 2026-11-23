@@ -181,7 +181,7 @@ test('restart siempre pide pulgar; con trabajo largo ademas interrumpe', async (
     let captura = null;
     ctx.confirmar = async (o) => { captura = o; await o.alSi({ ts: 'm1' }); };
     registrar(ctx);
-    await handlerDe(ctx, /restart/)({ ...event, user: 'U1' }, 'reiniciar', {});
+    await handlerDe(ctx, /restart/)({ ...event, user: 'U1' }, 'restart', {});
     assert.ok(captura);
     assert.match(captura.texto, /borrar un hilo/);
     assert.equal(ctx.parada.n, 1);

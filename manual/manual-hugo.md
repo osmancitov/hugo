@@ -27,14 +27,14 @@ Se escriben mencionando `@Hugo`. Cualquiera puede pedir cualquier comando (decis
 | `actualiza hilo` | Usa el último `.sh` adjuntado en ese hilo. Si lo pide el asistente, solo cuenta uno subido por él o por el usuario. |
 | `estado` | Dice qué hace, qué 👍 espera o que está libre, y cuánto lleva activo. Libre, anota hasta qué día llegó la última corrida diaria completa y cuándo es la próxima puesta al día diaria. Si hay un registro pausado lo muestra con sus dos salidas (`registra continuar` o `descarta registro`), porque aunque no esté activo bloquea registros nuevos. |
 | `stop` | Pide tu 👍 y detiene el trabajo largo en curso (borrado, registro o sincronización), sin deshacer lo ya hecho: el registro queda pausado para `registra continuar`, el borrado conserva el primer mensaje y lo que quede del hilo, y la sincronización frena entre archivos. Sin trabajo en curso no hace nada. Una actualización en curso no se detiene: termina y reinicia sola. |
-| `restart` o `reiniciar` | Pide tu 👍 y reinicia a Hugo. Si hay un trabajo largo en curso, lo interrumpe primero (la misma parada de `stop`); lo ya hecho se conserva. No lo hace si hay una actualización en curso. |
-| `ayuda` o `comandos` | Muestra la lista de órdenes. |
+| `restart` | Pide tu 👍 y reinicia a Hugo. Si hay un trabajo largo en curso, lo interrumpe primero (la misma parada de `stop`); lo ya hecho se conserva. No lo hace si hay una actualización en curso. |
+| `ayuda` | Muestra la lista de órdenes. |
 | `hola` | Responde «Hola, me llamo Hugo» (decisión del usuario, 20-nov-2026). |
 
 Cualquier otro texto: Hugo responde que no reconoce la orden y apunta a `ayuda`. Lo recibe cualquiera que lo mencione, y no ejecuta nada.
 
 ### Confirmación
-Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`restart` / `reiniciar`) se preguntan en el canal, mencionando al usuario que debe confirmar, y solo se hacen con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Regla común de `registra`, por decisión del usuario (15-nov-2026): ejecuta directamente la orden del usuario o del asistente autorizado, sin pedir 👍, con independencia de la clase del activo. No cambia la confirmación de las actualizaciones del programa. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado` y `ayuda` no piden confirmación. La parada es única (decisión del usuario, 15-nov-2026): `stop` y `restart` suben el mismo contador (`ctx.parada`) y cada trabajo largo lo mira en cada paso; lo ya hecho nunca se deshace.
+Borrar, guardar archivos recibidos, enviar, actualizar, `stop` y reiniciar (`restart`) se preguntan en el canal, mencionando al usuario que debe confirmar, y solo se hacen con el 👍 del usuario (`HUGO_USUARIO`). El 👍 de otra persona o del asistente se ignora. Regla común de `registra`, por decisión del usuario (15-nov-2026): ejecuta directamente la orden del usuario o del asistente autorizado, sin pedir 👍, con independencia de la clase del activo. No cambia la confirmación de las actualizaciones del programa. Sin respuesta en 10 minutos se descarta, sin anunciarlo. Reiniciar a Hugo cancela las confirmaciones pendientes. `estado` y `ayuda` no piden confirmación. La parada es única (decisión del usuario, 15-nov-2026): `stop` y `restart` suben el mismo contador (`ctx.parada`) y cada trabajo largo lo mira en cada paso; lo ya hecho nunca se deshace.
 
 ## Consola de la Debian (no son órdenes de Slack)
 - Estado: `systemctl --user status hugo.service`

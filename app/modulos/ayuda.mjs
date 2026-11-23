@@ -6,15 +6,15 @@ const TEXTO = [
   '`borrar hilo` - borrar el hilo actual.',
   '`actualiza` - instalar la version de GitHub.',
   '`stop` - detener el trabajo en curso.',
-  '`restart` o `reiniciar` - reiniciar Hugo.',
+  '`restart` - reiniciar Hugo.',
   '`hola` - saludar.',
-  '`ayuda` o `comandos` - mostrar esta lista.',
-  'Borrar, guardar, enviar, actualizar, parar y reiniciar piden tu pulgar arriba. Dibujar y consultar no. Los permisos de cada orden no cambian.',
+  '`ayuda` - mostrar esta lista.',
+  'Borrar, guardar, enviar, actualizar, parar y reiniciar piden tu pulgar arriba. Los permisos de cada orden no cambian.',
 ].join('\n');
 
 export function registrar(ctx) {
   const { app, botToken } = ctx;
-  ctx.comando(/^\s*(ayuda|comandos)\s*[.!?]*\s*$/i, async (event) => {
+  ctx.comando(/^\s*(ayuda)\s*[.!?]*\s*$/i, async (event) => {
     await app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: event.thread_ts || event.ts, text: TEXTO });
   }, { nombre: 'mostrar la ayuda' });
 }

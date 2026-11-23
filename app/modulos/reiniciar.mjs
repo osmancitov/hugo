@@ -1,4 +1,4 @@
-// Modulo reiniciar: "@hugo restart" o "@hugo reiniciar" reinicia el servicio de Hugo (hugo.service).
+// Modulo reiniciar: "@hugo restart" reinicia el servicio de Hugo (hugo.service).
 // Una sola logica para los dos nombres. No reinicia si hay una actualizacion en curso (el instalador ya lo reinicia).
 // Siempre pide el pulgar arriba del usuario antes de reiniciar. Si Hugo esta haciendo un trabajo largo, con el
 // pulgar lo interrumpe antes de reiniciar: misma parada unica que stop (sube ctx.parada.n y cada trabajo frena
@@ -12,7 +12,7 @@ const ESPERA_PARADA_MS = 4000; // margen para que el trabajo frene limpio antes 
 
 export function registrar(ctx) {
   const { app, botToken } = ctx;
-  ctx.comando(/^\s*(restart|reiniciar)\s*[.!?]*\s*$/i, async (event) => {
+  ctx.comando(/^\s*(restart)\s*[.!?]*\s*$/i, async (event) => {
     const hilo = event.thread_ts || event.ts;
     const decir = (text) => app.client.chat.postMessage({ token: botToken, channel: event.channel, thread_ts: hilo, text });
     let actualizando = false;
