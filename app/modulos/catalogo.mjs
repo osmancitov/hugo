@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
-import { ACTIVOS_INFO } from './radiografias.mjs';
+import { ACTIVOS_INFO } from './activos-info.mjs';
 import { listarUniverso } from './universo-binance.mjs';
 
 const PISO_AAMM = '2608'; // el mismo piso fijo del registro: lo anterior a ago-2026 no participa
