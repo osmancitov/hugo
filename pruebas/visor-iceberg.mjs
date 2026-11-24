@@ -1,6 +1,7 @@
 // node --test pruebas/visor-iceberg.mjs. Guardia del indicador propio Iceberg (decisión del
 // usuario, 20-nov-2026): el conteo sale de un módulo independiente, la serie viaja en
 // registros/iceberg/<AAMM> y el visor lo dibuja con la misma pieza común de trazado.
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const tmp = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
 const vela = (t, a, c) => [t, String(a), String(Math.max(a, c)), String(Math.min(a, c)), String(c), '1', t + DIA - 1, '1', 1, '1', '1', '0'];
 
 function bancoVelas() {
-  const dir = tmp('hugo-ice-');
+  const dir = path.join(tmp('hugo-ice-'), 'velas-24h'); // el catálogo es su hermano
   const p = path.join(dir, 'cripto', 'AAA');
   fs.mkdirSync(p, { recursive: true });
   return { dir, p };
@@ -29,6 +30,7 @@ test('calcularIceberg cuenta alzas y bajas por día; la plana no cuenta y el dí
     const q = path.join(dir, 'cripto', 'BBB');
     fs.mkdirSync(q, { recursive: true });
     fs.writeFileSync(path.join(q, '2608_BBB'), JSON.stringify([vela(d1, 2, 1), vela(d2, 1, 3)]));
+    catalogoDeCarpetas(path.dirname(dir));
     const serie = calcularIceberg(dir, hoy + 12 * 3600 * 1000); // mediodía del día 3
     assert.deepEqual(serie, [
       [d1, 1, 1], // AAA sube, BBB baja
@@ -37,7 +39,7 @@ test('calcularIceberg cuenta alzas y bajas por día; la plana no cuenta y el dí
     // Plana: apertura igual al cierre no suma en ningún lado.
     fs.writeFileSync(path.join(q, '2608_BBB'), JSON.stringify([vela(d1, 2, 1), vela(d2, 1, 1)]));
     assert.deepEqual(calcularIceberg(dir, hoy + 12 * 3600 * 1000), [[d1, 1, 1], [d2, 0, 1]]);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { fs.rmSync(path.dirname(dir), { recursive: true, force: true }); }
 });
 
 test('calcularIceberg por mercado cuenta solo su clase (decisión del usuario, 20-nov-2026)', () => {
@@ -48,10 +50,11 @@ test('calcularIceberg por mercado cuenta solo su clase (decisión del usuario, 2
     const s = path.join(dir, 'stock', 'SSS');
     fs.mkdirSync(s, { recursive: true });
     fs.writeFileSync(path.join(s, '2608_SSS'), JSON.stringify([vela(d1, 2, 1)])); // stock a la baja
+    catalogoDeCarpetas(path.dirname(dir));
     assert.deepEqual(calcularIceberg(dir, hoy + 3600000, 'cripto'), [[d1, 1, 0]]);
     assert.deepEqual(calcularIceberg(dir, hoy + 3600000, 'stock'), [[d1, 0, 1]]);
     assert.deepEqual(calcularIceberg(dir, hoy + 3600000), [[d1, 1, 1]]); // sin clase, todo
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { fs.rmSync(path.dirname(dir), { recursive: true, force: true }); }
 });
 
 test('leerIceberg valida forma, piso, alineación y orden', () => {

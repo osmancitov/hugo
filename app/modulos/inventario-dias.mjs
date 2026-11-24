@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES } from './activos.mjs';
 import { universoLocal } from './catalogo.mjs';
+import { vigentes } from './vigencia.mjs';
 import { DIA, cierreUTC } from './registro-serie.mjs';
 
 export const DESDE = Date.UTC(2026, 7, 1);
@@ -96,6 +97,9 @@ export async function actualizarInventarios({ dirRaiz, ahora = Date.now() } = {}
   const uni = universoLocal(dirRaiz);
   for (const clase of CLASES) {
     try {
+      // La vigencia sale del catálogo (lanza si no sirve): el activo vigente sin velas aún no entra.
+      const vig = vigentes(path.join(dirRaiz, 'velas-24h'), clase);
+      for (const cod of [...uni[clase].keys()]) if (!vig.has(cod)) uni[clase].delete(cod);
       let previo = null;
       try { previo = JSON.parse(fs.readFileSync(path.join(dirInventario(dirRaiz), clase), 'utf8')); } catch {}
       const inv = generarInventario(dirRaiz, clase, uni, ahora, previo);

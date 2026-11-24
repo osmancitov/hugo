@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { DIA, PISO_DIA, aammDe } from './indicadores.mjs';
+import { esVigente } from './vigencia.mjs';
 
 export const SERIES_ICEBERG = { stock: 'iceberg-stock', cripto: 'iceberg-cripto' };
 export const ARCHIVO_ICEBERG = /^\d{4}$/;
@@ -47,8 +48,9 @@ export function calcularIceberg(dirVelas, ahora = Date.now(), clase = null) {
     const dirClase = path.join(dirVelas, cl);
     let activos = [];
     try { activos = fs.readdirSync(dirClase, { withFileTypes: true }); } catch { continue; }
+    const cuenta = esVigente(dirVelas, cl);
     for (const a of activos) {
-      if (!a.isDirectory() || (cl === 'cripto' && EXCLUIDOS.has(a.name))) continue;
+      if (!a.isDirectory() || (cl === 'cripto' && EXCLUIDOS.has(a.name)) || !cuenta(a.name)) continue;
       const dirActivo = path.join(dirClase, a.name);
       for (const n of fs.readdirSync(dirActivo)) {
         const m = n.match(/^(\d{4})_(.+)$/);

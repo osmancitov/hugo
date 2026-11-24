@@ -40,6 +40,7 @@
 // Los cálculos diarios antiguos siguen exportados para leer datos históricos.
 import fs from 'node:fs';
 import path from 'node:path';
+import { esVigente } from './vigencia.mjs';
 
 // Solo migración de instalaciones anteriores; nunca se vuelve a escribir.
 export const RUTA_BARRA = 'registros/pre-calculado/stock/barra-24h/actual_barra';
@@ -59,9 +60,10 @@ export const simboloStock = (codigo) => `${codigo}BUSDT`;
 // Ordenado para que la particion y las tandas sean estables de una consulta a otra.
 export function universoBarra(dirVelas) {
   const dir = path.join(dirVelas, 'stock');
+  const cuenta = esVigente(dirVelas, 'stock'); // lanza si el catálogo falta o no sirve
   let nombres = [];
   try { nombres = fs.readdirSync(dir); } catch { return []; }
-  return nombres.filter((n) => {
+  return nombres.filter((n) => cuenta(n)).filter((n) => {
     try { return fs.lstatSync(path.join(dir, n)).isDirectory(); } catch { return false; }
   }).sort();
 }

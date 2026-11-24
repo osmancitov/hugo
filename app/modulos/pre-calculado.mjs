@@ -29,6 +29,7 @@ import path from 'node:path';
 import { CLASES, EXCLUIDOS } from './activos.mjs';
 import { DIA, PISO_DIA, aammDe } from './indicadores.mjs';
 import { leerIceberg } from './iceberg.mjs';
+import { esVigente, exigirCatalogos } from './vigencia.mjs';
 import { resumir, razonVariacion, cambiosDireccion } from './visor-rachas-datos.mjs';
 
 export const UNIDADES = { d: DIA }; // días; la escala horaria (90h) queda solo prevista
@@ -65,8 +66,9 @@ function leerMercado(dirVelas, clase, corte, desde) {
   const dirClase = path.join(dirVelas, clase);
   let activos = [];
   try { activos = fs.readdirSync(dirClase, { withFileTypes: true }); } catch { return mercado; }
+  const cuenta = esVigente(dirVelas, clase);
   for (const a of activos) {
-    if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name))) continue;
+    if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name)) || !cuenta(a.name)) continue;
     const dirActivo = path.join(dirClase, a.name);
     const filas = [];
     for (const n of fs.readdirSync(dirActivo)) {
@@ -215,6 +217,7 @@ export function calcularIcebergVentana(mercado, { inicio, fin }) {
 // falla). Nunca pisa un archivo distinto ya existente: lo anota como conflicto y sigue.
 export function actualizarPreCalculos({ dirRaiz, ahora = Date.now() }) {
   const dirVelas = path.join(dirRaiz, 'velas-24h');
+  exigirCatalogos(dirVelas, CLASES); // todos los mercados o ninguno: antes de escribir nada
   const corte = Math.floor(ahora / DIA) * DIA;
   const lineas = [];
   const desde = Math.min(corte - DIA, ...CALCULOS.map((c) => ventana(ahora, c.cantidad, c.unidad).inicio));
@@ -288,12 +291,14 @@ export function preCalculosFrescos({ dirRaiz, ahora = Date.now() }) {
   }
   const minAamm = aammDe(inicioMesUtc(desde));
   const dirVelas = path.join(dirRaiz, 'velas-24h');
+  try { exigirCatalogos(dirVelas, CLASES); } catch (e) { return { frescos: false, motivo: e.message }; }
   for (const clase of CLASES) {
     const dirClase = path.join(dirVelas, clase);
     let activos = [];
     try { activos = fs.readdirSync(dirClase, { withFileTypes: true }); } catch { continue; }
+    const cuenta = esVigente(dirVelas, clase);
     for (const a of activos) {
-      if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name))) continue;
+      if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name)) || !cuenta(a.name)) continue;
       const dirActivo = path.join(dirClase, a.name);
       let nombres = [];
       try { nombres = fs.readdirSync(dirActivo); } catch { continue; }

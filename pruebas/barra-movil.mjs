@@ -3,6 +3,7 @@
 // Binance (no el día cerrado del iceberg), plano cuenta como sube (la regla del iceberg:
 // «solo es pérdida o no»), instantánea desechable que se pisa atómica, un dato por línea,
 // y el bloque del visor solo en el iceberg de stocks y ausente si el archivo falta.
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import { COLORES_LECTURA, separarConteos, cifrasConteos } from '../app/modulos/colores-lectura.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,13 +41,15 @@ test('simboloStock aplica la regla del registro: CODIGO + B + USDT', () => {
 test('universoBarra lista solo carpetas de stocks, ordenadas', () => {
   const dir = tmp('hugo-barra-u-');
   try {
-    const stock = path.join(dir, 'stock');
+    const velas = path.join(dir, 'velas-24h');
+    const stock = path.join(velas, 'stock');
     fs.mkdirSync(path.join(stock, 'ZZZ'), { recursive: true });
     fs.mkdirSync(path.join(stock, 'AAA'), { recursive: true });
     fs.writeFileSync(path.join(stock, 'SUELTO'), '{}'); // un archivo no es un activo
-    fs.mkdirSync(path.join(dir, 'cripto', 'BTC'), { recursive: true }); // otra clase no entra
-    assert.deepEqual(universoBarra(dir), ['AAA', 'ZZZ']);
-    assert.deepEqual(universoBarra(path.join(dir, 'no-existe')), []);
+    fs.mkdirSync(path.join(velas, 'cripto', 'BTC'), { recursive: true }); // otra clase no entra
+    catalogoDeCarpetas(dir);
+    assert.deepEqual(universoBarra(velas), ['AAA', 'ZZZ']);
+    assert.throws(() => universoBarra(path.join(dir, 'no-existe', 'velas-24h')), /catálogo de stock ausente/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -106,6 +109,7 @@ test('generarBarra: universo del registro, dos tandas, barra e instantánea en d
   try {
     const velas = path.join(dir, 'velas-24h');
     for (const c of ['AAA', 'BBB', 'CCC']) fs.mkdirSync(path.join(velas, 'stock', c), { recursive: true });
+    catalogoDeCarpetas(dir);
     const pedidas = [];
     const fetchFalso = async (u) => {
       pedidas.push(u);
@@ -155,6 +159,7 @@ test('cierreVelaDiaAnterior: lee el CIERRE de la vela del día dado en el regist
   try {
     const velas = path.join(dir, 'velas-24h');
     fs.mkdirSync(path.join(velas, 'stock', 'AAA'), { recursive: true });
+    catalogoDeCarpetas(dir);
     const ref = Date.UTC(2026, 9, 31); // 31-oct-2026: mes distinto del de la consulta (1-nov)
     const otra = Date.UTC(2026, 9, 30);
     const vela = (t, open, close) => [t, String(open), '1', '1', String(close), '1', t + 86399999, '1', 1, '1', '1', '0'];
@@ -241,6 +246,7 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
   try {
     const velas = path.join(dir, 'velas-24h');
     for (const c of ['AAA', 'BBB']) fs.mkdirSync(path.join(velas, 'stock', c), { recursive: true });
+    catalogoDeCarpetas(dir);
     const responder = (precios, cierres) => async (u) => {
       const simbolos = JSON.parse(new URL(u).searchParams.get('symbols'));
       return { ok: true, text: async () => JSON.stringify(simbolos.map((s) => ticker(s, 10, precios[s], 1000, cierres[s]))) };

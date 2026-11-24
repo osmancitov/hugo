@@ -4,11 +4,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { EXCLUIDOS } from './modulos/activos.mjs';
 import { DIA, PISO_DIA } from './modulos/indicadores.mjs';
+import { esVigente } from './modulos/vigencia.mjs';
 export function detalleIguales(dirVelas, clase, ahora = Date.now()) {
  const dias = {}, corte = Math.floor(ahora / DIA) * DIA;
  const dir = path.join(dirVelas, clase);
+ const cuenta = esVigente(dirVelas, clase);
  for (const a of fs.readdirSync(dir,{withFileTypes:true})) {
-  if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name))) continue;
+  if (!a.isDirectory() || (clase === 'cripto' && EXCLUIDOS.has(a.name)) || !cuenta(a.name)) continue;
   const carpeta = path.join(dir,a.name);
   for (const archivo of fs.readdirSync(carpeta)) {
    if (!/^\d{4}_.+$/.test(archivo) || archivo.slice(5) !== a.name) continue;

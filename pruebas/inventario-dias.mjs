@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { esRutaInventario, validarInventario, generarInventario, actualizarInventarios, DESDE } from '../app/modulos/inventario-dias.mjs';
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import { universoLocal } from '../app/modulos/catalogo.mjs';
 
 const D = 86400000;
@@ -17,6 +18,7 @@ function armar(spec) { // spec: {clase:{COD:[índices de día con vela]}}
     fs.mkdirSync(path.join(raiz, 'velas-24h', clase, cod), { recursive: true });
     for (const [m, v] of Object.entries(porMes)) fs.writeFileSync(path.join(raiz, 'velas-24h', clase, cod, `${m}_${cod}`), JSON.stringify(v));
   }
+  catalogoDeCarpetas(raiz);
   return raiz;
 }
 const AHORA = DESDE + 5 * D + 3600000; // 6-ago 01:00 UTC: último día cerrado = 5-ago (índice 4)
@@ -106,6 +108,7 @@ test('un activo nuevo se rellena solo él; si el archivo previo es inválido, se
   await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
   const nuevo = armar({ cripto: { NUEVA: [2, 3, 4] } });
   fs.cpSync(path.join(nuevo, 'velas-24h', 'cripto', 'NUEVA'), path.join(raiz, 'velas-24h', 'cripto', 'NUEVA'), { recursive: true });
+  catalogoDeCarpetas(raiz); // la pasada regenera el catálogo (altas automáticas) antes del inventario
   await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
   assert.deepEqual(leer(raiz, 'cripto').activos.NUEVA, [0, 0, 1, 2, 3]);
   assert.deepEqual(leer(raiz, 'cripto').activos.BTC, [1, 2, 3, 4, 5]);
@@ -120,6 +123,7 @@ test('baja y alta en el mismo día: el retirado conserva su historial y se repit
   // el día 6-ago: BTC sigue, RETIRADO ya no recibe velas (la carpeta y su historial quedan), ALTA aparece con su primera vela
   const mas = armar({ cripto: { ALTA: [5] } });
   fs.cpSync(path.join(mas, 'velas-24h', 'cripto', 'ALTA'), path.join(raiz, 'velas-24h', 'cripto', 'ALTA'), { recursive: true });
+  catalogoDeCarpetas(raiz); // la pasada regenera el catálogo (altas automáticas) antes del inventario
   const fb = path.join(raiz, 'velas-24h', 'cripto', 'BTC', '2608_BTC');
   fs.writeFileSync(fb, JSON.stringify([...JSON.parse(fs.readFileSync(fb, 'utf8')), vela(DESDE + 5 * D)]));
   await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
@@ -127,4 +131,22 @@ test('baja y alta en el mismo día: el retirado conserva su historial y se repit
   assert.deepEqual(c.activos.BTC, [1, 2, 3, 4, 5, 6]);
   assert.deepEqual(c.activos.RETIRADO, [1, 2, 3, 4, 5, 5]); // historial intacto, sin sumar
   assert.deepEqual(c.activos.ALTA, [0, 0, 0, 0, 0, 1]);
+});
+
+test('el universo sale del catálogo: una baja deja de sumar sin tocar sus velas; sin catálogo válido no escribe', async () => {
+  const raiz = armar({ cripto: { BTC: [0, 1, 2, 3, 4], ETH: [0, 1, 2, 3, 4] }, stock: { AAPL: [0, 1, 2, 3, 4] } });
+  // catálogo sin ETH (baja): ETH no entra a una carga inicial; sus velas siguen en su carpeta
+  catalogoDeCarpetas(raiz, { excluir: ['ETH'] });
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  assert.deepEqual(Object.keys(leer(raiz, 'cripto').activos), ['BTC']);
+  assert.ok(fs.existsSync(path.join(raiz, 'velas-24h', 'cripto', 'ETH')));
+  // catálogo de cripto dañado: ese mercado da error y su archivo queda igual; el otro sigue
+  const antes = fs.readFileSync(path.join(raiz, 'inventario', 'cripto'), 'utf8');
+  fs.writeFileSync(path.join(raiz, 'catalogo', 'cripto'), '{roto');
+  const r = await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
+  assert.equal(r.lineas.find((l) => l.mercado === 'cripto').estado, 'error');
+  assert.equal(fs.readFileSync(path.join(raiz, 'inventario', 'cripto'), 'utf8'), antes);
+  fs.rmSync(path.join(raiz, 'catalogo', 'stock'));
+  const r2 = await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
+  assert.equal(r2.lineas.find((l) => l.mercado === 'stock').estado, 'error');
 });
