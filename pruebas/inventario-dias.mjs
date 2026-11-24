@@ -85,3 +85,31 @@ test('datos reales del repo: 467 con 90 días o más', { skip: !fs.existsSync(pa
   assert.equal(generarInventario(raiz, 'cripto', uni, ahora).hasta, '2026-11-23');
   assert.equal(n('stock') + n('cripto'), 467);
 });
+
+test('mantenimiento incremental: no relee meses ya contados y agrega solo la columna nueva', async () => {
+  const raiz = armar({ cripto: { BTC: [0, 1, 2, 3, 4, 5] }, stock: {} });
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  // Si relee el mes viejo lo vería vacío y cambiaría el acumulado: no debe ocurrir.
+  const f = path.join(raiz, 'velas-24h', 'cripto', 'BTC', '2608_BTC');
+  const todas = JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.writeFileSync(f, JSON.stringify(todas.filter((v) => v[0] === DESDE + 5 * D))); // solo queda el día 6-ago
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
+  assert.deepEqual(leer(raiz, 'cripto').activos.BTC, [1, 2, 3, 4, 5, 6]);
+  // y repetir la misma pasada no suma otra vez
+  const antes = fs.readFileSync(path.join(raiz, 'inventario', 'cripto'), 'utf8');
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
+  assert.equal(fs.readFileSync(path.join(raiz, 'inventario', 'cripto'), 'utf8'), antes);
+});
+
+test('un activo nuevo se rellena solo él; si el archivo previo es inválido, se reconstruye', async () => {
+  const raiz = armar({ cripto: { BTC: [0, 1, 2, 3, 4] }, stock: {} });
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  const nuevo = armar({ cripto: { NUEVA: [2, 3, 4] } });
+  fs.cpSync(path.join(nuevo, 'velas-24h', 'cripto', 'NUEVA'), path.join(raiz, 'velas-24h', 'cripto', 'NUEVA'), { recursive: true });
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  assert.deepEqual(leer(raiz, 'cripto').activos.NUEVA, [0, 0, 1, 2, 3]);
+  assert.deepEqual(leer(raiz, 'cripto').activos.BTC, [1, 2, 3, 4, 5]);
+  fs.writeFileSync(path.join(raiz, 'inventario', 'cripto'), 'basura');
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  assert.deepEqual(leer(raiz, 'cripto').activos.BTC, [1, 2, 3, 4, 5]);
+});

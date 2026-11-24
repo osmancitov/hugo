@@ -651,7 +651,7 @@ export function registrar(ctx) {
           }
         } catch (e) { problemas.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
       }
-      // Inventario de días (24-nov-2026): tras las velas ya puestas al día, antes de la comparación;
+      // Inventario de días: tras las velas ya puestas al día, antes de la comparación;
       // sube en el mismo commit. Un fallo se anota y no detiene a las velas.
       if (inv) {
         try {
