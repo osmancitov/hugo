@@ -46,6 +46,7 @@ import { retirarExcluidos } from './retirar-eur.mjs';
 import { compararSeries, mesDeRuta, validarSerie, publicarSerie } from './registro-serie.mjs';
 import { SERIES, PREFIJOS_IND, RUTA_IND, ARCHIVO_IND, leerIndicador, relacionIndicador, escribirIndicador, actualizarIndicadores } from './indicadores.mjs';
 import { esRutaPre, validarPre, localesPre, destinoPre, actualizarPreCalculos, preCalculosFrescos } from './pre-calculado.mjs';
+import { esRutaInventario, dirInventario, validarInventario, actualizarInventarios } from './inventario-dias.mjs';
 import { esRutaCatalogo, dirCatalogo, validarCatalogo, actualizarCatalogos } from './catalogo.mjs';
 import { validarArchivoIntradia, combinarArchivoIntradia, combinarIntradiaPorHora, reconstruirIndice } from './registro-intradia.mjs';
 import { RUTA_INDICE, leerIndice, unirIndices } from './intradia-datos.mjs';
@@ -75,6 +76,8 @@ let pasoIndicador = null;
 export function fijarPasoIndicador(fn) { pasoIndicador = fn; }
 let pasoPreCalculo = null;
 export function fijarPasoPreCalculo(fn) { pasoPreCalculo = fn; }
+let pasoInventario = null;
+export function fijarPasoInventario(fn) { pasoInventario = fn; }
 let pasoCatalogo = null;
 export function fijarPasoCatalogo(fn) { pasoCatalogo = fn; }
 
@@ -96,6 +99,7 @@ export function registrar(ctx) {
     }
     return (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
   };
+  const pasoInv = () => (pasoInventario || actualizarInventarios)({ dirRaiz: path.dirname(dirBase()) });
   const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()), rutaIndex: path.join(clonDir(), 'index.html') });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
@@ -179,6 +183,7 @@ export function registrar(ctx) {
       if (RUTA_OK.test(p) && !(p.split('/')[2] === 'cripto' && EXCLUIDOS.has(p.split('/')[3]))) { mapa.set(p, sha); blobs.set(p, sha); }
       else if (RUTA_IND.test(p)) { mapa.set(p, sha); blobs.set(p, sha); } // indicadores: misma comparación por huella
       else if (esRutaPre(p)) { mapa.set(p, sha); blobs.set(p, sha); } // pre-cálculos: comparación por huella; distinto es conflicto
+      else if (esRutaInventario(p)) { mapa.set(p, sha); blobs.set(p, sha); } // inventario de días: archivo vivo, el local gana
       else if (esRutaCatalogo(p)) { mapa.set(p, sha); blobs.set(p, sha); } // catálogo: archivo vivo; lo regenera la pasada y el local gana
       else if (RUTA_HEREDADA.test(p)) { heredados.push(p); blobs.set(p, sha); } // ruta anterior sin clase: no se sincroniza, solo se muda
     }
@@ -235,6 +240,17 @@ export function registrar(ctx) {
         try { st = fs.lstatSync(ruta); } catch { continue; }
         if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
         lista.push({ rel: `registros/catalogo/${n}`, ruta, bytes: st.size });
+      }
+    } catch {}
+    // Inventario de días: archivo vivo por mercado, igual que el catálogo.
+    try {
+      for (const n of fs.readdirSync(dirInventario(path.dirname(dirBase())))) {
+        if (!CLASES.includes(n)) continue;
+        const ruta = path.join(dirInventario(path.dirname(dirBase())), n);
+        let st;
+        try { st = fs.lstatSync(ruta); } catch { continue; }
+        if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
+        lista.push({ rel: `registros/inventario/${n}`, ruta, bytes: st.size });
       }
     } catch {}
     return lista;
@@ -353,7 +369,7 @@ export function registrar(ctx) {
       if (shaBlob(local) === shaRemota) iguales++;
       else {
         if (esRutaPre(f.rel)) { conflictos.push(f.rel); mapa.delete(f.rel); continue; } // un pre-cálculo distinto ya publicado no se pisa
-        if (esRutaCatalogo(f.rel)) { subir.push(f); mapa.delete(f.rel); continue; } // el catálogo se regenera en cada pasada: el local gana
+        if (esRutaCatalogo(f.rel) || esRutaInventario(f.rel)) { subir.push(f); mapa.delete(f.rel); continue; } // el catálogo se regenera en cada pasada: el local gana
         const remoto = await leerBlob(shaRemota);
         try {
           const modo = RUTA_IND.test(f.rel) ? relacionIndicador(leerIndicador(local), leerIndicador(remoto)) : relacion(local, remoto, f.rel);
@@ -371,7 +387,7 @@ export function registrar(ctx) {
     return { subir, bajar, iguales, conflictos, heredados, visto };
   }
 
-  const corta = (rel) => (esRutaPre(rel) || esRutaCatalogo(rel)) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
+  const corta = (rel) => (esRutaPre(rel) || esRutaCatalogo(rel) || esRutaInventario(rel)) ? rel.replace('registros/', '') : RUTA_IND.test(rel) ? rel.split('/').pop() : rel.replace(`${PREFIJO}/`, '');
   const cortas = (l) => l.map((x) => corta(typeof x === 'string' ? x : x.rel));
   const lista = (l) => { const c = cortas(l); return c.length > 12 ? `${c.slice(0, 12).join(', ')} y ${c.length - 12} mas` : c.join(', '); };
 
@@ -384,7 +400,7 @@ export function registrar(ctx) {
         const buf = await leerBlob(b.sha);
         const esInd = RUTA_IND.test(b.rel), esPre = esRutaPre(b.rel);
         const destino = esPre ? destinoPre(path.dirname(dirBase()), b.rel) : esInd ? path.join(dirInd(serieDe(b.rel)), b.rel.split('/').pop()) : path.join(dirBase(), b.rel.slice(PREFIJO.length + 1));
-        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : esRutaCatalogo(b.rel) ? !validarCatalogo(buf) : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
+        if (esPre ? !validarPre(buf, b.rel) : esInd ? !leerIndicador(buf).length : esRutaInventario(b.rel) ? !validarInventario(buf) : esRutaCatalogo(b.rel) ? !validarCatalogo(buf) : !validarSerie(JSON.parse(buf), mesDeRuta(b.rel)).length) throw Error('No sincronizo un archivo mensual vacio.');
         if (fs.existsSync(destino)) {
           if (!fs.lstatSync(destino).isFile()) throw Error('El destino no es un archivo normal.');
           const previo = fs.readFileSync(destino);
@@ -423,8 +439,8 @@ export function registrar(ctx) {
         const shaRemota = actuales.get(f.rel);
         if (shaRemota === shaLocal) continue; // ya esta igual
         try {
-          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel);
-          if (esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo vacío.');
+          const esInd = RUTA_IND.test(f.rel), esPre = esRutaPre(f.rel), esCat = esRutaCatalogo(f.rel) || esRutaInventario(f.rel), esInv = esRutaInventario(f.rel);
+          if (esInv ? !validarInventario(buf) : esCat ? !validarCatalogo(buf) : esPre ? !validarPre(buf, f.rel) : esInd ? !leerIndicador(buf).length : !validarSerie(JSON.parse(buf), mesDeRuta(f.rel)).length) throw Error('No sincronizo un archivo vacío.');
           if (shaRemota !== undefined && !esCat) { // el catálogo es un archivo vivo: el local gana, sin comparación de ampliación
             if (esPre) continue; // ya publicado con otro contenido: un pre-cálculo no se pisa (lo anota el plan como conflicto)
             const remoto = await leerBlob(shaRemota);
@@ -568,7 +584,7 @@ export function registrar(ctx) {
   // Una pasada completa: compara, baja y sube sin pisar, y devuelve un resumen. SIN confirmacion por
   // pasada: mantiene la sincronizacion automatica configurada. No se
   // cambian dias ya registrados; solo se incorporan ampliaciones estrictas. Los conflictos no se tocan.
-  async function pasada(progreso = async () => {}, { ind, pre, cat } = {}) {
+  async function pasada(progreso = async () => {}, { ind, pre, cat, inv } = {}) {
     try { limpiarExcluidos(); } catch { return { error: 'Retirada local de EUR pendiente de revision; no inicio la sincronizacion.' }; }
     const repo = process.env.HUGO_GITHUB || ctx.conf.HUGO_GITHUB || '';
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Falta HUGO_GITHUB (propietario/repositorio) en config.env; no hago nada.' };
@@ -634,6 +650,17 @@ export function registrar(ctx) {
             if (l.aviso) problemas.push(`catálogo ${l.mercado}: ${l.aviso}`);
           }
         } catch (e) { problemas.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
+      }
+      // Inventario de días (24-nov-2026): tras las velas ya puestas al día, antes de la comparación;
+      // sube en el mismo commit. Un fallo se anota y no detiene a las velas.
+      if (inv) {
+        try {
+          const rInv = await inv();
+          for (const l of (rInv.lineas || [])) {
+            if (l.estado === 'error') problemas.push(`inventario de días ${l.mercado} sin hacer (${l.error}); sigo con las velas`);
+            else if (l.estado === 'escrito') candidatos.push({ rel: `registros/inventario/${l.mercado}`, frase: `inventario de días ${l.mercado} (${l.periodo})` });
+          }
+        } catch (e) { problemas.push(`inventario de días sin hacer (${e.message}); sigo con las velas`); }
       }
       plan = await planear();
       if (plan.heredados.length) {
@@ -715,7 +742,7 @@ export function registrar(ctx) {
     let reporte;
     try {
       reporte=await ctx.reporte.crearSync({event});
-      const r = await pasada(reporte.progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
+      const r = await pasada(reporte.progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat, inv: pasoInv });
       await reporte.final(r.error || r.texto);
     } catch (e) {
       const texto=`La sincronizacion se detuvo o no pude informar su resultado: ${e.message}. Lo ya copiado se conserva; revisa el estado antes de repetir.`;
@@ -783,7 +810,7 @@ export function registrar(ctx) {
         try { padre = await ctx.reporte.hilo({ canal: ctx.canal, texto: 'Verificando cambios…' }); }
         catch (e) { console.error('Reporte de sincronizacion automatica:', e.message); reporte = null; }
       }
-      const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat });
+      const r = await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat, inv: pasoInv });
       let aviso = '';
       if (r.error) aviso = `Error: ${r.error}`;
       else if (r.detenida) aviso = 'Detenido a pedido. Lo ya copiado se conserva.';
@@ -817,7 +844,7 @@ export function registrar(ctx) {
     if (enCurso || ctx.intradiaInfo?.().ocupado) return { error: 'Ya hay una sincronización de registros o lectura intradiaria en curso.' };
     enCurso = true;
     ctx.activas.set('sincronizacion', { que: 'sincronizar registros', desde: Date.now(), largo: true });
-    try { return await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat }); }
+    try { return await pasada(progreso, { ind: pasoInd, pre: pasoPre, cat: pasoCat, inv: pasoInv }); }
     finally { enCurso = false; ctx.activas.delete('sincronizacion'); }
   };
 }
