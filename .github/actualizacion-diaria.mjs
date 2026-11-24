@@ -16,6 +16,7 @@ import { registrar as registrarVelas } from '../app/modulos/velas.mjs';
 import { registrar as registrarSincronizar } from '../app/modulos/sincronizar-registros.mjs';
 import { leerEstado } from '../app/modulos/registro-motor.mjs';
 import { ultimoCerrado } from '../app/modulos/ciclo-diario.mjs';
+import { auditarContinuidad, textoHuecos } from '../app/modulos/continuidad-registros.mjs';
 import { fetchDatosPublicos } from './datos-publicos-diaria.mjs';
 import { eventoDiaria } from './contexto-diaria.mjs';
 
@@ -60,6 +61,19 @@ if (est.hasta < objetivo + DIA) {
   console.error(`El registro terminó pero llega solo al ${new Date(est.hasta - DIA).toISOString().slice(0, 10)} y falta hasta el ${fecha} (parcial). No publico; la próxima corrida lo retoma.`);
   process.exit(1);
 }
+
+// 1b) Continuidad (pedido del usuario, 24-nov-2026): ningún activo que ya venía registrando puede
+// tener un día sin vela hasta el último cerrado. Si falta alguno, la corrida falla aquí, antes de
+// publicar, y lista cada activo y fecha. No se tolera ni se rellena: se corrige en la pesquisa.
+const huecos = auditarContinuidad(process.env.HUGO_VELAS_DIR, objetivo);
+if (huecos.length) {
+  const texto = textoHuecos(huecos, objetivo);
+  console.error(`::error title=Hueco en el registro diario::${texto.replace(/\n/g, ' | ')}`);
+  console.error(texto);
+  console.error('No publico; el registro tiene huecos que hay que corregir en origen.');
+  process.exit(1);
+}
+console.log(`Continuidad comprobada: ningún activo con días sin registro hasta el ${fecha}.`);
 
 // 2) Publicación: la pasada completa (indicadores, pre-cálculos, catálogo, comparación y commit).
 const r = await ctx.correrPasada(async (t) => console.log(t));
