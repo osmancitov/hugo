@@ -1498,16 +1498,14 @@ function trazadoAnimado(caja, total, dibujar) {
 // Cada caso (activo, indicador, lo que venga) entrega solo su configuración:
 //   total()   cuántos puntos tiene la serie (de ahí salen geometría y progreso del trazado)
 //   dibujar(ctx, geometria, hasta, escala)   su dibujo; hasta = puntos ya trazados
-//   escalas   {valores, etiqueta, titulo} si la gráfica admite escalas; sin él no hay botón
+//   escalas   {valores} si la gráfica usa escala; se dibuja con el primer valor (sin botón para cambiarla)
 //   codigo, fecha()   nombre y fecha del PNG descargable
 // Y solo si el caso se desvía de lo común (todo lo demás hereda el valor por defecto):
-//   extras      botones propios del caso (p. ej. «Ver todo»)
 //   geometria   (vertical, total) -> {ancho, alto}, si su lienzo no es el común
 //   archivo     (vertical, escala) -> nombre del PNG, si no sigue el patrón común
 // El graficador pone geometría vertical/horizontal, orientación y reajuste, trazado
-// (duración única), Repetir trazado, el botón de escala y Descargar imagen.
+// (duración única) y Descargar imagen.
 const GRAFICADOR_COMUN = {
-  extras: [],
   geometria: (vertical, total) => vertical
     ? { ancho: 700, alto: Math.max(1400, total * 18 + 320) }
     : { ancho: LW, alto: LH + 32 },
@@ -1518,8 +1516,7 @@ const GRAFICADOR_COMUN = {
 function graficador(caja, pie, deCaso) {
   const cfg = { ...GRAFICADOR_COMUN, ...deCaso };
   const geometriaPara = (vertical) => cfg.geometria(vertical, cfg.total());
-  let iEscala = 0;
-  const escala = () => (cfg.escalas ? cfg.escalas.valores[iEscala] : undefined);
+  const escala = () => (cfg.escalas ? cfg.escalas.valores[0] : undefined);
   const dibujarEn = (ctx, hasta) => cfg.dibujar(ctx, graf.geometria, hasta, escala());
   const traza = trazadoAnimado(caja, cfg.total, (hasta) => dibujarEn(graf.ctx, hasta));
   const graf = graficaAdaptable(caja, geometriaPara, () => traza.terminar(), () => traza.cancelar());
@@ -1532,16 +1529,6 @@ function graficador(caja, pie, deCaso) {
   };
   const controles = document.createElement('div');
   controles.className = 'controles-grafica';
-  controles.append(boton('Repetir trazado', '', traza.trazar));
-  if (cfg.escalas) {
-    const btn = boton(cfg.escalas.etiqueta(escala()), cfg.escalas.titulo, () => {
-      iEscala = (iEscala + 1) % cfg.escalas.valores.length;
-      btn.textContent = cfg.escalas.etiqueta(escala());
-      traza.terminar();
-    });
-    controles.append(btn);
-  }
-  controles.append(...cfg.extras);
   controles.append(boton('Descargar imagen', '', () => {
     traza.terminar();
     // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
@@ -1885,7 +1872,7 @@ function vistaActivo(clase, codigo) {
       return;
     }
     if (!caja.isConnected) return;
-    // Vista inicial: los últimos tres meses del registro; «Ver todo» dibuja la historia completa.
+    // Vista: los últimos tres meses del registro.
     // Los registros no se tocan: solo cambia qué tramo se dibuja.
     const ultimaFecha = new Date(filas[filas.length - 1][0]);
     const corte = new Date(Date.UTC(ultimaFecha.getUTCFullYear(), ultimaFecha.getUTCMonth() - 3, ultimaFecha.getUTCDate()));
@@ -1902,21 +1889,9 @@ function vistaActivo(clase, codigo) {
       notaBase = `Trazada en vivo desde los registros publicados · ${completo ? 'registro completo' : 'últimos 3 meses'} · datos al ${fecha} (UTC)`;
     };
     usar(hayMas ? filasVentana : filas, !hayMas);
-    // Alterna entre la vista de tres meses y el registro completo.
-    let completo = !hayMas;
-    const btnTodo = document.createElement('button');
-    btnTodo.className = 'boton'; btnTodo.textContent = 'Ver todo';
-    btnTodo.title = 'Alternar entre los últimos 3 meses y el registro completo';
-    btnTodo.addEventListener('click', () => {
-      completo = !completo;
-      usar(completo ? filas : filasVentana, completo);
-      btnTodo.textContent = completo ? 'Ver 3 meses' : 'Ver todo';
-      nota.textContent = notaBase;
-      grafico.configurar(); grafico.trazar();
-    });
-    const grafico = graficador(caja, pie, {
+    graficador(caja, pie, {
       total: () => d.rs.length,
-      escalas: { valores: [5, 10, 15], etiqueta: (v) => 'Escala: ±' + v + ' %', titulo: 'Cambiar escala: ±5 %, ±10 %, ±15 %' },
+      escalas: { valores: [5] },
       dibujar: (destino, geometria, hasta, limite) => {
         if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
         else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
@@ -1930,7 +1905,6 @@ function vistaActivo(clase, codigo) {
       },
       codigo: e.codigo,
       fecha: () => uf,
-      ...(hayMas ? { extras: [btnTodo] } : {}),
     });
     const nota = document.createElement('span');
     nota.className = 'nota';

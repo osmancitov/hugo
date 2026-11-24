@@ -44,15 +44,15 @@ test('activos e indicadores pasan por el graficador común y heredan sus valores
   assert.match(visor, /function graficador\(caja, pie, deCaso\)/);
   assert.match(visor, /const GRAFICADOR_COMUN = \{/);
   assert.equal(visor.match(/= graficador\(caja, pie, \{|^\s+graficador\(caja, pie, \{/gm)?.length, 2);
-  // Ningún caso repite la geometría común, el botón de repetir ni la descarga.
-  assert.equal(visor.match(/'Repetir trazado'/g)?.length, 1);
+  // Ningún caso repite la geometría común ni la descarga; los botones Repetir trazado, Escala y Ver todo ya no existen.
+  assert.equal(visor.match(/'Repetir trazado'|Escala: ±|'Ver todo'/g)?.length ?? 0, 0);
   assert.equal(visor.match(/'Descargar imagen'/g)?.length, 1);
   assert.equal(visor.match(/toBlob\(/g)?.length, 1);
   assert.equal(visor.match(/ancho: 700, alto: Math\.max\(1400/g)?.length, 1);
 });
 
-test('la escala vive en el graficador: los activos la configuran, los indicadores no la tienen', () => {
+test('la escala vive en el graficador: los activos la configuran fija en ±5, los indicadores no la tienen', () => {
   assert.equal(visor.match(/escalas: \{/g)?.length, 1);
-  assert.match(visor, /valores: \[5, 10, 15\]/);
+  assert.match(visor, /valores: \[5\]/);
   assert.equal(visor.match(/limite = limite === 15/g)?.length ?? 0, 0);
 });
