@@ -599,6 +599,22 @@ export function registrar(ctx) {
         }
       } catch (e) { problemas.push(`indicadores sin actualizar (${e.message}); sigo con las velas`); }
     }
+    // Catálogo por mercado (decisión del usuario, 20-nov-2026): antes de los pre-cálculos y de la comparación: los cálculos toman
+    // su universo de este catálogo (vigencia.mjs), así que un alta ya cuenta en la misma pasada. La capa curada
+    // app/modulos/activos-curados.json viene con el código. Sube en el mismo commit. Un alta sin información curada aparece por su código y su nombre; el reporte
+    // pide completarla y anota si la lista de productos o la capa curada no se pudieron leer.
+    const probCat = [], candCat = []; // se anotan al final para no alterar el orden del informe
+    if (cat) {
+      try {
+        const rCat = await cat();
+        for (const l of (rCat.lineas || [])) {
+          if (l.estado === 'error') { probCat.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`); continue; }
+          if (l.estado === 'escrito') candCat.push({ rel: `registros/catalogo/${l.mercado}`, frase: `catálogo ${l.mercado} (${l.periodo})` });
+          if (l.sinInfo && l.sinInfo.length) probCat.push(`catálogo ${l.mercado}: falta información curada de ${l.sinInfo.join(', ')}`);
+          if (l.aviso) probCat.push(`catálogo ${l.mercado}: ${l.aviso}`);
+        }
+      } catch (e) { probCat.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
+    }
     // Pre-cálculos (decisión del usuario, 20-nov-2026): tras las velas y los indicadores, antes de
     // la comparación: los archivos del día entran en la comparación y suben en el mismo commit, así
     // velas y lectura nunca se publican desencontradas. Un fallo de un cálculo se anota y no
@@ -612,6 +628,7 @@ export function registrar(ctx) {
         }
       } catch (e) { problemas.push(`pre-cálculos sin hacer (${e.message}); sigo con las velas`); }
     }
+    candidatos.push(...candCat); problemas.push(...probCat);
     const mud = mudarLocalHeredado();
     if (mud.movidos.length) { mudo = true; novedades.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
     if (mud.conflictos.length) problemas.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
@@ -620,21 +637,6 @@ export function registrar(ctx) {
     try {
       await asegurarClon(repo, token);
       await traerPunta(token);
-      // Catálogo por mercado (decisión del usuario, 20-nov-2026): tras traer la punta, para leer
-      // la capa curada app/modulos/activos-curados.json ya vigente, y antes de la comparación, para que suba en el
-      // mismo commit. Un alta sin información curada aparece por su código y su nombre; el reporte
-      // pide completarla y anota si la lista de productos o la capa curada no se pudieron leer.
-      if (cat) {
-        try {
-          const rCat = await cat();
-          for (const l of (rCat.lineas || [])) {
-            if (l.estado === 'error') { problemas.push(`catálogo ${l.mercado} sin hacer (${l.error}); sigo con las velas`); continue; }
-            if (l.estado === 'escrito') candidatos.push({ rel: `registros/catalogo/${l.mercado}`, frase: `catálogo ${l.mercado} (${l.periodo})` });
-            if (l.sinInfo && l.sinInfo.length) problemas.push(`catálogo ${l.mercado}: falta información curada de ${l.sinInfo.join(', ')}`);
-            if (l.aviso) problemas.push(`catálogo ${l.mercado}: ${l.aviso}`);
-          }
-        } catch (e) { problemas.push(`catálogo sin hacer (${e.message}); sigo con las velas`); }
-      }
       plan = await planear();
       if (plan.heredados.length) {
         if (token) {
