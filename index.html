@@ -1393,6 +1393,11 @@ function vistaIndicador(codigo) {
   });
 }
 
+/* Ventana común del visualizador: 90 días con ambos extremos (inicio = última vela − 89 días),
+   como la lectura diaria precalculada. Un solo lugar para cambiarla. */
+const VENTANA_DIAS = 90;
+const inicioVentana = (ultimoTs) => ultimoTs - (VENTANA_DIAS - 1) * 86400000;
+
 /* ---------- radiografía (port fiel del productor) ---------- */
 function mediana(xs) {
   const s = [...xs].sort((a, b) => a - b);
@@ -1872,11 +1877,10 @@ function vistaActivo(clase, codigo) {
       return;
     }
     if (!caja.isConnected) return;
-    // Vista: los últimos tres meses del registro.
-    // Los registros no se tocan: solo cambia qué tramo se dibuja.
-    const ultimaFecha = new Date(filas[filas.length - 1][0]);
-    const corte = new Date(Date.UTC(ultimaFecha.getUTCFullYear(), ultimaFecha.getUTCMonth() - 3, ultimaFecha.getUTCDate()));
-    const filasVentana = filas.filter((r) => new Date(r[0]) >= corte);
+    // Vista: la ventana común de 90 días (VENTANA_DIAS), la misma regla para todos los activos.
+    // Los registros no se tocan: solo cambia qué tramo se dibuja. Un activo con menos historia
+    // muestra la que tiene, sin marcas ni excepciones.
+    const filasVentana = filas.filter((r) => r[0] >= inicioVentana(filas[filas.length - 1][0]));
     const hayMas = filasVentana.length >= 2 && filasVentana.length < filas.length;
     const info = [e.nombre, e.tipo].filter(Boolean).join(' · ');
     let d, subtitulo, uf, fecha, pieDatos, notaBase;
@@ -1886,7 +1890,7 @@ function vistaActivo(clase, codigo) {
       uf = new Date(d.ultima);
       fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
       pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
-      notaBase = `Trazada en vivo desde los registros publicados · ${completo ? 'registro completo' : 'últimos 3 meses'} · datos al ${fecha} (UTC)`;
+      notaBase = `Trazada en vivo desde los registros publicados · datos al ${fecha} (UTC)`;
     };
     usar(hayMas ? filasVentana : filas, !hayMas);
     graficador(caja, pie, {
