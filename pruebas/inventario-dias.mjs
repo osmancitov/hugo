@@ -113,3 +113,18 @@ test('un activo nuevo se rellena solo él; si el archivo previo es inválido, se
   await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
   assert.deepEqual(leer(raiz, 'cripto').activos.BTC, [1, 2, 3, 4, 5]);
 });
+
+test('baja y alta en el mismo día: el retirado conserva su historial y se repite; el alta entra con ceros previos', async () => {
+  const raiz = armar({ cripto: { BTC: [0, 1, 2, 3, 4], RETIRADO: [0, 1, 2, 3, 4] }, stock: {} });
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA });
+  // el día 6-ago: BTC sigue, RETIRADO ya no recibe velas (la carpeta y su historial quedan), ALTA aparece con su primera vela
+  const mas = armar({ cripto: { ALTA: [5] } });
+  fs.cpSync(path.join(mas, 'velas-24h', 'cripto', 'ALTA'), path.join(raiz, 'velas-24h', 'cripto', 'ALTA'), { recursive: true });
+  const fb = path.join(raiz, 'velas-24h', 'cripto', 'BTC', '2608_BTC');
+  fs.writeFileSync(fb, JSON.stringify([...JSON.parse(fs.readFileSync(fb, 'utf8')), vela(DESDE + 5 * D)]));
+  await actualizarInventarios({ dirRaiz: raiz, ahora: AHORA + D });
+  const c = leer(raiz, 'cripto');
+  assert.deepEqual(c.activos.BTC, [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(c.activos.RETIRADO, [1, 2, 3, 4, 5, 5]); // historial intacto, sin sumar
+  assert.deepEqual(c.activos.ALTA, [0, 0, 0, 0, 0, 1]);
+});
