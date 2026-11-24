@@ -253,7 +253,7 @@ import { montarPersistencia } from './visor-persistencia.mjs?v=10';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
-import { montarRachas } from './visor-rachas.mjs?v=8'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=8'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
@@ -1393,11 +1393,6 @@ function vistaIndicador(codigo) {
   });
 }
 
-/* Ventana común del visualizador: 90 días con ambos extremos (inicio = última vela − 89 días),
-   como la lectura diaria precalculada. Un solo lugar para cambiarla. */
-const VENTANA_DIAS = 90;
-const inicioVentana = (ultimoTs) => ultimoTs - (VENTANA_DIAS - 1) * 86400000;
-
 /* ---------- radiografía (port fiel del productor) ---------- */
 function mediana(xs) {
   const s = [...xs].sort((a, b) => a - b);
@@ -1877,10 +1872,11 @@ function vistaActivo(clase, codigo) {
       return;
     }
     if (!caja.isConnected) return;
-    // Vista: la ventana común de 90 días (VENTANA_DIAS), la misma regla para todos los activos.
+    // Vista: la ventana común de 90 días de visor-rachas.mjs, la misma regla para todos los activos.
     // Los registros no se tocan: solo cambia qué tramo se dibuja. Un activo con menos historia
     // muestra la que tiene, sin marcas ni excepciones.
-    const filasVentana = filas.filter((r) => r[0] >= inicioVentana(filas[filas.length - 1][0]));
+    const { inicio, fin } = ventanaDelDia();
+    const filasVentana = filas.filter((r) => r[0] >= inicio && r[0] <= fin);
     const hayMas = filasVentana.length >= 2 && filasVentana.length < filas.length;
     const info = [e.nombre, e.tipo].filter(Boolean).join(' · ');
     let d, subtitulo, uf, fecha, pieDatos, notaBase;
