@@ -10,7 +10,7 @@ Este repositorio es la fuente del código y del manual. La Debian descarga de aq
 
 ## Contenido
 - `app/app.mjs`: arranca Hugo y conecta los módulos.
-- `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `detener`, `velas`, `registro-motor`, `registro-serie`, `radiografias`, `sincronizar-registros`; `reporte`, la caja única de reportes que usan todos los trabajos; y la biblioteca `activos`, que resuelve el código de un activo a su instrumento de Binance).
+- `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `detener`, `velas`, `registro-motor`, `registro-serie`, `activos-info`, `sincronizar-registros`; `reporte`, la caja única de reportes que usan todos los trabajos; y la biblioteca `activos`, que resuelve el código de un activo a su instrumento de Binance).
 - `app/config.ejemplo.env`: plantilla de la configuración local (`config.env` no se versiona).
 - `.github/workflows/lectura-horaria.yml`: lectura a la hora en punto UTC desde GitHub Actions mientras la Debian está apagada. La corrida empieza unos minutos antes para absorber la demora de GitHub; si la Debian ya publicó la lectura de esa hora, no toma otra ni duplica, y cada lectura guarda su instante real. No mueve el bot ni la actualización diaria general.
 - `manual/manual-hugo.md`: el manual, con las órdenes de Slack y las de la consola.

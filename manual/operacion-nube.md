@@ -32,7 +32,7 @@ Documento de referencia, escrito el 23-nov-2026 tras dejar a Hugo (el bot de la 
 - Genera la entrada de superficie, persistencia y colores del iceberg, y publica el sitio estático desde la raíz del repositorio (`index.html`).
 
 ## Código compartido (no borrar)
-Los flujos importan módulos de `app/modulos/`: `barra-movil`, `ciclo-diario`, `intradia-datos`, `intradia-fuente`, `registro-intradia`, `registro-motor`, `sincronizar-registros`, `velas`, y por medio de la pasada `indicadores`, `pre-calculado` y `catalogo` (este importa `ACTIVOS_INFO` de `radiografias`). Hugo ya no los carga como órdenes (`app/app.mjs`), pero siguen siendo código de la nube. Antes de quitar o renombrar cualquiera, comprobar los imports de `.github/*.mjs`.
+Los flujos importan módulos de `app/modulos/`: `barra-movil`, `ciclo-diario`, `intradia-datos`, `intradia-fuente`, `registro-intradia`, `registro-motor`, `sincronizar-registros`, `velas`, y por medio de la pasada `indicadores`, `pre-calculado` y `catalogo` (este importa `ACTIVOS_INFO` de `activos-info`). Hugo ya no los carga como órdenes (`app/app.mjs`), pero siguen siendo código de la nube. Antes de quitar o renombrar cualquiera, comprobar los imports de `.github/*.mjs`.
 
 ## Operación y comprobaciones
 - **Que la hora corrió**: buscar en `git log` un commit "Guardar lectura horaria de las HH:MM UTC desde Actions" por hora. Debe tocar solo `registros/intradia/stock/`. Una hora puede demorar o saltarse; la lectura guarda su hora real.
