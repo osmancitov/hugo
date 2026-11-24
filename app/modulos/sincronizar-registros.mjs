@@ -96,7 +96,7 @@ export function registrar(ctx) {
     }
     return (pasoPreCalculo || actualizarPreCalculos)({ dirRaiz: path.dirname(dirBase()) });
   };
-  const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()), rutaIndex: path.join(clonDir(), 'index.html') });
+  const pasoCat = () => (pasoCatalogo || actualizarCatalogos)({ dirRaiz: path.dirname(dirBase()) });
   const clonDir = () => process.env.HUGO_REPO_SYNC_DIR || ctx.conf.HUGO_REPO_SYNC_DIR || path.join(os.homedir(), '.local', 'share', 'hugo', 'repo-sync');
   const urlRepo = (repo) => process.env.HUGO_REPO_SYNC_URL || ctx.conf.HUGO_REPO_SYNC_URL || `https://x-access-token@github.com/${repo}.git`;
   const limpiarExcluidos = () => retirarExcluidos(dirBase(), process.env.HUGO_GRAFICAS_DIR || ctx.conf.HUGO_GRAFICAS_DIR || path.join(path.dirname(path.dirname(dirBase())), 'graficas', 'velas-24h'));
@@ -621,7 +621,7 @@ export function registrar(ctx) {
       await asegurarClon(repo, token);
       await traerPunta(token);
       // Catálogo por mercado (decisión del usuario, 20-nov-2026): tras traer la punta, para leer
-      // la capa curada del index.html ya vigente, y antes de la comparación, para que suba en el
+      // la capa curada app/modulos/activos-curados.json ya vigente, y antes de la comparación, para que suba en el
       // mismo commit. Un alta sin información curada aparece por su código y su nombre; el reporte
       // pide completarla y anota si la lista de productos o la capa curada no se pudieron leer.
       if (cat) {

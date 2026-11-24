@@ -77,8 +77,7 @@ test('separa atrasados y errores, sin tratarlos como última jornada común',()=
  assert.equal(separar([{error:'red'}]).fecha,null);
 });
 test('todos los registros del catálogo real se validan y resumen sin alterar archivos',()=>{
- const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
- const catalogo=JSON.parse(html.match(/const CATALOGO = (.*);/)[1]);
+ const catalogo={}; for(const c of ['stock','cripto']) catalogo[c]=JSON.parse(fs.readFileSync(new URL('../registros/catalogo/'+c,import.meta.url),'utf8')).activos;
  const resultados=[];
  for(const clase of ['stock','cripto']) for(const e of catalogo[clase]) {
    const dir=new URL('../registros/velas-24h/'+clase+'/'+e.codigo+'/',import.meta.url);

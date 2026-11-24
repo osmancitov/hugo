@@ -1,10 +1,11 @@
 {
  "mercado": "cripto",
- "generado": "2026-11-20",
+ "generado": "2026-11-24",
  "activos": [
   {
    "codigo": "0G",
    "nombre": "0G",
+   "cap": 90000000,
    "meses": [
     "2608",
     "2609",
@@ -15,6 +16,7 @@
   {
    "codigo": "1000CAT",
    "nombre": "1000*Simons Cat",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -25,6 +27,7 @@
   {
    "codigo": "1000CHEEMS",
    "nombre": "1000*cheems.pet",
+   "cap": 72000000,
    "meses": [
     "2608",
     "2609",
@@ -35,6 +38,7 @@
   {
    "codigo": "1000SATS",
    "nombre": "1000*SATS (Ordinals)",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -45,6 +49,7 @@
   {
    "codigo": "1INCH",
    "nombre": "1inch",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -55,6 +60,7 @@
   {
    "codigo": "1MBABYDOGE",
    "nombre": "1M x BABYDOGE",
+   "cap": 54000000,
    "meses": [
     "2608",
     "2609",
@@ -65,6 +71,7 @@
   {
    "codigo": "2Z",
    "nombre": "DoubleZero",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -75,6 +82,7 @@
   {
    "codigo": "A",
    "nombre": "Vaulta",
+   "cap": 130000000,
    "meses": [
     "2608",
     "2609",
@@ -85,6 +93,7 @@
   {
    "codigo": "AAVE",
    "nombre": "Aave",
+   "cap": 1900000000,
    "meses": [
     "2608",
     "2609",
@@ -95,6 +104,7 @@
   {
    "codigo": "ACE",
    "nombre": "Fusionist",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -105,6 +115,7 @@
   {
    "codigo": "ACH",
    "nombre": "Alchemy Pay",
+   "cap": 43000000,
    "meses": [
     "2608",
     "2609",
@@ -115,6 +126,7 @@
   {
    "codigo": "ACM",
    "nombre": "AC Milan Fan Token",
+   "cap": 3200000,
    "meses": [
     "2608",
     "2609",
@@ -125,6 +137,7 @@
   {
    "codigo": "ACT",
    "nombre": "Act I : The AI Prophecy",
+   "cap": 8600000,
    "meses": [
     "2608",
     "2609",
@@ -135,6 +148,7 @@
   {
    "codigo": "ADA",
    "nombre": "Cardano",
+   "cap": 6600000000,
    "meses": [
     "2608",
     "2609",
@@ -145,6 +159,7 @@
   {
    "codigo": "ADX",
    "nombre": "heyAura",
+   "cap": 7200000,
    "meses": [
     "2608",
     "2609",
@@ -155,6 +170,7 @@
   {
    "codigo": "AERO",
    "nombre": "Aerodrome",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -165,6 +181,7 @@
   {
    "codigo": "AEVO",
    "nombre": "AEVO",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -175,6 +192,7 @@
   {
    "codigo": "AGLD",
    "nombre": "Adventure Gold",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -185,6 +203,7 @@
   {
    "codigo": "AI",
    "nombre": "Sleepless AI",
+   "cap": 1900000,
    "meses": [
     "2608",
     "2609",
@@ -195,6 +214,7 @@
   {
    "codigo": "AIGENSYN",
    "nombre": "Gensyn",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -205,6 +225,7 @@
   {
    "codigo": "AIXBT",
    "nombre": "aixbt by Virtuals",
+   "cap": 15000000,
    "meses": [
     "2608",
     "2609",
@@ -215,6 +236,7 @@
   {
    "codigo": "ALGO",
    "nombre": "Algorand",
+   "cap": 820000000,
    "meses": [
     "2608",
     "2609",
@@ -225,6 +247,7 @@
   {
    "codigo": "ALICE",
    "nombre": "My Neighbor Alice",
+   "cap": 12000000,
    "meses": [
     "2608",
     "2609",
@@ -235,6 +258,7 @@
   {
    "codigo": "ALLO",
    "nombre": "Allora",
+   "cap": 60000000,
    "meses": [
     "2608",
     "2609",
@@ -245,6 +269,7 @@
   {
    "codigo": "ALPINE",
    "nombre": "Alpine F1 Team Fan Token",
+   "cap": 3200000,
    "meses": [
     "2608",
     "2609",
@@ -255,6 +280,7 @@
   {
    "codigo": "ALT",
    "nombre": "AltLayer",
+   "cap": 40000000,
    "meses": [
     "2608",
     "2609",
@@ -265,6 +291,7 @@
   {
    "codigo": "AMP",
    "nombre": "AMP",
+   "cap": 57000000,
    "meses": [
     "2608",
     "2609",
@@ -275,6 +302,7 @@
   {
    "codigo": "ANIME",
    "nombre": "Animecoin",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -285,6 +313,7 @@
   {
    "codigo": "ANKR",
    "nombre": "Ankr",
+   "cap": 36000000,
    "meses": [
     "2608",
     "2609",
@@ -295,6 +324,7 @@
   {
    "codigo": "APE",
    "nombre": "ApeCoin",
+   "cap": 98000000,
    "meses": [
     "2608",
     "2609",
@@ -305,6 +335,7 @@
   {
    "codigo": "API3",
    "nombre": "API3",
+   "cap": 37000000,
    "meses": [
     "2608",
     "2609",
@@ -315,6 +346,7 @@
   {
    "codigo": "APT",
    "nombre": "Aptos",
+   "cap": 500000000,
    "meses": [
     "2608",
     "2609",
@@ -325,6 +357,7 @@
   {
    "codigo": "AR",
    "nombre": "Arweave",
+   "cap": 210000000,
    "meses": [
     "2608",
     "2609",
@@ -335,6 +368,7 @@
   {
    "codigo": "ARB",
    "nombre": "Arbitrum",
+   "cap": 1100000000,
    "meses": [
     "2608",
     "2609",
@@ -345,6 +379,7 @@
   {
    "codigo": "ARK",
    "nombre": "Ark",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -355,6 +390,7 @@
   {
    "codigo": "ARKM",
    "nombre": "Arkham",
+   "cap": 70000000,
    "meses": [
     "2608",
     "2609",
@@ -365,6 +401,7 @@
   {
    "codigo": "ARPA",
    "nombre": "ARPA Network",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -375,6 +412,7 @@
   {
    "codigo": "ASR",
    "nombre": "AS Roma Fan Token",
+   "cap": 6600000,
    "meses": [
     "2608",
     "2609",
@@ -385,6 +423,7 @@
   {
    "codigo": "ASTER",
    "nombre": "Aster",
+   "cap": 1700000000,
    "meses": [
     "2608",
     "2609",
@@ -395,6 +434,7 @@
   {
    "codigo": "ASTR",
    "nombre": "Astar",
+   "cap": 44000000,
    "meses": [
     "2608",
     "2609",
@@ -405,6 +445,7 @@
   {
    "codigo": "AT",
    "nombre": "APRO",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -415,6 +456,7 @@
   {
    "codigo": "ATM",
    "nombre": "Atlético de Madrid Fan Token",
+   "cap": 6700000,
    "meses": [
     "2608",
     "2609",
@@ -425,6 +467,7 @@
   {
    "codigo": "ATOM",
    "nombre": "Cosmos",
+   "cap": 770000000,
    "meses": [
     "2608",
     "2609",
@@ -435,6 +478,7 @@
   {
    "codigo": "AUCTION",
    "nombre": "Auction",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -445,6 +489,7 @@
   {
    "codigo": "AUDIO",
    "nombre": "Audius",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -455,6 +500,7 @@
   {
    "codigo": "AVA",
    "nombre": "AVA",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -465,6 +511,7 @@
   {
    "codigo": "AVAX",
    "nombre": "Avalanche",
+   "cap": 3800000000,
    "meses": [
     "2608",
     "2609",
@@ -475,6 +522,7 @@
   {
    "codigo": "AVNT",
    "nombre": "Veranta",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -485,6 +533,7 @@
   {
    "codigo": "AWE",
    "nombre": "AWE Network",
+   "cap": 120000000,
    "meses": [
     "2608",
     "2609",
@@ -495,6 +544,7 @@
   {
    "codigo": "AXL",
    "nombre": "Axelar",
+   "cap": 45000000,
    "meses": [
     "2608",
     "2609",
@@ -505,6 +555,7 @@
   {
    "codigo": "AXS",
    "nombre": "Axie Infinity",
+   "cap": 140000000,
    "meses": [
     "2608",
     "2609",
@@ -515,6 +566,7 @@
   {
    "codigo": "BABY",
    "nombre": "Babylon",
+   "cap": 52000000,
    "meses": [
     "2608",
     "2609",
@@ -525,6 +577,7 @@
   {
    "codigo": "BANANA",
    "nombre": "Banana Gun",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -535,6 +588,7 @@
   {
    "codigo": "BANANAS31",
    "nombre": "Banana For Scale",
+   "cap": 58000000,
    "meses": [
     "2608",
     "2609",
@@ -545,6 +599,7 @@
   {
    "codigo": "BAND",
    "nombre": "BAND",
+   "cap": 32000000,
    "meses": [
     "2608",
     "2609",
@@ -555,6 +610,7 @@
   {
    "codigo": "BANK",
    "nombre": "Lorenzo Protocol",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -565,6 +621,7 @@
   {
    "codigo": "BAR",
    "nombre": "FC Barcelona Fan Token BAR",
+   "cap": 6300000,
    "meses": [
     "2608",
     "2609",
@@ -575,6 +632,7 @@
   {
    "codigo": "BARD",
    "nombre": "Lombard",
+   "cap": 34000000,
    "meses": [
     "2608",
     "2609",
@@ -585,6 +643,7 @@
   {
    "codigo": "BAT",
    "nombre": "Basic Attention Token",
+   "cap": 180000000,
    "meses": [
     "2608",
     "2609",
@@ -594,8 +653,8 @@
   },
   {
    "codigo": "BB",
-   "nombre": "Blackberry",
-   "tipo": "empresa",
+   "nombre": "BounceBit",
+   "cap": 7600000,
    "meses": [
     "2608",
     "2609",
@@ -606,6 +665,7 @@
   {
    "codigo": "BCH",
    "nombre": "Bitcoin Cash",
+   "cap": 4600000000,
    "meses": [
     "2608",
     "2609",
@@ -616,6 +676,7 @@
   {
    "codigo": "BEAMX",
    "nombre": "Beam (Formerly Merit Circle)",
+   "cap": 220000000,
    "meses": [
     "2608",
     "2609",
@@ -626,6 +687,7 @@
   {
    "codigo": "BEL",
    "nombre": "Bella Protocol",
+   "cap": 7400000,
    "meses": [
     "2608",
     "2609",
@@ -636,6 +698,7 @@
   {
    "codigo": "BERA",
    "nombre": "BERACHAIN",
+   "cap": 38000000,
    "meses": [
     "2608",
     "2609",
@@ -646,6 +709,7 @@
   {
    "codigo": "BFUSD",
    "nombre": "BFUSD",
+   "cap": 1300000000,
    "meses": [
     "2608",
     "2609",
@@ -656,6 +720,7 @@
   {
    "codigo": "BICO",
    "nombre": "Biconomy",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -666,6 +731,7 @@
   {
    "codigo": "BIGTIME",
    "nombre": "Big Time",
+   "cap": 15000000,
    "meses": [
     "2608",
     "2609",
@@ -676,6 +742,7 @@
   {
    "codigo": "BIO",
    "nombre": "Bio Protocol",
+   "cap": 44000000,
    "meses": [
     "2608",
     "2609",
@@ -686,6 +753,7 @@
   {
    "codigo": "BLUR",
    "nombre": "Blur",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -696,6 +764,7 @@
   {
    "codigo": "BMT",
    "nombre": "Bubblemaps",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -706,6 +775,7 @@
   {
    "codigo": "BNB",
    "nombre": "BNB",
+   "cap": 90000000000,
    "meses": [
     "2608",
     "2609",
@@ -716,6 +786,7 @@
   {
    "codigo": "BNSOL",
    "nombre": "Binance Staked SOL",
+   "cap": 900000000,
    "meses": [
     "2608",
     "2609",
@@ -726,6 +797,7 @@
   {
    "codigo": "BNT",
    "nombre": "Bancor",
+   "cap": 26000000,
    "meses": [
     "2608",
     "2609",
@@ -736,6 +808,7 @@
   {
    "codigo": "BOME",
    "nombre": "BOOK OF MEME",
+   "cap": 42000000,
    "meses": [
     "2608",
     "2609",
@@ -746,6 +819,7 @@
   {
    "codigo": "BONK",
    "nombre": "Bonk",
+   "cap": 250000000,
    "meses": [
     "2608",
     "2609",
@@ -756,6 +830,7 @@
   {
    "codigo": "BREV",
    "nombre": "Brevis",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -766,6 +841,7 @@
   {
    "codigo": "BROCCOLI714",
    "nombre": "CZ’s Dog",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -776,6 +852,7 @@
   {
    "codigo": "BTC",
    "nombre": "Bitcoin",
+   "cap": 1500000000000,
    "meses": [
     "2608",
     "2609",
@@ -786,6 +863,7 @@
   {
    "codigo": "BTTC",
    "nombre": "BitTorrent",
+   "cap": 340000000,
    "meses": [
     "2608",
     "2609",
@@ -796,6 +874,7 @@
   {
    "codigo": "C",
    "nombre": "Chainbase",
+   "cap": 12000000,
    "meses": [
     "2608",
     "2609",
@@ -806,6 +885,7 @@
   {
    "codigo": "C98",
    "nombre": "Coin98",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -816,6 +896,7 @@
   {
    "codigo": "CAKE",
    "nombre": "PancakeSwap",
+   "cap": 580000000,
    "meses": [
     "2608",
     "2609",
@@ -826,6 +907,7 @@
   {
    "codigo": "CATI",
    "nombre": "Catizen",
+   "cap": 25000000,
    "meses": [
     "2608",
     "2609",
@@ -836,6 +918,7 @@
   {
    "codigo": "CELO",
    "nombre": "Celo",
+   "cap": 40000000,
    "meses": [
     "2608",
     "2609",
@@ -846,6 +929,7 @@
   {
    "codigo": "CELR",
    "nombre": "Celer Network",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -856,6 +940,7 @@
   {
    "codigo": "CETUS",
    "nombre": "Cetus Protocol",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -866,6 +951,7 @@
   {
    "codigo": "CFG",
    "nombre": "Centrifuge",
+   "cap": 33000000,
    "meses": [
     "2608",
     "2609",
@@ -876,6 +962,7 @@
   {
    "codigo": "CFX",
    "nombre": "Conflux Network",
+   "cap": 220000000,
    "meses": [
     "2608",
     "2609",
@@ -886,6 +973,7 @@
   {
    "codigo": "CGPT",
    "nombre": "ChainGPT",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -896,6 +984,7 @@
   {
    "codigo": "CHIP",
    "nombre": "USD.AI",
+   "cap": 65000000,
    "meses": [
     "2608",
     "2609",
@@ -906,6 +995,7 @@
   {
    "codigo": "CHR",
    "nombre": "Chromia",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -916,6 +1006,7 @@
   {
    "codigo": "CHZ",
    "nombre": "Chiliz",
+   "cap": 110000000,
    "meses": [
     "2608",
     "2609",
@@ -926,6 +1017,7 @@
   {
    "codigo": "CITY",
    "nombre": "Manchester City Fan Token",
+   "cap": 3500000,
    "meses": [
     "2608",
     "2609",
@@ -936,6 +1028,7 @@
   {
    "codigo": "CKB",
    "nombre": "CKB",
+   "cap": 46000000,
    "meses": [
     "2608",
     "2609",
@@ -946,6 +1039,7 @@
   {
    "codigo": "COMP",
    "nombre": "Compound",
+   "cap": 200000000,
    "meses": [
     "2608",
     "2609",
@@ -956,6 +1050,7 @@
   {
    "codigo": "COOKIE",
    "nombre": "Cookie DAO",
+   "cap": 6900000,
    "meses": [
     "2608",
     "2609",
@@ -966,6 +1061,7 @@
   {
    "codigo": "COTI",
    "nombre": "COTI",
+   "cap": 28000000,
    "meses": [
     "2608",
     "2609",
@@ -976,6 +1072,7 @@
   {
    "codigo": "COW",
    "nombre": "CoW Protocol",
+   "cap": 60000000,
    "meses": [
     "2608",
     "2609",
@@ -986,6 +1083,7 @@
   {
    "codigo": "CRV",
    "nombre": "Curve",
+   "cap": 390000000,
    "meses": [
     "2608",
     "2609",
@@ -996,6 +1094,7 @@
   {
    "codigo": "CTK",
    "nombre": "Shentu",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -1006,6 +1105,7 @@
   {
    "codigo": "CTSI",
    "nombre": "Cartesi",
+   "cap": 23000000,
    "meses": [
     "2608",
     "2609",
@@ -1016,6 +1116,7 @@
   {
    "codigo": "CVC",
    "nombre": "Civic",
+   "cap": 20000000,
    "meses": [
     "2608",
     "2609",
@@ -1026,6 +1127,7 @@
   {
    "codigo": "CVX",
    "nombre": "Convex Finance",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -1036,6 +1138,7 @@
   {
    "codigo": "CYBER",
    "nombre": "Cyber",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -1046,6 +1149,7 @@
   {
    "codigo": "DASH",
    "nombre": "Dash",
+   "cap": 570000000,
    "meses": [
     "2608",
     "2609",
@@ -1056,6 +1160,7 @@
   {
    "codigo": "DCR",
    "nombre": "Decred",
+   "cap": 200000000,
    "meses": [
     "2608",
     "2609",
@@ -1066,6 +1171,7 @@
   {
    "codigo": "DEXE",
    "nombre": "DeXe",
+   "cap": 44000000,
    "meses": [
     "2608",
     "2609",
@@ -1076,6 +1182,7 @@
   {
    "codigo": "DGB",
    "nombre": "DigiByte",
+   "cap": 56000000,
    "meses": [
     "2608",
     "2609",
@@ -1086,6 +1193,7 @@
   {
    "codigo": "DIA",
    "nombre": "DIA",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -1096,6 +1204,7 @@
   {
    "codigo": "DODO",
    "nombre": "DODO",
+   "cap": 23000000,
    "meses": [
     "2608",
     "2609",
@@ -1106,6 +1215,7 @@
   {
    "codigo": "DOGE",
    "nombre": "Dogecoin",
+   "cap": 11000000000,
    "meses": [
     "2608",
     "2609",
@@ -1116,6 +1226,7 @@
   {
    "codigo": "DOGS",
    "nombre": "Dogs",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -1126,6 +1237,7 @@
   {
    "codigo": "DOLO",
    "nombre": "Dolomite",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -1136,6 +1248,7 @@
   {
    "codigo": "DOT",
    "nombre": "Polkadot",
+   "cap": 1400000000,
    "meses": [
     "2608",
     "2609",
@@ -1146,6 +1259,7 @@
   {
    "codigo": "DUSK",
    "nombre": "Dusk",
+   "cap": 42000000,
    "meses": [
     "2608",
     "2609",
@@ -1156,6 +1270,7 @@
   {
    "codigo": "DYDX",
    "nombre": "dYdX",
+   "cap": 76000000,
    "meses": [
     "2608",
     "2609",
@@ -1166,6 +1281,7 @@
   {
    "codigo": "DYM",
    "nombre": "Dymension",
+   "cap": 9600000,
    "meses": [
     "2608",
     "2609",
@@ -1176,6 +1292,7 @@
   {
    "codigo": "EDEN",
    "nombre": "OpenEden",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -1186,6 +1303,7 @@
   {
    "codigo": "EDU",
    "nombre": "Open Campus",
+   "cap": 38000000,
    "meses": [
     "2608",
     "2609",
@@ -1196,6 +1314,7 @@
   {
    "codigo": "EGLD",
    "nombre": "MultiversX",
+   "cap": 90000000,
    "meses": [
     "2608",
     "2609",
@@ -1206,6 +1325,7 @@
   {
    "codigo": "EIGEN",
    "nombre": "EigenLayer",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -1216,6 +1336,7 @@
   {
    "codigo": "ENA",
    "nombre": "Ethena",
+   "cap": 2100000000,
    "meses": [
     "2608",
     "2609",
@@ -1226,6 +1347,7 @@
   {
    "codigo": "ENJ",
    "nombre": "Enjin Coin",
+   "cap": 47000000,
    "meses": [
     "2608",
     "2609",
@@ -1236,6 +1358,7 @@
   {
    "codigo": "ENS",
    "nombre": "Ethereum Name Service",
+   "cap": 190000000,
    "meses": [
     "2608",
     "2609",
@@ -1246,6 +1369,7 @@
   {
    "codigo": "ENSO",
    "nombre": "Enso",
+   "cap": 9200000,
    "meses": [
     "2608",
     "2609",
@@ -1256,6 +1380,7 @@
   {
    "codigo": "ERA",
    "nombre": "Caldera",
+   "cap": 15000000,
    "meses": [
     "2608",
     "2609",
@@ -1266,6 +1391,7 @@
   {
    "codigo": "ESP",
    "nombre": "Espresso",
+   "cap": 57000000,
    "meses": [
     "2608",
     "2609",
@@ -1276,6 +1402,7 @@
   {
    "codigo": "ETC",
    "nombre": "Ethereum Classic",
+   "cap": 1100000000,
    "meses": [
     "2608",
     "2609",
@@ -1286,6 +1413,7 @@
   {
    "codigo": "ETH",
    "nombre": "Ethereum",
+   "cap": 250000000000,
    "meses": [
     "2608",
     "2609",
@@ -1296,6 +1424,7 @@
   {
    "codigo": "ETHFI",
    "nombre": "ether.fi",
+   "cap": 630000000,
    "meses": [
     "2608",
     "2609",
@@ -1306,6 +1435,7 @@
   {
    "codigo": "EUL",
    "nombre": "Euler",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -1316,6 +1446,7 @@
   {
    "codigo": "EURI",
    "nombre": "Eurite",
+   "cap": 36000000,
    "meses": [
     "2608",
     "2609",
@@ -1326,6 +1457,7 @@
   {
    "codigo": "F",
    "nombre": "SynFutures",
+   "cap": 12000000,
    "meses": [
     "2608",
     "2609",
@@ -1336,6 +1468,7 @@
   {
    "codigo": "FET",
    "nombre": "Artificial Superintelligence Alliance",
+   "cap": 340000000,
    "meses": [
     "2608",
     "2609",
@@ -1346,6 +1479,7 @@
   {
    "codigo": "FF",
    "nombre": "Falcon Finance",
+   "cap": 300000000,
    "meses": [
     "2608",
     "2609",
@@ -1356,6 +1490,7 @@
   {
    "codigo": "FIDA",
    "nombre": "Bonfida",
+   "cap": 15000000,
    "meses": [
     "2608",
     "2609",
@@ -1366,6 +1501,7 @@
   {
    "codigo": "FIL",
    "nombre": "Filecoin",
+   "cap": 640000000,
    "meses": [
     "2608",
     "2609",
@@ -1376,6 +1512,7 @@
   {
    "codigo": "FLOKI",
    "nombre": "FLOKI",
+   "cap": 200000000,
    "meses": [
     "2608",
     "2609",
@@ -1386,6 +1523,7 @@
   {
    "codigo": "FLOW",
    "nombre": "Flow",
+   "cap": 34000000,
    "meses": [
     "2608",
     "2609",
@@ -1396,6 +1534,7 @@
   {
    "codigo": "FLUX",
    "nombre": "Flux",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -1406,6 +1545,7 @@
   {
    "codigo": "FOGO",
    "nombre": "FOGO",
+   "cap": 10000000,
    "meses": [
     "2608",
     "2609",
@@ -1416,6 +1556,7 @@
   {
    "codigo": "FORM",
    "nombre": "Four",
+   "cap": 77000000,
    "meses": [
     "2608",
     "2609",
@@ -1426,6 +1567,7 @@
   {
    "codigo": "FRAX",
    "nombre": "Frax Finance",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -1436,6 +1578,7 @@
   {
    "codigo": "FTT",
    "nombre": "FTX Token",
+   "cap": 72000000,
    "meses": [
     "2608",
     "2609",
@@ -1446,6 +1589,7 @@
   {
    "codigo": "G",
    "nombre": "Gravity",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -1456,6 +1600,7 @@
   {
    "codigo": "GALA",
    "nombre": "Gala",
+   "cap": 77000000,
    "meses": [
     "2608",
     "2609",
@@ -1466,6 +1611,7 @@
   {
    "codigo": "GAS",
    "nombre": "NeoGas",
+   "cap": 68000000,
    "meses": [
     "2608",
     "2609",
@@ -1476,6 +1622,7 @@
   {
    "codigo": "GENIUS",
    "nombre": "Genius Terminal",
+   "cap": 95000000,
    "meses": [
     "2608",
     "2609",
@@ -1486,6 +1633,7 @@
   {
    "codigo": "GIGGLE",
    "nombre": "Giggle Fund",
+   "cap": 28000000,
    "meses": [
     "2608",
     "2609",
@@ -1496,6 +1644,7 @@
   {
    "codigo": "GLM",
    "nombre": "Golem",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -1506,6 +1655,7 @@
   {
    "codigo": "GLMR",
    "nombre": "Moonbeam",
+   "cap": 7700000,
    "meses": [
     "2608",
     "2609",
@@ -1516,6 +1666,7 @@
   {
    "codigo": "GMT",
    "nombre": "Green Metaverse Token",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -1526,6 +1677,7 @@
   {
    "codigo": "GMX",
    "nombre": "GMX",
+   "cap": 81000000,
    "meses": [
     "2608",
     "2609",
@@ -1536,6 +1688,7 @@
   {
    "codigo": "GNO",
    "nombre": "Gnosis",
+   "cap": 290000000,
    "meses": [
     "2608",
     "2609",
@@ -1546,6 +1699,7 @@
   {
    "codigo": "GNS",
    "nombre": "Gains Network",
+   "cap": 9700000,
    "meses": [
     "2608",
     "2609",
@@ -1556,6 +1710,7 @@
   {
    "codigo": "GPS",
    "nombre": "GoPlus Security",
+   "cap": 48000000,
    "meses": [
     "2608",
     "2609",
@@ -1566,6 +1721,7 @@
   {
    "codigo": "GRAM",
    "nombre": "Gram",
+   "cap": 3300000000,
    "meses": [
     "2608",
     "2609",
@@ -1576,6 +1732,7 @@
   {
    "codigo": "GRT",
    "nombre": "The Graph",
+   "cap": 190000000,
    "meses": [
     "2608",
     "2609",
@@ -1586,6 +1743,7 @@
   {
    "codigo": "GTC",
    "nombre": "Gitcoin",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -1596,6 +1754,7 @@
   {
    "codigo": "GUN",
    "nombre": "GUNZ",
+   "cap": 6800000,
    "meses": [
     "2608",
     "2609",
@@ -1606,6 +1765,7 @@
   {
    "codigo": "HAEDAL",
    "nombre": "Haedal",
+   "cap": 4800000,
    "meses": [
     "2608",
     "2609",
@@ -1616,6 +1776,7 @@
   {
    "codigo": "HBAR",
    "nombre": "Hedera Hashgraph",
+   "cap": 2900000000,
    "meses": [
     "2608",
     "2609",
@@ -1626,6 +1787,7 @@
   {
    "codigo": "HEI",
    "nombre": "Heima",
+   "cap": 7200000,
    "meses": [
     "2608",
     "2609",
@@ -1636,6 +1798,7 @@
   {
    "codigo": "HEMI",
    "nombre": "HEMI",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -1646,6 +1809,7 @@
   {
    "codigo": "HIVE",
    "nombre": "Hive",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -1656,6 +1820,7 @@
   {
    "codigo": "HMSTR",
    "nombre": "Hamster Kombat",
+   "cap": 8300000,
    "meses": [
     "2608",
     "2609",
@@ -1666,6 +1831,7 @@
   {
    "codigo": "HOLO",
    "nombre": "Holoworld AI",
+   "cap": 46000000,
    "meses": [
     "2608",
     "2609",
@@ -1676,6 +1842,7 @@
   {
    "codigo": "HOME",
    "nombre": "Defi App",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -1686,6 +1853,7 @@
   {
    "codigo": "HOT",
    "nombre": "Holo",
+   "cap": 74000000,
    "meses": [
     "2608",
     "2609",
@@ -1696,6 +1864,7 @@
   {
    "codigo": "HUMA",
    "nombre": "Huma Finance",
+   "cap": 15000000,
    "meses": [
     "2608",
     "2609",
@@ -1706,6 +1875,7 @@
   {
    "codigo": "HYPE",
    "nombre": "Hyperliquid",
+   "cap": 17000000000,
    "meses": [
     "2609",
     "2610",
@@ -1715,6 +1885,7 @@
   {
    "codigo": "HYPER",
    "nombre": "Hyperlane",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -1725,6 +1896,7 @@
   {
    "codigo": "ICP",
    "nombre": "Internet Computer",
+   "cap": 1400000000,
    "meses": [
     "2608",
     "2609",
@@ -1735,6 +1907,7 @@
   {
    "codigo": "ID",
    "nombre": "Space ID",
+   "cap": 40000000,
    "meses": [
     "2608",
     "2609",
@@ -1745,6 +1918,7 @@
   {
    "codigo": "ILV",
    "nombre": "Illuvium",
+   "cap": 23000000,
    "meses": [
     "2608",
     "2609",
@@ -1755,6 +1929,7 @@
   {
    "codigo": "IMX",
    "nombre": "ImmutableX",
+   "cap": 110000000,
    "meses": [
     "2608",
     "2609",
@@ -1765,6 +1940,7 @@
   {
    "codigo": "INIT",
    "nombre": "Initia",
+   "cap": 48000000,
    "meses": [
     "2608",
     "2609",
@@ -1775,6 +1951,7 @@
   {
    "codigo": "INJ",
    "nombre": "Injective",
+   "cap": 820000000,
    "meses": [
     "2608",
     "2609",
@@ -1785,6 +1962,7 @@
   {
    "codigo": "IO",
    "nombre": "IO.NET",
+   "cap": 50000000,
    "meses": [
     "2608",
     "2609",
@@ -1795,6 +1973,7 @@
   {
    "codigo": "IOST",
    "nombre": "IOST",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -1805,6 +1984,7 @@
   {
    "codigo": "IOTA",
    "nombre": "IOTA",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -1815,6 +1995,7 @@
   {
    "codigo": "IOTX",
    "nombre": "IoTeX",
+   "cap": 27000000,
    "meses": [
     "2608",
     "2609",
@@ -1825,6 +2006,7 @@
   {
    "codigo": "IQ",
    "nombre": "IQ",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -1835,6 +2017,7 @@
   {
    "codigo": "JASMY",
    "nombre": "JasmyCoin",
+   "cap": 180000000,
    "meses": [
     "2608",
     "2609",
@@ -1845,6 +2028,7 @@
   {
    "codigo": "JOE",
    "nombre": "JOE",
+   "cap": 12000000,
    "meses": [
     "2608",
     "2609",
@@ -1855,6 +2039,7 @@
   {
    "codigo": "JST",
    "nombre": "JUST",
+   "cap": 1200000000,
    "meses": [
     "2608",
     "2609",
@@ -1865,6 +2050,7 @@
   {
    "codigo": "JTO",
    "nombre": "JITO",
+   "cap": 180000000,
    "meses": [
     "2608",
     "2609",
@@ -1875,6 +2061,7 @@
   {
    "codigo": "JUP",
    "nombre": "Jupiter",
+   "cap": 850000000,
    "meses": [
     "2608",
     "2609",
@@ -1885,6 +2072,7 @@
   {
    "codigo": "JUV",
    "nombre": "Juventus Fan Token",
+   "cap": 4000000,
    "meses": [
     "2608",
     "2609",
@@ -1895,6 +2083,7 @@
   {
    "codigo": "KAIA",
    "nombre": "Kaia",
+   "cap": 210000000,
    "meses": [
     "2608",
     "2609",
@@ -1905,6 +2094,7 @@
   {
    "codigo": "KAITO",
    "nombre": "Kaito",
+   "cap": 50000000,
    "meses": [
     "2608",
     "2609",
@@ -1915,6 +2105,7 @@
   {
    "codigo": "KAT",
    "nombre": "Katana",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -1925,6 +2116,7 @@
   {
    "codigo": "KAVA",
    "nombre": "Kava",
+   "cap": 74000000,
    "meses": [
     "2608",
     "2609",
@@ -1935,6 +2127,7 @@
   {
    "codigo": "KERNEL",
    "nombre": "KernelDAO",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -1945,6 +2138,7 @@
   {
    "codigo": "KGST",
    "nombre": "Kyrgyz Som Stablecoin",
+   "cap": 7300000,
    "meses": [
     "2608",
     "2609",
@@ -1955,6 +2149,7 @@
   {
    "codigo": "KITE",
    "nombre": "KITE",
+   "cap": 290000000,
    "meses": [
     "2608",
     "2609",
@@ -1965,6 +2160,7 @@
   {
    "codigo": "KMNO",
    "nombre": "Kamino Finance",
+   "cap": 190000000,
    "meses": [
     "2608",
     "2609",
@@ -1975,6 +2171,7 @@
   {
    "codigo": "KNC",
    "nombre": "KyberNetwork",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -1985,6 +2182,7 @@
   {
    "codigo": "KSM",
    "nombre": "Kusama",
+   "cap": 59000000,
    "meses": [
     "2608",
     "2609",
@@ -1995,6 +2193,7 @@
   {
    "codigo": "LA",
    "nombre": "Lagrange",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -2005,6 +2204,7 @@
   {
    "codigo": "LAYER",
    "nombre": "Solayer",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -2015,6 +2215,7 @@
   {
    "codigo": "LAZIO",
    "nombre": "Lazio Fan Token",
+   "cap": 4300000,
    "meses": [
     "2608",
     "2609",
@@ -2025,6 +2226,7 @@
   {
    "codigo": "LDO",
    "nombre": "Lido DAO",
+   "cap": 270000000,
    "meses": [
     "2608",
     "2609",
@@ -2035,6 +2237,7 @@
   {
    "codigo": "LINEA",
    "nombre": "Linea",
+   "cap": 51000000,
    "meses": [
     "2608",
     "2609",
@@ -2045,6 +2248,7 @@
   {
    "codigo": "LINK",
    "nombre": "ChainLink",
+   "cap": 7900000000,
    "meses": [
     "2608",
     "2609",
@@ -2055,6 +2259,7 @@
   {
    "codigo": "LISTA",
    "nombre": "Lista",
+   "cap": 32000000,
    "meses": [
     "2608",
     "2609",
@@ -2065,6 +2270,7 @@
   {
    "codigo": "LPT",
    "nombre": "Livepeer",
+   "cap": 64000000,
    "meses": [
     "2608",
     "2609",
@@ -2075,6 +2281,7 @@
   {
    "codigo": "LQTY",
    "nombre": "Liquity",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -2085,6 +2292,7 @@
   {
    "codigo": "LSK",
    "nombre": "Lisk",
+   "cap": 36000000,
    "meses": [
     "2608",
     "2609",
@@ -2095,6 +2303,7 @@
   {
    "codigo": "LTC",
    "nombre": "Litecoin",
+   "cap": 3900000000,
    "meses": [
     "2608",
     "2609",
@@ -2105,6 +2314,7 @@
   {
    "codigo": "LUMIA",
    "nombre": "LUMIA",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -2115,6 +2325,7 @@
   {
    "codigo": "LUNA",
    "nombre": "Terra",
+   "cap": 26000000,
    "meses": [
     "2608",
     "2609",
@@ -2125,6 +2336,7 @@
   {
    "codigo": "LUNC",
    "nombre": "Terra Classic",
+   "cap": 210000000,
    "meses": [
     "2608",
     "2609",
@@ -2135,6 +2347,7 @@
   {
    "codigo": "MAGIC",
    "nombre": "Treasure",
+   "cap": 29000000,
    "meses": [
     "2608",
     "2609",
@@ -2145,6 +2358,7 @@
   {
    "codigo": "MANA",
    "nombre": "Decentraland",
+   "cap": 140000000,
    "meses": [
     "2608",
     "2609",
@@ -2155,6 +2369,7 @@
   {
    "codigo": "MANTA",
    "nombre": "Manta",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -2165,6 +2380,7 @@
   {
    "codigo": "MANTRA",
    "nombre": "MANTRA",
+   "cap": 20000000,
    "meses": [
     "2608",
     "2609",
@@ -2175,6 +2391,7 @@
   {
    "codigo": "MARSCOIN",
    "nombre": "MarsCoin",
+   "cap": 41000000,
    "meses": [
     "2609",
     "2610",
@@ -2184,6 +2401,7 @@
   {
    "codigo": "MASK",
    "nombre": "Mask Network",
+   "cap": 36000000,
    "meses": [
     "2608",
     "2609",
@@ -2194,6 +2412,7 @@
   {
    "codigo": "MAV",
    "nombre": "Maverick Protocol",
+   "cap": 9300000,
    "meses": [
     "2608",
     "2609",
@@ -2204,6 +2423,7 @@
   {
    "codigo": "MBL",
    "nombre": "MovieBloc",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -2214,6 +2434,7 @@
   {
    "codigo": "ME",
    "nombre": "Magic Eden",
+   "cap": 27000000,
    "meses": [
     "2608",
     "2609",
@@ -2224,6 +2445,7 @@
   {
    "codigo": "MEGA",
    "nombre": "MEGA",
+   "cap": 54000000,
    "meses": [
     "2608",
     "2609",
@@ -2234,6 +2456,7 @@
   {
    "codigo": "MEME",
    "nombre": "Memecoin",
+   "cap": 25000000,
    "meses": [
     "2608",
     "2609",
@@ -2244,6 +2467,7 @@
   {
    "codigo": "MET",
    "nombre": "Meteora",
+   "cap": 170000000,
    "meses": [
     "2608",
     "2609",
@@ -2254,6 +2478,7 @@
   {
    "codigo": "METIS",
    "nombre": "MetisDAO",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -2264,6 +2489,7 @@
   {
    "codigo": "MINA",
    "nombre": "Mina",
+   "cap": 66000000,
    "meses": [
     "2608",
     "2609",
@@ -2274,6 +2500,7 @@
   {
    "codigo": "MIRA",
    "nombre": "Mira",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -2284,6 +2511,7 @@
   {
    "codigo": "MITO",
    "nombre": "Mitosis",
+   "cap": 3400000,
    "meses": [
     "2608",
     "2609",
@@ -2294,6 +2522,7 @@
   {
    "codigo": "MMT",
    "nombre": "Momentum",
+   "cap": 25000000,
    "meses": [
     "2608",
     "2609",
@@ -2304,6 +2533,7 @@
   {
    "codigo": "MORPHO",
    "nombre": "Morpho Token",
+   "cap": 1400000000,
    "meses": [
     "2608",
     "2609",
@@ -2314,6 +2544,7 @@
   {
    "codigo": "MOVE",
    "nombre": "Movement",
+   "cap": 27000000,
    "meses": [
     "2608",
     "2609",
@@ -2324,6 +2555,7 @@
   {
    "codigo": "MOVR",
    "nombre": "Moonriver",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -2334,6 +2566,7 @@
   {
    "codigo": "MTL",
    "nombre": "Metal DAO",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -2344,6 +2577,7 @@
   {
    "codigo": "MUBARAK",
    "nombre": "Mubarak",
+   "cap": 37000000,
    "meses": [
     "2608",
     "2609",
@@ -2354,6 +2588,7 @@
   {
    "codigo": "NEAR",
    "nombre": "NEAR Protocol",
+   "cap": 4700000000,
    "meses": [
     "2608",
     "2609",
@@ -2364,6 +2599,7 @@
   {
    "codigo": "NEIRO",
    "nombre": "First Neiro On Ethereum",
+   "cap": 25000000,
    "meses": [
     "2608",
     "2609",
@@ -2374,6 +2610,7 @@
   {
    "codigo": "NEO",
    "nombre": "NEO",
+   "cap": 130000000,
    "meses": [
     "2608",
     "2609",
@@ -2384,6 +2621,7 @@
   {
    "codigo": "NEWT",
    "nombre": "Newton Protocol",
+   "cap": 7900000,
    "meses": [
     "2608",
     "2609",
@@ -2394,6 +2632,7 @@
   {
    "codigo": "NEXO",
    "nombre": "Nexo",
+   "cap": 710000000,
    "meses": [
     "2608",
     "2609",
@@ -2404,6 +2643,7 @@
   {
    "codigo": "NIGHT",
    "nombre": "Midnight",
+   "cap": 720000000,
    "meses": [
     "2608",
     "2609",
@@ -2414,6 +2654,7 @@
   {
    "codigo": "NIL",
    "nombre": "Nillion",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -2424,6 +2665,7 @@
   {
    "codigo": "NMR",
    "nombre": "Numeraire",
+   "cap": 64000000,
    "meses": [
     "2608",
     "2609",
@@ -2434,6 +2676,7 @@
   {
    "codigo": "NOM",
    "nombre": "Nomina",
+   "cap": 4100000,
    "meses": [
     "2608",
     "2609",
@@ -2444,6 +2687,7 @@
   {
    "codigo": "NOT",
    "nombre": "Notcoin",
+   "cap": 33000000,
    "meses": [
     "2608",
     "2609",
@@ -2454,6 +2698,7 @@
   {
    "codigo": "NXPC",
    "nombre": "Nexpace",
+   "cap": 46000000,
    "meses": [
     "2608",
     "2609",
@@ -2464,6 +2709,7 @@
   {
    "codigo": "OG",
    "nombre": "OG Fan Token",
+   "cap": 10000000,
    "meses": [
     "2608",
     "2609",
@@ -2474,6 +2720,7 @@
   {
    "codigo": "OGN",
    "nombre": "OriginToken",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -2484,6 +2731,7 @@
   {
    "codigo": "ONDO",
    "nombre": "Ondo",
+   "cap": 1800000000,
    "meses": [
     "2608",
     "2609",
@@ -2494,6 +2742,7 @@
   {
    "codigo": "ONE",
    "nombre": "Harmony",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -2504,6 +2753,7 @@
   {
    "codigo": "ONG",
    "nombre": "Ontology Gas",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -2514,6 +2764,7 @@
   {
    "codigo": "ONT",
    "nombre": "Ontology",
+   "cap": 41000000,
    "meses": [
     "2608",
     "2609",
@@ -2524,6 +2775,7 @@
   {
    "codigo": "OP",
    "nombre": "Optimism",
+   "cap": 230000000,
    "meses": [
     "2608",
     "2609",
@@ -2534,6 +2786,7 @@
   {
    "codigo": "OPEN",
    "nombre": "OpenLedger",
+   "cap": 32000000,
    "meses": [
     "2608",
     "2609",
@@ -2544,6 +2797,7 @@
   {
    "codigo": "OPG",
    "nombre": "OpenGradient",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -2554,6 +2808,7 @@
   {
    "codigo": "OPN",
    "nombre": "OPINION",
+   "cap": 6500000,
    "meses": [
     "2608",
     "2609",
@@ -2564,6 +2819,7 @@
   {
    "codigo": "ORCA",
    "nombre": "Orca",
+   "cap": 76000000,
    "meses": [
     "2608",
     "2609",
@@ -2574,6 +2830,7 @@
   {
    "codigo": "ORDI",
    "nombre": "ORDI",
+   "cap": 67000000,
    "meses": [
     "2608",
     "2609",
@@ -2584,6 +2841,7 @@
   {
    "codigo": "OSMO",
    "nombre": "Osmosis",
+   "cap": 23000000,
    "meses": [
     "2608",
     "2609",
@@ -2594,6 +2852,7 @@
   {
    "codigo": "PARTI",
    "nombre": "Particle Network",
+   "cap": 8000000,
    "meses": [
     "2608",
     "2609",
@@ -2604,6 +2863,7 @@
   {
    "codigo": "PAXG",
    "nombre": "PAX Gold",
+   "cap": 1800000000,
    "meses": [
     "2608",
     "2609",
@@ -2614,6 +2874,7 @@
   {
    "codigo": "PENDLE",
    "nombre": "Pendle",
+   "cap": 270000000,
    "meses": [
     "2608",
     "2609",
@@ -2624,6 +2885,7 @@
   {
    "codigo": "PENGU",
    "nombre": "Pudgy Penguins",
+   "cap": 390000000,
    "meses": [
     "2608",
     "2609",
@@ -2634,6 +2896,7 @@
   {
    "codigo": "PEOPLE",
    "nombre": "ConstitutionDAO",
+   "cap": 29000000,
    "meses": [
     "2608",
     "2609",
@@ -2644,6 +2907,7 @@
   {
    "codigo": "PEPE",
    "nombre": "Pepe",
+   "cap": 2200000000,
    "meses": [
     "2608",
     "2609",
@@ -2654,6 +2918,7 @@
   {
    "codigo": "PHA",
    "nombre": "Phala.Network",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -2664,6 +2929,7 @@
   {
    "codigo": "PIXEL",
    "nombre": "Pixels",
+   "cap": 3200000,
    "meses": [
     "2608",
     "2609",
@@ -2674,6 +2940,7 @@
   {
    "codigo": "PLUME",
    "nombre": "PLUME",
+   "cap": 89000000,
    "meses": [
     "2608",
     "2609",
@@ -2684,6 +2951,7 @@
   {
    "codigo": "PNUT",
    "nombre": "Peanut the Squirrel",
+   "cap": 33000000,
    "meses": [
     "2608",
     "2609",
@@ -2694,6 +2962,7 @@
   {
    "codigo": "POL",
    "nombre": "Polygon Ecosystem Token",
+   "cap": 940000000,
    "meses": [
     "2608",
     "2609",
@@ -2704,6 +2973,7 @@
   {
    "codigo": "POLYX",
    "nombre": "Polymesh",
+   "cap": 40000000,
    "meses": [
     "2608",
     "2609",
@@ -2714,6 +2984,7 @@
   {
    "codigo": "PORTAL",
    "nombre": "Portal",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -2724,6 +2995,7 @@
   {
    "codigo": "PORTO",
    "nombre": "FC Porto Fan Token",
+   "cap": 4100000,
    "meses": [
     "2608",
     "2609",
@@ -2734,6 +3006,7 @@
   {
    "codigo": "POWR",
    "nombre": "Powerledger",
+   "cap": 30000000,
    "meses": [
     "2608",
     "2609",
@@ -2744,6 +3017,7 @@
   {
    "codigo": "PROM",
    "nombre": "Prometeus",
+   "cap": 88000000,
    "meses": [
     "2608",
     "2609",
@@ -2754,6 +3028,7 @@
   {
    "codigo": "PROVE",
    "nombre": "Succinct",
+   "cap": 34000000,
    "meses": [
     "2608",
     "2609",
@@ -2764,6 +3039,7 @@
   {
    "codigo": "PSG",
    "nombre": "Paris Saint-Germain Fan Token",
+   "cap": 5900000,
    "meses": [
     "2608",
     "2609",
@@ -2774,6 +3050,7 @@
   {
    "codigo": "PUMP",
    "nombre": "Pump.Fun",
+   "cap": 1600000000,
    "meses": [
     "2608",
     "2609",
@@ -2784,6 +3061,7 @@
   {
    "codigo": "PUNDIX",
    "nombre": "Pundi X",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -2794,6 +3072,7 @@
   {
    "codigo": "PYTH",
    "nombre": "Pyth Network",
+   "cap": 540000000,
    "meses": [
     "2608",
     "2609",
@@ -2804,6 +3083,7 @@
   {
    "codigo": "QI",
    "nombre": "BENQI",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -2814,6 +3094,7 @@
   {
    "codigo": "QKC",
    "nombre": "QuarkChain",
+   "cap": 16000000,
    "meses": [
     "2608",
     "2609",
@@ -2823,8 +3104,8 @@
   },
   {
    "codigo": "QNT",
-   "nombre": "Quantinuum",
-   "tipo": "empresa",
+   "nombre": "Quant",
+   "cap": 2600000000,
    "meses": [
     "2608",
     "2609",
@@ -2835,6 +3116,7 @@
   {
    "codigo": "QTUM",
    "nombre": "Qtum",
+   "cap": 73000000,
    "meses": [
     "2608",
     "2609",
@@ -2845,6 +3127,7 @@
   {
    "codigo": "RAD",
    "nombre": "Radworks",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -2855,6 +3138,7 @@
   {
    "codigo": "RARE",
    "nombre": "SuperRare",
+   "cap": 8700000,
    "meses": [
     "2608",
     "2609",
@@ -2865,6 +3149,7 @@
   {
    "codigo": "RAY",
    "nombre": "Raydium",
+   "cap": 440000000,
    "meses": [
     "2608",
     "2609",
@@ -2875,6 +3160,7 @@
   {
    "codigo": "RE",
    "nombre": "Re",
+   "cap": 45000000,
    "meses": [
     "2608",
     "2609",
@@ -2885,6 +3171,7 @@
   {
    "codigo": "RED",
    "nombre": "RedStone",
+   "cap": 78000000,
    "meses": [
     "2608",
     "2609",
@@ -2895,6 +3182,7 @@
   {
    "codigo": "RENDER",
    "nombre": "Render",
+   "cap": 850000000,
    "meses": [
     "2608",
     "2609",
@@ -2905,6 +3193,7 @@
   {
    "codigo": "REQ",
    "nombre": "Request Network",
+   "cap": 37000000,
    "meses": [
     "2608",
     "2609",
@@ -2915,6 +3204,7 @@
   {
    "codigo": "RESOLV",
    "nombre": "Resolv",
+   "cap": 7100000,
    "meses": [
     "2608",
     "2609",
@@ -2925,6 +3215,7 @@
   {
    "codigo": "REZ",
    "nombre": "Renzo",
+   "cap": 35000000,
    "meses": [
     "2608",
     "2609",
@@ -2935,6 +3226,7 @@
   {
    "codigo": "RIF",
    "nombre": "Rootstock Infrastructure Framework",
+   "cap": 56000000,
    "meses": [
     "2608",
     "2609",
@@ -2945,6 +3237,7 @@
   {
    "codigo": "RLC",
    "nombre": "iExecRLC",
+   "cap": 35000000,
    "meses": [
     "2608",
     "2609",
@@ -2955,6 +3248,7 @@
   {
    "codigo": "ROBO",
    "nombre": "Fabric Protocol",
+   "cap": 9700000,
    "meses": [
     "2608",
     "2609",
@@ -2965,6 +3259,7 @@
   {
    "codigo": "RONIN",
    "nombre": "Ronin",
+   "cap": 34000000,
    "meses": [
     "2608",
     "2609",
@@ -2975,6 +3270,7 @@
   {
    "codigo": "ROSE",
    "nombre": "Oasis Network",
+   "cap": 43000000,
    "meses": [
     "2608",
     "2609",
@@ -2985,6 +3281,7 @@
   {
    "codigo": "RPL",
    "nombre": "Rocket Pool",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -2995,6 +3292,7 @@
   {
    "codigo": "RSR",
    "nombre": "Reserve Rights",
+   "cap": 97000000,
    "meses": [
     "2608",
     "2609",
@@ -3005,6 +3303,7 @@
   {
    "codigo": "RUNE",
    "nombre": "THORChain",
+   "cap": 200000000,
    "meses": [
     "2608",
     "2609",
@@ -3015,6 +3314,7 @@
   {
    "codigo": "RVN",
    "nombre": "Ravencoin",
+   "cap": 20000000,
    "meses": [
     "2608",
     "2609",
@@ -3025,6 +3325,7 @@
   {
    "codigo": "RWUSD",
    "nombre": "RWUSD",
+   "cap": 4100000000,
    "meses": [
     "2610",
     "2611"
@@ -3033,6 +3334,7 @@
   {
    "codigo": "S",
    "nombre": "Sonic",
+   "cap": 140000000,
    "meses": [
     "2608",
     "2609",
@@ -3043,6 +3345,7 @@
   {
    "codigo": "SAGA",
    "nombre": "Saga",
+   "cap": 6500000,
    "meses": [
     "2608",
     "2609",
@@ -3053,6 +3356,7 @@
   {
    "codigo": "SAHARA",
    "nombre": "Sahara AI",
+   "cap": 27000000,
    "meses": [
     "2608",
     "2609",
@@ -3063,6 +3367,7 @@
   {
    "codigo": "SAND",
    "nombre": "The Sandbox",
+   "cap": 120000000,
    "meses": [
     "2608",
     "2609",
@@ -3073,6 +3378,7 @@
   {
    "codigo": "SANTOS",
    "nombre": "Santos FC Fan Token",
+   "cap": 6100000,
    "meses": [
     "2608",
     "2609",
@@ -3083,6 +3389,7 @@
   {
    "codigo": "SAPIEN",
    "nombre": "SAPIEN",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -3093,6 +3400,7 @@
   {
    "codigo": "SC",
    "nombre": "Siacoin",
+   "cap": 32000000,
    "meses": [
     "2608",
     "2609",
@@ -3103,6 +3411,7 @@
   {
    "codigo": "SCR",
    "nombre": "Scroll",
+   "cap": 3400000,
    "meses": [
     "2608",
     "2609",
@@ -3113,6 +3422,7 @@
   {
    "codigo": "SEI",
    "nombre": "Sei",
+   "cap": 290000000,
    "meses": [
     "2608",
     "2609",
@@ -3123,6 +3433,7 @@
   {
    "codigo": "SENT",
    "nombre": "Sentient",
+   "cap": 120000000,
    "meses": [
     "2608",
     "2609",
@@ -3133,6 +3444,7 @@
   {
    "codigo": "SFP",
    "nombre": "SafePal",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -3143,6 +3455,7 @@
   {
    "codigo": "SHELL",
    "nombre": "MyShell",
+   "cap": 5400000,
    "meses": [
     "2608",
     "2609",
@@ -3153,6 +3466,7 @@
   {
    "codigo": "SHIB",
    "nombre": "SHIBA INU",
+   "cap": 2600000000,
    "meses": [
     "2608",
     "2609",
@@ -3163,6 +3477,7 @@
   {
    "codigo": "SIGN",
    "nombre": "Sign",
+   "cap": 26000000,
    "meses": [
     "2608",
     "2609",
@@ -3173,6 +3488,7 @@
   {
    "codigo": "SKL",
    "nombre": "SKALE Network",
+   "cap": 21000000,
    "meses": [
     "2608",
     "2609",
@@ -3183,6 +3499,7 @@
   {
    "codigo": "SKY",
    "nombre": "Sky",
+   "cap": 1400000000,
    "meses": [
     "2608",
     "2609",
@@ -3193,6 +3510,7 @@
   {
    "codigo": "SLP",
    "nombre": "Smooth Love Potion",
+   "cap": 17000000,
    "meses": [
     "2608",
     "2609",
@@ -3203,6 +3521,7 @@
   {
    "codigo": "SNX",
    "nombre": "Synthetix Network Token",
+   "cap": 94000000,
    "meses": [
     "2608",
     "2609",
@@ -3213,6 +3532,7 @@
   {
    "codigo": "SOL",
    "nombre": "Solana",
+   "cap": 49000000000,
    "meses": [
     "2608",
     "2609",
@@ -3223,6 +3543,7 @@
   {
    "codigo": "SOLV",
    "nombre": "Solv Protocol",
+   "cap": 25000000,
    "meses": [
     "2608",
     "2609",
@@ -3233,6 +3554,7 @@
   {
    "codigo": "SOMI",
    "nombre": "Somnia",
+   "cap": 26000000,
    "meses": [
     "2608",
     "2609",
@@ -3243,6 +3565,7 @@
   {
    "codigo": "SOPH",
    "nombre": "Sophon",
+   "cap": 6600000,
    "meses": [
     "2608",
     "2609",
@@ -3253,6 +3576,7 @@
   {
    "codigo": "SPELL",
    "nombre": "Spell Token",
+   "cap": 12000000,
    "meses": [
     "2608",
     "2609",
@@ -3263,6 +3587,7 @@
   {
    "codigo": "SPK",
    "nombre": "Spark",
+   "cap": 54000000,
    "meses": [
     "2608",
     "2609",
@@ -3273,6 +3598,7 @@
   {
    "codigo": "SSV",
    "nombre": "SSV Token",
+   "cap": 30000000,
    "meses": [
     "2608",
     "2609",
@@ -3283,6 +3609,7 @@
   {
    "codigo": "STEEM",
    "nombre": "Steem",
+   "cap": 26000000,
    "meses": [
     "2608",
     "2609",
@@ -3293,6 +3620,7 @@
   {
    "codigo": "STO",
    "nombre": "StakeStone",
+   "cap": 5900000,
    "meses": [
     "2608",
     "2609",
@@ -3303,6 +3631,7 @@
   {
    "codigo": "STRAX",
    "nombre": "Xertra",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -3313,6 +3642,7 @@
   {
    "codigo": "STRK",
    "nombre": "Starknet Token",
+   "cap": 290000000,
    "meses": [
     "2608",
     "2609",
@@ -3322,8 +3652,8 @@
   },
   {
    "codigo": "STX",
-   "nombre": "Seagate",
-   "tipo": "empresa",
+   "nombre": "Stacks",
+   "cap": 600000000,
    "meses": [
     "2608",
     "2609",
@@ -3334,6 +3664,7 @@
   {
    "codigo": "SUI",
    "nombre": "Sui",
+   "cap": 3400000000,
    "meses": [
     "2608",
     "2609",
@@ -3344,6 +3675,7 @@
   {
    "codigo": "SUN",
    "nombre": "SUN",
+   "cap": 290000000,
    "meses": [
     "2608",
     "2609",
@@ -3354,6 +3686,7 @@
   {
    "codigo": "SUPER",
    "nombre": "SuperVerse",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -3364,6 +3697,7 @@
   {
    "codigo": "SUSHI",
    "nombre": "Sushi",
+   "cap": 50000000,
    "meses": [
     "2608",
     "2609",
@@ -3374,6 +3708,7 @@
   {
    "codigo": "SXT",
    "nombre": "Space and Time",
+   "cap": 43000000,
    "meses": [
     "2608",
     "2609",
@@ -3384,6 +3719,7 @@
   {
    "codigo": "SYN",
    "nombre": "Synapse",
+   "cap": 28000000,
    "meses": [
     "2608",
     "2609",
@@ -3394,6 +3730,7 @@
   {
    "codigo": "SYRUP",
    "nombre": "Maple Finance",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -3404,6 +3741,7 @@
   {
    "codigo": "T",
    "nombre": "Threshold",
+   "cap": 49000000,
    "meses": [
     "2608",
     "2609",
@@ -3414,6 +3752,7 @@
   {
    "codigo": "TAO",
    "nombre": "Bittensor",
+   "cap": 2600000000,
    "meses": [
     "2608",
     "2609",
@@ -3424,6 +3763,7 @@
   {
    "codigo": "TFUEL",
    "nombre": "Theta Fuel",
+   "cap": 57000000,
    "meses": [
     "2608",
     "2609",
@@ -3434,6 +3774,7 @@
   {
    "codigo": "THE",
    "nombre": "THENA",
+   "cap": 4700000,
    "meses": [
     "2608",
     "2609",
@@ -3444,6 +3785,7 @@
   {
    "codigo": "THETA",
    "nombre": "Theta Token",
+   "cap": 140000000,
    "meses": [
     "2608",
     "2609",
@@ -3454,6 +3796,7 @@
   {
    "codigo": "TIA",
    "nombre": "Celestia",
+   "cap": 430000000,
    "meses": [
     "2608",
     "2609",
@@ -3464,6 +3807,7 @@
   {
    "codigo": "TKO",
    "nombre": "Tokocrypto",
+   "cap": 3200000,
    "meses": [
     "2608",
     "2609",
@@ -3474,6 +3818,7 @@
   {
    "codigo": "TLM",
    "nombre": "Alien Worlds",
+   "cap": 7300000,
    "meses": [
     "2608",
     "2609",
@@ -3484,6 +3829,7 @@
   {
    "codigo": "TNSR",
    "nombre": "Tensor",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -3494,6 +3840,7 @@
   {
    "codigo": "TOWNS",
    "nombre": "Towns Protocol",
+   "cap": 2300000,
    "meses": [
     "2608",
     "2609",
@@ -3504,6 +3851,7 @@
   {
    "codigo": "TRB",
    "nombre": "Tellor Tributes",
+   "cap": 43000000,
    "meses": [
     "2608",
     "2609",
@@ -3514,6 +3862,7 @@
   {
    "codigo": "TREE",
    "nombre": "Treehouse",
+   "cap": 4600000,
    "meses": [
     "2608",
     "2609",
@@ -3524,6 +3873,7 @@
   {
    "codigo": "TRUMP",
    "nombre": "OFFICIAL TRUMP",
+   "cap": 320000000,
    "meses": [
     "2608",
     "2609",
@@ -3534,6 +3884,7 @@
   {
    "codigo": "TRX",
    "nombre": "TRON",
+   "cap": 30000000000,
    "meses": [
     "2608",
     "2609",
@@ -3544,6 +3895,7 @@
   {
    "codigo": "TST",
    "nombre": "Test",
+   "cap": 11000000,
    "meses": [
     "2608",
     "2609",
@@ -3554,6 +3906,7 @@
   {
    "codigo": "TURBO",
    "nombre": "Turbo",
+   "cap": 47000000,
    "meses": [
     "2608",
     "2609",
@@ -3564,6 +3917,7 @@
   {
    "codigo": "TURTLE",
    "nombre": "Turtle",
+   "cap": 5300000,
    "meses": [
     "2608",
     "2609",
@@ -3574,6 +3928,7 @@
   {
    "codigo": "TUT",
    "nombre": "Tutorial",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -3584,6 +3939,7 @@
   {
    "codigo": "TWT",
    "nombre": "Trust Wallet Token",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -3594,6 +3950,7 @@
   {
    "codigo": "UMA",
    "nombre": "UMA",
+   "cap": 28000000,
    "meses": [
     "2608",
     "2609",
@@ -3604,6 +3961,7 @@
   {
    "codigo": "UNI",
    "nombre": "Uniswap",
+   "cap": 3900000000,
    "meses": [
     "2608",
     "2609",
@@ -3614,6 +3972,7 @@
   {
    "codigo": "USTC",
    "nombre": "TerraClassicUSD",
+   "cap": 24000000,
    "meses": [
     "2608",
     "2609",
@@ -3624,6 +3983,7 @@
   {
    "codigo": "USUAL",
    "nombre": "Usual",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -3634,6 +3994,7 @@
   {
    "codigo": "VANA",
    "nombre": "Vana",
+   "cap": 22000000,
    "meses": [
     "2608",
     "2609",
@@ -3644,6 +4005,7 @@
   {
    "codigo": "VET",
    "nombre": "VeChain",
+   "cap": 440000000,
    "meses": [
     "2608",
     "2609",
@@ -3654,6 +4016,7 @@
   {
    "codigo": "VIRTUAL",
    "nombre": "Virtuals Protocol",
+   "cap": 350000000,
    "meses": [
     "2608",
     "2609",
@@ -3664,6 +4027,7 @@
   {
    "codigo": "VTHO",
    "nombre": "VeThor Token",
+   "cap": 53000000,
    "meses": [
     "2608",
     "2609",
@@ -3674,6 +4038,7 @@
   {
    "codigo": "W",
    "nombre": "Wormhole",
+   "cap": 72000000,
    "meses": [
     "2608",
     "2609",
@@ -3684,6 +4049,7 @@
   {
    "codigo": "WAL",
    "nombre": "Walrus",
+   "cap": 74000000,
    "meses": [
     "2608",
     "2609",
@@ -3694,6 +4060,7 @@
   {
    "codigo": "WAXP",
    "nombre": "WAX",
+   "cap": 18000000,
    "meses": [
     "2608",
     "2609",
@@ -3704,6 +4071,7 @@
   {
    "codigo": "WBETH",
    "nombre": "Wrapped Beacon ETH (WBETH)",
+   "cap": 8000000000,
    "meses": [
     "2608",
     "2609",
@@ -3714,6 +4082,7 @@
   {
    "codigo": "WBTC",
    "nombre": "Wrapped Bitcoin",
+   "cap": 8600000000,
    "meses": [
     "2608",
     "2609",
@@ -3724,6 +4093,7 @@
   {
    "codigo": "WCT",
    "nombre": "WalletConnect",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -3734,6 +4104,7 @@
   {
    "codigo": "WIF",
    "nombre": "Dogwifhat",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -3744,6 +4115,7 @@
   {
    "codigo": "WIN",
    "nombre": "WINkLink",
+   "cap": 58000000,
    "meses": [
     "2608",
     "2609",
@@ -3754,6 +4126,7 @@
   {
    "codigo": "WLD",
    "nombre": "Worldcoin",
+   "cap": 1200000000,
    "meses": [
     "2608",
     "2609",
@@ -3764,6 +4137,7 @@
   {
    "codigo": "WLFI",
    "nombre": "World Liberty Financial",
+   "cap": 1500000000,
    "meses": [
     "2608",
     "2609",
@@ -3774,6 +4148,7 @@
   {
    "codigo": "WOO",
    "nombre": "WOO",
+   "cap": 20000000,
    "meses": [
     "2608",
     "2609",
@@ -3784,6 +4159,7 @@
   {
    "codigo": "XAI",
    "nombre": "Xai",
+   "cap": 13000000,
    "meses": [
     "2608",
     "2609",
@@ -3794,6 +4170,7 @@
   {
    "codigo": "XAUT",
    "nombre": "Tether Gold",
+   "cap": 3300000000,
    "meses": [
     "2608",
     "2609",
@@ -3804,6 +4181,7 @@
   {
    "codigo": "XEC",
    "nombre": "eCash",
+   "cap": 110000000,
    "meses": [
     "2608",
     "2609",
@@ -3814,6 +4192,7 @@
   {
    "codigo": "XLM",
    "nombre": "Stellar Lumens",
+   "cap": 5100000000,
    "meses": [
     "2608",
     "2609",
@@ -3824,6 +4203,7 @@
   {
    "codigo": "XNO",
    "nombre": "Nano",
+   "cap": 43000000,
    "meses": [
     "2608",
     "2609",
@@ -3834,6 +4214,7 @@
   {
    "codigo": "XPL",
    "nombre": "Plasma",
+   "cap": 250000000,
    "meses": [
     "2608",
     "2609",
@@ -3844,6 +4225,7 @@
   {
    "codigo": "XRP",
    "nombre": "XRP",
+   "cap": 67000000000,
    "meses": [
     "2608",
     "2609",
@@ -3854,6 +4236,7 @@
   {
    "codigo": "XTZ",
    "nombre": "Tezos",
+   "cap": 270000000,
    "meses": [
     "2608",
     "2609",
@@ -3864,6 +4247,7 @@
   {
    "codigo": "XVG",
    "nombre": "Verge",
+   "cap": 32000000,
    "meses": [
     "2608",
     "2609",
@@ -3874,6 +4258,7 @@
   {
    "codigo": "XVS",
    "nombre": "Venus",
+   "cap": 46000000,
    "meses": [
     "2608",
     "2609",
@@ -3884,6 +4269,7 @@
   {
    "codigo": "YB",
    "nombre": "Yield Basis",
+   "cap": 14000000,
    "meses": [
     "2608",
     "2609",
@@ -3894,6 +4280,7 @@
   {
    "codigo": "YFI",
    "nombre": "yearn.finance",
+   "cap": 69000000,
    "meses": [
     "2608",
     "2609",
@@ -3904,6 +4291,7 @@
   {
    "codigo": "YGG",
    "nombre": "Yield Guild Games",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -3914,6 +4302,7 @@
   {
    "codigo": "ZAMA",
    "nombre": "ZAMA",
+   "cap": 160000000,
    "meses": [
     "2608",
     "2609",
@@ -3924,6 +4313,7 @@
   {
    "codigo": "ZBT",
    "nombre": "Zerobase",
+   "cap": 19000000,
    "meses": [
     "2608",
     "2609",
@@ -3934,6 +4324,7 @@
   {
    "codigo": "ZEC",
    "nombre": "Zcash",
+   "cap": 17000000000,
    "meses": [
     "2608",
     "2609",
@@ -3944,6 +4335,7 @@
   {
    "codigo": "ZEN",
    "nombre": "Horizen",
+   "cap": 91000000,
    "meses": [
     "2608",
     "2609",
@@ -3954,6 +4346,7 @@
   {
    "codigo": "ZIL",
    "nombre": "Zilliqa",
+   "cap": 31000000,
    "meses": [
     "2608",
     "2609",
@@ -3964,6 +4357,7 @@
   {
    "codigo": "ZK",
    "nombre": "zkSync",
+   "cap": 100000000,
    "meses": [
     "2608",
     "2609",
@@ -3974,6 +4368,7 @@
   {
    "codigo": "ZKC",
    "nombre": "Boundless",
+   "cap": 7600000,
    "meses": [
     "2608",
     "2609",
@@ -3984,6 +4379,7 @@
   {
    "codigo": "ZKP",
    "nombre": "zkPass",
+   "cap": 6700000,
    "meses": [
     "2608",
     "2609",
@@ -3994,6 +4390,7 @@
   {
    "codigo": "ZRO",
    "nombre": "LayerZero",
+   "cap": 630000000,
    "meses": [
     "2608",
     "2609",
@@ -4004,6 +4401,7 @@
   {
    "codigo": "ZRX",
    "nombre": "0x",
+   "cap": 74000000,
    "meses": [
     "2608",
     "2609",
@@ -4014,6 +4412,7 @@
   {
    "codigo": "币安人生",
    "nombre": "币安人生",
+   "cap": 500000000,
    "meses": [
     "2608",
     "2609",
@@ -4024,6 +4423,7 @@
   {
    "codigo": "牛来",
    "nombre": "牛来",
+   "cap": 58000000,
    "meses": [
     "2609",
     "2610",
