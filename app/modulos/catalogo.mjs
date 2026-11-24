@@ -1,6 +1,6 @@
 // Catalogo publicado por mercado (decisión del usuario, 20-nov-2026): la sincronización lo
 // genera en cada pasada desde el registro local de velas. El nombre viene de la capa curada
-// (ACTIVOS_INFO y el CATALOGO incrustado del visor) o del cotejo de Binance (el campo `an` de
+// (ACTIVOS_INFO y el archivo de curados activos-curados.json) o del cotejo de Binance (el campo `an` de
 // la lista de productos, ya limpio); el tipo es solo el curado. Un alta nueva aparece por su
 // código y su nombre aunque no tenga información curada, y el reporte pide completarla; nunca
 // se inventan tipos ni datos. Si la lista de productos falla, el catálogo se genera igual con
@@ -40,22 +40,24 @@ export function validarCatalogo(buf) {
   return j.activos.length;
 }
 
-// Capa curada del visor: el CATALOGO incrustado en index.html es un literal JSON en una línea.
-// De ella salen nombres y tipos curados que el bot no tiene (sobre todo cripto).
-export function capaCuradaDesdeIndex(html) {
-  const m = /^const CATALOGO = (\{.*\});?\s*$/m.exec(html || '');
-  if (!m) throw Error('No encontré el CATALOGO incrustado en index.html.');
-  const j = JSON.parse(m[1]);
+// Capa curada: activos-curados.json (junto a este módulo) es el único sitio donde se anotan a mano
+// los datos de cada activo que el cotejo no da: nombre, tipo, capitalización, ficha EDGAR (Gobierno),
+// web oficial y si lleva fichas de Stock Analysis y TipRanks. La pasada los copia al catálogo
+// publicado y el visor lee solo el catálogo.
+export const RUTA_CURADOS = new URL('./activos-curados.json', import.meta.url);
+const CAMPOS_CURADOS = ['cap', 'cap_sub', 'cap_fecha', 'edgar', 'edgar_titulo', 'web', 'ficha'];
+export function capaCuradaDesdeJson(texto) {
+  const j = JSON.parse(texto || '');
   const capa = { stock: new Map(), cripto: new Map() };
   for (const clase of CLASES) {
-    if (!Array.isArray(j[clase])) throw Error(`El CATALOGO incrustado no trae la lista ${clase}.`);
+    if (!Array.isArray(j[clase])) throw Error(`Los curados no traen la lista ${clase}.`);
     for (const e of j[clase]) if (e && typeof e.codigo === 'string') capa[clase].set(e.codigo, e);
   }
   return capa;
 }
 
-export function leerCapaCurada(rutaIndex) {
-  return capaCuradaDesdeIndex(fs.readFileSync(rutaIndex, 'utf8'));
+export function leerCapaCurada(ruta = RUTA_CURADOS) {
+  return capaCuradaDesdeJson(fs.readFileSync(ruta, 'utf8'));
 }
 
 // Universo local: códigos y meses con velas registradas, por mercado. Misma criba que la
@@ -85,12 +87,13 @@ export function universoLocal(dirRaiz) {
 export function generarCatalogo(clase, uni, nombres = {}, capa = { stock: new Map(), cripto: new Map() }) {
   const activos = [];
   for (const [codigo, meses] of [...uni[clase].entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const info = ACTIVOS_INFO[codigo];
+    const info = clase === 'stock' ? ACTIVOS_INFO[codigo] : undefined; // ACTIVOS_INFO es de acciones: un cripto con el mismo código (BB, QNT, STX) no hereda su nombre ni su tipo
     const curado = capa[clase].get(codigo) || {};
     activos.push({
       codigo,
       nombre: (info && info[0]) || curado.nombre || nombres[codigo] || codigo,
       ...((info && info[1]) || curado.tipo ? { tipo: (info && info[1]) || curado.tipo } : {}),
+      ...Object.fromEntries(CAMPOS_CURADOS.filter((k) => curado[k] !== undefined).map((k) => [k, curado[k]])),
       meses,
     });
   }
@@ -103,7 +106,7 @@ export function generarCatalogo(clase, uni, nombres = {}, capa = { stock: new Ma
 // revisado: no es faltante.
 export function faltantes(clase, activos, capa) {
   return activos
-    .filter((e) => (!ACTIVOS_INFO[e.codigo] && !capa[clase].has(e.codigo)) || (clase === 'stock' && !e.tipo))
+    .filter((e) => ((clase !== 'stock' || !ACTIVOS_INFO[e.codigo]) && !capa[clase].has(e.codigo)) || (clase === 'stock' && !e.tipo))
     .map((e) => e.codigo);
 }
 
@@ -136,12 +139,12 @@ export function escribirCatalogo(dirRaiz, clase, activos, ahora = Date.now()) {
 // cotejo del universo; si la lista de productos falla, se genera igual con lo curado (un alta
 // no se oculta: aparece por su código) y la línea lo anota. Si la capa curada no se puede leer,
 // se genera igual y la línea avisa que el aviso de faltantes quedó limitado.
-export async function actualizarCatalogos({ dirRaiz, ahora = Date.now(), rutaIndex, listarUniversoImpl = listarUniverso } = {}) {
+export async function actualizarCatalogos({ dirRaiz, ahora = Date.now(), rutaCurados = RUTA_CURADOS, listarUniversoImpl = listarUniverso } = {}) {
   const lineas = [];
   const uni = universoLocal(dirRaiz);
   let capa = { stock: new Map(), cripto: new Map() }, avisoCapa = '';
-  if (rutaIndex) {
-    try { capa = leerCapaCurada(rutaIndex); }
+  if (rutaCurados) {
+    try { capa = leerCapaCurada(rutaCurados); }
     catch (e) { avisoCapa = `capa curada sin leer (${e.message}); faltantes solo por nombre` ; }
   }
   let nombres = { stock: {}, cripto: {} }, avisoApi = '';

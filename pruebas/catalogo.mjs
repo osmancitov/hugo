@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { esRutaCatalogo, dirCatalogo, capaCuradaDesdeIndex, universoLocal, generarCatalogo, faltantes, escribirCatalogo, actualizarCatalogos } from '../app/modulos/catalogo.mjs';
+import { esRutaCatalogo, dirCatalogo, capaCuradaDesdeJson, universoLocal, generarCatalogo, faltantes, escribirCatalogo, actualizarCatalogos } from '../app/modulos/catalogo.mjs';
 
 function armarRegistro() {
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-catalogo-'));
@@ -28,8 +28,8 @@ function armarRegistro() {
 function armarIndex(dir) {
   // La capa curada del visor: BTC revisado aunque la API no dé nombre; 0G revisado con nombre
   // igual al código (caso real: no es faltante).
-  const ruta = path.join(dir, 'index.html');
-  fs.writeFileSync(ruta, `<script>\nconst CATALOGO = {"stock":[{"codigo":"AAPL","nombre":"Apple","tipo":"empresa"}],"cripto":[{"codigo":"BTC","nombre":"Bitcoin"},{"codigo":"0G","nombre":"0G"}]};\n</script>\n`);
+  const ruta = path.join(dir, 'activos-curados.json');
+  fs.writeFileSync(ruta, JSON.stringify({ stock: [{ codigo: 'AAPL', nombre: 'Apple', tipo: 'empresa', edgar: 'https://www.sec.gov/x', web: 'https://www.apple.com', ficha: true, cap: 5 }], cripto: [{ codigo: 'BTC', nombre: 'Bitcoin', cap: 9 }, { codigo: '0G', nombre: '0G' }] }));
   return ruta;
 }
 
@@ -41,11 +41,12 @@ test('ruta y carpeta del catálogo', () => {
   assert.equal(dirCatalogo('/r/registros'), path.join('/r/registros', 'catalogo'));
 });
 
-test('capaCuradaDesdeIndex lee el literal incrustado del visor', () => {
-  const capa = capaCuradaDesdeIndex(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
+test('capaCuradaDesdeJson lee el archivo de curados', () => {
+  const capa = capaCuradaDesdeJson(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
   assert.equal(capa.cripto.get('BTC').nombre, 'Bitcoin');
   assert.equal(capa.stock.get('AAPL').tipo, 'empresa');
-  assert.throws(() => capaCuradaDesdeIndex('<html></html>'));
+  assert.throws(() => capaCuradaDesdeJson('<html></html>'));
+  assert.throws(() => capaCuradaDesdeJson('{"stock":[]}'));
 });
 
 test('universoLocal lee códigos y meses del registro, con piso y excluidos', () => {
@@ -61,9 +62,11 @@ test('generarCatalogo: ACTIVOS_INFO > capa curada > cotejo > código; tipo solo 
   const uni = universoLocal(armarRegistro());
   uni.stock.set('NUEVO', ['2611']);
   uni.cripto.set('APIONLY', ['2611']);
-  const capa = capaCuradaDesdeIndex(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
+  const capa = capaCuradaDesdeJson(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
   const stock = new Map(generarCatalogo('stock', uni, { NUEVO: 'Nombre Del Cotejo' }, capa).map((e) => [e.codigo, e]));
   assert.deepEqual(stock.get('ANT'), { codigo: 'ANT', nombre: 'Anthropic', tipo: 'empresa', meses: ['2611'] });
+  // Los datos curados (capitalización, Gobierno, web oficial, ficha) viajan al catálogo publicado.
+  assert.deepEqual(stock.get('AAPL'), { codigo: 'AAPL', nombre: 'Apple', tipo: 'empresa', cap: 5, edgar: 'https://www.sec.gov/x', web: 'https://www.apple.com', ficha: true, meses: ['2608', '2611'] });
   assert.deepEqual(stock.get('NUEVO'), { codigo: 'NUEVO', nombre: 'Nombre Del Cotejo', meses: ['2611'] });
   const cripto = new Map(generarCatalogo('cripto', uni, { APIONLY: 'Nombre Api' }, capa).map((e) => [e.codigo, e]));
   assert.equal(cripto.get('BTC').nombre, 'Bitcoin'); // de la capa curada, no del código
@@ -75,7 +78,7 @@ test('faltantes: solo lo que no está en ninguna capa curada; nombre igual al c�
   const uni = universoLocal(armarRegistro());
   uni.cripto.set('0G', ['2611']);
   uni.cripto.set('NUEVACRIP', ['2611']);
-  const capa = capaCuradaDesdeIndex(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
+  const capa = capaCuradaDesdeJson(fs.readFileSync(armarIndex(fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-capa-'))), 'utf8'));
   const cripto = generarCatalogo('cripto', uni, {}, capa);
   assert.deepEqual(faltantes('cripto', cripto, capa), ['NUEVACRIP']); // BTC y 0G están en la capa
   const stock = generarCatalogo('stock', uni, {}, capa);
@@ -99,8 +102,8 @@ test('escribirCatalogo escribe una vez y luego igual; conserva la fecha de gener
 
 test('actualizarCatalogos genera ambos mercados; la capa curada evita avisos falsos', async () => {
   const raiz = armarRegistro();
-  const rutaIndex = armarIndex(raiz);
-  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaIndex, listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: {} } }) });
+  const rutaCurados = armarIndex(raiz);
+  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: {} } }) });
   const stock = r.lineas.find((l) => l.mercado === 'stock');
   const cripto = r.lineas.find((l) => l.mercado === 'cripto');
   assert.equal(stock.estado, 'escrito');
@@ -115,8 +118,8 @@ test('actualizarCatalogos genera ambos mercados; la capa curada evita avisos fal
 
 test('si la lista de productos falla, el alta no se oculta y la línea informa el fallo', async () => {
   const raiz = armarRegistro();
-  const rutaIndex = armarIndex(raiz);
-  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaIndex, listarUniversoImpl: async () => { throw Error('red caída'); } });
+  const rutaCurados = armarIndex(raiz);
+  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: async () => { throw Error('red caída'); } });
   const stock = r.lineas.find((l) => l.mercado === 'stock');
   assert.equal(stock.estado, 'escrito'); // se genera igual, con lo curado
   assert.match(stock.aviso, /lista de productos sin consultar \(red caída\)/);
@@ -128,8 +131,8 @@ test('alta sin información curada en ninguna capa: visible por su código y ano
   const raiz = armarRegistro();
   fs.mkdirSync(path.join(raiz, 'velas-24h', 'cripto', 'NUEVACRIP'), { recursive: true });
   fs.writeFileSync(path.join(raiz, 'velas-24h', 'cripto', 'NUEVACRIP', '2611_NUEVACRIP'), 'x');
-  const rutaIndex = armarIndex(raiz);
-  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaIndex, listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: {} } }) });
+  const rutaCurados = armarIndex(raiz);
+  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: {} } }) });
   const cripto = r.lineas.find((l) => l.mercado === 'cripto');
   assert.deepEqual(cripto.sinInfo, ['NUEVACRIP']);
   const j = JSON.parse(fs.readFileSync(path.join(dirCatalogo(raiz), 'cripto'), 'utf8'));
@@ -138,9 +141,20 @@ test('alta sin información curada en ninguna capa: visible por su código y ano
 
 test('si la capa curada no se puede leer, se genera igual y la línea lo avisa', async () => {
   const raiz = armarRegistro();
-  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaIndex: path.join(raiz, 'no-existe.html'), listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: { BTC: 'Bitcoin' } } }) });
+  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados: path.join(raiz, 'no-existe.json'), listarUniversoImpl: async () => ({ nombres: { stock: {}, cripto: { BTC: 'Bitcoin' } } }) });
   const stock = r.lineas.find((l) => l.mercado === 'stock');
   assert.equal(stock.estado, 'escrito');
   assert.match(stock.aviso, /capa curada sin leer/);
   assert.deepEqual(stock.sinInfo, []); // ANT y AAPL tienen tipo vía ACTIVOS_INFO
+});
+
+test('el catálogo publicado trae los campos curados y un cripto no hereda el nombre de un stock', async () => {
+  const fs = await import('node:fs');
+  const leer = (m) => JSON.parse(fs.readFileSync(new URL('../registros/catalogo/' + m, import.meta.url), 'utf8')).activos;
+  const cripto = Object.fromEntries(leer('cripto').map((e) => [e.codigo, e]));
+  assert.equal(cripto.BB.nombre, 'BounceBit');
+  assert.equal(cripto.QNT.nombre, 'Quant');
+  assert.equal(cripto.STX.nombre, 'Stacks');
+  const aapl = leer('stock').find((e) => e.codigo === 'AAPL');
+  assert.ok(aapl.web && aapl.edgar && aapl.ficha === true);
 });
