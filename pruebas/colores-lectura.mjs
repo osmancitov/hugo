@@ -1,3 +1,4 @@
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,6 +29,7 @@ test('detalle diario nace de velas exactas sin reescribir los registros',()=>{
    const p=path.join(velas,clase,c);fs.mkdirSync(p,{recursive:true});
    fs.writeFileSync(path.join(p,'2611_'+c),JSON.stringify([[ts,'10','11','9',String(precio)]]));
   }
+  catalogoDeCarpetas(path.join(dir,'registros'));
   const p=path.join(dir,'registros/pre-calculado/stock/iceberg-90d');fs.mkdirSync(p,{recursive:true});
   const file=path.join(p,'261018-261120_iceberg'), original=JSON.stringify([[ts,2,1]]);
   fs.writeFileSync(file,original);

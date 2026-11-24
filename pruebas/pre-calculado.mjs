@@ -2,6 +2,7 @@
 // usuario, 20-nov-2026): ventana por duración con corte común, un archivo por día y mercado que
 // no se pisa, cero = verde en barra y ranking, y las métricas de la vista Variación dentro de la
 // ventana para la Lectura del día.
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,6 +29,7 @@ function banco(activos) {
     fs.mkdirSync(dir, { recursive: true });
     for (const [aamm, filas] of Object.entries(meses)) fs.writeFileSync(path.join(dir, `${aamm}_${cod}`), JSON.stringify(filas));
   }
+  catalogoDeCarpetas(dirRaiz);
   return dirRaiz;
 }
 const mapaDe = (obj) => new Map(Object.entries(obj));

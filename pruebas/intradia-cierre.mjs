@@ -1,3 +1,4 @@
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +8,7 @@ import { asegurarCierreDiario } from '../app/modulos/intradia-cierre.mjs';
 import { cierreVelaDiaAnterior } from '../app/modulos/barra-movil.mjs';
 const DIA=86400000,T=Date.UTC(2026,10,22),ref=T-DIA;
 const vela=(t,precio='100')=>[t,precio,precio,precio,precio,'0',t+DIA-1,'0',0,'0','0','0'];
-function caso(codigos=['AAA']){const p=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-cierre-test-')),dirVelas=path.join(p,'velas');for(const c of codigos)fs.mkdirSync(path.join(dirVelas,'stock',c),{recursive:true});return {p,dirVelas};}
+function caso(codigos=['AAA']){const p=fs.mkdtempSync(path.join(os.tmpdir(),'hugo-cierre-test-')),dirVelas=path.join(p,'velas');for(const c of codigos)fs.mkdirSync(path.join(dirVelas,'stock',c),{recursive:true});for(const cl of ['stock','cripto']){fs.mkdirSync(path.join(p,'catalogo'),{recursive:true});fs.writeFileSync(path.join(p,'catalogo',cl),JSON.stringify({mercado:cl,generado:'prueba',activos:(cl==='stock'?codigos:['ZZZ']).map(codigo=>({codigo,nombre:codigo,meses:['2611']}))}));}return {p,dirVelas};}
 const respuesta=j=>({ok:true,json:async()=>j});
 test('comprueba disponibilidad real, espera un minuto y reintenta solo los pendientes',async()=>{
  const c=caso(['AAA','BBB']),urls=[],esperas=[];let ronda=0,tiempo=T;

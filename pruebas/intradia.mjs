@@ -1,4 +1,5 @@
 // Pruebas aisladas: las lecturas simuladas viven solo en temporales y nunca se publican.
+import { catalogoDeCarpetas } from './_catalogo.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -122,6 +123,7 @@ test('toma reutiliza dos tandas, conserva la única foto heredada y publica solo
   const p = temp(), ctx = contexto(p), raiz = path.join(p, 'registros');
   try {
     fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA'), { recursive: true });
+    catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
     // Vela cerrada mínima para la referencia fija del generador existente.
     fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA', '2611_AAA'), JSON.stringify([[Date.UTC(2026, 10, 20), '100', '100', '100', '100']]));
     escribirBarra(raiz, foto());
@@ -289,9 +291,9 @@ test('GitHub recuperado publica cola aunque falle la toma; con reloj apagado no 
     ctx.conf.HUGO_INTRADIA_MINUTOS = '5'; ctx.inicios.length = 0;
     registrarIntradia(ctx); for (const fn of ctx.inicios) await fn(); assert.equal(publicadas, 1); assert.equal(temporizadores.length, 1);
     disponible = true; ahora += temporizadores[0].ms;
-    await temporizadores[0].fn(); // Sin universo: la toma falla sin consultar red.
+    await temporizadores[0].fn(); // Sin catálogo (y sin universo): la toma falla sin consultar red.
     assert.equal(publicadas, 2); assert.deepEqual(pendientesIntradia(raiz), {});
-    assert.match(ctx.intradiaInfo().error, /No hay carpetas/);
+    assert.match(ctx.intradiaInfo().error, /catálogo de stock ausente/);
     assert.equal(temporizadores.length, 2); assert.equal(temporizadores[1].ms, 300000);
   } finally { global.setTimeout = timeout; console.error = consola; limpiar(p); }
 });
@@ -303,6 +305,7 @@ test('funcionamiento continuo: conserva huecos por 429, recupera cola y sigue pr
   global.setTimeout = (fn, ms) => { temporizadores.push({ fn, ms }); return { unref() {} }; }; console.error = () => {};
   try {
     fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA'), { recursive: true });
+    catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
     fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR, 'stock', 'AAA', '2611_AAA'), JSON.stringify([[T - 10 * 3600000 - DIA, '100', '100', '100', '100']]));
     ctx.ahora = () => ahora; ctx.conf.HUGO_INTRADIA_MINUTOS = '5';
     const esperas=[];ctx.esperarIntradia=async ms=>{esperas.push(ms);ahora+=ms;};
@@ -366,6 +369,7 @@ test('consulta en el hito sin esperar reporte Slack; ciclo lento no se solapa ni
   let ahora=Date.parse('2026-11-21T14:13:47Z'), consultas=0, liberar;
   ctx.ahora=()=>ahora; ctx.conf.HUGO_INTRADIA_MINUTOS='5';
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
   fs.writeFileSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA','2611_AAA'),JSON.stringify([[Date.UTC(2026,10,20),'100','100','100','100']]));
   ctx.publicarIntradia=async archivos=>{ahora=Date.parse('2026-11-21T14:27:00Z');return {archivos,commit:'abcdef0'};};
   global.setTimeout=(fn,ms)=>{timers.push({fn,ms});return {unref(){}};};
@@ -387,6 +391,7 @@ test('primera foto no espera ni consulta cierres diarios y usa instante real', a
  try{
   ctx.ahora=()=>ahora;
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
   ctx.publicarIntradia=async archivos=>({archivos,commit:'abcdef0'});
   const fetchImpl=async url=>{
    assert.ok(new URL(url).pathname.endsWith('/ticker')); consultas++;
@@ -403,6 +408,7 @@ test('429 preparando cierre respeta pausa duradera, libera guardias y no inventa
  const p=temp(),ctx=contexto(p);ctx.ahora=()=>Date.UTC(2026,10,22);
  try{
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
   let peticiones=0;const fetchImpl=async()=>{peticiones++;return {status:429,headers:{get:()=> '120'}};};
   registrarIntradia(ctx);
   await assert.rejects(()=>ctx.tomarBarra({fetchImpl}),/HTTP 429/);
@@ -514,6 +520,7 @@ test('captura de nuevo día no lee cierres diarios y reinicia primera y tercera 
  try{
   guardarLectura(raiz,foto(T,90));
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
   ctx.ahora=()=>t;ctx.publicarIntradia=async archivos=>({archivos});registrarIntradia(ctx);
   const r=await ctx.tomarBarra({fetchImpl:async url=>{assert.ok(new URL(url).pathname.endsWith('/ticker'));return {ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'120',openTime:t-DIA,closeTime:t}])};}});
   assert.equal(r.barra.dia.base,t);assert.equal(r.barra.dia.iguales,1);assert.equal(r.barra.movimiento.iguales,1);assert.equal(r.barra.comparadaCon,t);
@@ -524,6 +531,7 @@ test('ingesta o transporte general ocupado no impiden captura independiente; fal
  const p=temp(),ctx=contexto(p),raiz=path.join(p,'registros'),t=Date.UTC(2026,10,22);
  try{
   fs.mkdirSync(path.join(ctx.conf.HUGO_VELAS_DIR,'stock','AAA'),{recursive:true});
+  catalogoDeCarpetas(path.dirname(ctx.conf.HUGO_VELAS_DIR));
   ctx.ahora=()=>t;ctx.registroOcupado=()=>true;ctx.sincronizacionEnCurso=()=>true;
   ctx.publicarIntradia=async()=>{throw Error('Transporte ocupado');};registrarIntradia(ctx);
   const r=await ctx.tomarBarra({fetchImpl:async()=>({ok:true,text:async()=>JSON.stringify([{symbol:'AAABUSDT',openPrice:'100',lastPrice:'120',openTime:t-DIA,closeTime:t}])})});
