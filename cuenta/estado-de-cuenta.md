@@ -6,19 +6,23 @@ Aprender el oficio y construir las herramientas.
 
 ## Rendimiento de la cuenta
 
-## Día: 22 nov → 23 nov
+## Día: 24 nov → 25 nov
 
-240,78 USD → 240,71 USD. Variación: −0,03%.
+240,71 USD → 235,59 USD. Variación: −2,13%.
 
-## Semana: 16 nov → 23 nov
+## Semana: 18 nov → 25 nov
 
-257,16 USD → 240,71 USD. Variación: −6,40%.
+256,00 USD → 235,59 USD. Variación: −7,97%.
 
-## Mes: 23 oct → 23 nov
+## Mes: 25 oct → 25 nov
 
-306,55 USD → 240,71 USD. Variación: −21,48%.
+306,55 USD → 235,59 USD. Variación: −23,15%.
 
 ## Historial de movimientos
+
+## 25 de noviembre: [SOXS](https://osmancitov.github.io/hugo/#/a/stock/SOXS)
+
+−5,12 USD. −2,13 %. Saldo: 235,59 USD. Compra: 73,540 USD. Venta: 71,976 USD.
 
 ## 23 de noviembre: [CRWD](https://osmancitov.github.io/hugo/#/a/stock/CRWD)
 
