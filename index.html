@@ -147,6 +147,11 @@ a:hover { text-decoration: underline; }
 .camp-cuad-eje.camp-eje-pot { fill: var(--oro); } .camp-cuad-eje.camp-eje-con { fill: #7fb2e5; } /* mismos colores que las curvas: Potencia amarillo, Constancia azul (usuario, Slack 1795610220.251959) */
 .camp-cuad-cod { fill: var(--texto); font-size: 19px; font-weight: 700; pointer-events: none; }
 .camp-lista .cap { white-space: nowrap; }
+.camp-lista .camp-fila .tipo { width: 5.6em; max-width: none; }
+.camp-lista .camp-fila .cap { width: 4.8em; text-align: right; }
+.camp-cab { cursor: default; color: var(--tenue); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid rgba(194,161,90,.25); }
+.camp-cab .tipo, .camp-cab .cap { margin-right: -.06em; }
+.camp-cab span { color: var(--tenue) !important; font-size: .72rem !important; font-weight: 400 !important; }
 .camp-n-premium { color: #6fbf8a !important; }
 .camp-n-potentes { color: var(--oro) !important; }
 .camp-n-constantes { color: #7fb2e5 !important; }
@@ -2122,7 +2127,6 @@ function graficaCampo(caja,u,seleccion,alElegir){
   svg.append(svgEl('path',{d:`M${HX} ${HY} L${c0x.toFixed(1)} ${c0y.toFixed(1)} A${rho(1)*S} ${rho(1)*S} 0 0 1 ${c1x.toFixed(1)} ${c1y.toFixed(1)} Z`,class:'camp-campo-dentro'}));
   const aros=[0.25,0.5];for(let v=2;v<RMAX;v*=2)aros.push(v);
   for(const r of aros)svg.append(svgEl('path',{d:arco(r,-45,45),class:'camp-rej',fill:'none'}));
-  svg.append(svgEl('line',{x1:HX,y1:HY,x2:pol(RMAX,0)[0],y2:pol(RMAX,0)[1],class:'camp-uno'}));
   svg.append(svgEl('path',{d:arco(1,-45,45),class:'camp-campo-cerca'}));
   svg.append(svgEl('line',{x1:HX,y1:HY,x2:fx0,y2:fy0,class:'camp-campo-foul camp-eje-pot'}));
   svg.append(svgEl('line',{x1:HX,y1:HY,x2:fx1,y2:fy1,class:'camp-campo-foul camp-eje-con'}));
@@ -2206,6 +2210,7 @@ async function vistaCampana(n,inicial){
     pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista baja al detalle
   }
   lista.className='camp-lista';
+  {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña']]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
   for(const a of ordenarCampana(u.clasificados)){
     const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
     f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
@@ -2213,7 +2218,7 @@ async function vistaCampana(n,inicial){
     {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
     f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
     f.querySelector('.nom').textContent=e?e.nombre:'';
-    const cp=f.querySelector('.cap');cp.textContent=`Campaña ${fmtCoef(campana(a))}`;cp.classList.add('camp-n-'+a.grupo);
+    const cp=f.querySelector('.cap');cp.textContent=fmtCoef(campana(a));cp.classList.add('camp-n-'+a.grupo);
     cp.title=(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]+' · Campaña = raíz((P² + C²) / 2)';
     filas.set(a.id,f);lista.append(f);
   }

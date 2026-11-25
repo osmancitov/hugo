@@ -70,8 +70,11 @@ test('Campañas: campo con radio logarítmico solo en r desde 0,1, un color por 
   assert.match(h, /R0=0\.1,rho=r=>Math\.log2\(r\/R0\)/);
   assert.match(h, /camp-g-'\+a\.grupo/);
   assert.match(h, /camp-n-'\+a\.grupo/);
+  assert.match(h, /\['cod','Código'\],\['nom','Nombre'\],\['tipo','Tipo'\],\['cap','Campaña'\]/);
+  assert.doesNotMatch(h, /textContent=`Campaña \$\{fmtCoef\(campana\(a\)\)\}`/);
   assert.doesNotMatch(h, /camp-grupo|createElement\('details'\)/);
   assert.match(h, /tx\('Premium',pol\(RMAX\*\.9,0\)/);
+  assert.doesNotMatch(h, /y2:pol\(RMAX,0\)\[1\],class:'camp-uno'/); // sin guía central punteada en el campo
   assert.match(h, /Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1/);
 });
 
