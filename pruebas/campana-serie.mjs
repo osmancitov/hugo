@@ -68,4 +68,5 @@ test('Campañas: cuadrantes en escala logarítmica y un color por grupo', () => 
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /Math\.log2\(c\)-lc\[0\]/);
   assert.match(h, /camp-g-'\+a\.grupo/);
+  assert.match(h, /camp-cuad-juntos/); assert.match(h, /activos juntos aqu/);
 });

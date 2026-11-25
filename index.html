@@ -122,6 +122,9 @@ a:hover { text-decoration: underline; }
 .camp-g-rezagados { fill: #8d8a99; fill-opacity: .6; background: #8d8a99; }
 .camp-cuad-ley { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
 .camp-cuad-k { display: inline-block; width: .7em; height: .7em; border-radius: 50%; margin-right: .35em; }
+.camp-cuad-juntos { margin: .4rem 0; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.camp-cuad-juntos p { width: 100%; margin: 0; color: var(--tenue); font-size: .85rem; }
+.camp-cuad-op { font: inherit; font-size: .85rem; padding: .35rem .6rem; min-height: 2.2rem; border-radius: 6px; border: 1px solid var(--oro); background: transparent; color: var(--texto); cursor: pointer; }
 .camp-cuad-pto:hover { stroke: var(--texto); stroke-width: 1.5; }
 .camp-cuad-pto.camp-sel { fill-opacity: 1; stroke: #fff3cf; stroke-width: 2; }
 .camp-cuad-rot { fill: var(--oro); font-size: 16px; letter-spacing: .06em; text-transform: uppercase; opacity: .9; pointer-events: none; }
@@ -2072,12 +2075,24 @@ function graficaCuadrantes(caja,u,seleccion,alElegir){
     const ti=svgEl('title');ti.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
   }
   if(seleccion){const a=cl.find(q=>q.id===seleccion);if(a){const cx=x(a.constancia),an=cx>W*0.7?'end':'start';const t=svgEl('text',{x:cx+(an==='end'?-11:11),y:y(a.potencia)+4,'text-anchor':an,class:'camp-cuad-cod'});t.textContent=(entradaCampana(a.id)?.codigo)||a.id.split(':')[1];svg.append(t);}}
-  svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
+  const sel2=document.createElement('div');sel2.className='camp-cuad-juntos';sel2.hidden=true;
+  svg.addEventListener('click',ev=>{
+    const pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());
+    const cerca=cl.map(a=>({a,d:Math.hypot(x(a.constancia)-q.x,y(a.potencia)-q.y)})).filter(o=>o.d<=9).sort((m,n)=>m.d-n.d);
+    if(!cerca.length){sel2.hidden=true;return;}
+    if(cerca.length===1){alElegir(cerca[0].a.id);return;}
+    // Varios activos juntos: se elige de una lista, sin adivinar cuál era.
+    sel2.replaceChildren();const p=document.createElement('p');p.textContent=`${cerca.length} activos juntos aquí. Elige uno:`;sel2.append(p);
+    for(const {a} of cerca){const b=document.createElement('button');b.type='button';b.className='camp-cuad-op camp-g-'+a.grupo;b.dataset.id=a.id;
+      b.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);
+      b.addEventListener('click',()=>alElegir(a.id));sel2.append(b);}
+    sel2.hidden=false;
+  });
   const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent='Cuatro cuadrantes';
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Cada punto es un activo, con su grupo en su color. Escala logarítmica: 2 y ½ quedan a la misma distancia del 1. Toca un punto para elegirlo.';
-  caja.replaceChildren(tit,svg,ley,ej);
+  caja.replaceChildren(tit,svg,sel2,ley,ej);
 }
 async function vistaCampana(n,inicial){
   app.replaceChildren();
