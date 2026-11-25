@@ -9,9 +9,10 @@ const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
 const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '#00c470', [COLORES_LECTURA.gris]: '#a5abb5', transparent: 'transparent' };
 const ORO = '#c2a15a';
 // Escala fija de altura desde la partida (% desde la primera lectura del día), igual todos los días: no se ajusta al máximo ni al mínimo de la pantalla.
-export const ESCALA_ALTURA = [[-15, '#6d28d9', '≤ -15'], [-10, '#7c3aed', '-15/-10'], [-6, '#8b5cf6', '-10/-6'], [-2.5, '#a78bfa', '-6/-2,5'], [-.5, '#c4b5fd', '-2,5/-0,5'], [.5, '#e5e7eb', '±0,5'], [2.5, '#fed7aa', '0,5/2,5'], [6, '#fdba74', '2,5/6'], [10, '#fb923c', '6/10'], [15, '#f97316', '10/15'], [Infinity, '#ea580c', '≥ 15']];
-// Cada tramo toma el color de la banda donde cae su altura; la altura de la línea nunca se recorta; el color satura en ±15 %.
-export const colorAltura = (a) => (ESCALA_ALTURA.find(([limite]) => a <= limite) ?? ESCALA_ALTURA.at(-1))[1];
+export const colorAltura = (a) => { const t = Math.min(1, Math.abs(a) / 15), v = Math.round(255 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; };
+export const ESCALA_ALTURA = [[-15, '≤ -15'], [-10, '-10'], [-6, '-6'], [-2.5, '-2,5'], [-.5, '-0,5'], [0, '0'], [.5, '0,5'], [2.5, '2,5'], [6, '6'], [10, '10'], [15, '≥ 15']].map(([v, et]) => [v, colorAltura(v), et]);
+// Degradé continuo: negro en 0, rojo hasta (255,0,0) en -15 %, verde hasta (0,255,0) en +15 %; la altura de la línea nunca se recorta.
+
 export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
 export const porcentajeSuperficie = (n) => {
   if (n === null) return 'sin comparación';

@@ -52,5 +52,7 @@ test('la escala de altura de las crestas es fija (no depende del máximo de la p
   assert.equal(colorAltura(15.01), colorAltura(80));
   assert.equal(colorAltura(-15), colorAltura(-60));
   assert.notEqual(colorAltura(5), colorAltura(-5));
-  assert.equal(colorAltura(0), '#e5e7eb');
+  assert.equal(colorAltura(0), '#00' + '00' + '00');
+  assert.equal(colorAltura(15), '#00ff00');
+  assert.equal(colorAltura(-15), '#ff0000');
 });
