@@ -1998,7 +1998,7 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
   for(const id of Object.keys(s.activos)){
     const d=trazo(id),sel=id===seleccion,g=sel?cima:capa;
     g.append(svgEl('path',{d,class:sel?'camp-lin camp-sel':'camp-lin','data-id':id},[]));
-    if(!sel){const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=(entradaCampana(id)?.codigo)||id;hit.append(ti);g.append(hit);}
+    {const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=(entradaCampana(id)?.codigo)||id;hit.append(ti);g.append(hit);} // también la seleccionada: un segundo clic la suelta
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Carreras en horizontal (una por día), puesto en vertical: el 1 arriba.';
