@@ -11,3 +11,5 @@ La ilustración propia es `recorrido.jpg`, sin recorte ni redimensionamiento y c
 Pruebas: `node --test pruebas/estado-de-cuenta.mjs`, desde la raíz del repositorio.
 
 Las barras históricas completas representan el 100% del capital de cada movimiento. La base amarilla lleva a la derecha un segmento del porcentaje registrado: rojo para pérdidas y verde para ganancias. Inicio usa verde completo. Un movimiento sin porcentaje registrado, como CRWD, no recibe una barra calculada a partir del precio o de cifras aproximadas.
+
+Para añadir una operación: el usuario da el saldo final y el precio de compra; el precio de venta se calcula para que cuadre con ese saldo, con la comisión ya incluida. `node cuenta/registrar.mjs --activo CRWD --mercado stock --compra 210 --saldo-final 244 --fecha AAAA-MM-DD --hora-compra HH:MM --hora-venta HH:MM` (con `--solo-mostrar` no escribe). El cálculo está en `operacion.mjs`. Una operación por vez, desde el último saldo del registro.
