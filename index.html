@@ -792,7 +792,7 @@ function periodoBarra(desde, hasta, modo) {
   }
   return `${fechaPeriodoBarra(desde)}-${fechaPeriodoBarra(hasta)} UTC`;
 }
-function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock' } = {}) {
+function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock', sinFuente = false } = {}) {
   const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}&dia=${diaUTC(b.dia.base??b.generada)}${mercado === 'cripto' ? '&mercado=cripto' : ''}` : '';
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
@@ -887,7 +887,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock' 
   const fuente = document.createElement('div');
   fuente.className = 'barra-movil-nota';
   fuente.textContent = 'Fuente: Binance';
-  caja.append(fuente);
+  if (!sinFuente) caja.append(fuente); // Mercado: sin fuente al final de las barras (audio 1795641936.576919)
   return caja;
 }
 
@@ -1049,7 +1049,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
     grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), crestas: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
       const b = soloFiltro(barraContextual(registro,i));
-      barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true, mercado }));
+      barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true, mercado, sinFuente: Boolean(en) }));
     } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {
@@ -1081,10 +1081,11 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       try {
         if (en) {
           // Prototipo (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
-          const codigos = new Set(); let fecha = ''; const pref = mercado === 'cripto' ? 'cripto:' : 'stock:'; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
-          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fecha = fechaLegibleUTC(u.carrera.ventana.fin); for (const a of u.clasificados) { if (!a.id.startsWith(pref)) continue; if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id.slice(pref.length)); } }
+          const codigos = new Set(); let fechaFin = ''; const pref = mercado === 'cripto' ? 'cripto:' : 'stock:'; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
+          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (!a.id.startsWith(pref)) continue; if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id.slice(pref.length)); } }
           const conteoG = `Premium ${porG.premium.size} · Potentes ${porG.potentes.size} · Constantes ${porG.constantes.size}`;
-          filtro = { codigos, nota: `${codigos.size} ${mercado === 'cripto' ? 'cripto' : 'acciones y fondos'} admitidos en la campaña de ${Number(puente?.ventana?.()) || 90} días${conteoG ? ' · ' + conteoG : ''} · cierre del ${fecha}` };
+          const [, mf, df] = fechaFin.split('-').map(Number);
+          filtro = { codigos, nota: `${codigos.size} activos VIP · ${conteoG} · ${df} ${MESES_ES[mf - 1]}` }; // audios 1795642038.435379 y 1795642241.641729 (fecha corta, sin año)
         } else if (g === 'todos') filtro = null;
         else {
           const n = ventanaVal, { u } = await cargarCampana(n);
@@ -1275,9 +1276,10 @@ function pieIceberg(ctx, punto, e, ancho, alto, tamano) {
   const fecha=new Date(punto[0]);
   const cifras=cifrasConteos(punto[1]+punto[3],punto[2],punto[3]);
   const trozos=[{texto:`${fecha.getUTCDate()} ${MESES_ES[fecha.getUTCMonth()]} · `,color:TICK}];
+  const palabra=[(n)=>n===1?'bajó':'bajaron',(n)=>n===1?'igual':'iguales',(n)=>n===1?'subió':'subieron']; // Mercado: cada cifra con su significado y su color (audio 1795641936.576919)
   cifras.forEach(({valor,color},i)=>{
     if(i)trozos.push({texto:' · ',color:TICK});
-    trozos.push({texto:String(valor),color});
+    trozos.push({texto:e.limpio?`${valor} ${palabra[i](valor)}`:String(valor),color});
   });
   ctx.font=`${tamano}px ${FUENTE}`;
   const medida=trozos.reduce((s,t)=>s+ctx.measureText(t.texto).width,0);
@@ -1285,7 +1287,8 @@ function pieIceberg(ctx, punto, e, ancho, alto, tamano) {
   ctx.font=`${tamano*ajuste}px ${FUENTE}`;
   let x=(ancho-medida*ajuste)/2;
   ctx.textAlign='left';ctx.textBaseline='middle';
-  for(const t of trozos){ctx.fillStyle=t.color;ctx.fillText(t.texto,x,alto-tamano*2-5);x+=ctx.measureText(t.texto).width;}
+  for(const t of trozos){ctx.fillStyle=t.color;ctx.fillText(t.texto,x,alto-tamano*(e.limpio?1.1:2)-(e.limpio?3:5));x+=ctx.measureText(t.texto).width;}
+  if(e.limpio)return;
   const fuente=`Fuente: ${e.fuente}`;
   ctx.font=`${tamano}px ${FUENTE}`;
   const escala=Math.min(1,(ancho-32)/Math.max(1,ctx.measureText(fuente).width));
@@ -1294,6 +1297,7 @@ function pieIceberg(ctx, punto, e, ancho, alto, tamano) {
 }
 function graficoIceberg(ctx, puntos, e, hasta) {
   const n = puntos.length;
+  const mt = e.limpio ? 14 : MT, ph = e.limpio ? LH - 14 - MB : PH; // Mercado: sin títulos dentro de la gráfica (audio 1795641936.576919)
   const k = hasta === undefined ? n : Math.min(hasta, n);
   const ALTO = LH + 32;
   const X = (i) => ML + (n === 1 ? PW / 2 : (i / (n - 1)) * PW);
@@ -1303,41 +1307,43 @@ function graficoIceberg(ctx, puntos, e, hasta) {
   for (let i = 0; i < k; i++) {
     const sub = puntos[i][1], baj = puntos[i][2], igual = puntos[i][3], total = sub + baj + igual;
     if (!total) continue;
-    const frontera = MT + (sub / total) * PH;
-    const finGris = frontera + (igual / total) * PH;
+    const frontera = mt + (sub / total) * ph;
+    const finGris = frontera + (igual / total) * ph;
     const x = X(i) - ancho / 2;
-    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(x, MT, ancho, frontera - MT); }
+    if (sub) { ctx.fillStyle = GREEN_S; ctx.fillRect(x, mt, ancho, frontera - mt); }
     if (igual) { ctx.fillStyle = COLORES_LECTURA.gris; ctx.fillRect(x, frontera, ancho, finGris - frontera); }
-    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x, finGris, ancho, MT + PH - finGris); }
+    if (baj) { ctx.fillStyle = RED_S; ctx.fillRect(x, finGris, ancho, mt + ph - finGris); }
   }
   // rejilla de días y guías de proporción, por encima como en el Fear & Greed
   for (let i = 0; i < n; i++) {
     const dia = new Date(puntos[i][0]).getUTCDate();
     ctx.strokeStyle = dia === 1 ? GRID_1 : dia === 15 ? GRID_15 : GRID_D;
     ctx.lineWidth = dia === 1 || dia === 15 ? 1.44 : 0.72;
-    ctx.beginPath(); ctx.moveTo(X(i), MT); ctx.lineTo(X(i), MT + PH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(i), mt); ctx.lineTo(X(i), mt + ph); ctx.stroke();
   }
   for (const p of [0.25, 0.75]) {
     ctx.strokeStyle = GRID_D; ctx.lineWidth = 0.72;
-    ctx.beginPath(); ctx.moveTo(ML, MT + p * PH); ctx.lineTo(ML + PW, MT + p * PH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ML, mt + p * ph); ctx.lineTo(ML + PW, mt + p * ph); ctx.stroke();
   }
   ctx.strokeStyle = ZERO; ctx.lineWidth = 1.44;
-  ctx.beginPath(); ctx.moveTo(ML, MT + PH / 2); ctx.lineTo(ML + PW, MT + PH / 2); ctx.stroke();
-  ctx.strokeStyle = MARCO; ctx.lineWidth = 1.44; ctx.strokeRect(ML, MT, PW, PH);
+  ctx.beginPath(); ctx.moveTo(ML, mt + ph / 2); ctx.lineTo(ML + PW, mt + ph / 2); ctx.stroke();
+  ctx.strokeStyle = MARCO; ctx.lineWidth = 1.44; ctx.strokeRect(ML, mt, PW, ph);
   // fechas abajo
   ctx.fillStyle = TICK; ctx.font = '10.5px ' + FUENTE;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (let i = 0; i < n; i++) {
     const f = new Date(puntos[i][0]), dia = f.getUTCDate();
     if (dia === 1 || dia === 15)
-      ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_ES[f.getUTCMonth()]}`, X(i), MT + PH + 8);
+      ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_ES[f.getUTCMonth()]}`, X(i), mt + ph + 8);
   }
+  if (!e.limpio) {
   // títulos
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
   ctx.fillText(`${e.nombre} · subieron, iguales y bajaron por día`, LW / 2, 15);
   ctx.fillStyle = TICK; ctx.font = '11px ' + FUENTE;
   ctx.fillText(`cada día es el 100 % de los activos con vela ese día · ${LEYENDA_LECTURA} · ${n} días`, LW / 2, 40);
+  }
   // el último día, al completar el trazado
   if (k >= n) {
     const uf = new Date(puntos[n - 1][0]);
@@ -1430,17 +1436,19 @@ function graficoIndicadorVertical(ctx, puntos, e, alto, hasta) {
 // El iceberg en vertical: días de arriba abajo, verde a la derecha del cero y rojo a la
 // izquierda. La pieza común gira y reajusta igual que con los otros indicadores.
 function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
-  const w = 700, left = 88, right = 612, top = 134, bottom = alto - 110;
+  const w = 700, left = 88, right = 612, top = e.limpio ? 24 : 134, bottom = alto - 110;
   const n = puntos.length;
   const k = hasta === undefined ? n : Math.min(hasta, n);
   const Y = (i) => top + (n === 1 ? (bottom - top) / 2 : (i / (n - 1)) * (bottom - top));
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   // títulos
+  if (!e.limpio) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
   ctx.fillText(`${e.nombre} · subieron, iguales y bajaron`, w / 2, 26);
   ctx.fillStyle = TICK; ctx.font = '18px ' + FUENTE;
   ctx.fillText(`cada día es el 100 % de los activos con vela ese día · ${n} días`, w / 2, 58);
+  }
   // barras completas: rojo desde la izquierda hasta la frontera, verde hasta la derecha
   const grueso = n === 1 ? (bottom - top) : Math.max(1, (bottom - top) / (n - 1));
   for (let i = 0; i < k; i++) {
@@ -1523,12 +1531,13 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
     // Las mismas reglas de presentación que las demás gráficas: en pantalla vertical
     // el índice se dibuja en vertical; la pieza común gira, reajusta y limpia igual.
     const uf = new Date(puntos[puntos.length - 1][0]);
+    const eg = limpio ? { ...e, limpio: true } : e;
     graficador(caja, pie, {
       total: () => puntos.length,
       dibujar: (ctx, geometria, hasta) => {
         if (e.iceberg) {
-          if (geometria.vertical) graficoIcebergVertical(ctx, puntos, e, geometria.alto, hasta);
-          else graficoIceberg(ctx, puntos, e, hasta);
+          if (geometria.vertical) graficoIcebergVertical(ctx, puntos, eg, geometria.alto, hasta);
+          else graficoIceberg(ctx, puntos, eg, hasta);
         } else if (geometria.vertical) graficoIndicadorVertical(ctx, puntos, e, geometria.alto, hasta);
         else graficoIndicador(ctx, puntos, e, hasta);
       },

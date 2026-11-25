@@ -53,3 +53,14 @@ test('Mercado no muestra el subtítulo "conteo diario" bajo Balance diario', () 
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /if \(!\(limpio && e\.iceberg\)\) ficha\.appendChild\(meta\)/);
 });
+
+test('Mercado: Balance sin títulos internos ni fuente, cifras con su significado', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /if \(!e\.limpio\) \{/);
+  assert.match(html, /bajaron/); assert.match(html, /sinFuente: Boolean\(en\)/);
+});
+
+test('Mercado: nota del Relieve del día = total VIP, desglose y fecha corta', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /activos VIP · \$\{conteoG\} · \$\{df\} \$\{MESES_ES\[mf - 1\]\}/);
+});
