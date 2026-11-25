@@ -37,7 +37,44 @@ export function validarCatalogo(buf) {
       throw Error('Entrada de catálogo inválida.');
     }
   }
+  if (j.retirados !== undefined) {
+    const ret = validarRetirados(j.retirados);
+    const vigentes = new Set(j.activos.map((e) => e.codigo));
+    if (ret.some((e) => vigentes.has(e.codigo))) throw Error('Un activo no puede estar a la vez en activos y en retirados.');
+  }
   return j.activos.length;
+}
+
+// Sector `retirados` (idea del usuario, 24-nov-2026): referencia histórica de los activos dados de
+// baja, junto a `activos` y fuera de todo cálculo y vista (los consumidores leen solo `.activos`).
+// Cada entrada: código, nombre y fecha de retirada (AAAA-MM-DD). Solo se llena a mano, editando el
+// catálogo; la pasada lo conserva tal cual y mantiene a esos códigos fuera de `activos`.
+const FECHA_OK = /^\d{4}-\d{2}-\d{2}$/;
+export function validarRetirados(lista) {
+  if (!Array.isArray(lista)) throw Error('Retirados con forma inesperada.');
+  const vistos = new Set();
+  for (const e of lista) {
+    if (!e || !ACTIVO_OK.test(e.codigo || '') || typeof e.nombre !== 'string' || !e.nombre
+      || !FECHA_OK.test(e.retirado || '') || Number.isNaN(Date.parse(e.retirado)) || vistos.has(e.codigo)) {
+      throw Error('Entrada de retirados inválida.');
+    }
+    vistos.add(e.codigo);
+  }
+  return lista;
+}
+
+// Retirados del catálogo ya publicado de un mercado. Sin archivo previo: ninguno. Con archivo
+// ilegible o con retirados inválidos: LANZA, para no reincorporar bajas en silencio.
+export function leerRetirados(dirRaiz, clase) {
+  const ruta = path.join(dirCatalogo(dirRaiz), clase);
+  let texto;
+  try { texto = fs.readFileSync(ruta, 'utf8'); }
+  catch (e) { if (e.code === 'ENOENT') return []; throw Error(`catálogo previo de ${clase} ilegible; no regenero para no reincorporar retirados`); }
+  let j;
+  try { j = JSON.parse(texto); } catch { throw Error(`catálogo previo de ${clase} ilegible; no regenero para no reincorporar retirados`); }
+  if (!j || typeof j !== 'object' || Array.isArray(j)) throw Error(`catálogo previo de ${clase} con forma inesperada; no regenero para no reincorporar retirados`);
+  if (j.retirados === undefined) return [];
+  try { return validarRetirados(j.retirados); } catch (e) { throw Error(`retirados del catálogo previo de ${clase} inválidos (${e.message}); no regenero`); }
 }
 
 // Capa curada: activos-curados.json (junto a este módulo) es el único sitio donde se anotan a mano
@@ -112,7 +149,7 @@ export function faltantes(clase, activos, capa) {
 
 // Escribe registros/catalogo/<mercado> solo cuando cambian los activos (tmp + renombrar, como
 // el registro). La fecha `generado` marca la última vez que cambió el contenido, no cada pasada.
-export function escribirCatalogo(dirRaiz, clase, activos, ahora = Date.now()) {
+export function escribirCatalogo(dirRaiz, clase, activos, ahora = Date.now(), retirados = []) {
   if (!CLASES.includes(clase)) throw Error('Mercado de catalogo desconocido.');
   for (const e of activos) {
     if (!e || !ACTIVO_OK.test(e.codigo || '') || typeof e.nombre !== 'string' || !e.nombre
@@ -120,14 +157,17 @@ export function escribirCatalogo(dirRaiz, clase, activos, ahora = Date.now()) {
       throw Error('Entrada de catalogo invalida; revision manual.');
     }
   }
+  validarRetirados(retirados);
+  if (retirados.some((r) => activos.some((e) => e.codigo === r.codigo))) throw Error('Un activo no puede estar a la vez en activos y en retirados; revision manual.');
   const dir = dirCatalogo(dirRaiz);
   fs.mkdirSync(dir, { recursive: true });
   const destino = path.join(dir, clase);
   try {
     const prev = JSON.parse(fs.readFileSync(destino, 'utf8'));
-    if (prev && JSON.stringify(prev.activos) === JSON.stringify(activos) && prev.generado) return 'igual';
+    if (prev && JSON.stringify(prev.activos) === JSON.stringify(activos) && JSON.stringify(prev.retirados || []) === JSON.stringify(retirados) && prev.generado) return 'igual';
   } catch {}
-  const texto = JSON.stringify({ mercado: clase, generado: new Date(ahora).toISOString().slice(0, 10), activos }, null, 1) + '\n';
+  const cuerpo = { mercado: clase, generado: new Date(ahora).toISOString().slice(0, 10), activos, ...(retirados.length ? { retirados } : {}) };
+  const texto = JSON.stringify(cuerpo, null, 1) + '\n';
   if (Buffer.byteLength(texto) > MAX_BYTES) throw Error('El catalogo generado es mayor de lo esperado; revision manual.');
   const tmp = `${destino}.tmp`;
   fs.writeFileSync(tmp, texto);
@@ -155,15 +195,22 @@ export async function actualizarCatalogos({ dirRaiz, ahora = Date.now(), rutaCur
     avisoApi = `lista de productos sin consultar (${e.message}); nombres solo curados`;
   }
   for (const clase of CLASES) {
-    const activos = generarCatalogo(clase, uni, nombres[clase], capa);
-    const estado = escribirCatalogo(dirRaiz, clase, activos, ahora);
+    // Retirados del catálogo previo: se leen antes de generar; si no sirven, este mercado no se
+    // regenera (error visible en la línea) y el catálogo publicado queda como estaba.
+    let retirados;
+    try { retirados = leerRetirados(dirRaiz, clase); }
+    catch (e) { lineas.push({ calculo: 'catalogo', mercado: clase, estado: 'error', error: e.message, sinInfo: [] }); continue; }
+    const fuera = new Set(retirados.map((r) => r.codigo));
+    const uniVig = { ...uni, [clase]: new Map([...uni[clase]].filter(([c]) => !fuera.has(c))) };
+    const activos = generarCatalogo(clase, uniVig, nombres[clase], capa);
+    const estado = escribirCatalogo(dirRaiz, clase, activos, ahora, retirados);
     // Sin la capa curada leída no se puede distinguir lo revisado de lo faltante en cripto:
     // se avisa solo lo que no tiene nombre real de ninguna fuente.
     const sinInfo = avisoCapa
       ? activos.filter((e) => e.nombre === e.codigo || (clase === 'stock' && !e.tipo)).map((e) => e.codigo)
       : faltantes(clase, activos, capa);
     const avisos = [avisoApi, avisoCapa].filter(Boolean).join('; ');
-    lineas.push({ calculo: 'catalogo', mercado: clase, periodo: `${activos.length} activos`, estado, sinInfo, ...(avisos ? { aviso: avisos } : {}) });
+    lineas.push({ calculo: 'catalogo', mercado: clase, periodo: `${activos.length} activos${retirados.length ? `, ${retirados.length} retirados` : ''}`, estado, sinInfo, ...(avisos ? { aviso: avisos } : {}) });
   }
   return { lineas };
 }

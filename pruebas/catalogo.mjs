@@ -158,3 +158,73 @@ test('el catálogo publicado trae los campos curados y un cripto no hereda el no
   const aapl = leer('stock').find((e) => e.codigo === 'AAPL');
   assert.ok(aapl.web && aapl.edgar && aapl.ficha === true);
 });
+
+// Sector retirados (24-nov-2026): referencia histórica fuera de activos; la pasada lo conserva,
+// no reincorpora por carpeta y falla visible si el catálogo previo no sirve.
+const SIN_RED = async () => ({ nombres: { stock: {}, cripto: {} } });
+const escribirPrevio = (raiz, clase, obj) => {
+  fs.mkdirSync(dirCatalogo(raiz), { recursive: true });
+  fs.writeFileSync(path.join(dirCatalogo(raiz), clase), typeof obj === 'string' ? obj : JSON.stringify(obj));
+};
+const leerCat = (raiz, clase) => JSON.parse(fs.readFileSync(path.join(dirCatalogo(raiz), clase), 'utf8'));
+
+test('retirados: un activo retirado con su carpeta presente no vuelve a activos y se conserva igual', async () => {
+  const raiz = armarRegistro();
+  const rutaCurados = armarIndex(raiz);
+  const ret = [{ codigo: 'ANT', nombre: 'Anthropic', retirado: '2026-11-20' }];
+  escribirPrevio(raiz, 'stock', { mercado: 'stock', generado: '2026-11-20', activos: [], retirados: ret });
+  const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: SIN_RED });
+  const j = leerCat(raiz, 'stock');
+  assert.deepEqual(j.activos.map((e) => e.codigo), ['AAPL']);
+  assert.deepEqual(j.retirados, ret);
+  assert.match(r.lineas.find((l) => l.mercado === 'stock').periodo, /1 activos, 1 retirados/);
+  const r2 = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: SIN_RED }); // idempotente
+  assert.equal(r2.lineas.find((l) => l.mercado === 'stock').estado, 'igual');
+  assert.deepEqual(leerCat(raiz, 'stock').retirados, ret);
+});
+
+test('retirados: un alta nueva entra sola aunque haya retirados', async () => {
+  const raiz = armarRegistro();
+  const rutaCurados = armarIndex(raiz);
+  escribirPrevio(raiz, 'cripto', { mercado: 'cripto', generado: '2026-11-20', activos: [], retirados: [{ codigo: 'BTC', nombre: 'Bitcoin', retirado: '2026-11-20' }] });
+  fs.mkdirSync(path.join(raiz, 'velas-24h', 'cripto', 'NUEVA'), { recursive: true });
+  fs.writeFileSync(path.join(raiz, 'velas-24h', 'cripto', 'NUEVA', '2611_NUEVA'), 'x');
+  await actualizarCatalogos({ dirRaiz: raiz, rutaCurados, listarUniversoImpl: SIN_RED });
+  assert.deepEqual(leerCat(raiz, 'cripto').activos.map((e) => e.codigo), ['NUEVA']);
+});
+
+test('retirados: sin la clave, el catálogo se escribe como siempre (sin campo nuevo)', async () => {
+  const raiz = armarRegistro();
+  await actualizarCatalogos({ dirRaiz: raiz, rutaCurados: armarIndex(raiz), listarUniversoImpl: SIN_RED });
+  assert.equal('retirados' in leerCat(raiz, 'stock'), false);
+});
+
+test('retirados: catálogo previo ilegible o con retirados inválidos no se regenera (fail-closed)', async () => {
+  for (const previo of ['{no es json', { mercado: 'stock', generado: 'x', activos: [], retirados: 'mal' }, { mercado: 'stock', generado: 'x', activos: [], retirados: [{ codigo: 'ANT', nombre: 'A', retirado: 'ayer' }] }]) {
+    const raiz = armarRegistro();
+    escribirPrevio(raiz, 'stock', previo);
+    const antes = fs.readFileSync(path.join(dirCatalogo(raiz), 'stock'), 'utf8');
+    const r = await actualizarCatalogos({ dirRaiz: raiz, rutaCurados: armarIndex(raiz), listarUniversoImpl: SIN_RED });
+    const l = r.lineas.find((x) => x.mercado === 'stock');
+    assert.equal(l.estado, 'error');
+    assert.match(l.error, /no regenero/);
+    assert.equal(fs.readFileSync(path.join(dirCatalogo(raiz), 'stock'), 'utf8'), antes); // intacto
+    assert.equal(r.lineas.find((x) => x.mercado === 'cripto').estado, 'escrito'); // el otro mercado sigue
+  }
+});
+
+test('retirados: validarCatalogo acepta retirados válidos y rechaza solape con activos', async () => {
+  const { validarCatalogo } = await import('../app/modulos/catalogo.mjs');
+  const base = { mercado: 'stock', generado: '2026-11-24', activos: [{ codigo: 'AAPL', nombre: 'Apple', meses: ['2611'] }] };
+  assert.equal(validarCatalogo(JSON.stringify({ ...base, retirados: [{ codigo: 'ANT', nombre: 'Anthropic', retirado: '2026-11-20' }] })), 1);
+  assert.throws(() => validarCatalogo(JSON.stringify({ ...base, retirados: [{ codigo: 'AAPL', nombre: 'Apple', retirado: '2026-11-20' }] })), /a la vez/);
+  assert.throws(() => validarCatalogo(JSON.stringify({ ...base, retirados: [{ codigo: 'ANT', nombre: 'A', retirado: 'x' }] })), /retirados inválida/);
+});
+
+test('retirados: vigencia y el inventario ignoran a los retirados', async () => {
+  const { vigentes } = await import('../app/modulos/vigencia.mjs');
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-ret-vig-'));
+  fs.mkdirSync(path.join(raiz, 'velas-24h'), { recursive: true });
+  escribirPrevio(raiz, 'stock', { mercado: 'stock', generado: 'x', activos: [{ codigo: 'AAPL', nombre: 'Apple', meses: ['2611'] }], retirados: [{ codigo: 'ANT', nombre: 'Anthropic', retirado: '2026-11-20' }] });
+  assert.deepEqual([...vigentes(path.join(raiz, 'velas-24h'), 'stock')], ['AAPL']);
+});
