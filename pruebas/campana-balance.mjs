@@ -48,3 +48,8 @@ test('el visor usa el balance guardado y avisa si todavía no existe', () => {
   assert.match(html, /balance_carrera-\$\{ndias\}d/);
   assert.match(html, /Todavía no hay balance/);
 });
+
+test('Mercado no muestra el subtítulo "conteo diario" bajo Balance diario', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /if \(!\(limpio && e\.iceberg\)\) ficha\.appendChild\(meta\)/);
+});
