@@ -60,7 +60,7 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
 test('Campañas: gráfica de cuatro cuadrantes bajo espaguetis y curvas, con selección compartida', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /function graficaCuadrantes\(caja,u,seleccion,alElegir\)/);
-  assert.match(h, /raiz\.append\(ven,t,sub,cEsp,cAct,cCuad,lista\)/);
+  assert.match(h, /raiz\.append\(ven,t,sub,cCuad,cEsp,cAct,lista\)/);
   assert.match(h, /graficaCuadrantes\(cCuad,u,sel,elegir\)/);
 });
 
