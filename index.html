@@ -301,6 +301,7 @@ document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(loca
 <script type="module">
 import { montarPersistencia } from './visor-persistencia.mjs?v=10';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
+import { ordenarCampana, campana } from './app/modulos/campana-orden.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
 import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=8'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
@@ -2153,7 +2154,7 @@ async function vistaCampana(n,inicial){
   const raiz=document.createElement('section');raiz.className='campana';
   const t=document.createElement('h2');t.className='camp-tit';t.textContent=`Campaña de ${n} días`;
   const sub=document.createElement('p');sub.className='camp-sub';
-  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas.`;
+  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas. Campaña = √((P²+C²)/2), de mayor a menor en cada grupo.`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
   raiz.append(t,sub,cCuad,cEsp,cAct,lista);app.replaceChildren(raiz);
@@ -2173,7 +2174,8 @@ async function vistaCampana(n,inicial){
     pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista baja al detalle
   }
   for(const [g,nombre] of GRUPOS_CAMPANA){
-    const items=u.clasificados.filter(a=>a.grupo===g).sort((a,b)=>a.puesto-b.puesto);
+    const items=u.clasificados.filter(a=>a.grupo===g);
+    items.splice(0,items.length,...ordenarCampana(items));
     const d=document.createElement('details');d.dataset.g=g;d.className='camp-grupo';
     const sm=document.createElement('summary');sm.textContent=`${nombre} (${items.length})`;d.append(sm);
     for(const a of items){
@@ -2183,7 +2185,7 @@ async function vistaCampana(n,inicial){
       {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
       f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
       f.querySelector('.nom').textContent=e?e.nombre:'';
-      f.querySelector('.cap').textContent=`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`;
+      f.querySelector('.cap').textContent=`Campaña ${fmtCoef(campana(a))}`;f.querySelector('.cap').title='Campaña = raíz((P² + C²) / 2)';
       filas.set(a.id,f);d.append(f);
     }
     if(sel&&items.some(a=>a.id===sel))d.open=true;
