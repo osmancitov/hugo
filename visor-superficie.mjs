@@ -154,7 +154,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const enlace = crear('a', 'barra-activo-enlace', codigo);
     enlace.href = '#/a/stock/' + encodeURIComponent(codigo);
     detalle.textContent = '';
-    detalle.append(enlace, document.createTextNode(p ? ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : ` · ${fecha} · sin cierre diario o sin precio comparable`));
+    detalle.append(enlace, document.createTextNode(p ? (crestas ? ` · ${fecha} · Total ${pct(p.altura)} · Parcial ${pct(p.movimiento)} · Actual ${p.precio} · Inicio ${p.referencia}` : ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}`) : ` · ${fecha} · sin cierre diario o sin precio comparable`));
   }
   function dibujar() {
     if (!viva) return;
