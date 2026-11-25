@@ -136,7 +136,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     b.onclick = () => { giro = g; inclinacion = inc; amplitud = 1; zoom = 1; relieve.value = '1'; acercar.value = '1'; dibujar(); };
     return b;
   });
-  controles.append(...(crestas ? [etiquetaActivo, etiquetaLectura, etiquetaZoom] : [etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, ...botonesVista])); // Mercado: sin Relieve, Oblicua, Cascada ni Telar; el giro libre llega al ras exacto
+  controles.append(...(crestas ? [etiquetaActivo, etiquetaZoom] : [etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, ...botonesVista])); // Mercado: sin Relieve, Oblicua, Cascada ni Telar; el giro libre llega al ras exacto
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y los botones Oblicua, Cascada y Telar llevan a vistas fijas.');
