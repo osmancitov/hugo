@@ -1275,8 +1275,8 @@ function graficoIndicador(ctx, puntos, e, hasta) {
 function pieIceberg(ctx, punto, e, ancho, alto, tamano) {
   const fecha=new Date(punto[0]);
   const cifras=cifrasConteos(punto[1]+punto[3],punto[2],punto[3]);
-  const trozos=[{texto:`${fecha.getUTCDate()} ${MESES_ES[fecha.getUTCMonth()]} · `,color:TICK}];
-  const palabra=[(n)=>n===1?'bajó':'bajaron',(n)=>n===1?'igual':'iguales',(n)=>n===1?'subió':'subieron']; // Mercado: cada cifra con su significado y su color (audio 1795641936.576919)
+  const trozos=e.limpio?[]:[{texto:`${fecha.getUTCDate()} ${MESES_ES[fecha.getUTCMonth()]} · `,color:TICK}]; // Mercado: sin fecha en el pie, el eje ya la muestra (audio 1795642972.211759)
+  const palabra=[()=>'en baja',(n)=>n===1?'igual':'iguales',()=>'en alta']; // Mercado: cada cifra con su significado y su color (audio 1795641936.576919)
   cifras.forEach(({valor,color},i)=>{
     if(i)trozos.push({texto:' · ',color:TICK});
     trozos.push({texto:e.limpio?`${valor} ${palabra[i](valor)}`:String(valor),color});
@@ -1782,10 +1782,10 @@ function radiografia(ctx, d, codigo, subtitulo, hasta, limite = 5) {
 
   // títulos
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
-  ctx.fillText(`${codigo} variación diaria`, LW / 2, 15);
+  if (codigo) { ctx.fillStyle = '#e8eaed'; ctx.font = '14px ' + FUENTE;
+  ctx.fillText(`${codigo} variación diaria`, LW / 2, 15); } // Mercado (codigo nulo): el nombre va en la cabecera única
   ctx.fillStyle = '#9aa0ac'; ctx.font = '11px ' + FUENTE;
-  ctx.fillText(subtitulo, LW / 2, 40);
+  ctx.fillText(subtitulo, LW / 2, codigo ? 40 : 28);
 
   const fin = hasta === undefined ? npts : hasta;
 
@@ -1917,8 +1917,8 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
   const fin = hasta === undefined ? n : hasta;
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
-  ctx.fillText(codigo + ' variación diaria', w / 2, 26);
+  if (codigo) { ctx.fillStyle = '#e8eaed'; ctx.font = '26px ' + FUENTE;
+  ctx.fillText(codigo + ' variación diaria', w / 2, 26); }
   ctx.fillStyle = '#9aa0ac'; ctx.font = '18px ' + FUENTE;
   // Dos líneas como máximo, sin comprimir las letras del subtítulo.
   const palabras = subtitulo.split(' '); let linea = '', filas = [];
@@ -1926,7 +1926,7 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
     if (ctx.measureText(linea + ' ' + palabra).width > 650 && linea) { filas.push(linea); linea = palabra; }
     else linea += (linea ? ' ' : '') + palabra;
   }
-  filas.push(linea); filas.slice(0, 2).forEach((l, i) => ctx.fillText(l, w / 2, 58 + i * 24));
+  filas.push(linea); filas.slice(0, 2).forEach((l, i) => ctx.fillText(l, w / 2, (codigo ? 58 : 40) + i * 24));
   const paso = limite === 5 ? 1 : limite === 10 ? 2 : 5;
   const marcas = [-limite];
   for (let v = -limite + paso; v < limite; v += paso) marcas.push(v);
@@ -2000,7 +2000,7 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
 let limpiarGrafica = () => {};
 
 /* ---------- vista de activo ---------- */
-function vistaActivo(clase, codigo, en = null, dias = 90) {
+function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   const e = TODOS.find((x) => x.clase === clase && x.codigo === codigo);
   if (!e) { if (!en) location.hash = ''; return; }
   if (!en) app.innerHTML = '';
@@ -2044,6 +2044,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90) {
     }
   }
   ficha.appendChild(meta);
+  if (en && extra.matriz) ficha.appendChild(extra.matriz); // Mercado: la matriz de categorías va dentro de la ficha, bajo el título único
 
   const caja = document.createElement('div');
   caja.className = 'lienzo-caja';
@@ -2072,7 +2073,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90) {
     let d, subtitulo, uf, fecha, pieDatos, notaBase;
     const usar = (elegidas, completo) => {
       d = preparar(elegidas);
-      subtitulo = `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
+      subtitulo = en ? `Variación diaria · Grosor = volumen/precio · ${d.rs.length} días` : `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
       uf = new Date(d.ultima);
       fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
       pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
@@ -2083,8 +2084,8 @@ function vistaActivo(clase, codigo, en = null, dias = 90) {
       total: () => d.rs.length,
       escalas: { valores: [5] },
       dibujar: (destino, geometria, hasta, limite) => {
-        if (geometria.vertical) radiografiaVertical(destino, d, e.codigo, subtitulo, hasta, limite, geometria.alto);
-        else radiografia(destino, d, e.codigo, subtitulo, hasta, limite);
+        if (geometria.vertical) radiografiaVertical(destino, d, en ? null : e.codigo, subtitulo, hasta, limite, geometria.alto);
+        else radiografia(destino, d, en ? null : e.codigo, subtitulo, hasta, limite);
         if (hasta === undefined || hasta >= d.rs.length) {
           destino.fillStyle = BG;
           destino.fillRect(0, geometria.alto - 28, geometria.ancho, 28);
@@ -2095,6 +2096,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90) {
       },
       codigo: e.codigo,
       fecha: () => uf,
+      sinDescarga: Boolean(en),
     });
     const nota = document.createElement('span');
     nota.className = 'nota';
@@ -2213,7 +2215,7 @@ function graficaActivoCampana(caja,s,id,limpio=false){
 // El campo de béisbol (pedido por el usuario, Slack 1795611217.847959) sustituye a los cuatro cuadrantes. Home en el 0,0, distancia r = Campaña
 // normalizada, dirección = balance entre P y C. La cerca es r = 1. No cambia clasificación ni cortes.
 let campoUltimaBola=null;
-function graficaCampo(caja,u,seleccion,alElegir){
+function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
   const W=560,cl=u.clasificados,rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
   // Escala fiel: el radio visible abarca al activo más lejano (nunca se recorta ni se acerca un punto).
   // Radio híbrido y continuo: lineal de 0 a 0,5 (home sigue siendo el 0) y logarítmico desde 0,5, con la misma
@@ -2279,8 +2281,8 @@ function graficaCampo(caja,u,seleccion,alElegir){
     const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');h.append(l);
     const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';
     const tipo=seleccion.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
-    d.textContent=[/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`Campaña ${fmtCoef(rr(a))} · P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
-    cab.append(h,d);
+    d.textContent=[limpio?null:(/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1)),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`Campaña ${fmtCoef(rr(a))} · P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
+    cab.append(...(limpio?[d]:[h,d])); // Mercado: el nombre y el tipo ya están en la cabecera única de la ficha (audio 1795642694.105409)
   }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
@@ -2304,7 +2306,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const pintarSel=(irA)=>{
     const sv=puente?recortarSerie(s,n):s;
     graficaEspaguetis(cEsp,sv,sel,elegir,Boolean(puente));
-    graficaCampo(cCuad,u,sel,elegir);
+    graficaCampo(cCuad,u,sel,elegir,Boolean(puente));
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
@@ -2436,7 +2438,7 @@ function vistaUnificada(inicial=null,dias=90){
   const anclarCamp=()=>{cCamp._fin?.();setTimeout(()=>{const y0=cCamp.getBoundingClientRect().top,t0=performance.now();let activo=true;const fin=()=>{activo=false;};cCamp._fin=fin;
     const sostener=()=>{if(!activo||performance.now()-t0>3000)return;const d=cCamp.getBoundingClientRect().top-y0;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});setTimeout(sostener,16);};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,fin,{once:true,passive:true});setTimeout(sostener,16);},0);};
-  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});cFicha.append(mx);
+  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
     mx.style.cssText='display:inline-grid;grid-template-columns:auto repeat(3,2.6rem);gap:.55rem .5rem;align-items:center;margin:.5rem 0 1rem;font-size:.85em';
     const celda=(t,css='')=>{const e=Object.assign(document.createElement('span'),{textContent:t});e.style.cssText=css;mx.append(e);return e;};
     celda('');for(const n of [30,60,90])celda(n+' d','text-align:center;opacity:.8');
@@ -2447,7 +2449,7 @@ function vistaUnificada(inicial=null,dias=90){
       mx.setAttribute('aria-label','Categorías del activo por campaña: '+(lit.join(', ')||'ninguna (sin Premium, Potentes ni Constantes)'));
       if(!lit.length)mx.title='Sin Premium, Potentes ni Constantes en 30, 60 o 90 días';
     }).catch(()=>{});
-    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90);}};
+    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{matriz:mx});}};
   const elegido=(id,origen)=>{
     sel=id;history.replaceState(null,'','#/unificada/'+dias+'d'+(id?'/'+id.replace(':','/'):''));
     pintarFicha();

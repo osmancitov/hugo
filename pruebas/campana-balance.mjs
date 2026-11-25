@@ -57,10 +57,18 @@ test('Mercado no muestra el subtítulo "conteo diario" bajo Balance diario', () 
 test('Mercado: Balance sin títulos internos ni fuente, cifras con su significado', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /if \(!e\.limpio\) \{/);
-  assert.match(html, /bajaron/); assert.match(html, /sinFuente: Boolean\(en\)/);
+  assert.match(html, /'en baja'/); assert.match(html, /'en alta'/); assert.match(html, /sinFuente: Boolean\(en\)/);
 });
 
 test('Mercado: nota del Relieve del día = total VIP, desglose y fecha corta', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /activos VIP · \$\{conteoG\} · \$\{df\} \$\{MESES_ES\[mf - 1\]\}/);
+});
+
+test('Mercado: cabecera única del activo (matriz dentro de la ficha, sin títulos repetidos ni descarga)', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /ficha\.appendChild\(extra\.matriz\)/);
+  assert.match(html, /sinDescarga: Boolean\(en\)/);
+  assert.match(html, /cab\.append\(\.\.\.\(limpio\?\[d\]:\[h,d\]\)\)/);
+  assert.match(html, /en \? null : e\.codigo/);
 });
