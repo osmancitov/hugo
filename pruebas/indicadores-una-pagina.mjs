@@ -27,9 +27,15 @@ test('en la vista unificada el nombre del activo va encima de la superficie; en 
   assert.match(sup, /tituloArriba \? \[controles, detalle, canvas\] : \[controles, canvas, detalle\]/);
 });
 
-test('la superficie es el selector: la Campaña de abajo es de solo lectura y se elige con botones, sin opción previa', () => {
-  assert.match(unif(), /soloLectura:true/);
+test('la superficie elige acciones; la Campaña también puede elegir cripto (sin lectura horaria se avisa); botones sin opción previa', () => {
+  assert.match(unif(), /alElegir:\(id\)=>elegido\(id,'camp'\)/);
   assert.match(unif(), /let sel=inicial,ventana=null/);
   assert.match(html, /\[30, '30 días'\], \[60, '60 días'\], \[90, '90 días'\]/);
   assert.match(html, /'Campaña'/);
+});
+
+test('la vista unificada muestra al principio Fear & Greed de Bolsa y de Cripto, identificados', () => {
+  const f = unif();
+  assert.ok(f.indexOf("'feargreedchart-bolsa',sec(),'Bolsa'") > 0 && f.indexOf("'alternative-fear-greed',sec(),'Cripto'") > f.indexOf("'Bolsa'"));
+  assert.ok(f.indexOf("'Cripto'") < f.indexOf("'iceberg-stock'"));
 });
