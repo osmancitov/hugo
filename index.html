@@ -1036,7 +1036,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     const zona = document.createElement('div'), barra = barraCaja || document.createElement('div');
     cuerpo.append(zona); if (!barraCaja) cuerpo.append(barra);
     if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
-    grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
+    grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), crestas: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
       const b = soloFiltro(barraContextual(registro,i));
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true, mercado }));
     } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }

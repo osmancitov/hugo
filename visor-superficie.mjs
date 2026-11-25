@@ -94,7 +94,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   } };
 }
 
-export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {}, alElegirActivo = null, tituloArriba = false } = {}) {
+export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {}, alElegirActivo = null, tituloArriba = false, crestas = false } = {}) {
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
   let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
@@ -186,6 +186,29 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     }
     const malla = puntos.map((fila, j) => fila.map((p, i) => p ? { ...proyectar(px(i), py(j), p.altura / maximo), p, i, j } : null));
     proyecciones = malla.flat().filter(Boolean);
+    if (crestas) {
+      // Crestas (25-nov-2026, prototipo): una línea por activo, altura = recorrido desde la partida del día,
+      // pared de fondo con grilla y plano cero dorado. El color de cada tramo es sube/baja contra la lectura anterior;
+      // gris si no hay cambio, es la primera lectura o hay un hueco de más de 1,5 h entre lecturas.
+      const lados = [{ d: -sin, f: (u, z) => proyectar(-1, u * .7, z) }, { d: sin, f: (u, z) => proyectar(1, u * .7, z) }, { d: -.7 * cos, f: (u, z) => proyectar(u, -.7, z) }, { d: .7 * cos, f: (u, z) => proyectar(u, .7, z) }];
+      const pared = lados.reduce((m, l) => l.d < m.d ? l : m);
+      c.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, z], k) => { const q = pared.f(u, z); k ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.closePath(); c.fillStyle = 'rgba(40,44,56,.35)'; c.fill();
+      for (const z of [-1, -.5, 0, .5, 1]) linea(pared.f(-1, z), pared.f(1, z), z === 0 ? ORO : '#3a3a34', z === 0 ? 1.6 : .7);
+      for (const u of [-1, -.5, 0, .5, 1]) linea(pared.f(u, -1), pared.f(u, 1), '#3a3a34', .7);
+      const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
+      for (const i of orden) {
+        const resaltado = i === activo;
+        for (let j = 1; j < malla.length; j++) {
+          const a = malla[j - 1][i], b = malla[j][i];
+          if (!a || !b) continue; // sin dato deja un hueco, nunca altura cero
+          const a0 = proyectar(px(i), py(j - 1), 0), b0 = proyectar(px(i), py(j), 0);
+          c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b0.x, b0.y); c.lineTo(a0.x, a0.y); c.closePath();
+          c.fillStyle = resaltado ? 'rgba(180,190,215,.28)' : 'rgba(124,138,165,.09)'; c.fill();
+          const hueco = barras[j].generada - barras[j - 1].generada > 5400000;
+          linea(a, b, hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS), resaltado ? 3.2 : 1.7);
+        }
+      }
+    } else {
     const caras = [];
     for (let j = 1; j < malla.length; j++) for (let i = 1; i < codigos.length; i++) {
       const vertices = [malla[j - 1][i - 1], malla[j - 1][i], malla[j][i], malla[j][i - 1]];
@@ -204,15 +227,20 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       c.fillStyle = gradiente; c.globalAlpha = marcada ? 1 : .66; c.fill();
       c.globalAlpha = marcada ? .9 : .46; c.strokeStyle = marcada ? '#e8e8ea' : '#c6bc9b'; c.lineWidth = marcada ? 1 : .45; c.stroke(); c.globalAlpha = 1;
     }
+    }
     // Los carriles de cada activo unen únicamente sus lecturas. Una foto sola no crea terreno.
-    for (let i = 0; i < codigos.length; i++) for (let j = 1; j < malla.length; j++) {
+    if (!crestas) for (let i = 0; i < codigos.length; i++) for (let j = 1; j < malla.length; j++) {
       const a = malla[j - 1][i], b = malla[j][i];
       if (a && b && b.p.movimiento !== null) linea(a, b, colorMovimiento(b.p.movimiento), .8);
     }
     const fila = malla[ultima] || [];
-    for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ded0a4', 1.2);
+    if (!crestas) for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ded0a4', 1.2);
     if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = GRIS; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
-    if (ancho < 600 && barras.length) {
+    if (crestas && barras.length) {
+      const paso = Math.max(1, Math.ceil(barras.length / (ancho < 600 ? 5 : 8)));
+      for (let j = 0; j < barras.length; j += paso) { const q = proyectar(1.04, py(j), -1); texto(q, horaVista(barras[j].generada), '#d9cfae'); linea(proyectar(1, py(j), -1), proyectar(1.03, py(j), -1), '#786b4c'); }
+      texto({ x: ancho - 10, y: 26 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)} UTC`, '#bbb39e', 'right');
+    } else if (ancho < 600 && barras.length) {
       texto({ x: ancho - 10, y: 43 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)}`, '#bbb39e', 'right');
     } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
       if (!barras[j]) continue;

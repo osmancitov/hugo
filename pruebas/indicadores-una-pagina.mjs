@@ -40,3 +40,9 @@ test('la vista unificada muestra al principio Fear & Greed de Bolsa y de Cripto,
   assert.ok(j.includes("cargarIndicador('feargreedchart-bolsa')") && j.includes("cargarIndicador('alternative-fear-greed')") && j.includes("'Bolsa'") && j.includes("'Cripto'"));
   assert.ok(f.indexOf('vistaFearGreedJunto(sec())') < f.indexOf("'iceberg-stock'"));
 });
+test('las crestas 3D solo se activan en la vista unificada; la superficie original conserva su dibujo', () => {
+  assert.match(sup, /crestas = false/);
+  assert.equal(html.match(/crestas: Boolean\(en\)/g)?.length, 1);
+  assert.match(sup, /if \(crestas\) \{/);
+  assert.match(sup, /pared\.f\(-1, z\)/);
+});
