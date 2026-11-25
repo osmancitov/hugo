@@ -136,7 +136,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     b.onclick = () => { giro = g; inclinacion = inc; amplitud = 1; zoom = 1; relieve.value = '1'; acercar.value = '1'; dibujar(); };
     return b;
   });
-  controles.append(etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, ...botonesVista);
+  controles.append(...(crestas ? [etiquetaActivo, etiquetaLectura, etiquetaZoom] : [etiquetaActivo, etiquetaLectura, etiquetaAltura, etiquetaZoom, ...botonesVista])); // Mercado: sin Relieve, Oblicua, Cascada ni Telar; el giro libre llega al ras exacto
   const canvas = crear('canvas', 'superficie-canvas');
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y los botones Oblicua, Cascada y Telar llevan a vistas fijas.');
@@ -200,14 +200,16 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const lados = [{ d: -sin, f: (u, z) => proyectar(-1, u * .7, z) }, { d: sin, f: (u, z) => proyectar(1, u * .7, z) }, { d: -.7 * cos, f: (u, z) => proyectar(u, -.7, z) }, { d: .7 * cos, f: (u, z) => proyectar(u, .7, z) }];
       const pared = lados.reduce((m, l) => l.d < m.d ? l : m);
       c.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, z], k) => { const q = pared.f(u, z); k ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.closePath(); c.fillStyle = 'rgba(40,44,56,.35)'; c.fill();
-      for (const z of [-1, -.5, 0, .5, 1]) linea(pared.f(-1, z), pared.f(1, z), z === 0 ? ORO : '#3a3a34', z === 0 ? 1.6 : .7);
+      // Marcas fijas cada 10 puntos porcentuales (0, ±10, ±20…), sin derivarlas del máximo; el alto de la pared sí sigue al máximo y las curvas no se recortan.
+      const marcas = []; for (let v = -Math.floor(maximo / 10) * 10; v <= maximo + 1e-9; v += 10) marcas.push(v);
+      for (const v of marcas) linea(pared.f(-1, v / maximo), pared.f(1, v / maximo), v === 0 ? ORO : '#3a3a34', v === 0 ? 1.6 : .7);
       for (const u of [-1, -.5, 0, .5, 1]) linea(pared.f(u, -1), pared.f(u, 1), '#3a3a34', .7);
       // El plano cero también se ve en el suelo (contorno dorado) y el eje porcentual va en el borde izquierdo de la pared.
       const suelo = [[-1, -.7], [1, -.7], [1, .7], [-1, .7], [-1, -.7]].map(([x, y]) => proyectar(x, y, 0));
       for (let k = 1; k < suelo.length; k++) linea(suelo[k - 1], suelo[k], '#8a7440', 1);
       const izqU = pared.f(-1, 0).x <= pared.f(1, 0).x ? -1 : 1;
       linea(pared.f(izqU, -1), pared.f(izqU, 1), '#786b4c');
-      for (const z of [-1, -.5, 0, .5, 1]) { const q = pared.f(izqU, z); texto({ x: q.x - 5, y: q.y + 4 }, pct(z * maximo), z === 0 ? ORO : '#9aa0ac', 'right'); }
+      for (const v of marcas) { const q = pared.f(izqU, v / maximo); texto({ x: q.x - 5, y: q.y + 4 }, pct(v), v === 0 ? ORO : '#9aa0ac', 'right'); }
       // Telas entre cada curva y el cero: antes 0,09 por tela; ahora 0,03 y, con muchos activos, se reparte (1/n) para que la suma no tape el fondo al mirar de lado.
       const alfaTela = Math.min(.03, 1 / Math.max(1, codigos.length)).toFixed(4);
       const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
@@ -289,14 +291,30 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   elegirLectura.onchange = () => seleccionar(Number(elegirLectura.value), activo);
   elegirActivo.onchange = () => seleccionar(ultima, Number(elegirActivo.value));
   relieve.oninput = () => { amplitud = Number(relieve.value); dibujar(); };
-  canvas.onpointerdown = (e) => { arrastre = { x: e.clientX, y: e.clientY, giro, inclinacion, movido: false }; canvas.setPointerCapture(e.pointerId); };
+  // Zoom (Mercado, 25-nov-2026): pellizco con dos dedos y rueda sobre la gráfica, sincronizados con el slider; solo actúan dentro del lienzo.
+  const dedos = new Map(); let pellizco = null;
+  const fijarZoom = (z) => { zoom = Math.max(.6, Math.min(2, z)); acercar.value = String(Math.round(zoom * 20) / 20); dibujar(); };
+  if (crestas) canvas.addEventListener('wheel', (e) => { e.preventDefault(); fijarZoom(zoom * Math.exp(-e.deltaY / 500)); }, { passive: false });
+  const distDedos = () => { const [a, b] = [...dedos.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  canvas.onpointerdown = (e) => {
+    if (crestas) { dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (dedos.size === 2) { pellizco = { d: distDedos() || 1, zoom }; arrastre = null; canvas.setPointerCapture(e.pointerId); return; } }
+    arrastre = { x: e.clientX, y: e.clientY, giro, inclinacion, movido: false }; canvas.setPointerCapture(e.pointerId);
+  };
   canvas.onpointermove = (e) => {
+    if (crestas && dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pellizco && dedos.size === 2) { fijarZoom(pellizco.zoom * distDedos() / pellizco.d); return; }
     if (!arrastre) return;
     if (Math.abs(e.clientX - arrastre.x) + Math.abs(e.clientY - arrastre.y) > 4) arrastre.movido = true;
     giro = arrastre.giro + (e.clientX - arrastre.x) / 170;
-    inclinacion = Math.max(.05, Math.min(1.7, arrastre.inclinacion + (e.clientY - arrastre.y) / 210)); dibujar();
+    inclinacion = Math.max(crestas ? 0 : .05, Math.min(1.7, arrastre.inclinacion + (e.clientY - arrastre.y) / 210));
+    if (crestas) { // Mercado (25-nov-2026): imán hacia el ras exacto y hacia los giros de frente o de canto, para superponer curvas sin inclinación residual con el dedo
+      if (inclinacion < .09) inclinacion = 0;
+      const m = Math.round(giro / (Math.PI / 2)) * (Math.PI / 2); if (Math.abs(giro - m) < .07) giro = m;
+    }
+    dibujar();
   };
   canvas.onpointerup = (e) => {
+    dedos.delete(e.pointerId); if (pellizco) { if (dedos.size < 2) pellizco = null; arrastre = null; return; }
     if (arrastre && !arrastre.movido) {
       const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       const cercano = proyecciones.reduce((a, p) => Math.hypot(p.x - x, p.y - y) < Math.hypot(a.x - x, a.y - y) ? p : a, { x: 1e6, y: 1e6 });
@@ -304,7 +322,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     }
     arrastre = null;
   };
-  canvas.onpointercancel = () => { arrastre = null; };
+  canvas.onpointercancel = (e) => { dedos.delete(e.pointerId); pellizco = null; arrastre = null; };
   const observador = new ResizeObserver(dibujar); observador.observe(caja);
   dibujar(); alSeleccionar(ultima);
   // Elegir el activo desde fuera (otra vista de la página unificada), sin avisar de vuelta.
