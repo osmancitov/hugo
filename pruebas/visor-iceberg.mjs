@@ -137,8 +137,8 @@ test('el visor registra un Iceberg por mercado y los dibuja por la pieza común,
 
 test('los rótulos visibles de los icebergs viven en la fuente única de rótulos', async () => {
   const { default: rotulos } = await import('../app/modulos/indicadores-rotulos.mjs');
-  assert.equal(rotulos['iceberg-stock'], 'Iceberg');
-  assert.equal(rotulos['iceberg-cripto'], 'Iceberg');
+  assert.equal(rotulos['iceberg-stock'], 'Iceberg 2D');
+  assert.equal(rotulos['iceberg-cripto'], 'Iceberg 2D');
   assert.equal(rotulos['iceberg'], undefined);
 });
 

@@ -38,9 +38,23 @@ test('la carrera ya escrita no se reescribe y las existentes coinciden con su re
   // Regla: campaña = raiz((P²+C²)/2); campaña < 1 es rezagado; desde 1, premium con P y C >= 1, potentes solo P, constantes solo C.
   assert.equal(grupoDe(1, 1), 'premium'); assert.equal(grupoDe(0.99, 0.99), 'rezagados'); assert.equal(grupoDe(1.01, 1.01), 'premium'); assert.equal(grupoDe(1, 0.9), 'rezagados'); assert.equal(grupoDe(1.5, 0.9), 'potentes'); assert.equal(grupoDe(0.9, 1.5), 'constantes'); assert.equal(grupoDe(0.99, 0.99), 'rezagados');
   assert.equal(grupoDe(1.4, 1.4), 'premium'); assert.equal(grupoDe(2, 0.1), 'potentes'); assert.equal(grupoDe(0.5, 1.5), 'constantes');
+  // Los archivos guardan P y C a 4 decimales, pero el grupo se decide con los valores sin redondear: el guardado no puede
+  // reproducir el grupo en el borde. Se comprueba contra el cálculo desde las velas (lo publicado coincide con él).
+  assert.equal(grupoDe(1.08, 0.913), 'rezagados'); assert.equal(grupoDe(1.08004, 0.91304), 'potentes'); // Campaña 0,99999 y 1,00004
+  assert.equal(grupoDe(0.99996, 1.4), 'constantes'); // 0,99996 se guarda como 1 y no por eso es premium
+  assert.equal(grupoDe(1, 1), 'premium'); assert.equal(grupoDe(1, 0.9999), 'rezagados');
   const dir = path.join(process.cwd(), 'registros', 'categorias');
-  for (const f of fs.readdirSync(dir).filter((f) => /^\d{6}-\d{6}_carrera-\d+d$/.test(f))) {
-    for (const a of JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).clasificados) assert.equal(a.grupo, grupoDe(a.potencia, a.constancia), `${f} ${a.id}`);
+  const ventanas = [30, 60, 90], nombres = (n) => fs.readdirSync(dir).filter((f) => new RegExp(`^\\d{6}-\\d{6}_carrera-${n}d$`).test(f));
+  for (const n of ventanas) {
+    const pub = nombres(n), fin = Math.max(...pub.map((f) => Date.UTC(2000 + +f.slice(7, 9), +f.slice(9, 11) - 1, +f.slice(11, 13))));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'camp-regen-'));
+    generarCarreras({ raiz: process.cwd(), hasta: fin, ventana: n, salida: tmp });
+    for (const f of pub) {
+      const reg = new Map(JSON.parse(fs.readFileSync(path.join(tmp, f), 'utf8')).clasificados.map((x) => [x.id, x.grupo]));
+      const guardado = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).clasificados;
+      assert.equal(guardado.length, reg.size, f);
+      for (const x of guardado) assert.equal(x.grupo, reg.get(x.id), `${f} ${x.id}`);
+    }
   }
 });
 test('60d y 30d: nombres, primera carrera y serie topada a 90 puntos', async () => {
