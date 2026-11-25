@@ -48,3 +48,7 @@ test('60d y 30d: nombres, primera carrera y serie topada a 90 puntos', async () 
   assert.equal(construirSerie(d, 30).fechas.length, MAX_PUNTOS);
   assert.throws(() => construirSerie(d, 60), /Sin archivos de carrera 60d/);
 });
+test('la gráfica del activo en Campañas enlaza a la página del activo (#/a/<clase>/<codigo>)', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /enl\.href='#\/a\/'\+id\.split\(':'\)\[0\]\+'\/'\+encodeURIComponent\(cod\)/);
+});

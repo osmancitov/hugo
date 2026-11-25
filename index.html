@@ -88,6 +88,7 @@ a:hover { text-decoration: underline; }
 
 .campana { padding: .4rem 0 2rem; }
 .camp-tit { font-family: 'Cinzel', 'Lora', serif; font-weight: 400; color: var(--oro); font-size: 1.1rem; margin: .8rem 0 .2rem; }
+.camp-enlace { display: inline-block; margin: .1rem 0 .3rem; font-size: .9rem; }
 .camp-sub { color: var(--tenue); font-size: .85rem; margin: .1rem 0 .6rem; }
 .camp-caja { margin: .6rem 0 1rem; }
 .camp-svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--borde); border-radius: 4px; }
@@ -2024,7 +2025,8 @@ function graficaActivoCampana(caja,s,id){
   const ley=document.createElement('div');ley.className='camp-ley';
   const ult=serie.filter(Boolean).at(-1);
   ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
-  caja.replaceChildren(tit,sub,svg,ley);
+  const enl=document.createElement('a');enl.className='camp-enlace';enl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);enl.textContent='Ver la página de '+cod;
+  caja.replaceChildren(tit,enl,sub,svg,ley);
 }
 async function vistaCampana(n,inicial){
   app.replaceChildren();
