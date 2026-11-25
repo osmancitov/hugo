@@ -1055,7 +1055,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: fechaLegibleUTC(dia) }));
     elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
     const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Actualizar' });
-    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); if (en) vistaUnificada(puente?.inicial?.() ? 'stock:' + puente.inicial() : null); else vistaSuperficie(); };
+    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); if (en) vistaUnificada(puente?.inicial?.() ? 'stock:' + puente.inicial() : null, puente?.ventana?.() ?? 90); else vistaSuperficie(); };
     // Subgrupo de la campaña: dos selectores (grupo y ventana). Solo filtra lo que se dibuja.
     const etGrupo = Object.assign(document.createElement('label'), { textContent: 'Grupo ' });
     const elegirGrupo = document.createElement('select');
@@ -1109,7 +1109,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       });
       const pintar = () => { gr.pintar(); ca.pintar(); };
       pintar(); aplicarFiltro();
-      controles.append(ca.et, gr.et); // sin selector de día (25-nov-2026, día en curso) ni «Actualizar» (25-nov-2026): la vista se actualiza sola
+      controles.append(...(puente?.fijaVentana ? [gr.et] : [ca.et, gr.et])); // en Mercado el período se elige arriba (30, 60 o 90) y manda sobre todo; no hay selector de Campaña aquí // sin selector de día (25-nov-2026, día en curso) ni «Actualizar» (25-nov-2026): la vista se actualiza sola
     } else controles.append(etiqueta, etGrupo, etVentana, recargar);
     ficha.append(controles);
     elegirDia.onchange = async () => {
@@ -2361,7 +2361,7 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
   ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11) + 'px ' + FUENTE;
   ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - (V ? 13 : 13));
 }
-function vistaFearGreedJunto(en) {
+function vistaFearGreedJunto(en, ndias = 90) {
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const h = Object.assign(document.createElement('h2'), { textContent: 'Fear and greed' });
   ficha.append(h);
@@ -2375,24 +2375,24 @@ function vistaFearGreedJunto(en) {
     if (bolsa.length < 2 && cripto.length < 2) { caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>'; return; }
     const D = 86400000, dia = (ms) => Math.floor(ms / D) * D;
     const t0 = Math.min(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[0][0]))), t1 = Math.max(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[s.length - 1][0])));
-    const dias = []; for (let t = Math.max(t0, t1 - 89 * D); t <= t1; t += D) dias.push(t); // 90 días, como la campaña más larga
-    const desde = Math.max(t0, t1 - 89 * D), conv = (s, nombre, color) => ({ nombre, color, puntos: s.filter(([ms]) => dia(ms) >= desde).map(([ms, v]) => ({ i: Math.round((dia(ms) - desde) / D), v })) });
+    const dias = []; for (let t = Math.max(t0, t1 - (ndias - 1) * D); t <= t1; t += D) dias.push(t); // el período elegido arriba (30, 60 o 90 días)
+    const desde = Math.max(t0, t1 - (ndias - 1) * D), conv = (s, nombre, color) => ({ nombre, color, puntos: s.filter(([ms]) => dia(ms) >= desde).map(([ms, v]) => ({ i: Math.round((dia(ms) - desde) / D), v })) });
     const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length) };
     const uf = new Date(t1);
     graficador(caja, pie, { total: () => dias.length, dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, geo, hasta, S), codigo: 'fear-greed-bolsa-cripto', fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
-function vistaUnificada(inicial=null){
+function vistaUnificada(inicial=null,dias=90){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
   // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
-  vistaFearGreedJunto(sec());
+  vistaFearGreedJunto(sec(),dias);
   vistaIndicador('iceberg-stock',sec(),null,true);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
-  let sel=inicial,ventana=null,grupo='todos';
-  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
+  let sel=inicial,ventana=dias,grupo='todos';
+  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijaVentana:true,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
   const avisoSup=(id)=>{const c=id&&id.startsWith(mercadoSup+':')?id.split(':')[1]:null;const falta=id&&!(c&&codigosSupAct&&codigosSupAct.has(c));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?(mercadoSup==='cripto'?'Cripto: '+n+' no está entre los admitidos con lectura horaria (el registro cubre a los que no quedan Rezagados en alguna campaña), así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':'Cripto: '+n+' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.'):n+' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.';}};
@@ -2415,7 +2415,7 @@ function vistaUnificada(inicial=null){
     }).catch(()=>{});
     const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90);}};
   const elegido=(id,origen)=>{
-    sel=id;history.replaceState(null,'','#/unificada'+(id?'/'+id.replace(':','/'):''));
+    sel=id;history.replaceState(null,'','#/unificada/'+dias+'d'+(id?'/'+id.replace(':','/'):''));
     pintarFicha();
     // La ficha (con su gráfica de variación) se carga después y cambia de alto; si el usuario eligió desde la lista de Campaña (debajo de la ficha),
     // se mantiene fija en pantalla la zona de Campaña mientras eso ocurre y hasta que el usuario vuelva a mover la página.
@@ -2433,6 +2433,7 @@ function vistaUnificada(inicial=null){
   const puenteCamp={grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
+  puente.alCampana(dias);
   pintarFicha();
 }
 async function ruta() {
@@ -2442,8 +2443,9 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
-  const mu=hash.match(/^#\/unificada(?:\/(cripto|stock)\/(.+))?$/);
+  const mu=hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/);
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
+  if(mu&&!mu[1]&&mu[2]){location.replace('#/unificada/90d/'+mu[2]+'/'+mu[3]);return;} // enlaces antiguos sin período
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
@@ -2465,6 +2467,7 @@ async function ruta() {
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   document.getElementById('mercado-campana').href='#/campana';
   document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
+  if(mu){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/unificada/'+v+'d',mu[1]===String(v));}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
@@ -2475,13 +2478,14 @@ async function ruta() {
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/');
-  contraerNavegacion(navCat,esCampana?mc[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':'#/stock');
+  contraerNavegacion(navCat,esCampana?mc[1]:mu?mu[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?'#/unificada':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
-  if(mu){vistaUnificada(mu[1]?mu[1]+':'+decodeURIComponent(mu[2]):null);return;}
+  if(mu){if(!mu[1]){app.replaceChildren();return;} // «Mercado» solo muestra los tres botones de período; el usuario elige
+    vistaUnificada(mu[2]?mu[2]+':'+decodeURIComponent(mu[3]):null,Number(mu[1]));return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
