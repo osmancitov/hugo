@@ -2087,7 +2087,7 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
 function graficaActivoCampana(caja,s,id){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
-  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
+  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(id)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
   const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas`;
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.

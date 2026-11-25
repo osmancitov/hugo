@@ -22,12 +22,12 @@ export const ENCABEZADO = (ini, fin, n) => ({
   [`dia_primera_carrera_${n}d`]: d(primeraCarrera(n)),
   clasificados: `activos con las ${n} carreras de la ventana (${n} de ${n} días con vela)`,
   coeficientes: { potencia: 'suma de variaciones diarias positivas / |suma de variaciones diarias negativas|; variación diaria = cierre/apertura-1, en %', constancia: 'días con variación>0 / días con variación<0 (los de 0 exacto no cuentan en ninguno)', corte: '>=1' },
-  grupos: { rezagados: 'campaña<=1, con campaña = raiz((potencia^2+constancia^2)/2)', premium: 'campaña>1, potencia>=1 y constancia>=1', potentes: 'campaña>1, potencia>=1 y constancia<1', constantes: 'campaña>1, constancia>=1 y potencia<1' },
-  estado_reglas_grupos: 'Regla vigente: los que no superan la campaña 1 son rezagados; sobre 1, premium si potencia y constancia alcanzan 1, potentes si solo la potencia, constantes si solo la constancia.',
+  grupos: { rezagados: 'campaña<1, con campaña = raiz((potencia^2+constancia^2)/2)', premium: 'campaña>=1, potencia>=1 y constancia>=1', potentes: 'campaña>=1, potencia>=1 y constancia<1', constantes: 'campaña>=1, constancia>=1 y potencia<1' },
+  estado_reglas_grupos: 'Regla vigente: los que quedan por debajo de la campaña 1 son rezagados; desde 1, premium si potencia y constancia alcanzan 1, potentes si solo la potencia, constantes si solo la constancia.',
 });
 
 export function grupoDe(potencia, constancia) {
-  if (Math.sqrt((potencia ** 2 + constancia ** 2) / 2) <= 1) return 'rezagados';
+  if (Math.sqrt((potencia ** 2 + constancia ** 2) / 2) < 1) return 'rezagados';
   return potencia >= 1 && constancia >= 1 ? 'premium' : potencia >= 1 ? 'potentes' : 'constantes';
 }
 
