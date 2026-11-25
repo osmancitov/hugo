@@ -265,7 +265,9 @@ a.tit-link:hover { text-decoration: none; }
 .mercado-reloj { margin-top: 1.2rem; }
 .mercado-reloj .superficie-reloj { margin: 0; padding-left: .6rem; }
 .mercado-reloj .superficie-reloj-titulo { display: inline; margin: 0 .5rem 0 0; }
-.mercado-reloj .superficie-reloj-hora { display: inline; font-size: .8rem; }
+.mercado-reloj .superficie-reloj-hora { display: none; }
+.mercado-reloj .superficie-reloj-titulo time { color: var(--texto); white-space: nowrap; }
+.mercado-reloj .superficie-reloj-titulo time::after { content: ' UTC'; }
 .superficie-reloj { margin: .8rem 0 1rem; border-left: 2px solid var(--oro); padding-left: .8rem; }
 .superficie-reloj-titulo { color: var(--oro); font-size: .8rem; margin: 0 0 .3rem; }
 .superficie-reloj-hora { color: var(--texto); font-size: .9rem; line-height: 1.6; margin: 0; }
@@ -1028,7 +1030,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D' }); // en Mercado: nombre propuesto, pendiente del usuario (25-nov-2026)
   ficha.append(titulo);
   const reloj = montarRelojObservatorio(ficha);
-  if (en && puente?.relojArriba) { const r = ficha.querySelector('.superficie-reloj'); if (r) puente.relojArriba.append(r); }
+  if (en && puente?.relojArriba) { const r = ficha.querySelector('.superficie-reloj'); if (r) { const t0 = r.querySelector('.superficie-reloj-titulo')?.firstChild; if (t0) t0.textContent = 'Hora actual '; puente.relojArriba.append(r); } }
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
   if (en) en.append(ficha, estado, cuerpo); else app.append(volver, ficha, estado, cuerpo);
