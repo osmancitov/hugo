@@ -394,7 +394,7 @@ Después de la diaria, `.github/publicar-visor.mjs` pide explícitamente una cor
 Hecho: los flujos diario y horario **no** tienen `schedule` (horario propio), solo `workflow_dispatch`. Un lanzamiento es una llamada a GitHub: a mano desde la pestaña Actions, o por programa con `POST /repos/osmancitov/hugo/actions/workflows/<archivo>/dispatches` y el cuerpo `{"ref":"main"}`. Que no haya `schedule` no prueba que falte automatización: un programa externo puede hacer esas llamadas, y no lo comprobé.
 - Diaria: `.github/workflows/actualizacion-diaria.yml`. Sus comentarios la planean entre las 00:05 y las 00:14 UTC (después del cierre y su margen de 5 minutos).
 - Horaria: `.github/workflows/lectura-horaria.yml`. Hacia cada hora en punto.
-**[NO VERIFICADO]** Qué sistema externo hace hoy esas llamadas, a qué horas y con qué permisos: el repositorio dice que es un script externo de Google (Apps Script), pero ese script no está aquí y no lo comprobé. Su verificación la lleva el dueño por otro canal. Mientras no esté confirmada, no se debe asumir que corre.
+**[NO VERIFICADO]** Qué sistema externo hace hoy esas llamadas, a qué horas y con qué permisos: el repositorio dice que es un script externo de Google (Apps Script), pero ese script no está aquí y no lo comprobé. Su verificación está pendiente. Mientras no esté confirmada, no se debe asumir que corre.
 **[PROPUESTA]** Poner `schedule` (cron) dentro de los flujos para no depender de un script externo. El costo conocido: los cron de GitHub pueden retrasarse varios minutos, y la foto horaria quiere el minuto 00.
 
 ---
