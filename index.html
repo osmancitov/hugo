@@ -318,12 +318,13 @@ document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(loca
 
 </script>
 <script type="module">
-import { montarPersistencia } from './visor-persistencia.mjs?v=10';
+import { parentesisLectura } from './app/modulos/lectura-latina.mjs?v=1';
+import { montarPersistencia } from './visor-persistencia.mjs?v=11';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { ordenarCampana, campana } from './app/modulos/campana-orden.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
-import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=8'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=9'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
@@ -2061,7 +2062,6 @@ function fmtCoef(v){return v==null?'—':v.toFixed(2).replace('.',',');}
 const GRUPOS_CAMPANA=[['premium','Premium'],['potentes','Potentes'],['constantes','Constantes'],['rezagados','Rezagados']];
 function entradaCampana(id){return TODOS.find(e=>e.clase+':'+e.codigo===id)||null;}
 // Un solo rótulo para un activo: el código y, si lo trae el catálogo, su lectura latina entre paréntesis (nombres en caracteres chinos).
-function parentesisLectura(e){return e&&e.lectura?` (${e.lectura}${e.traduccion?', '+e.traduccion:''})`:'';} // lectura y significado, muy breve
 function etiquetaActivo(id){const e=entradaCampana(id),c=e?e.codigo:id.split(':')[1];return c+parentesisLectura(e);}
 function graficaEspaguetis(caja,s,seleccion,alElegir){
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;

@@ -1,4 +1,5 @@
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
+import { parentesisLectura } from './app/modulos/lectura-latina.mjs?v=1';
 export const claseDiasPromedio=dias=>dias<20?'promedio-dias-rojo':'';
 const texto=(tag,valor,clase='')=>{const e=document.createElement(tag);e.textContent=valor;if(clase)e.className=clase;return e;};
 export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,buscador) {
@@ -17,7 +18,7 @@ export async function montarPersistencia(contenedor,catalogo,seleccion,consulta,
     const body=document.createElement('tbody');
     for(const x of visibles){
       const r=document.createElement('tr'),id=texto('td','','col-activo'),a=texto('a',x.activo.codigo,'activo-fila rachas-enlace');
-      a.href='#/a/'+x.activo.clase+'/'+encodeURIComponent(x.activo.codigo);id.append(a,texto('span',x.activo.nombre,'rachas-nombre'));
+      a.href='#/a/'+x.activo.clase+'/'+encodeURIComponent(x.activo.codigo);id.append(a,texto('span',x.activo.nombre+parentesisLectura(x.activo),'rachas-nombre'));
       r.append(texto('td',String(x.puestoLista)),id,texto('td',x.promedio.toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0})),texto('td',String(x.carreras),claseDiasPromedio(x.carreras)),texto('td',String(x.puestoGlobal)));
       if(mostrarStocks)r.append(texto('td',x.puestoStocks==null?'—':String(x.puestoStocks)));body.append(r);
     }

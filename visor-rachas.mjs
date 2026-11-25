@@ -1,4 +1,5 @@
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
+import { parentesisLectura } from './app/modulos/lectura-latina.mjs?v=1';
 import { validarMes, resumir, separar, corteUTC, DIA, razonVariacion, cambiosDireccion } from './app/modulos/visor-rachas-datos.mjs';
 const RAW = 'https://raw.githubusercontent.com/osmancitov/hugo/main';
 const PISO_TS = Date.UTC(2026, 7, 1); // el mismo piso del registro que usa el bot (PISO_DIA)
@@ -214,7 +215,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
     const body=document.createElement('tbody');
     for (const x of visibles) {
       const e=x.activo,d=x.datos, r=document.createElement('tr'), a=texto('a',e.codigo); a.href='#/a/'+e.clase+'/'+encodeURIComponent(e.codigo); a.className='activo-fila rachas-enlace';
-      const id=texto('td','','col-activo'); id.append(a,texto('span',e.nombre+' · '+e.clase,'rachas-nombre'));
+      const id=texto('td','','col-activo'); id.append(a,texto('span',e.nombre+parentesisLectura(e)+' · '+e.clase,'rachas-nombre'));
       const dias=texto('td',(d.limitada?'≥ ':'')+d.dias,d.direccion>0?'positivo':d.direccion<0?'negativo':'');
       const acum=texto('td',d.dias?pct0(d.acumulado)+(d.limitada?' *':''):pct0(0),clasePorcentaje(d.dias ? d.acumulado : 0));
       if(d.limitada) { id.append(texto('small',d.motivo,'rachas-limite')); acum.title='Variación del tramo observado: '+d.motivo; } // la nota va bajo el nombre: en la celda de la racha se partía letra a letra
