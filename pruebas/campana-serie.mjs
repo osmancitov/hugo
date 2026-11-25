@@ -21,7 +21,7 @@ test('la serie ordena por fecha, deja null donde no hay punto y no inventa valor
 });
 test('el visor tiene el botón Campaña y la ruta #/campana, sin selector de fecha', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /id="mercado-cripto">Criptos<\/a><a href="#\/campana" id="mercado-campana">Campañas<\/a>/);
+  assert.match(h, /id="mercado-cripto">Criptos<\/a><a href="#\/campana" id="mercado-campana">Campañas<\/a><a href="cuenta\/">Cimiento<\/a>/);
   assert.match(h, /\^#\\\/campana/);
   assert.doesNotMatch(h.slice(h.indexOf('async function vistaCampana'), h.indexOf('async function ruta()')), /<select|type="date"/);
 });
