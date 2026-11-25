@@ -69,6 +69,7 @@ test('Campañas: campo con radio logarítmico solo en r desde 0,1 y un color por
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /R0=0\.1,rho=r=>Math\.log2\(r\/R0\)/);
   assert.match(h, /camp-g-'\+a\.grupo/);
+  assert.match(h, /tx\('Premium',pol\(RMAX\*\.9,0\)/);
   assert.match(h, /Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1/);
 });
 

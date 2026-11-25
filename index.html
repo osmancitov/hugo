@@ -2127,6 +2127,7 @@ function graficaCampo(caja,u,seleccion,alElegir){
   for(const v of [...aros,1].sort((m,n)=>m-n)){const [lx,ly]=pol(v,45);tx(fmtCoef(v).replace(/,00$/,'').replace(/,(\d)0$/,',$1'),lx+8,ly+4,v===1?'camp-cuad-eje camp-campo-cerca-n':'camp-cuad-eje','start');}
   tx('Potencia',pol(RMAX*.9,-33)[0],pol(RMAX*.9,-33)[1],'camp-cuad-rot camp-rot-potentes');
   tx('Constancia',pol(RMAX*.9,33)[0],pol(RMAX*.9,33)[1],'camp-cuad-rot camp-rot-constantes');
+  tx('Premium',pol(RMAX*.9,0)[0],pol(RMAX*.9,0)[1],'camp-cuad-rot camp-rot-premium'); // center field: premium vive donde potencia y constancia llegan a 1
   svg.append(svgEl('polygon',{points:`${HX},${HY+9} ${HX+9},${HY} ${HX},${HY-9} ${HX-9},${HY}`,class:'camp-campo-home'}));
   const orden=[...cl].sort((a,b)=>(a.id===seleccion)-(b.id===seleccion));
   for(const a of orden){
