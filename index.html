@@ -1037,7 +1037,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
       const b = soloFiltro(barraContextual(registro,i));
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true }));
-    } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.avisoSup?.(puente.inicial?.() ? 'stock:' + puente.inicial() : null); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
+    } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {
     const registro = await cargarDiaObservatorio();
@@ -2285,10 +2285,10 @@ function vistaUnificada(inicial=null){
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
   let sel=inicial,ventana=null,grupo='todos';
-  const puente={inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);}};
+  let codigosSupAct=null;const puente={fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
-  const avisoSup=(id)=>{const c=id&&id.startsWith('stock:')?id.slice(6):null;const falta=id&&!(c&&puente.codigosSup&&puente.codigosSup.has(c));aviso2.hidden=!falta;if(falta)aviso2.textContent=(id.startsWith('cripto:')?'Cripto: ':'')+id.split(':')[1]+(id.startsWith('cripto:')?' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.');};
+  const avisoSup=(id)=>{const c=id&&id.startsWith('stock:')?id.slice(6):null;const falta=id&&!(c&&codigosSupAct&&codigosSupAct.has(c));aviso2.hidden=!falta;if(falta)aviso2.textContent=(id.startsWith('cripto:')?'Cripto: ':'')+id.split(':')[1]+(id.startsWith('cripto:')?' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.');};
   puente.avisoSup=avisoSup;
   const FILAS_MATRIZ=[['premium','Premium','#3fb950'],['potentes','Potentes','#e3b341'],['constantes','Constantes','#58a6ff']];
   // Matriz 3×3 (25-nov-2026): columnas 30/60/90 días, filas Premium verde, Potentes amarillo, Constantes azul. Se enciende lo que le corresponde al activo; no incluye Rezagados.
