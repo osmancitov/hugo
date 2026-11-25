@@ -145,7 +145,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   caja.append(...(tituloArriba ? [controles, detalle, canvas] : [controles, canvas, detalle]));
   contenedor.append(caja);
   function describir() {
-    detalle.hidden = activo < 0;
+    if (tituloArriba) detalle.style.visibility = activo < 0 ? 'hidden' : ''; else detalle.hidden = activo < 0; // con el título arriba se conserva su alto: elegir un activo no empuja la superficie
     if (activo < 0) { detalle.textContent = ''; return; }
     const p = puntos[ultima]?.[activo];
     const fecha = barras[ultima] ? `${horaVista(barras[ultima].generada)}` : 'sin lectura';
@@ -319,6 +319,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       const cercano = proyecciones.reduce((a, p) => Math.hypot(p.x - x, p.y - y) < Math.hypot(a.x - x, a.y - y) ? p : a, { x: 1e6, y: 1e6 });
       if (Math.hypot(cercano.x - x, cercano.y - y) < 35) seleccionar(cercano.j, cercano.i);
+      else if (crestas && activo >= 0) seleccionar(ultima, -1); // Mercado: un clic fuera de todo punto suelta la selección, igual que «Elegir» (25-nov-2026)
     }
     arrastre = null;
   };

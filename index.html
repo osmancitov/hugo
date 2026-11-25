@@ -295,10 +295,11 @@ a.tit-link:hover { text-decoration: none; }
 .superficie-pasos button:disabled { opacity: .35; cursor: default; }
 .camp-lista.solo-lectura .camp-fila { cursor: default; }
 .ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.ficha-unificada .ficha h2 { border-bottom: 1px solid var(--oro); padding-bottom: .5rem; margin-bottom: .9rem; } /* línea amarilla bajo el título del activo, encima de enlaces y matriz (pedido del usuario, audio 19:26 del 25-nov) */
 .ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1rem; color: var(--tenue); font-weight: 400; }
 .superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
-.superficie-titulo { min-height: 5.3rem; } /* reserva el alto del título: al elegir un activo no empuja la superficie ni lo de abajo */
-@media (min-width: 700px) { .superficie-titulo { min-height: 4rem; } }
+.superficie-detalle.superficie-titulo { min-height: 5.3rem; } /* reserva el alto del título: al elegir un activo no empuja la superficie ni lo de abajo */
+@media (min-width: 700px) { .superficie-detalle.superficie-titulo { min-height: 4rem; } }
 .superficie-titulo .barra-activo-enlace { font-family: 'Cinzel', 'Lora', serif; font-size: 1.5rem; font-weight: 600; margin-right: .5rem; }
 .superficie-detalle { color: var(--texto); font-size: .85rem; line-height: 1.6; padding: .7rem 0; border-top: 1px solid var(--borde); min-height: 3.8rem; }
 .superficie-leyenda, .superficie-nota { color: var(--tenue); font-size: .78rem; line-height: 1.6; margin: .5rem 0; }
