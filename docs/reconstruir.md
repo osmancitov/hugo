@@ -22,7 +22,6 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Ranking**: lista de activos con su variación porcentual de un día.
 - **Pre-calculado**: resultado calculado de antemano y guardado como archivo para que el visor lo lea sin calcular.
 - **Catálogo**: la lista oficial de los activos que cuentan en cada mercado.
-- **`cap`**: capitalización: valor total de mercado de un activo.
 - **`raw.githubusercontent.com`**: dirección desde la que GitHub entrega el contenido crudo de un archivo del repositorio.
 - **`main`**: la rama principal del repositorio: la línea de historial que publica Pages.
 - **Google Apps Script**: servicio de Google que ejecuta programas pequeños; aquí, el que el repositorio menciona como lanzador externo, no comprobado.

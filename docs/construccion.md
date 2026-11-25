@@ -1,6 +1,6 @@
 # Cómo se construye y cómo funciona el Observatorio Bursátil
 
-El Observatorio Bursátil es una página web que cada día ordena cientos de activos por rendimiento y constancia. Cada pieza se cuenta con cuatro partes: el problema, cómo funciona (con fórmulas, formatos, direcciones y comandos exactos), por qué así y cómo comprobarlo.
+El Observatorio Bursátil es una página web que cada día ordena cientos de activos por rendimiento y constancia.
 
 ## Palabras que este documento usa
 

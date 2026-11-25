@@ -6,7 +6,6 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Commit**: un cambio guardado en el historial de un repositorio, con autor, fecha y mensaje.
 - **Repositorio**: carpeta de archivos con su historial de cambios, alojada en GitHub.
 - **Campaña, P y C**: P es la potencia (suma de variaciones positivas entre el valor absoluto de la suma de las negativas) y C la constancia (días al alza entre días a la baja); Campaña = raíz((P² + C²) / 2).
-- **Código 429**: respuesta de un servidor que significa demasiadas peticiones, espera.
 
 
 Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mensaje de Slack donde las dio (canal C0CAF12V656), cuando se pudo recuperar. Un texto de un archivo del repositorio que diga «decisión del usuario» es solo memoria escrita, no una autorización nueva.

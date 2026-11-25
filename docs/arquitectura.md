@@ -24,7 +24,6 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Mercado**: `stock` (acciones y fondos tokenizados) o `cripto` (criptomonedas).
 - **Catálogo**: la lista oficial de los activos que cuentan en cada mercado.
 - **ETF**: fondo de inversión que se compra y se vende en bolsa como una acción.
-- **`cap`**: capitalización: valor total de mercado de un activo.
 - **Stablecoin**: criptomoneda que busca valer una moneda fija, como el dólar.
 - **`raw.githubusercontent.com`**: dirección desde la que GitHub entrega el contenido crudo de un archivo del repositorio.
 - **`main`**: la rama principal del repositorio: la línea de historial que publica Pages.

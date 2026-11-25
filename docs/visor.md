@@ -16,7 +16,6 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Mercado**: `stock` (acciones y fondos tokenizados) o `cripto` (criptomonedas).
 - **Catálogo**: la lista oficial de los activos que cuentan en cada mercado.
 - **Pinyin**: escritura de los sonidos del chino con letras latinas.
-- **`cap`**: capitalización: valor total de mercado de un activo.
 - **G/P**: razón entre la suma de variaciones positivas y el valor absoluto de la suma de las negativas.
 - **Racha**: días seguidos con la misma dirección, alza o baja.
 
