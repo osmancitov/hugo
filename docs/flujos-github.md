@@ -1,5 +1,7 @@
 # Flujos de GitHub Actions
 
+Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+
 Fuente: los tres archivos de `.github/workflows/` y los scripts de `.github/` leídos el 25-nov-2026. Los tres flujos usan Node 22 y ejecutores `ubuntu-latest`.
 
 ## Disparo (fuera de este repositorio)

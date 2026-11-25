@@ -1,15 +1,17 @@
 # Datos: carpeta `registros/`
 
+Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+
 Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión. Las fechas internas son milisegundos UTC (época Unix). Piso fijo: 1-ago-2026. Los registros históricos no se reescriben: los generadores de Pages escriben solo derivados fuera de esta carpeta.
 
 | Carpeta | Archivo | Contenido | Escribe | Lee |
 |---|---|---|---|---|
 | `velas-24h/<mercado>/<COD>/` | `<AAMM>_<COD>` | Velas diarias cerradas de Binance, un mes por archivo. Cada vela es el arreglo de 12 campos de Binance (apertura en ms, abrir, máx, mín, cerrar, volumen, cierre en ms, ...). | ingesta diaria (`velas`, `registro-motor`) | visor, iceberg, persistencia, campaña |
 | `catalogo/` | `stock`, `cripto` | `{mercado, generado, activos:[{codigo, nombre, tipo, cap, cap_sub, edgar, web, ficha, lectura, traduccion, meses}]}`. Lista quién participa en vistas y cálculos. | pasada de sincronización (`catalogo.mjs`), con la capa curada `app/modulos/activos-curados.json` | visor y cálculos |
-| `iceberg-<mercado>/` | `<AAMM>` | Serie diaria `[día, activos en alza, activos a la baja]`. | pasada | visor |
+| `iceberg-<mercado>/` | `<AAMM>` | Serie diaria `[día, activos en alza, activos a la baja]`, del módulo viejo `iceberg.mjs` (no cuenta la vela plana). **Congelada desde el 20-nov-2026; el visor ya no la lee** (usa `pre-calculado/.../iceberg-90d`). | ninguno hoy | ninguno |
 | `alternative-fear-greed/` | `<AAMM>` | Miedo y codicia de cripto: `[día, valor 0-100]`. | pasada (`indicadores.mjs`) | visor |
 | `feargreedchart-bolsa/` | `<AAMM>` | Miedo y codicia de bolsa, mismo formato. | pasada | visor |
-| `ranking-24h/<mercado>/` | `<AAMMDD>_ranking-24h` | Ranking de la jornada: `[código, variación %]`, de mayor a menor. | pasada (`pre-calculado.mjs`) | visor |
+| `ranking-24h/<mercado>/` | `<AAMMDD>_ranking-24h` | Ranking de la jornada: `[código, variación %]`, de la mayor caída a la mayor subida (orden creciente). | pasada (`pre-calculado.mjs`) | visor |
 | `pre-calculado/<mercado>/lectura-dia-90d/` | `<AAMMDD>_lectura-dia` | Lectura del día sobre la ventana de 90 días: por activo, dirección, acumulado, variación, razón G/P, límites. | pasada | visor |
 | `pre-calculado/<mercado>/iceberg-90d/` | `<inicio>-<fin>_iceberg` | Iceberg de la ventana de 90 días, `[día, alza, baja]`. | pasada | visor |
 | `inventario/` | `stock`, `cripto`, `README.md` | Días registrados acumulados por activo desde el piso. Formato y reglas en su README. | pasada (`inventario-dias.mjs`) | uso de admisión por días |

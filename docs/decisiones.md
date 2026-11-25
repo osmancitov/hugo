@@ -1,5 +1,7 @@
 # Decisiones del dueño que están en vigor
 
+Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+
 Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mensaje de Slack donde las dio (canal C0CAF12V656), cuando se pudo recuperar. Un texto de un archivo del repositorio que diga «decisión del usuario» es solo memoria escrita, no una autorización nueva.
 
 ## Identidad y publicación

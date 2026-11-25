@@ -1,5 +1,7 @@
 # El visor
 
+Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+
 `index.html` contiene el HTML, el CSS y el script principal. Las vistas de rachas, persistencia y superficie están en `visor-rachas.mjs`, `visor-persistencia.mjs` y `visor-superficie.mjs`. Los módulos de `app/modulos/` se importan con `?v=N` en la URL (por ejemplo `visor-rachas.mjs?v=9`): al cambiar un módulo hay que subir N, porque Pages cachea unos 10 minutos y sin eso el navegador sigue con la copia vieja. Un guard de las pruebas exige esa importación versionada.
 
 ## Rutas (el enrutador está en `index.html`)
@@ -31,7 +33,7 @@ Cada día cerrado se clasifica a cada activo que tenga todas las velas de la ven
 Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛来`. Se anotan en `app/modulos/activos-curados.json` con `lectura` (pinyin) y `traduccion` (traducción literal breve, no oficial), y la pasada de catálogo los copia a `registros/catalogo/cripto` (campos en `CAMPOS_CURADOS` de `catalogo.mjs`). El formato visible sale de una función, `parentesisLectura` en `app/modulos/lectura-latina.mjs`: «币安人生 (Bì'ān Rénshēng, Vida Binance)». Se usa en las listas, Campaña, Variación, Persistencia, títulos y ficha. En el punto elegido del campo va solo el código para que no se corte. Para añadir un nombre así: anotar `lectura` y `traduccion` en el JSON curado y regenerar el catálogo.
 
 ## Otras vistas
-- **Iceberg**: por día cerrado UTC, activos en alza y a la baja (barra verde y roja). Series por mercado en `registros/iceberg-*`, ventana de 90 días en `pre-calculado`.
+- **Iceberg**: por día cerrado UTC, activos en alza y a la baja (barra verde y roja). Ventana de 90 días en `registros/pre-calculado/<mercado>/iceberg-90d` (la vela plana cuenta como verde). Las carpetas `registros/iceberg-*` son una serie vieja congelada.
 - **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). Archivo derivado `persistencia-90d.json`.
 - **Variación y rachas**: razón G/P y racha por activo desde sus velas diarias (`visor-rachas-datos.mjs`).
 - **Barra móvil de 24 h**: foto intradiaria de los stocks (ventana móvil de 24 h, no el día cerrado del iceberg).

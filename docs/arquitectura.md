@@ -1,6 +1,6 @@
 # Arquitectura del Observatorio Bursátil
 
-Referencia técnica. La explicación completa, en el orden en que se construye, está en [construccion.md](construccion.md).
+Referencia técnica. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
 
 Estado leído del código y de los flujos de este repositorio el 25-nov-2026. Lo que no se puede ver desde aquí está marcado "no verificado aquí".
 

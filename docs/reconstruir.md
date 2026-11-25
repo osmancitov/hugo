@@ -1,5 +1,7 @@
 # Reconstruir el Observatorio desde cero
 
+Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+
 Guía para levantar uno nuevo, o recuperar este, sin depender de ninguna conversación. Cada paso dice qué comprobar. Lo marcado "no verificado aquí" no se puede ver desde el repositorio y hay que confirmarlo en GitHub o Google.
 
 ## Qué necesitas
