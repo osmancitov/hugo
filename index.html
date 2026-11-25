@@ -86,6 +86,29 @@ a:hover { text-decoration: underline; }
 .nodo .hijos { display: none; padding: 0 0 .6rem 1.2rem; }
 .nodo.abierto > .hijos { display: block; }
 
+.campana { padding: .4rem 0 2rem; }
+.camp-tit { font-family: 'Cinzel', 'Lora', serif; font-weight: 400; color: var(--oro); font-size: 1.1rem; margin: .8rem 0 .2rem; }
+.camp-sub { color: var(--tenue); font-size: .85rem; margin: .1rem 0 .6rem; }
+.camp-caja { margin: .6rem 0 1rem; }
+.camp-svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--borde); border-radius: 4px; }
+.camp-rej { stroke: var(--borde); stroke-width: 1; }
+.camp-eje { fill: var(--tenue); font-size: 11px; }
+.camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .28; stroke-width: 1; pointer-events: none; }
+.camp-lin.camp-sel { stroke: var(--oro); stroke-opacity: 1; stroke-width: 2.6; }
+.camp-hit { fill: none; stroke: transparent; stroke-width: 7; cursor: pointer; }
+.camp-hit:hover { stroke: rgba(194,161,90,.35); }
+.camp-ejes, .camp-ley { color: var(--tenue); font-size: .8rem; margin: .35rem 0 0; }
+.camp-uno { stroke: var(--texto); stroke-opacity: .6; stroke-dasharray: 5 4; }
+.camp-curva { fill: none; stroke-width: 2; }
+.camp-curva.camp-pot, .camp-punto.camp-pot { stroke: var(--oro); }
+.camp-curva.camp-con, .camp-punto.camp-con { stroke: #7fb2e5; }
+.camp-punto { stroke-width: 0; }
+.camp-punto.camp-pot { fill: var(--oro); } .camp-punto.camp-con { fill: #7fb2e5; }
+.camp-k { display: inline-block; width: 1.1em; height: 3px; vertical-align: middle; margin: 0 .2em 0 .5em; }
+.camp-k.camp-pot { background: var(--oro); } .camp-k.camp-con { background: #7fb2e5; } .camp-uno-k { background: var(--texto); opacity: .6; }
+.camp-grupo > summary { cursor: pointer; padding: .7rem .2rem; font-family: 'Cinzel', 'Lora', serif; font-size: 1.05rem; }
+.camp-grupo .cap { white-space: nowrap; }
+
 .activo-fila {
   display: flex; gap: .6rem; align-items: baseline;
   padding: .34rem .2rem; border-radius: 3px; color: var(--texto);
@@ -229,7 +252,7 @@ a.tit-link:hover { text-decoration: none; }
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
-<nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a><a href="cuenta/">Proyecto Cimiento</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a><a href="cuenta/">Proyecto Cimiento</a><a href="#/buscar" id="mercado-buscar">Buscar</a><a href="#/campana" id="mercado-campana">Campaña</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -1940,6 +1963,114 @@ function vistaCapitalizacion(lista) {
   };
   actualizarCapitalizacion();
 }
+// Campaña 90d: listas del último día cerrado (4 grupos) y dos gráficas por la serie de los archivos diarios.
+// Lectura: registros/categorias/serie_carrera-90d (la junta app/modulos/campana-serie.mjs) y el último día.
+let campanaDatos=null;
+async function cargarCampana(){
+  if(campanaDatos)return campanaDatos;
+  const base='registros/categorias/';
+  const leer=async n=>{const r=await fetch(base+n,{cache:'no-cache'});if(!r.ok)throw Error('No se pudo leer '+n);return r.json();};
+  const s=await leer('serie_carrera-90d'),u=await leer(s.ultimo);
+  return campanaDatos={s,u};
+}
+const SVGNS='http://www.w3.org/2000/svg';
+function svgEl(nombre,attrs={},hijos=[]){const e=document.createElementNS(SVGNS,nombre);for(const k in attrs)e.setAttribute(k,attrs[k]);for(const h of hijos)e.append(h);return e;}
+function trazoConHuecos(puntos){ // puntos: [x,y]|null; null corta la línea
+  let d='',abierto=false;
+  for(const p of puntos){if(!p){abierto=false;continue;}d+=(abierto?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);abierto=true;}
+  return d;
+}
+function fmtCoef(v){return v==null?'—':v.toFixed(2).replace('.',',');}
+const GRUPOS_CAMPANA=[['premium','Premium'],['potentes','Potentes'],['constantes','Constantes'],['rezagados','Rezagados']];
+function entradaCampana(id){return TODOS.find(e=>e.clase+':'+e.codigo===id)||null;}
+function graficaEspaguetis(caja,s,seleccion,alElegir){
+  const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
+  let maxP=2;for(const id in s.activos)for(const p of s.activos[id])if(p&&p[0]>maxP)maxP=p[0];
+  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=p=>T+(p-1)/(maxP-1)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Puesto de cada activo en cada carrera'});
+  for(const p of [1,Math.round(maxP/4),Math.round(maxP/2),Math.round(maxP*3/4),maxP]){
+    svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(p),y2:y(p),class:'camp-rej'}));
+    const t=svgEl('text',{x:L-6,y:y(p)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=p;svg.append(t);
+  }
+  [0,N-1].forEach((i,k)=>{if(k&&i===0)return;const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':k?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);});
+  const trazo=id=>trazoConHuecos(s.activos[id].map((p,i)=>p?[x(i),y(p[0])]:null));
+  const capa=svgEl('g'),cima=svgEl('g');svg.append(capa,cima);
+  for(const id of Object.keys(s.activos)){
+    const d=trazo(id),sel=id===seleccion,g=sel?cima:capa;
+    g.append(svgEl('path',{d,class:sel?'camp-lin camp-sel':'camp-lin','data-id':id},[]));
+    if(!sel){const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=(entradaCampana(id)?.codigo)||id;hit.append(ti);g.append(hit);}
+  }
+  svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
+  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Carreras en horizontal (una por día), puesto en vertical: el 1 arriba.';
+  caja.replaceChildren(svg,ej);
+}
+function graficaActivoCampana(caja,s,id){
+  const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
+  const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
+  const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');
+  const pts=serie.filter(Boolean).length;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con las 90 velas. Los días sin punto quedan en blanco.`;
+  let mx=1;for(const p of serie)if(p)mx=Math.max(mx,p[1],p[2]);mx*=1.08;
+  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=v=>T+(1-v/mx)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de '+cod});
+  const paso=mx>6?2:mx>3?1:0.5;
+  for(let v=0;v<=mx;v+=paso){svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=String(v).replace('.',',');svg.append(t);}
+  svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
+  [0,N-1].forEach((i,k)=>{if(k&&i===0)return;const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':k?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);});
+  for(const [k,cls] of [[1,'camp-pot'],[2,'camp-con']]){
+    svg.append(svgEl('path',{d:trazoConHuecos(serie.map((p,i)=>p?[x(i),y(p[k])]:null)),class:'camp-curva '+cls}));
+    serie.forEach((p,i)=>{if(p)svg.append(svgEl('circle',{cx:x(i),cy:y(p[k]),r:2.2,class:'camp-punto '+cls}));});
+  }
+  const ley=document.createElement('div');ley.className='camp-ley';
+  const ult=serie.filter(Boolean).at(-1);
+  ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
+  caja.replaceChildren(tit,sub,svg,ley);
+}
+async function vistaCampana(inicial){
+  app.replaceChildren();
+  const cab=document.createElement('p');cab.className='camp-sub';cab.textContent='Cargando la Campaña…';app.append(cab);
+  let datos;try{datos=await cargarCampana();}catch(err){cab.textContent=err.message;return;}
+  const {s,u}=datos,N=s.fechas.length;
+  const raiz=document.createElement('section');raiz.className='campana';
+  const t=document.createElement('h2');t.className='camp-tit';t.textContent='Campaña de 90 días';
+  const sub=document.createElement('p');sub.className='camp-sub';
+  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de 90 días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las 90 velas.`;
+  const cEsp=document.createElement('div'),cAct=document.createElement('div'),lista=document.createElement('div');
+  cEsp.className='camp-caja';cAct.className='camp-caja';
+  raiz.append(t,sub,cEsp,cAct,lista);app.replaceChildren(raiz);
+  let sel=inicial&&s.activos[inicial]?inicial:null;
+  const filas=new Map();
+  const pintarSel=(irA)=>{
+    graficaEspaguetis(cEsp,s,sel,elegir);
+    cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,s,sel);
+    for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
+    if(sel&&irA)cAct.scrollIntoView({block:'nearest'});
+  };
+  function elegir(id){
+    sel=sel===id?null:id;
+    history.replaceState(null,'',sel?'#/campana/'+sel.replace(':','/'):'#/campana');
+    if(sel){const g=u.clasificados.find(a=>a.id===sel)?.grupo;const d=g&&lista.querySelector(`details[data-g="${g}"]`);if(d)d.open=true;}
+    pintarSel(true);
+  }
+  for(const [g,nombre] of GRUPOS_CAMPANA){
+    const items=u.clasificados.filter(a=>a.grupo===g).sort((a,b)=>a.puesto-b.puesto);
+    const d=document.createElement('details');d.dataset.g=g;d.className='camp-grupo';
+    const sm=document.createElement('summary');sm.textContent=`${nombre} (${items.length})`;d.append(sm);
+    for(const a of items){
+      const e=entradaCampana(a.id),f=document.createElement('a');f.className='activo-fila';
+      f.href='#/campana/'+a.id.replace(':','/');f.dataset.id=a.id;
+      f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="cap"></span>';
+      f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
+      f.querySelector('.nom').textContent=e?e.nombre:'';
+      f.querySelector('.cap').textContent=`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`;
+      filas.set(a.id,f);d.append(f);
+    }
+    if(sel&&items.some(a=>a.id===sel))d.open=true;
+    lista.append(d);
+  }
+  lista.addEventListener('click',ev=>{const f=ev.target.closest('a.activo-fila');if(!f)return;ev.preventDefault();elegir(f.dataset.id);});
+  pintarSel(false);
+}
 async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
@@ -1947,8 +2078,8 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|persistencia|indicadores))?$/);
-  const esBusqueda=hash==='#/buscar';
-  if(!m&&!mi&&!r&&!esBusqueda&&hash!=='#/') {
+  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
+  if(!m&&!mi&&!r&&!esBusqueda&&!esCampana&&hash!=='#/') {
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
     location.replace('#/');return;
@@ -1963,6 +2094,8 @@ async function ruta() {
   document.getElementById('mercado-stock').classList.toggle('actual',mercado==='stock');document.getElementById('mercado-cripto').classList.toggle('actual',mercado==='cripto');
   document.getElementById('mercado-buscar').href='#/buscar';
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
+  document.getElementById('mercado-campana').href='#/campana';
+  document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
   }
@@ -1971,7 +2104,7 @@ async function ruta() {
     for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Promedio']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
-  contraerNavegacion(navMerc,mercado||esBusqueda,'#/');
+  contraerNavegacion(navMerc,mercado||esBusqueda||esCampana,'#/');
   contraerNavegacion(navCat,categoria||(mercado==='stock'&&ranking==='indicadores'),'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=true;
@@ -1981,6 +2114,7 @@ async function ruta() {
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
+  if(mc){vistaCampana(mc[1]?mc[1]+':'+decodeURIComponent(mc[2]):null);return;}
   app.replaceChildren();
   if(!ranking){
     const guardado=estadoLista;estadoLista=null;
