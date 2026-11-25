@@ -22,7 +22,7 @@ Aprender el oficio y construir las herramientas.
 
 ## 25 de noviembre: [SOXS](https://osmancitov.github.io/hugo/#/a/stock/SOXS)
 
-−5,12 USD. −2,13 %. Saldo: 235,59 USD. Compra: 73,540 USD. Venta: 71,976 USD.
+−5,12 USD. −2,13 %. Saldo: 235,59 USD. Compra: 73,54 USD. Venta: 71,98 USD.
 
 ## 23 de noviembre: [CRWD](https://osmancitov.github.io/hugo/#/a/stock/CRWD)
 

@@ -22,6 +22,6 @@ export function nuevoRegistro({ anteriores, activo, codigo, mercado, compra, sal
   const reg = { date: fecha, label: etiquetaFecha(fecha), asset: activo };
   if (codigo) { reg.codigo = codigo; reg.mercado = mercado; }
   Object.assign(reg, { change: r.change, balance: r.balance, percent: r.percent, buy: compra, sell: r.venta, buy_time: horaCompra, buy_date: fechaCompra || fecha, sell_date: fecha, sell_time: horaVenta, balance_confirmed: true });
-  if (r.decimales !== 2) reg.price_decimals = r.decimales;
+  // La página muestra los precios con dos decimales; `sell` conserva la precisión que cuadra el saldo (r.decimales).
   return reg;
 }

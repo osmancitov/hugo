@@ -17,8 +17,7 @@
       "buy_date": "2026-11-25",
       "sell_date": "2026-11-25",
       "sell_time": "13:07",
-      "balance_confirmed": true,
-      "price_decimals": 3
+      "balance_confirmed": true
     },
     {
       "date": "2026-11-23",
