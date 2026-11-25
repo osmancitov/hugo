@@ -8,6 +8,10 @@ const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
 // rojo #b73d40 -> #ff0a10 y verde #25855c -> #00c470 (mismo matiz, saturacion 100%); el gris solo sube un poco su luz.
 const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '#00c470', [COLORES_LECTURA.gris]: '#a5abb5', transparent: 'transparent' };
 const ORO = '#c2a15a';
+// Escala fija de altura desde la partida (% desde la primera lectura del día), igual todos los días: no se ajusta al máximo ni al mínimo de la pantalla.
+export const ESCALA_ALTURA = [[-15, '#6d28d9', '≤ -15'], [-10, '#7c3aed', '-15/-10'], [-6, '#8b5cf6', '-10/-6'], [-2.5, '#a78bfa', '-6/-2,5'], [-.5, '#c4b5fd', '-2,5/-0,5'], [.5, '#e5e7eb', '±0,5'], [2.5, '#fed7aa', '0,5/2,5'], [6, '#fdba74', '2,5/6'], [10, '#fb923c', '6/10'], [15, '#f97316', '10/15'], [Infinity, '#ea580c', '≥ 15']];
+// Cada tramo toma el color de la banda donde cae su altura; la altura de la línea nunca se recorta; el color satura en ±15 %.
+export const colorAltura = (a) => (ESCALA_ALTURA.find(([limite]) => a <= limite) ?? ESCALA_ALTURA.at(-1))[1];
 export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
 export const porcentajeSuperficie = (n) => {
   if (n === null) return 'sin comparación';
@@ -179,10 +183,12 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     // Plano cero y ejes. Los límites porcentuales son simétricos y no se recortan picos.
     for (const y of [-.7, -.35, 0, .35, .7]) linea(proyectar(-1, y, 0), proyectar(1, y, 0), '#2a2922');
     for (const x of [-1, -.5, 0, .5, 1]) linea(proyectar(x, -.7, 0), proyectar(x, .7, 0), '#2a2922');
+    if (!crestas) {
     linea(proyectar(-1, -.7, -1), proyectar(-1, -.7, 1), '#786b4c');
     for (const z of [-1, -.5, 0, .5, 1]) {
       const p = proyectar(-1.03, -.7, z);
       texto(p, pct(z * maximo), z === 0 ? ORO : '#9aa0ac', 'right');
+    }
     }
     const malla = puntos.map((fila, j) => fila.map((p, i) => p ? { ...proyectar(px(i), py(j), p.altura / maximo), p, i, j } : null));
     proyecciones = malla.flat().filter(Boolean);
@@ -195,6 +201,12 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       c.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, z], k) => { const q = pared.f(u, z); k ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.closePath(); c.fillStyle = 'rgba(40,44,56,.35)'; c.fill();
       for (const z of [-1, -.5, 0, .5, 1]) linea(pared.f(-1, z), pared.f(1, z), z === 0 ? ORO : '#3a3a34', z === 0 ? 1.6 : .7);
       for (const u of [-1, -.5, 0, .5, 1]) linea(pared.f(u, -1), pared.f(u, 1), '#3a3a34', .7);
+      // El plano cero también se ve en el suelo (contorno dorado) y el eje porcentual va en el borde izquierdo de la pared.
+      const suelo = [[-1, -.7], [1, -.7], [1, .7], [-1, .7], [-1, -.7]].map(([x, y]) => proyectar(x, y, 0));
+      for (let k = 1; k < suelo.length; k++) linea(suelo[k - 1], suelo[k], '#8a7440', 1);
+      const izqU = pared.f(-1, 0).x <= pared.f(1, 0).x ? -1 : 1;
+      linea(pared.f(izqU, -1), pared.f(izqU, 1), '#786b4c');
+      for (const z of [-1, -.5, 0, .5, 1]) { const q = pared.f(izqU, z); texto({ x: q.x - 5, y: q.y + 4 }, pct(z * maximo), z === 0 ? ORO : '#9aa0ac', 'right'); }
       const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
       for (const i of orden) {
         const resaltado = i === activo;
@@ -205,7 +217,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
           c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b0.x, b0.y); c.lineTo(a0.x, a0.y); c.closePath();
           c.fillStyle = resaltado ? 'rgba(180,190,215,.28)' : 'rgba(124,138,165,.09)'; c.fill();
           const hueco = barras[j].generada - barras[j - 1].generada > 5400000;
-          linea(a, b, hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS), resaltado ? 3.2 : 1.7);
+          linea(a, b, resaltado ? (hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS)) : colorAltura(b.p.altura), resaltado ? 3.2 : 1.7);
         }
       }
     } else {
@@ -248,9 +260,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     }
     const elegido = malla[ultima]?.[activo];
     if (elegido) {
+      if (crestas) { const base = proyectar(px(activo), py(ultima), 0); linea(elegido, base, '#fff1cb', 1); c.beginPath(); c.arc(base.x, base.y, 2.5, 0, Math.PI * 2); c.fillStyle = ORO; c.fill(); }
       c.beginPath(); c.arc(elegido.x, elegido.y, 4, 0, Math.PI * 2); c.fillStyle = '#fff1cb'; c.fill(); c.strokeStyle = '#080604'; c.lineWidth = 1.4; c.stroke();
       texto({ x: elegido.x + 8, y: elegido.y - 9 }, `${elegido.p.codigo} ${pct(elegido.p.altura)}`, '#fff1cb');
     }
+    if (crestas) { const w = (ancho - 20) / ESCALA_ALTURA.length; ESCALA_ALTURA.forEach(([, col, et], k) => { c.fillStyle = col; c.fillRect(10 + k * w, alto - 30, w - 2, 7); c.font = '9px Georgia'; c.fillStyle = '#9aa0ac'; c.textAlign = 'center'; c.fillText(et, 10 + k * w + w / 2 - 1, alto - 8); }); }
     describir();
   }
   let silencioso = false;

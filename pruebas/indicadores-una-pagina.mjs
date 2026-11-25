@@ -46,3 +46,11 @@ test('las crestas 3D solo se activan en la vista unificada; la superficie origin
   assert.match(sup, /if \(crestas\) \{/);
   assert.match(sup, /pared\.f\(-1, z\)/);
 });
+test('la escala de altura de las crestas es fija (no depende del máximo de la pantalla) y satura en ±15 %', async () => {
+  const { colorAltura, ESCALA_ALTURA } = await import('../visor-superficie.mjs');
+  assert.equal(ESCALA_ALTURA.length, 11);
+  assert.equal(colorAltura(15.01), colorAltura(80));
+  assert.equal(colorAltura(-15), colorAltura(-60));
+  assert.notEqual(colorAltura(5), colorAltura(-5));
+  assert.equal(colorAltura(0), '#e5e7eb');
+});
