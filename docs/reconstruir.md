@@ -5,13 +5,13 @@ Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON,
 Guía para levantar uno nuevo, o recuperar este, sin depender de ninguna conversación. Cada paso dice qué comprobar. Lo marcado "no verificado aquí" no se puede ver desde el repositorio y hay que confirmarlo en GitHub o Google.
 
 ## Qué necesitas
-- Una cuenta de GitHub con un repositorio **público** (Pages gratis y ejecutores estándar gratis).
+- Una cuenta de GitHub con un repositorio **público** (la gratuidad de Pages y de los ejecutores en repositorios públicos no está verificada aquí).
 - Node 22 para trabajar en local.
-- Una forma de lanzar `workflow_dispatch` por reloj. Aquí es un Google Apps Script que no está en el repositorio. Alternativa dentro de GitHub: añadir `schedule` (cron) a los flujos; hoy no lo tienen.
+- Una forma de lanzar `workflow_dispatch` por reloj. El repositorio menciona un Google Apps Script que no está en él; no está comprobado que exista ni que corra hoy. Alternativa dentro de GitHub: añadir `schedule` (cron) a los flujos; hoy no lo tienen.
 - Ningún secreto propio: los flujos usan `GITHUB_TOKEN`.
 
 ## Pasos
-1. **Copia el repositorio** completo (incluida la carpeta `registros/`: es la única copia del historial publicado; las velas pasadas no se vuelven a pedir para los días que ya están).
+1. **Copia el repositorio** completo (incluida la carpeta `registros/`: es el historial publicado; las velas pasadas no se vuelven a pedir para los días que ya están).
 2. **Ajusta el nombre del repositorio**: `HUGO_GITHUB` en `actualizacion-diaria.yml` (`osmancitov/hugo`), las rutas `raw.githubusercontent.com/osmancitov/hugo/main/...` de `index.html` (constantes `RAW`, `RAW_IND`, `RAW_CAT` y las de las vistas) y los scripts de `.github/` que construyen URLs del repositorio.
 3. **Activa Pages** con fuente «GitHub Actions» y permite que Actions escriba en el repositorio (Settings). No verificado aquí.
 4. **Comprueba las pruebas** en local: `node --test pruebas/*.mjs`. Deben quedar solo las dos rojas aceptadas (ver `visor.md`).

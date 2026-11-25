@@ -20,9 +20,32 @@ El Observatorio Bursátil es una página web que cada día ordena cientos de act
 - **Mercado**: uno de los dos grupos de activos, `stock` (acciones y fondos) o `cripto` (criptomonedas).
 - **Carrera**: un día de comparación. Ese día se ordenan todos los activos por su variación, y la posición de cada uno es su **puesto** (1 es la mejor variación).
 - **Pre-calculado**: resultado ya calculado y guardado como archivo para que el visor lo lea sin calcular.
-- **`workflow_dispatch`**: modo de lanzar un workflow a mano o desde otro programa, mediante una llamada a GitHub.
+- **`workflow_dispatch`**: modo de lanzar un workflow a mano o desde otro programa, mediante una llamada a GitHub. Es la única forma de lanzar los flujos diario y horario, que no tienen horario propio.
 - **Error 429**: respuesta de un servidor que significa «demasiadas peticiones, espera».
 - **Rebase**: poner los cambios propios encima de la última versión de la rama, para publicarlos sin pisar cambios ajenos.
+- **Milisegundo (ms)**: milésima de segundo. Las fechas internas son milisegundos desde el 1 de enero de 1970 UTC.
+- **Código HTTP**: número con que un servidor responde: 200 es correcto, 429 pide esperar, 418 también pide esperar, 451 niega el servicio por ubicación.
+- **Host**: nombre del servidor al que se pide un dato, como `api.binance.com`.
+- **Archivo temporal**: archivo auxiliar que se escribe primero y se renombra al terminar, para que nadie lea un archivo a medias.
+- **Clon**: copia del repositorio en la máquina donde corre un programa.
+- **Idempotente**: que repetirlo da el mismo resultado que hacerlo una vez.
+- **Caché de Actions**: almacén de GitHub donde un workflow guarda archivos para su próxima ejecución.
+- **Huella sha**: código calculado del contenido de un archivo; dos archivos con el mismo contenido tienen la misma huella.
+- **Stablecoin**: criptomoneda que busca valer una moneda fija, como el dólar.
+- **Capitalización (`cap`)**: valor total de mercado de un activo.
+- **SEC y EDGAR**: la SEC es el regulador bursátil de EE. UU.; EDGAR es su archivo público de documentos de empresas.
+- **`schedule` y cron**: horario propio de un workflow, escrito en formato cron.
+- **`push`**: subir cambios al repositorio.
+- **AAMM y AAMMDD**: año, mes y día con dos cifras cada uno. `2611` es noviembre de 2026; `261124` es el 24 de noviembre de 2026.
+- **Arreglo**: lista ordenada de valores.
+- **Acción tokenizada**: token de Binance que sigue el precio de una acción; Binance lo etiqueta `bStocks`. **ETF**: fondo que cotiza como una acción.
+- **VIX, S&P 500, put/call**: medidas del mercado de EE. UU. que usa una de las fuentes de miedo y codicia. Este proyecto no las calcula.
+- **Byte a byte idéntico**: dos archivos con exactamente los mismos caracteres.
+- **Token**: clave secreta que identifica a un programa ante un servicio. `GITHUB_TOKEN` es la que GitHub da a cada ejecución de un workflow. Un **secreto** es un dato así, que no se escribe en el repositorio.
+- **Ejecutor**: el servidor de GitHub donde corre un workflow. **Concurrencia**: regla que impide que dos ejecuciones del mismo workflow corran a la vez.
+- **`fetch`, `reset --hard`, `push`, `rebase`**: órdenes de git. `fetch` baja los cambios de GitHub sin aplicarlos; `reset --hard` deja la copia local igual a una versión indicada; `push` sube; `rebase` está definido arriba.
+- **SHA**: el hash de un commit. `sha7` son sus 7 primeras cifras.
+- **Época Unix**: el instante 1 de enero de 1970 UTC, desde el que se cuentan las fechas internas.
 - **Ventana de N días**: los últimos N días terminados, contados hacia atrás desde la fecha de corte.
 - **Node**: programa que ejecuta código JavaScript fuera del navegador. Los archivos `.mjs` son código JavaScript para Node.
 - **Prueba**: programa que comprueba que otro programa da el resultado esperado. La suite es el conjunto de pruebas.
@@ -30,7 +53,7 @@ El Observatorio Bursátil es una página web que cada día ordena cientos de act
 ## Cómo se marca lo que se afirma
 
 - **Hecho** quiere decir leído en el código de este repositorio (commit publicado, 25-nov-2026) o ejecutado. **Propuesta** quiere decir una idea no probada y lleva la etiqueta **[PROPUESTA]** donde aparece. Lo que no pude verificar lleva **[NO VERIFICADO]**.
-- El orden de este documento es didáctico: sigue el orden en que conviene construir el sistema hoy, no el orden en que se hizo. Presentar primero el universo de Binance y el catálogo es un orden de explicación. En el código de hoy el catálogo se deriva de las carpetas de velas ya descargadas (sección 4).
+- El orden de este documento es didáctico: sigue el orden en que conviene construir el sistema hoy, no el orden en que se hizo. Presentar primero el universo de Binance y el catálogo es un orden de explicación. En el código de hoy el catálogo se deriva de las carpetas de velas ya descargadas (Pieza C).
 
 Documentos de consulta del mismo repositorio: [datos.md](datos.md) (cada carpeta), [flujos-github.md](flujos-github.md) (los flujos), [visor.md](visor.md) (pantallas), [arquitectura.md](arquitectura.md) (módulos), [reconstruir.md](reconstruir.md) (lista corta de pasos) y [decisiones.md](decisiones.md) (reglas del dueño con su origen).
 
@@ -70,21 +93,21 @@ Todo se publica en https://osmancitov.github.io/hugo/ como una página estática
 Binance (API pública, solo lectura)
    │
    ▼
-[A] UNIVERSO: qué activos existen hoy y de qué clase         (sección 3)
+[A] UNIVERSO: qué activos existen hoy y de qué clase         
    │
    ▼
-[B] VELAS DIARIAS: una vela por activo y día UTC cerrado      (sección 5)
+[B] VELAS DIARIAS: una vela por activo y día UTC cerrado
    │        guardadas por mes en registros/velas-24h/...
    ▼
-[C] CATÁLOGO: la lista oficial de quién participa             (sección 4)
+[C] CATÁLOGO: la lista oficial de quién participa
    │        registros/catalogo/stock y /cripto
    ▼
-[D] CÁLCULOS que leen velas filtradas por el catálogo         (sección 7)
+[D] CÁLCULOS que leen velas filtradas por el catálogo
    ├─ iceberg, ranking, lectura del día   (pre-calculado)
    ├─ persistencia                         (derivado en Pages)
    └─ Campaña 90/60/30                     (paso aparte, tras la pasada)
    │
-[E] Foto horaria de los stocks ───────────────────────────►  (sección 9)
+[E] Foto horaria de los stocks ───────────────────────────►
    │
    ▼
 Todo se guarda en registros/ y se sube a la rama main
@@ -96,7 +119,7 @@ Pages publica el visor            El visor lee los DATOS directamente
 
 **Un detalle que sorprende y hay que saber.** El sitio (Pages) solo entrega el visor: `index.html`, los módulos de JavaScript y algunos derivados. Los **datos** el navegador los pide aparte a `https://raw.githubusercontent.com/osmancitov/hugo/main/registros/...` (hecho: constantes `RAW`, `RAW_CAT`, `RAW_IND` y `BASE_INTRADIA_WEB` en `index.html`, y `RAW` en `visor-rachas.mjs`). Consecuencia práctica: un dato nuevo aparece en el visor en cuanto está en `main`, sin esperar a Pages. Y al revés: un cambio en el código del visor solo aparece cuando Pages termina de publicar.
 
-**Qué dispara cada cosa.** Hay tres flujos en `.github/workflows/`: `actualizacion-diaria.yml`, `lectura-horaria.yml` y `pages.yml`. Los dos primeros solo se lanzan a mano (`workflow_dispatch`): no tienen reloj propio. Cómo y a qué hora se lanzan hoy: sección 11.
+**Qué dispara cada cosa.** Hay tres flujos en `.github/workflows/`: `actualizacion-diaria.yml`, `lectura-horaria.yml` y `pages.yml`. Los dos primeros no tienen horario propio: se ejecutan cuando alguien o algo llama a GitHub para lanzarlos (`workflow_dispatch`), a mano desde su página o por programa mediante la API. Que algo los llame de forma automática hoy no está comprobado; el apartado «El reloj» lo detalla.
 
 ---
 
@@ -125,7 +148,7 @@ Reglas, en orden:
 
 **Por qué así.** La clasificación de acciones depende de la lista de productos de Binance, que es la API interna de su web, no una API documentada. Eso es un riesgo conocido y está dicho en el propio `activos.mjs`: si la dejaran de servir, el sistema se detiene con aviso claro en lugar de adivinar.
 
-**Cómo comprobarlo.** El módulo no escribe nada en el repositorio por sí solo. Su resultado visible es la lista de qué descargar (sección 5) y el texto de cotejo ("Cotejo de stock con Binance: N activos elegibles. Altas: ... Bajas nuevas: ...") que aparece en el registro de la corrida diaria.
+**Cómo comprobarlo.** El módulo no escribe nada en el repositorio por sí solo. Su resultado visible es la lista de qué descargar (las velas, Pieza B) y el texto de cotejo ("Cotejo de stock con Binance: N activos elegibles. Altas: ... Bajas nuevas: ...") que aparece en el registro de la corrida diaria.
 
 ---
 
@@ -147,7 +170,7 @@ Los activos de stock llevan además `tipo` (`empresa` o un tipo de fondo), `cap_
 
 *La regla de vigencia* (`app/modulos/vigencia.mjs`). El catálogo publicado **es** la lista de quién participa. Todo cálculo empieza llamando a `esVigente(dirVelas, clase)`, que lee el catálogo. Si el catálogo falta, está vacío, es de otro mercado o tiene códigos inválidos, la función **lanza un error** y el cálculo se detiene. No cae en "mirar las carpetas": eso reintroduciría en silencio activos dados de baja. Lo anterior queda como estaba y el fallo se ve en el flujo.
 
-*Cómo se genera* (`app/modulos/catalogo.mjs`, función `actualizarCatalogos`, que corre dentro de la pasada diaria, sección 8):
+*Cómo se genera* (`app/modulos/catalogo.mjs`, función `actualizarCatalogos`, que corre dentro de la pasada diaria de publicación):
 1. `universoLocal`: recorre `registros/velas-24h/<mercado>/<CÓDIGO>/` y toma los activos con archivos mensuales `AAMM_CÓDIGO` desde `2608` (el piso, ago-2026).
 2. Quita los excluidos y los `retirados`.
 3. Para cada activo arma su entrada: nombre y tipo salen de, en este orden, la tabla `activos-info.mjs` (solo acciones), la capa curada `app/modulos/activos-curados.json`, el nombre que trae el cotejo de Binance y, como último recurso, el propio código. El **tipo solo viene de lo curado**; nunca se deduce del nombre. Los campos de la capa curada (`cap`, `cap_sub`, `edgar`, `web`, `ficha`, `lectura`, `traduccion`) se copian tal cual.
@@ -199,7 +222,7 @@ Los precios vienen como texto. Todo el sistema los convierte con `Number(...)` a
    - mismas velas: no se hace nada (`igual`),
    - el archivo local es un prefijo de lo nuevo: se amplía (`ampliar`),
    - cualquier vela ya guardada que difiera: **error de conflicto**, no se pisa.
-5. Se escribe con `publicarSerie`: a un temporal con permisos restringidos, con `fsync`; si es archivo nuevo, enlace duro (falla si alguien lo creó en medio); si se amplía, se verifica por segunda vez que el destino no cambió y se renombra.
+5. Se escribe con `publicarSerie`: a un archivo temporal con permisos restringidos y se fuerza su grabación en disco; si es archivo nuevo, se crea el definitivo de modo que falle si alguien lo creó en medio; si se amplía, se verifica por segunda vez que el destino no cambió y se renombra el temporal.
 6. La bajada de un activo termina cuando llega a un mes sin velas (su primer mes) o al piso. Hay un tope de seguridad de 240 meses por activo.
 
 **Para no repetir trabajo** (modo "pon al día", `rapido: true`). Pedir 4 meses × 520 activos cada noche sería caro y arriesgado. El motor deja tres marcas locales por activo, dentro de la carpeta del activo: `_primer-mes`, `_verificado` y `_cobertura`. Con ellas, la corrida diaria solo pide los días que faltan desde el último cubierto. Estas marcas **no se suben** al repositorio: en Actions cada corrida parte de un clon limpio, así que las rehace comprobando en disco los meses cerrados que ya tienen archivo completo (sin consultar a Binance por ellos). Si un mes sale vacío donde no debería, se apaga la confianza y se vuelve a consultar hacia abajo. Si una corrida se interrumpe, el estado de avance (`estado.json`, en una carpeta temporal) permite continuar. En Actions ese archivo es temporal de la corrida.
@@ -294,7 +317,12 @@ Archivo: `registros/pre-calculado/<mercado>/lectura-dia-90d/<AAMMDD>_lectura-dia
 
 **Por qué así.** P mide cuánta ganancia hay por cada punto de pérdida, y C cuántos días buenos hay por cada día malo. Promediarlas con una media cuadrática da un número comparable y un umbral natural: 1. El grupo se guarda en cada archivo para que el visor, la leyenda y los filtros lo lean sin recalcular y nunca discrepen.
 
-**Un borde que descubrí al verificar (hecho, ejecutado).** Los archivos guardan `potencia` y `constancia` redondeadas a 4 decimales, pero el generador diario calcula el grupo con los valores **sin redondear**. En un caso límite (el archivo `260813-261110_carrera-90d`, activo `cripto:ARPA`, con campaña = 0,99999 con los valores redondeados) el archivo publicado dice `rezagados`, mientras que regenerarlo hoy da `potentes`. Es el único de 27 archivos 90d donde cambió el grupo de un activo. No lo toqué. **[PROPUESTA]** decidir una sola forma (con o sin redondeo) y regenerar si hace falta.
+**Un borde de redondeo (hecho, ejecutado y rastreado en el historial de git).** Los archivos guardan `potencia` y `constancia` redondeadas a 4 decimales. El generador diario calcula el grupo con los valores **sin redondear** y después redondea lo que escribe. En un caso límite las dos formas dan grupos distintos: el archivo `260813-261110_carrera-90d`, activo `cripto:ARPA`, guarda potencia 1,08 y constancia 0,913; con esos valores redondeados la Campaña es 0,99999 (menor que 1, `rezagados`), y con los valores sin redondear sube de 1 (`potentes`).
+Cómo se llegó a eso. Reproducible con `git show b1cb8f5:registros/categorias/260813-261110_carrera-90d` y `git show cc539d9:registros/categorias/260813-261110_carrera-90d`:
+- El commit `b1cb8f5` (24-nov-2026) escribió ARPA como `potentes`, con los valores sin redondear.
+- El commit `cc539d9` (25-nov-2026, 09:33 hora de Caracas) cambió la regla de los grupos y regrupó 171 archivos. En él ARPA pasa a `rezagados` con los mismos valores guardados. La deducción que encaja con esa evidencia: el regrupado calculó el grupo desde los valores guardados (redondeados) y no desde las velas. El script de ese regrupado no está en el repositorio, así que esa última parte no está comprobada.
+- El commit `32f29c8` dejó la regla vigente (Campaña menor que 1 es `rezagados`) y dejó el archivo como estaba.
+Resultado: el archivo publicado refleja la regla aplicada a valores redondeados y el generador la aplica a valores sin redondear. No cambié datos ni código. **[PROPUESTA]** decidir una sola forma (con o sin redondeo) y regenerar si hace falta.
 
 ### 7.7 Inventario de días
 **El problema.** Saber cuántos días válidos lleva registrados cada activo (por ejemplo, para exigir antigüedad).
@@ -363,7 +391,7 @@ Después de la diaria, `.github/publicar-visor.mjs` pide explícitamente una cor
 
 ## 11. El reloj: quién lanza todo
 
-Hecho: los flujos diario y horario **no** tienen `schedule`, solo `workflow_dispatch`. Quien los dispare hoy tiene que llamar a la API de GitHub (`POST /repos/osmancitov/hugo/actions/workflows/<archivo>/dispatches` con `{"ref":"main"}`).
+Hecho: los flujos diario y horario **no** tienen `schedule` (horario propio), solo `workflow_dispatch`. Un lanzamiento es una llamada a GitHub: a mano desde la pestaña Actions, o por programa con `POST /repos/osmancitov/hugo/actions/workflows/<archivo>/dispatches` y el cuerpo `{"ref":"main"}`. Que no haya `schedule` no prueba que falte automatización: un programa externo puede hacer esas llamadas, y no lo comprobé.
 - Diaria: `.github/workflows/actualizacion-diaria.yml`. Sus comentarios la planean entre las 00:05 y las 00:14 UTC (después del cierre y su margen de 5 minutos).
 - Horaria: `.github/workflows/lectura-horaria.yml`. Hacia cada hora en punto.
 **[NO VERIFICADO]** Qué sistema externo hace hoy esas llamadas, a qué horas y con qué permisos: el repositorio dice que es un script externo de Google (Apps Script), pero ese script no está aquí y no lo comprobé. Su verificación la lleva el dueño por otro canal. Mientras no esté confirmada, no se debe asumir que corre.
@@ -382,7 +410,7 @@ Hecho: los flujos diario y horario **no** tienen `schedule`, solo `workflow_disp
 
 **Recorrido de reconstrucción que ejecuté el 25-nov-2026, sin tocar producción y sin llamar a Binance.** Trabajé en una copia en `/tmp` de los datos publicados (velas, catálogo) y regeneré con el código del repositorio:
 - **Pre-cálculos:** con las velas y el catálogo publicados y la fecha de corte del 25-nov a las 00:10 UTC, `actualizarPreCalculos` produjo la lectura del día, el iceberg de 90 días y el ranking de los dos mercados. Los seis archivos resultaron **idénticos byte a byte** a los publicados.
-- **Campaña 90d:** `generarCarreras` regeneró los 27 días. En 26 archivos, todos los valores por activo (puesto, potencia, constancia, grupo y no clasificados) coinciden con los publicados. Solo cinco son idénticos byte a byte: en los demás solo cambia el orden de filas entre activos con el mismo promedio dentro del archivo (no investigué la causa; los 171 archivos diarios anteriores se regruparon el 25-nov-2026 con un script aparte). El archivo 27 es el borde de redondeo descrito en 7.6.
+- **Campaña 90d:** `generarCarreras` regeneró los 27 días (copia en `/tmp`). En 26 archivos los valores por activo (puesto, potencia, constancia, grupo, no clasificados) coinciden con los publicados; el archivo 27 es el borde de redondeo descrito en 7.6. Solo 5 de los 27 son idénticos byte a byte: en los otros 22 cambia el orden de algunas filas entre activos con el mismo promedio. Causa: el generador ordena por grupo y por promedio, y deja los empates en el orden de la persistencia (puesto menor primero). En los tres archivos que inspeccioné, dos activos empatados aparecen intercambiados: en `260802-261030_carrera-90d`, BABA (puesto 357) y GOOGL (puesto 358) con promedio 245,2; el publicado pone GOOGL primero y el regenerado BABA primero. Antes del regrupado de `cc539d9`, esos dos estaban en grupos distintos; la deducción es que el regrupado los reordenó sin aplicar el desempate por puesto. Esa deducción no está comprobada, porque el script del regrupado no está en el repositorio. Los valores no cambian; solo el orden de dos filas con igual promedio.
 - **Persistencia:** `generarPersistencia` sobre la copia produjo la lista de 516 activos con corte 24-nov.
 Lo que **no** reconstruí: la descarga real de velas y del universo desde Binance, las dos fuentes de miedo y codicia, la foto horaria, la publicación de Pages en un entorno nuevo, y los flujos de Actions fuera de este repositorio. Esas piezas dependen de la red o de GitHub y se describen aquí a partir de su código. Para esos pasos la prueba real es mirar una corrida en producción (la lista de comprobación rápida de arriba), no repetirla.
 
@@ -401,6 +429,6 @@ Lo que **no** reconstruí: la descarga real de velas y del universo desde Binanc
 **[PROPUESTA] (no probadas):**
 - Construir en el orden de este documento: catálogo explícito primero, y que el descargador de velas lea de él.
 - Sustituir la forma "orden de bot" (`ctx` y `registrar`) por funciones simples que reciban datos y devuelvan resultados.
-- Poner el reloj dentro del repositorio (sección 11).
+- Poner el reloj dentro del repositorio (apartado «El reloj»).
 - Limpiar los comentarios heredados y retirar el iceberg viejo.
 - Decidir una sola forma de redondeo para el grupo de la Campaña (7.6).

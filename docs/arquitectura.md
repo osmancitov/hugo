@@ -12,7 +12,7 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 - Mercados: `stock` (empresas y fondos ETF) y `cripto`. El piso de los registros es el 1-ago-2026 (UTC).
 
 ## Flujo de punta a punta
-1. **Disparo.** Un reloj externo (Google Apps Script, fuera de este repositorio) lanza los flujos con `workflow_dispatch`. No hay `cron` en los flujos (comprobado en los tres archivos de `.github/workflows/`). Ver `flujos-github.md`.
+1. **Disparo.** Los flujos diario y horario se lanzan con `workflow_dispatch`: una llamada a GitHub, a mano desde su página o por programa mediante la API. No hay `cron` en los flujos (comprobado en los tres archivos de `.github/workflows/`). Quién hace hoy esas llamadas no está comprobado: el repositorio menciona un script de Google Apps Script que no está aquí. Ver `flujos-github.md`.
 2. **Lectura horaria** (`lectura-horaria.yml`): toma una foto intradiaria de los stocks a la hora en punto UTC y la guarda en `registros/intradia/stock/`.
 3. **Puesta al día diaria** (`actualizacion-diaria.yml`), pensada para las 00:05 a 00:14 UTC, con la vela diaria cerrada:
    - `actualizacion-diaria.mjs`: ingesta de velas diarias de Binance (solo lo que falta) y «pasada de publicación»: indicadores (iceberg, miedo y codicia), pre-cálculos, ranking, catálogo, inventario de días. Un commit.

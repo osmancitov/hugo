@@ -5,7 +5,7 @@ Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON,
 Fuente: los tres archivos de `.github/workflows/` y los scripts de `.github/` leídos el 25-nov-2026. Los tres flujos usan Node 22 y ejecutores `ubuntu-latest`.
 
 ## Disparo (fuera de este repositorio)
-Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además `push` a `main`). Quien los lanza es un reloj externo (Google Apps Script de la cuenta del dueño). No verificado aquí: sus horas, su token y su configuración. Para ver o cambiar los disparadores hay que abrir ese proyecto de Apps Script. Evidencia indirecta en el repositorio: commits horarios de Actions y la diaria tras las 00:05 UTC. Una corrida lanzada por el reloj de Google y una lanzada a mano no se distinguen en los datos de Actions (ambas son `workflow_dispatch`).
+Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además `push` a `main`). Cada lanzamiento es una llamada a GitHub: a mano desde su página o por programa mediante la API. El repositorio menciona un script externo de Google Apps Script como autor de esas llamadas. No verificado aquí: que exista y corra hoy, sus horas, su token y su configuración. Para ver o cambiar los disparadores hay que abrir ese proyecto de Apps Script. Evidencia indirecta en el repositorio: commits horarios de Actions y la diaria tras las 00:05 UTC. Una corrida lanzada por el reloj de Google y una lanzada a mano no se distinguen en los datos de Actions (ambas son `workflow_dispatch`).
 
 ## 1. Lectura horaria (`lectura-horaria.yml`)
 - Permisos: `contents: write`. Concurrencia `lectura-horaria` sin cancelar. Tiempo máximo 29 min.

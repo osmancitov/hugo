@@ -21,7 +21,7 @@ Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión
 
 ## Detalles que importan
 - **Mercado**: `stock` o `cripto`. Los códigos de cripto pueden estar en caracteres chinos (hoy `币安人生` y `牛来`): en rutas y archivos van codificados en URL; el visor muestra su lectura latina (ver `visor.md`).
-- **Grupo de campaña**: el campo `grupo` de cada clasificado sale de una sola función, `grupoDe` en `app/modulos/campana-carrera.mjs`. La regla vigente está en `visor.md`. Los 171 archivos diarios anteriores se regruparon con ella el 25-nov-2026 a partir de la potencia y la constancia guardadas.
+- **Grupo de campaña**: el campo `grupo` de cada clasificado sale de una sola función, `grupoDe` en `app/modulos/campana-carrera.mjs`. La regla vigente está en `visor.md`. Los 171 archivos diarios anteriores se regruparon el 25-nov-2026 (commit `cc539d9`). El script de ese regrupado no está en el repositorio; el detalle del único caso que difiere está en `construccion.md`, apartado 7.6.
 - **Observación sobre `serie_carrera-<N>d`**: su encabezado dice "sin las 90 velas ese día" incluso en las ventanas de 30 y 60 días. Es texto heredado; el dato es correcto por ventana.
 - **Cuántos archivos hay**: `velas-24h` es la carpeta grande (miles de archivos mensuales); `categorias` tiene 174 archivos (171 diarios más 3 series) al 25-nov-2026.
 - **Derivados fuera de `registros/`** (generados en Pages, no versionados como historia): `persistencia-90d.json`, `iceberg-colores.json`, `superficie.html`, `cuenta/index.html`.

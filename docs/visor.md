@@ -27,7 +27,7 @@ Cada día cerrado se clasifica a cada activo que tenga todas las velas de la ven
 - **Selección desde la lista**: la vista sube al título del activo (nombre con enlace a su ficha) justo sobre el campo. La subida usa `scrollTo`; el visor no usa `scrollIntoView` (un guard de las pruebas lo prohíbe).
 - **Espaguetis** (puestos de todos los activos por jornada): líneas grises tenues (opacidad .12); el activo elegido y el hover se resaltan en el blanco cálido `#fff3cf`, el mismo de la trayectoria del campo. Ningún color de categoría se usa para resaltar, porque un activo cambia de categoría con el tiempo.
 - **Curvas P y C** del activo elegido: tercera gráfica, sin leyenda de escala.
-- Los textos explicativos largos (conteos, fórmula, explicación del campo) se quitaron por decisión del usuario; queda solo «Último día cerrado…».
+- Los textos explicativos largos (conteos, fórmula, explicación del campo) se quitaron (mensajes de Slack 1795615151.124609 y 1795615394.222839 del dueño); queda solo «Último día cerrado…».
 
 ## Nombres con lectura latina
 Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛来`. Se anotan en `app/modulos/activos-curados.json` con `lectura` (pinyin) y `traduccion` (traducción literal breve, no oficial), y la pasada de catálogo los copia a `registros/catalogo/cripto` (campos en `CAMPOS_CURADOS` de `catalogo.mjs`). El formato visible sale de una función, `parentesisLectura` en `app/modulos/lectura-latina.mjs`: «币安人生 (Bì'ān Rénshēng, Vida Binance)». Se usa en las listas, Campaña, Variación, Persistencia, títulos y ficha. En el punto elegido del campo va solo el código para que no se corte. Para añadir un nombre así: anotar `lectura` y `traduccion` en el JSON curado y regenerar el catálogo.
