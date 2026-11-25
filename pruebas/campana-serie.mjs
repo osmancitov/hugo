@@ -60,7 +60,7 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
 test('Campañas: gráfica de cuatro cuadrantes bajo espaguetis y curvas, con selección compartida', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /function graficaCuadrantes\(caja,u,seleccion,alElegir\)/);
-  assert.match(h, /raiz\.append\(ven,t,sub,cCuad,cEsp,cAct,lista\)/);
+  assert.match(h, /raiz\.append\(t,sub,cCuad,cEsp,cAct,lista\)/);
   assert.match(h, /graficaCuadrantes\(cCuad,u,sel,elegir\)/);
 });
 
@@ -77,4 +77,19 @@ test('la superficie 3D tiene selectores de grupo y ventana que solo filtran lo d
   assert.match(h, /elegirGrupo/); assert.match(h, /elegirVentana/);
   assert.match(h, /montarSuperficie\(zona, lecturas, parsearVista/);
   assert.match(h, /no se retira ningún activo/);
+});
+
+test('Campañas: el activo elegido se identifica junto a los cuadrantes y se dice jornadas, no carreras', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /camp-cuad-nombre/);
+  assert.ok(!h.includes("'Cuatro cuadrantes'"));
+  assert.ok(!/carreras con la ventana|Carreras en horizontal|en cada carrera/.test(h));
+  assert.match(h, /jornadas · escala logarítmica/);
+});
+
+test('Campañas: el botón solo muestra los tres botones de ventana; la campaña se abre al elegir', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /\(90\|60\|30\)d/);
+  assert.match(h, /if\(!mc\[1\]\)\{app\.replaceChildren\(\);return;\}/);
+  assert.ok(!h.includes('Number(mc[1]||90)'));
 });

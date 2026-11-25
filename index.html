@@ -123,6 +123,9 @@ a:hover { text-decoration: underline; }
 .camp-cuad-ley { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
 .camp-cuad-k { display: inline-block; width: .7em; height: .7em; border-radius: 50%; margin-right: .35em; }
 .camp-cuad-envol { position: relative; }
+.camp-cuad-cab { min-height: 4.4rem; margin-bottom: .4rem; display: flex; flex-direction: column; justify-content: flex-end; }
+.camp-cuad-nombre { font-size: 1.7rem; margin: 0; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.camp-cuad-dato { margin: .15rem 0 0; }
 .camp-cuad-juntos { position: absolute; z-index: 5; width: max-content; max-width: min(92%, 22rem); max-height: 15rem; overflow: auto; padding: .5rem; background: var(--panel); border: 1px solid var(--oro); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.6); display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .camp-cuad-juntos[hidden] { display: none; }
 .camp-cuad-juntos p { width: 100%; margin: 0; color: var(--tenue); font-size: .85rem; }
@@ -2041,7 +2044,7 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
   let maxP=2;for(const id in s.activos)for(const p of s.activos[id])if(p&&p[0]>maxP)maxP=p[0];
   const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=p=>T+(p-1)/(maxP-1)*(H-T-B);
-  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Puesto de cada activo en cada carrera'});
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Puesto de cada activo en cada jornada'});
   for(const p of [1,Math.round(maxP/4),Math.round(maxP/2),Math.round(maxP*3/4),maxP]){
     svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(p),y2:y(p),class:'camp-rej'}));
     const t=svgEl('text',{x:L-6,y:y(p)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=p;svg.append(t);
@@ -2055,7 +2058,7 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
     {const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=(entradaCampana(id)?.codigo)||id;hit.append(ti);g.append(hit);} // también la seleccionada: un segundo clic la suelta
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
-  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Carreras en horizontal (una por día), puesto en vertical: el 1 arriba.';
+  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
   caja.replaceChildren(svg,ej);
 }
 function graficaActivoCampana(caja,s,id){
@@ -2063,7 +2066,7 @@ function graficaActivoCampana(caja,s,id){
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
   const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con la ventana completa. Los días sin punto quedan en blanco. Escala logarítmica: 2 y ½ quedan a la misma distancia del 1.`;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas · escala logarítmica`;
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
   const lg=v=>Math.log2(Math.max(v,1e-3));
   let lo=-1,hi=1;for(const p of serie)if(p)for(const k of [1,2]){lo=Math.min(lo,lg(p[k]));hi=Math.max(hi,lg(p[k]));}
@@ -2081,7 +2084,7 @@ function graficaActivoCampana(caja,s,id){
   const ley=document.createElement('div');ley.className='camp-ley';
   const ult=serie.filter(Boolean).at(-1);
   ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
-  caja.replaceChildren(tit,sub,svg,ley);
+  caja.replaceChildren(sub,svg,ley); // el nombre del activo va arriba, junto a los cuadrantes
 }
 function graficaCuadrantes(caja,u,seleccion,alElegir){
   const W=560,H=440,L=56,R=12,T=14,B=46,cl=u.clasificados;
@@ -2127,11 +2130,20 @@ function graficaCuadrantes(caja,u,seleccion,alElegir){
     sel2.style.left=lx+'px';sel2.style.top=Math.max(0,ty)+'px';
   });
   document.addEventListener('keydown',function cerrar(e){if(!svg.isConnected){document.removeEventListener('keydown',cerrar);return;}if(e.key==='Escape')sel2.hidden=true;});
-  const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent='Cuatro cuadrantes';
+  const cab=document.createElement('div');cab.className='camp-cuad-cab';
+  if(seleccion){
+    const e=entradaCampana(seleccion),a=cl.find(q=>q.id===seleccion),cod=e?e.codigo:seleccion.split(':')[1];
+    const h=document.createElement('h2');h.className='camp-tit camp-cuad-nombre';
+    const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');h.append(l);
+    const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';
+    const tipo=seleccion.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
+    d.textContent=[/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
+    cab.append(h,d);
+  }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Cada punto es un activo, con su grupo en su color. Escala logarítmica: 2 y ½ quedan a la misma distancia del 1. Toca un punto para elegirlo.';
-  envol.append(svg,sel2);caja.replaceChildren(tit,envol,ley,ej);
+  envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley,ej);
 }
 async function vistaCampana(n,inicial){
   app.replaceChildren();
@@ -2144,9 +2156,7 @@ async function vistaCampana(n,inicial){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas.`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  const ven=document.createElement('nav');ven.className='mercados camp-ventanas';ven.setAttribute('aria-label','Ventana de la campaña');
-  for(const v of [90,60,30]){const a=document.createElement('a');a.textContent=v+' días';a.href=v===90?'#/campana':`#/campana/${v}d`;if(v===n)a.classList.add('actual');ven.append(a);}
-  raiz.append(ven,t,sub,cCuad,cEsp,cAct,lista);app.replaceChildren(raiz);
+  raiz.append(t,sub,cCuad,cEsp,cAct,lista);app.replaceChildren(raiz);
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   const pintarSel=(irA)=>{
@@ -2158,7 +2168,7 @@ async function vistaCampana(n,inicial){
   };
   function elegir(id,desdeLista){
     sel=sel===id?null:id;
-    history.replaceState(null,'',(n===90?'#/campana':`#/campana/${n}d`)+(sel?'/'+sel.replace(':','/'):''));
+    history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
     if(sel){const g=u.clasificados.find(a=>a.id===sel)?.grupo;const d=g&&lista.querySelector(`details[data-g="${g}"]`);if(d)d.open=true;}
     pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista baja al detalle
   }
@@ -2190,7 +2200,8 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|persistencia|indicadores))?$/);
-  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
+  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
+  if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(!m&&!mi&&!r&&!esBusqueda&&!esCampana&&hash!=='#/') {
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
@@ -2208,6 +2219,7 @@ async function ruta() {
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   document.getElementById('mercado-campana').href='#/campana';
   document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
+  if(esCampana){navCat.hidden=false;for(const v of [90,60,30])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
   }
@@ -2217,7 +2229,7 @@ async function ruta() {
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana,'#/');
-  contraerNavegacion(navCat,categoria||(mercado==='stock'&&ranking==='indicadores'),'#/stock');
+  contraerNavegacion(navCat,esCampana?mc[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',persistencia:'Promedio',indicadores:'Indicadores'};
@@ -2226,7 +2238,8 @@ async function ruta() {
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
-  if(mc){vistaCampana(Number(mc[1]||90),mc[2]?mc[2]+':'+decodeURIComponent(mc[3]):null);return;}
+  if(mc){if(!mc[1]){app.replaceChildren();return;} // «Campañas» solo muestra los tres botones; el usuario elige
+    vistaCampana(Number(mc[1]),mc[2]?mc[2]+':'+decodeURIComponent(mc[3]):null);return;}
   app.replaceChildren();
   if(!ranking){
     const guardado=estadoLista;estadoLista=null;
