@@ -25,3 +25,15 @@ test('el visor tiene el botón Campaña y la ruta #/campana, sin selector de fec
   assert.match(h, /\^#\\\/campana/);
   assert.doesNotMatch(h.slice(h.indexOf('async function vistaCampana'), h.indexOf('async function ruta()')), /<select|type="date"/);
 });
+test('la diaria registra la Campaña antes de pedir Pages', () => {
+  const y = fs.readFileSync(new URL('../.github/workflows/actualizacion-diaria.yml', import.meta.url), 'utf8');
+  assert.ok(y.indexOf('node .github/campana-diaria.mjs') > y.indexOf('node .github/actualizacion-diaria.mjs'));
+  assert.ok(y.indexOf('node .github/campana-diaria.mjs') < y.indexOf('node .github/publicar-visor.mjs'));
+});
+test('la carrera ya escrita no se reescribe y las existentes coinciden con su recálculo', async () => {
+  const { generarCarreras, nombreCarrera, grupoDe } = await import('../app/modulos/campana-carrera.mjs');
+  const r = generarCarreras({ raiz: process.cwd(), hasta: Date.UTC(2026, 9, 29) });
+  assert.deepEqual(r.escritos, []); // 29-oct ya existe en registros/categorias
+  assert.equal(nombreCarrera(Date.UTC(2026, 9, 29)), '260801-261029_carrera-90d');
+  assert.equal(grupoDe(1, 1), 'premium'); assert.equal(grupoDe(1, 0.9), 'potentes'); assert.equal(grupoDe(0.9, 1), 'constantes'); assert.equal(grupoDe(0.99, 0.99), 'rezagados');
+});

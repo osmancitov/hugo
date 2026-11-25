@@ -35,6 +35,8 @@ jobs:
           HUGO_GH_KEY: ${{ secrets.GITHUB_TOKEN }}
           HUGO_GITHUB: osmancitov/hugo
         run: node .github/actualizacion-diaria.mjs
+      - name: Registrar la carrera 90d de la Campaña
+        run: node .github/campana-diaria.mjs
       - name: Publicar el visor con los registros actualizados
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
