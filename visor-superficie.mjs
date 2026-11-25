@@ -208,6 +208,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const izqU = pared.f(-1, 0).x <= pared.f(1, 0).x ? -1 : 1;
       linea(pared.f(izqU, -1), pared.f(izqU, 1), '#786b4c');
       for (const z of [-1, -.5, 0, .5, 1]) { const q = pared.f(izqU, z); texto({ x: q.x - 5, y: q.y + 4 }, pct(z * maximo), z === 0 ? ORO : '#9aa0ac', 'right'); }
+      // Telas entre cada curva y el cero: antes 0,09 por tela; ahora 0,03 y, con muchos activos, se reparte (1/n) para que la suma no tape el fondo al mirar de lado.
+      const alfaTela = Math.min(.03, 1 / Math.max(1, codigos.length)).toFixed(4);
       const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
       for (const i of orden) {
         const resaltado = i === activo;
@@ -216,7 +218,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
           if (!a || !b) continue; // sin dato deja un hueco, nunca altura cero
           const a0 = proyectar(px(i), py(j - 1), 0), b0 = proyectar(px(i), py(j), 0);
           c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b0.x, b0.y); c.lineTo(a0.x, a0.y); c.closePath();
-          c.fillStyle = resaltado ? 'rgba(180,190,215,.28)' : 'rgba(124,138,165,.09)'; c.fill();
+          c.fillStyle = resaltado ? 'rgba(180,190,215,.2)' : `rgba(124,138,165,${alfaTela})`; c.fill();
           const hueco = barras[j].generada - barras[j - 1].generada > 5400000;
           linea(a, b, resaltado ? (hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS)) : colorAltura(b.p.altura), resaltado ? 3.2 : 1.7);
         }
