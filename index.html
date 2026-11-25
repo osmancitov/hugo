@@ -282,6 +282,13 @@ a.tit-link:hover { text-decoration: none; }
 }
 .superficie-canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
 .superficie-canvas:active { cursor: grabbing; }
+.superficie-pasos button.hundido { background: var(--borde); color: var(--texto); box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+.superficie-pasos button:disabled { opacity: .35; cursor: default; }
+.camp-lista.solo-lectura .camp-fila { cursor: default; }
+.ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1rem; color: var(--tenue); font-weight: 400; }
+.superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
+.superficie-titulo .barra-activo-enlace { font-family: 'Cinzel', 'Lora', serif; font-size: 1.5rem; font-weight: 600; margin-right: .5rem; }
 .superficie-detalle { color: var(--texto); font-size: .85rem; line-height: 1.6; padding: .7rem 0; border-top: 1px solid var(--borde); min-height: 3.8rem; }
 .superficie-leyenda, .superficie-nota { color: var(--tenue); font-size: .78rem; line-height: 1.6; margin: .5rem 0; }
 </style>
@@ -299,7 +306,7 @@ a.tit-link:hover { text-decoration: none; }
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
-<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="cuenta/">Cimiento</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="cuenta/">Cimiento</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -323,7 +330,7 @@ import { ordenarCampana, campana } from './app/modulos/campana-orden.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
 import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=10'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
-import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
+import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=27';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
@@ -822,6 +829,18 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
     }
     return sec;
   };
+  // Orden de las barras (decisión del usuario, 25-nov-2026): primero 24 horas, luego la medida desde la referencia, al final la medida contra la lectura anterior.
+  // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
+  // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
+  // de cierres, no un corte común que no existe.
+  const iguales24h = b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 0;
+  caja.append(seccion(
+    '24 horas',
+    b.suben, b.bajan, b.conDato,
+    '',
+    '#/i/iceberg-stock/barra-24h' + sufijo,
+    periodoBarra(b.inicio, b.fin, '24 h por activo'), iguales24h
+  ));
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
   // vela diaria completa del día UTC anterior, referencia FIJA del día.
   // Presentación: rojo bajó, gris igual, verde subió; sin alterar el conteo guardado. Los sin vela local o sin dato quedan fuera de la frontera, anotados.
@@ -835,17 +854,6 @@ function vistaBarra(b, { historica = false, compacta = false } = {}) {
       periodoBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada, 'dia'), d.iguales
     ));
   }
-  // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
-  // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
-  // de cierres, no un corte común que no existe.
-  const iguales24h = b.activos ? [...b.activos.values()].filter(e => e.aperturaN !== null && e.ultimoN === e.aperturaN).length : 0;
-  caja.append(seccion(
-    '24 horas',
-    b.suben, b.bajan, b.conDato,
-    '',
-    '#/i/iceberg-stock/barra-24h' + sufijo,
-    periodoBarra(b.inicio, b.fin, '24 h por activo'), iguales24h
-  ));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
   // está aumentando, no cuando la referencia bajó»). El verde de la ventana es posición
@@ -1002,32 +1010,34 @@ async function vistaTablaBarra(clave, instante = null) {
   app.append(caja);
 }
 
-async function vistaSuperficie() {
-  app.replaceChildren();
+// en: contenedor cuando la superficie va dentro de la página de Indicadores; barraCaja: donde van las tres barras de la lectura elegida.
+async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
+  if (!en) app.replaceChildren();
   const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/stock', textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
-  const titulo = Object.assign(document.createElement('h1'), { textContent: 'Superficie 3D' });
+  const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: 'Superficie 3D' });
   ficha.append(titulo);
   const reloj = montarRelojObservatorio(ficha);
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
-  app.append(volver, ficha, estado, cuerpo);
+  if (en) en.append(ficha, estado, cuerpo); else app.append(volver, ficha, estado, cuerpo);
   let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false, filtro=null, registroActual=null;
   const soloFiltro=(b)=>filtro&&b?{...b,activos:new Map([...b.activos].filter(([c])=>filtro.codigos.has(c)))}:b;
   const parsearVista=(t)=>soloFiltro(parsearBarraVisor(t));
-  limpiarGrafica = () => { turno++;clearTimeout(automatico);grafica?.desmontar();reloj.desmontar(); };
+  const limpiezaPrevia = limpiarGrafica;
+  limpiarGrafica = () => { limpiezaPrevia();turno++;clearTimeout(automatico);grafica?.desmontar();reloj.desmontar(); };
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren(); registroActual=registro;
     const lecturas = registro.dia.lecturas;
     if (filtro) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: filtro.nota }));
     if (lecturas.length === 1) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Solo hay una lectura guardada para este día. Se muestra su perfil; el terreno temporal necesita al menos dos. No se reconstruyen fotos anteriores.' }));
-    const zona = document.createElement('div'), barra = document.createElement('div');
-    cuerpo.append(zona, barra);
+    const zona = document.createElement('div'), barra = barraCaja || document.createElement('div');
+    cuerpo.append(zona); if (!barraCaja) cuerpo.append(barra);
     if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
-    grafica = montarSuperficie(zona, lecturas, parsearVista, { alSeleccionar: (i) => {
+    grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
       const b = soloFiltro(barraContextual(registro,i));
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true }));
-    } });
+    } });    if (puente) { puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {
     const registro = await cargarDiaObservatorio();
@@ -1040,7 +1050,7 @@ async function vistaSuperficie() {
     for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: fechaLegibleUTC(dia) }));
     elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
     const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Actualizar' });
-    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); vistaSuperficie(); };
+    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); if (en) vistaUnificada(puente?.inicial?.() ? 'stock:' + puente.inicial() : null); else vistaSuperficie(); };
     // Subgrupo de la campaña: dos selectores (grupo y ventana). Solo filtra lo que se dibuja.
     const etGrupo = Object.assign(document.createElement('label'), { textContent: 'Grupo ' });
     const elegirGrupo = document.createElement('select');
@@ -1050,22 +1060,47 @@ async function vistaSuperficie() {
     const elegirVentana = document.createElement('select');
     for (const n of [90, 60, 30]) elegirVentana.append(Object.assign(document.createElement('option'), { value: n, textContent: n + 'd' }));
     etVentana.append(elegirVentana); elegirVentana.disabled = true;
+    let grupoVal = 'todos', ventanaVal = en ? (puente?.ventana?.() ?? null) : 90;
+    const nombreGrupo = (g) => ({ todos: 'Todos', premium: 'Premium', potentes: 'Potentes', constantes: 'Constantes' })[g];
     const aplicarFiltro = async () => {
-      const g = elegirGrupo.value; elegirVentana.disabled = g === 'todos';
+      const g = grupoVal; if (!en) elegirVentana.disabled = g === 'todos';
       const este = ++turno;
       try {
         if (g === 'todos') filtro = null;
         else {
-          const n = Number(elegirVentana.value), { u } = await cargarCampana(n);
+          const n = ventanaVal, { u } = await cargarCampana(n);
           const codigos = new Set(u.clasificados.filter(a => a.grupo === g && a.id.startsWith('stock:')).map(a => a.id.slice(6)));
-          const nombre = elegirGrupo.selectedOptions[0].textContent;
+          const nombre = nombreGrupo(g);
           filtro = { codigos, nota: `${nombre}, ventana de ${n} días, clasificación al cierre del ${fechaLegibleUTC(u.carrera.ventana.fin)}: ${codigos.size} acciones. Solo cambia lo que se dibuja; no se retira ningún activo.` };
         }
         if (este === turno && cuerpo.isConnected && registroActual) await mostrar(registroActual);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };
-    elegirGrupo.onchange = aplicarFiltro; elegirVentana.onchange = aplicarFiltro;
-    controles.append(etiqueta, etGrupo, etVentana, recargar); ficha.append(controles);
+    elegirGrupo.onchange = () => { grupoVal = elegirGrupo.value; aplicarFiltro(); };
+    elegirVentana.onchange = () => { ventanaVal = Number(elegirVentana.value); aplicarFiltro(); };
+    if (en) {
+      // Vista unificada: botones en lugar de desplegables y ninguna Campaña elegida de antemano (25-nov-2026).
+      const grupo = (titulo, opciones, valor, alElegir) => {
+        const et = Object.assign(document.createElement('label'), { textContent: titulo + ' ' });
+        const caja = Object.assign(document.createElement('span'), { className: 'superficie-pasos' });
+        const botones = opciones.map(([v, t]) => {
+          const b = Object.assign(document.createElement('button'), { type: 'button', textContent: t });
+          b.onclick = () => alElegir(v); caja.append(b); return [v, b];
+        });
+        et.append(caja);
+        return { et, pintar: () => { for (const [v, b] of botones) { b.setAttribute('aria-pressed', String(v === valor())); b.classList.toggle('hundido', v === valor()); b.disabled = false; } }, botones };
+      };
+      const gr = grupo('Grupo', [['todos', 'Todos'], ['premium', 'Premium'], ['potentes', 'Potentes'], ['constantes', 'Constantes']], () => grupoVal, (v) => { if (v !== 'todos' && !ventanaVal) return; grupoVal = v; pintar(); aplicarFiltro(); });
+      const ca = grupo('Campaña', [[30, '30 días'], [60, '60 días'], [90, '90 días']], () => ventanaVal, (v) => {
+        ventanaVal = ventanaVal === v ? null : v;
+        if (!ventanaVal && grupoVal !== 'todos') { grupoVal = 'todos'; aplicarFiltro(); } else if (grupoVal !== 'todos') aplicarFiltro();
+        pintar(); puente?.alCampana?.(ventanaVal);
+      });
+      const pintar = () => { gr.pintar(); ca.pintar(); for (const [v, b] of gr.botones) if (v !== 'todos') { b.disabled = !ventanaVal; b.title = ventanaVal ? '' : 'Elige primero una Campaña'; } };
+      pintar();
+      controles.append(etiqueta, ca.et, gr.et); // sin «Actualizar» (25-nov-2026): la vista se actualiza sola
+    } else controles.append(etiqueta, etGrupo, etVentana, recargar);
+    ficha.append(controles);
     elegirDia.onchange = async () => {
       manual=true;
       const este = ++turno;
@@ -1415,15 +1450,15 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   }
 }
 
-function vistaIndicador(codigo) {
+function vistaIndicador(codigo, en = null) {
   const e = INDICADORES.find((x) => x.codigo === codigo);
   if (!e) { location.hash = ''; return; }
-  app.innerHTML = '';
+  if (!en) app.innerHTML = '';
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = origenLista; volver.textContent = 'volver';
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
-  const h1 = document.createElement('h1');
+  const h1 = document.createElement(en ? 'h2' : 'h1');
   h1.innerHTML = '<span class="cod"></span>';
   h1.querySelector('.cod').textContent = e.nombre;
   ficha.appendChild(h1);
@@ -1439,7 +1474,7 @@ function vistaIndicador(codigo) {
   estado.className = 'estado'; estado.textContent = 'Trayendo los registros…';
   const pie = document.createElement('div');
   pie.className = 'pie-grafica';
-  app.append(volver, ficha, caja, pie);
+  if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
   cargarIndicador(codigo).then((puntos) => {
     estado.remove();
@@ -1548,7 +1583,9 @@ function graficaAdaptable(caja, geometriaPara, dibujar, alLimpiar) {
   ajustar.observe(caja);
   const girar = () => { if (caja.isConnected) reconfigurar(); };
   orientacion.addEventListener('change', girar);
+  const limpiezaPrevia = limpiarGrafica; // varias gráficas en una página: cada una suma su limpieza
   limpiarGrafica = () => {
+    limpiezaPrevia();
     if (alLimpiar) alLimpiar();
     ajustar.disconnect(); orientacion.removeEventListener('change', girar);
   };
@@ -1904,17 +1941,17 @@ function radiografiaVertical(ctx, d, codigo, subtitulo, hasta, limite, alto) {
 let limpiarGrafica = () => {};
 
 /* ---------- vista de activo ---------- */
-function vistaActivo(clase, codigo) {
+function vistaActivo(clase, codigo, en = null) {
   const e = TODOS.find((x) => x.clase === clase && x.codigo === codigo);
-  if (!e) { location.hash = ''; return; }
-  app.innerHTML = '';
+  if (!e) { if (!en) location.hash = ''; return; }
+  if (!en) app.innerHTML = '';
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = origenLista; volver.textContent = 'volver';
   // «Volver» no toca la búsqueda: ruta() recupera el lugar guardado de la lista.
 
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
-  const h1 = document.createElement('h1');
+  const h1 = document.createElement(en ? 'h2' : 'h1');
   h1.innerHTML = '<span class="cod"></span> <span class="nom"></span>';
   h1.querySelector('.cod').textContent = e.codigo;
   h1.querySelector('.nom').textContent = e.nombre;
@@ -1951,7 +1988,7 @@ function vistaActivo(clase, codigo) {
   const pie = document.createElement('div');
   pie.className = 'pie-grafica';
 
-  app.append(volver, ficha, caja, pie);
+  if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
 
   cargarRegistros(e).then((filas) => {
@@ -2182,9 +2219,10 @@ function graficaCampo(caja,u,seleccion,alElegir){
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley);
 }
-async function vistaCampana(n,inicial){
-  app.replaceChildren();
-  const cab=document.createElement('p');cab.className='camp-sub';cab.textContent='Cargando la Campaña…';app.append(cab);
+async function vistaCampana(n,inicial,en=null,puente=null){
+  const destino=en||app;
+  destino.replaceChildren();
+  const cab=document.createElement('p');cab.className='camp-sub';cab.textContent='Cargando la Campaña…';destino.append(cab);
   let datos;try{datos=await cargarCampana(n);}catch(err){cab.textContent=err.message;return;}
   const {s,u}=datos,N=s.fechas.length;
   const raiz=document.createElement('section');raiz.className='campana';
@@ -2193,7 +2231,7 @@ async function vistaCampana(n,inicial){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(t,sub,cCuad,cEsp,cAct,lista);app.replaceChildren(raiz);
+  raiz.append(t,sub,cCuad,cEsp,cAct,lista);destino.replaceChildren(raiz);
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   const pintarSel=(irA)=>{
@@ -2204,8 +2242,9 @@ async function vistaCampana(n,inicial){
     if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
   };
   function elegir(id,desdeLista){
+    if(puente&&puente.soloLectura)return; // en la vista unificada elige la superficie
     sel=sel===id?null:id;
-    history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
+    if(puente)puente.alElegir(sel);else history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
     pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista sube al campo
   }
   lista.className='camp-lista';
@@ -2222,8 +2261,36 @@ async function vistaCampana(n,inicial){
     filas.set(a.id,f);lista.append(f);
   }
   lista.addEventListener('click',ev=>{const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id,true);});
+  if(puente&&puente.soloLectura)lista.classList.add('solo-lectura');
   lista.addEventListener('keydown',ev=>{if(ev.key!=='Enter'&&ev.key!==' ')return;const f=ev.target.closest('.camp-fila');if(!f)return;ev.preventDefault();elegir(f.dataset.id,true);});
+  if(puente)puente.elegirCamp=(id)=>{sel=id&&s.activos[id]?id:null;pintarSel(false);};
   pintarSel(false);
+}
+// Vista unificada, página de prueba (25-nov-2026, audio del usuario): los indicadores de stocks, la
+// superficie 3D, la ficha del activo y la Campaña de 30 días en una sola página, con un activo elegido
+// que se refleja en todas las vistas. No sustituye ninguna página actual.
+function vistaUnificada(inicial=null){
+  limpiarGrafica?.();limpiarGrafica=()=>{};
+  app.replaceChildren();
+  const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
+  const aviso=Object.assign(document.createElement('p'),{className:'camp-sub',textContent:'Vista unificada de prueba. Las páginas de siempre siguen donde estaban.'});app.append(aviso);
+  vistaIndicador('feargreedchart-bolsa',sec());
+  vistaIndicador('iceberg-stock',sec());
+  const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
+  const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
+  let sel=inicial,ventana=null;
+  const puente={inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alCampana:(n)=>{ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);}};
+  const pintarFicha=()=>{cFicha.replaceChildren();if(sel){const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha);}};
+  const elegido=(id,origen)=>{
+    sel=id;history.replaceState(null,'','#/unificada'+(id?'/'+id.replace(':','/'):''));
+    if(origen!=='sup')puente.elegirSup(id&&id.startsWith('stock:')?id.slice(6):null);
+    puente.elegirCamp(id);
+    pintarFicha();
+  };
+  const puenteSup={...puente,alElegir:(c)=>elegido(c?'stock:'+c:null,'sup'),get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
+  const puenteCamp={soloLectura:true,alElegir:()=>{},set elegirCamp(f){puente.elegirCamp=f;}};
+  vistaSuperficie(cSup,cajaBarras,puenteSup);
+  pintarFicha();
 }
 async function ruta() {
   await rotulosListos;
@@ -2232,9 +2299,10 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
+  const mu=hash.match(/^#\/unificada(?:\/(cripto|stock)\/(.+))?$/);
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
-  if(!m&&!mi&&!r&&!esBusqueda&&!esCampana&&hash!=='#/') {
+  if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
@@ -2268,6 +2336,7 @@ async function ruta() {
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
+  if(mu){vistaUnificada(mu[1]?mu[1]+':'+decodeURIComponent(mu[2]):null);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}

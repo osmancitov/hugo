@@ -94,7 +94,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   } };
 }
 
-export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {} } = {}) {
+export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {}, alElegirActivo = null, tituloArriba = false } = {}) {
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
   let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
@@ -136,7 +136,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y los botones Oblicua, Cascada y Telar llevan a vistas fijas.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
-  caja.append(controles, canvas, detalle);
+  if (tituloArriba) detalle.classList.add('superficie-titulo'); // en la vista unificada el nombre y los datos del activo van como título, encima de la superficie (25-nov-2026)
+  caja.append(...(tituloArriba ? [controles, detalle, canvas] : [controles, canvas, detalle]));
   contenedor.append(caja);
   function describir() {
     detalle.hidden = activo < 0;
@@ -224,6 +225,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     }
     describir();
   }
+  let silencioso = false;
   const seleccionar = (j, i) => {
     if (j < -1 || j >= barras.length || i < -1 || i >= codigos.length) return;
     const x = window.scrollX, y = window.scrollY;
@@ -236,6 +238,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     // Se conservan los mismos controles y el mismo terreno: no se reinicia su ángulo,
     // relieve, foco o posición al avanzar o usar un desplegable.
     dibujar(); alSeleccionar(ultima);
+    if (alElegirActivo && !silencioso) alElegirActivo(i >= 0 ? codigos[i] : null);
     if (window.scrollX !== x || window.scrollY !== y) window.scrollTo({ left: x, top: y, behavior: 'instant' });
   };
   elegirLectura.onchange = () => seleccionar(Number(elegirLectura.value), activo);
@@ -259,5 +262,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.onpointercancel = () => { arrastre = null; };
   const observador = new ResizeObserver(dibujar); observador.observe(caja);
   dibujar(); alSeleccionar(ultima);
-  return { datos, desmontar() { viva = false; pasosActivo.desmontar(); pasosLectura.desmontar(); observador.disconnect(); canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = null; } };
+  // Elegir el activo desde fuera (otra vista de la página unificada), sin avisar de vuelta.
+  const elegirDesdeFuera = (codigo) => { silencioso = true; try { seleccionar(ultima, codigo ? codigos.indexOf(codigo) : -1); } finally { silencioso = false; } };
+  return { datos, elegirActivo: elegirDesdeFuera, desmontar() { viva = false; pasosActivo.desmontar(); pasosLectura.desmontar(); observador.disconnect(); canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = null; } };
 }

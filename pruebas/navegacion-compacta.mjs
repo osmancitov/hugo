@@ -21,3 +21,9 @@ test('Variación sin párrafo introductorio eliminado',()=>{
  assert.doesNotMatch(src,/Lectura del día sobre la ventana de 90 días terminada/);
  assert.match(src,/contenedor.append\(controles,estado,fuente,reglas,cuerpo\)/);
 });
+
+test('menú principal ordena Campaña y Cimiento antes de Stocks, Cripto y Buscar',()=>{
+ const m=html.match(/<nav class="mercados" aria-label="Mercados">(.*?)<\/nav>/)?.[1];
+ assert.ok(m, 'menú principal presente');
+ assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Campaña','Cimiento','Stocks','Cripto','Buscar']);
+});
