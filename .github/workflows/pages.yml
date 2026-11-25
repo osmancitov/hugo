@@ -22,7 +22,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment_reintento.outputs.page_url || steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Descargar el repositorio
@@ -41,4 +41,12 @@ jobs:
           path: '.'
       - name: Publicar el visor
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+      - name: Esperar antes de reintentar la publicación
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 20
+      - name: Reintentar la publicación del visor
+        id: deployment_reintento
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
