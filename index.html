@@ -2101,7 +2101,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
     const nota = document.createElement('span');
     nota.className = 'nota';
     nota.textContent = notaBase;
-    pie.append(nota);
+    if (!en) pie.append(nota); // Mercado: la fecha ya está en el eje de la gráfica
 
   }).catch((err) => {
     estado.textContent = 'No pude traer los registros de este activo (' + err.message + ').';
@@ -2300,7 +2300,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(t,sub,cCuad,cEsp,cAct,lista);destino.replaceChildren(raiz);
+  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,lista);destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   const pintarSel=(irA)=>{

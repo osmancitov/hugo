@@ -72,3 +72,9 @@ test('Mercado: cabecera única del activo (matriz dentro de la ficha, sin títul
   assert.match(html, /cab\.append\(\.\.\.\(limpio\?\[d\]:\[h,d\]\)\)/);
   assert.match(html, /en \? null : e\.codigo/);
 });
+
+test('Mercado: sin título "Campaña de N días" ni nota "Trazada en vivo" repetidos', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\)/);
+  assert.match(html, /if \(!en\) pie\.append\(nota\)/);
+});
