@@ -56,3 +56,16 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
   assert.match(h, /startsWith\('cripto:'\)\?'Cripto'/);
   assert.doesNotMatch(h, /camp-enlace/);
 });
+
+test('Campañas: gráfica de cuatro cuadrantes bajo espaguetis y curvas, con selección compartida', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /function graficaCuadrantes\(caja,u,seleccion,alElegir\)/);
+  assert.match(h, /raiz\.append\(ven,t,sub,cEsp,cAct,cCuad,lista\)/);
+  assert.match(h, /graficaCuadrantes\(cCuad,u,sel,elegir\)/);
+});
+
+test('Campañas: cuadrantes en escala logarítmica y un color por grupo', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /Math\.log2\(c\)-lc\[0\]/);
+  assert.match(h, /camp-g-'\+a\.grupo/);
+});
