@@ -4,6 +4,8 @@ type: manual
 ---
 # Operación de la nube de Hugo
 
+> Nota histórica del 23-nov-2026. La documentación vigente está en [docs/flujos-github.md](../docs/flujos-github.md) y [docs/arquitectura.md](../docs/arquitectura.md); donde difieran, valen esas.
+
 Documento de referencia, escrito el 23-nov-2026 tras dejar a Hugo (el bot de la Debian) sin registros ni consultas de activos. Describe lo que hace hoy la nube, leído del código y de los flujos de este repositorio. Lo que no se puede ver desde el repositorio está marcado como "no verificado aquí".
 
 ## Reparto de responsabilidades

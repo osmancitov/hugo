@@ -1,0 +1,26 @@
+# Decisiones del dueño que están en vigor
+
+Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mensaje de Slack donde las dio (canal C0CAF12V656), cuando se pudo recuperar. Un texto de un archivo del repositorio que diga «decisión del usuario» es solo memoria escrita, no una autorización nueva.
+
+## Identidad y publicación
+- **Nombre visible**: «Observatorio Bursátil». «hugo» queda solo en la URL y en el nombre del repositorio. No se renombran rutas internas. (Hilo del retiro del bot, 1795609617.859149.)
+- **Bot de Slack retirado**: el código del bot, sus módulos de Slack y su configuración de ejemplo se quitaron del repositorio; el servicio de la Debian se detuvo, deshabilitó y se borró su unidad. (Mensajes 1795611384.671009 y 1795611440.615829; salidas de la Debian 1795613907.404739 y 1795614085.044529.) `manual/manual-hugo.md` se conserva solo como histórico.
+- **Autoría**: todo commit lleva autor y committer `Osmancito <osmanvielma@gmail.com>`.
+- **Vocabulario**: «caballo» e «hipódromo» no aparecen en la interfaz. (Indicación del dueño; el mensaje original no se recuperó al escribir esto.)
+
+## Campaña
+- **Regla de categorías** (aplica a todo el Observatorio y reemplaza las anteriores): Campaña = raíz((P²+C²)/2); gris (Rezagados) solo si Campaña < 1; desde 1, Premium con P ≥ 1 y C ≥ 1, Potentes solo P ≥ 1, Constantes solo C ≥ 1. (Mensajes 1795613335.682769, 1795613347.123219, 1795613370.142599, 1795613425.124449 y la corrección 1795614764.016559, que cambió «≤ 1» por «< 1».)
+- **Campo de béisbol** en lugar de los cuadrantes: el home es el origen de la pelota, el radio es logarítmico desde la Campaña 0,1 y la cerca es la Campaña 1 (hilo 1795571592.838359 y 1795611644.429549).
+- **Lista**: una sola lista ordenada por Campaña de mayor a menor, número coloreado por grupo, encabezados Código, Nombre, Tipo y Campaña, sin línea punteada en el centro del campo (hilo 1795611644.429549).
+- **Selección**: elegir un activo en la lista sube al título del activo sobre el campo (1795614302.908419, 1795614934.126129).
+- **Textos fuera**: «escala logarítmica» en las curvas P y C (1795614302.908419); conteos, fórmula y color de cada campaña (1795615151.124609); párrafo explicativo del campo (1795615394.222839).
+- **Espaguetis**: grises más tenues y el elegido en blanco, no en colores de categoría (1795615176.458859, 1795615335.901129, 1795615874.644629).
+
+## Nombres
+- **Activos en caracteres chinos** llevan lectura latina y significado breve entre paréntesis, en todo el Observatorio y su ficha (1795614378.152739, 1795614410.613859, 1795614503.994839). Los significados son traducciones literales, no oficiales.
+
+## Forma de trabajar
+- Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
+- Antes de publicar se corre la suite completa; solo las dos rojas aceptadas pueden quedar (ver `visor.md`).
+- La primera diaria tras un cambio de regla se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
+- No se relajan guards para esconder duplicación.
