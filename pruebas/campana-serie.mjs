@@ -69,4 +69,5 @@ test('Campañas: cuadrantes en escala logarítmica y un color por grupo', () => 
   assert.match(h, /Math\.log2\(c\)-lc\[0\]/);
   assert.match(h, /camp-g-'\+a\.grupo/);
   assert.match(h, /camp-cuad-juntos/); assert.match(h, /activos juntos aqu/);
+  assert.match(h, /const lg=v=>Math\.log2/);
 });

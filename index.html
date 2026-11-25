@@ -2033,12 +2033,15 @@ function graficaActivoCampana(caja,s,id){
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
   const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con la ventana completa. Los días sin punto quedan en blanco.`;
-  let mx=1;for(const p of serie)if(p)mx=Math.max(mx,p[1],p[2]);mx*=1.08;
-  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=v=>T+(1-v/mx)*(H-T-B);
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con la ventana completa. Los días sin punto quedan en blanco. Escala logarítmica: 2 y ½ quedan a la misma distancia del 1.`;
+  // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
+  const lg=v=>Math.log2(Math.max(v,1e-3));
+  let lo=-1,hi=1;for(const p of serie)if(p)for(const k of [1,2]){lo=Math.min(lo,lg(p[k]));hi=Math.max(hi,lg(p[k]));}
+  lo-=.08;hi+=.08;
+  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=v=>T+(hi-lg(v))/(hi-lo)*(H-T-B);
   const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de '+cod});
-  const paso=mx>6?2:mx>3?1:0.5;
-  for(let v=0;v<=mx;v+=paso){svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=String(v).replace('.',',');svg.append(t);}
+  for(const v of [0.125,0.25,0.5,1,2,4,8,16]){if(lg(v)<lo||lg(v)>hi||v===1)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=v===0.125?'⅛':v===0.25?'¼':v===0.5?'½':String(v);svg.append(t);}
+  {const t=svgEl('text',{x:L-6,y:y(1)+4,'text-anchor':'end',class:'camp-eje'});t.textContent='1';svg.append(t);}
   svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
   [0,N-1].forEach((i,k)=>{if(k&&i===0)return;const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':k?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);});
   for(const [k,cls] of [[1,'camp-pot'],[2,'camp-con']]){
