@@ -22,7 +22,7 @@ concurrency:
 jobs:
   diaria:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -38,13 +38,4 @@ jobs:
       - name: Publicar el visor con los registros actualizados
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          node --input-type=module <<'JS'
-          const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/actions/workflows/pages.yml/dispatches`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${process.env.GH_TOKEN}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github+json' },
-            body: JSON.stringify({ ref: 'main' }),
-          });
-          if (r.status !== 204) throw Error(`No pude solicitar Pages: HTTP ${r.status}. ${await r.text()}`);
-          console.log('Publicación del visor solicitada con los datos ya guardados en main.');
-          JS
+        run: node .github/publicar-visor.mjs

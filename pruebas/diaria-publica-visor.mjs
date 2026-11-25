@@ -5,7 +5,9 @@ test('diaria solicita Pages después de guardar datos, sin cron ni segunda inges
  const s=fs.readFileSync(new URL('../.github/workflows/actualizacion-diaria.yml',import.meta.url),'utf8');
  assert.match(s,/actions: write/);
  assert.ok(s.indexOf('Publicar el visor con los registros actualizados')>s.indexOf('run: node .github/actualizacion-diaria.mjs'));
- assert.match(s,/actions\/workflows\/pages.yml\/dispatches/);
- assert.match(s,/r.status !== 204/);
+ const j=fs.readFileSync(new URL('../.github/publicar-visor.mjs',import.meta.url),'utf8');
+ assert.match(s,/node \.github\/publicar-visor\.mjs/);
+ assert.match(j,/pages.yml/);assert.match(j,/dispatches/);
+ assert.match(j,/r.status !== 204/);
  assert.doesNotMatch(s,/if: always|cron:/);
 });
