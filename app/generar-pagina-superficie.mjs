@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 export function paginaSuperficie(html) {
   return html
-    .replace('<title>Hugo · Observatorio Bursátil</title>', '<title>Superficie 3D · Hugo · Observatorio Bursátil</title>')
-    .replace('property="og:title" content="Hugo · Observatorio Bursátil"', 'property="og:title" content="Superficie 3D · Hugo · Observatorio Bursátil"')
+    .replace('<title>Observatorio Bursátil</title>', '<title>Superficie 3D · Observatorio Bursátil</title>')
+    .replace('property="og:title" content="Observatorio Bursátil"', 'property="og:title" content="Superficie 3D · Observatorio Bursátil"')
     .replace('property="og:description" content="Empresas y fondos · stocks y cripto"', 'property="og:description" content="El mercado como un paisaje: lecturas reales, relieve en tres dimensiones y una referencia diaria fija."')
     .replace('https://osmancitov.github.io/hugo/identidad/tarjeta.jpg', 'https://osmancitov.github.io/hugo/superficie-og.jpg')
     .replace('property="og:url" content="https://osmancitov.github.io/hugo/"', 'property="og:url" content="https://osmancitov.github.io/hugo/superficie.html"')

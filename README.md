@@ -1,27 +1,24 @@
 [Lobby](https://github.com/osmancitov/osmancitov.github.io/blob/main/README.md) · [Destilería](https://github.com/osmancitov/destileria/blob/main/README.md) · [Taller](https://github.com/osmancitov/taller/blob/main/README.md) · [Journal](https://github.com/osmancitov/journal/blob/main/README.md) · [Capilla](https://github.com/osmancitov/capilla/blob/main/README.md) · [Sala de máquinas](https://github.com/osmancitov/maquinas/blob/main/README.md) · [Social](https://github.com/osmancitov/social/blob/main/README.md) · [Tesorería](https://github.com/osmancitov/tesoreria/blob/main/README.md) · **Observatorio Bursátil**
 
-# Hugo
+# Observatorio Bursátil
 
-Bot pequeño de Slack (Socket Mode, Node.js) que corre en una Debian como servicio de usuario. Sirve de puente entre Slack y esa máquina: recibir y enviar archivos, borrar hilos, registrar velas, dibujar radiografías, sincronizar los registros con este repositorio y actualizarse. Una orden de `registra` recorre el historial de uno o varios activos en orden, sin pedir 👍; `registra todo` recorre el universo completo de las dos clases (stock y luego cripto) con un solo corte UTC, y `pon al día` actualiza ese universo consultando solo lo pendiente y comprobando en disco lo ya guardado. Avisa dónde va y conserva el avance fuera del repositorio para retomarlo tras un corte. La sincronización de los registros con GitHub es automática. Los demás cambios conservan su confirmación del usuario, incluidas las actualizaciones del programa.
+Visor público de mercado (Pages), con sus registros, la lectura horaria y la puesta al día diaria que corren en GitHub Actions. El nombre «hugo» queda solo en la URL y en el nombre de este repositorio.
 
-Este repositorio es la fuente del código y del manual. La Debian descarga de aquí; nunca sube.
+El bot de Slack que corría en una Debian se retiró de este repositorio: ya no hay `app/app.mjs`, ni sus módulos de Slack, ni su configuración de ejemplo. Qué hace hoy la nube está en [manual/operacion-nube.md](manual/operacion-nube.md).
 
 ## Proyecto Cimiento
 
 [Aprender el oficio y construir las herramientas](https://osmancitov.github.io/hugo/cuenta/), del aporte inicial a las operaciones más recientes.
 
 ## Contenido
-- `app/app.mjs`: arranca Hugo y conecta los módulos.
-- `app/modulos/`: un archivo por capacidad (`saludo`, `confirmacion`, `borrar-hilo`, `archivos`, `actualizar`, `github`, `estado`, `ayuda`, `reiniciar`, `detener`, `velas`, `registro-motor`, `registro-serie`, `activos-info`, `sincronizar-registros`; `reporte`, la caja única de reportes que usan todos los trabajos; y la biblioteca `activos`, que resuelve el código de un activo a su instrumento de Binance).
-- `app/config.ejemplo.env`: plantilla de la configuración local (`config.env` no se versiona).
-- `.github/workflows/lectura-horaria.yml`: lectura a la hora en punto UTC desde GitHub Actions mientras la Debian está apagada. La corrida empieza unos minutos antes para absorber la demora de GitHub; si la Debian ya publicó la lectura de esa hora, no toma otra ni duplica, y cada lectura guarda su instante real. No mueve el bot ni la actualización diaria general.
-- `manual/manual-hugo.md`: el manual, con las órdenes de Slack y las de la consola.
+- `index.html`: el visor.
+- `app/modulos/`: los módulos que usan el visor y los flujos (`velas`, `registro-motor`, `registro-serie`, `registro-intradia`, `sincronizar-registros`, `ciclo-diario`, `campana-*`, `activos*`, `barra-movil`, etc.), más `reporte` y `fechas-aviso`, que siguen porque las pruebas de esos módulos las usan.
+- `.github/workflows/`: lectura horaria, actualización diaria y publicación de Pages.
+- `manual/operacion-nube.md`: operación vigente de la nube.
+- `manual/manual-hugo.md`: manual del antiguo bot; se conserva como referencia histórica.
 
 ## Fuera del repositorio
-Claves (`keys/`), `config.env`, `node_modules/`, copias de respaldo y cualquier dato local. Nunca se publican.
-
-## Uso
-Todo lo que hay que saber para operarlo y modificarlo está en el [manual](manual/manual-hugo.md).
+Claves, `node_modules/` y cualquier dato local. Nunca se publican.
 
 ## Pruebas sin red
-`node --test pruebas/registra-directo.mjs pruebas/registra-todo.mjs pruebas/pon-al-dia.mjs pruebas/mes-en-curso.mjs pruebas/reporte.mjs pruebas/reporte-caja.mjs pruebas/registro-avisos.mjs pruebas/actualiza-aviso.mjs pruebas/registro-corte.mjs pruebas/registro-piso.mjs pruebas/sincronizar-patrones.mjs pruebas/sincronizar-reporte.mjs pruebas/sincronizar-automatica-reporte.mjs pruebas/detener.mjs` comprueba recorrido, progreso, conflictos y recuperación con datos simulados, incluidos cortes del proceso, mes abierto, cambios de mes, sincronización de ampliaciones y reportes por activo con acumulacion local y vuelco regulado, y el reporte de avance de la sincronización automática. No usa cuentas ni registra activos reales.
+`node --test pruebas/*.mjs` (dos pruebas del visor tienen fallos conocidos: «superficie tiene entrada estática…» y «los rótulos visibles de los icebergs…»).

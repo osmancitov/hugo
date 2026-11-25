@@ -127,7 +127,7 @@ function textoFuente(origen) {
   const nombre = { stock: 'Stocks', cripto: 'Cripto' };
   const parte = (m) => origen[m] === 'archivo' ? null : `${nombre[m]}: calculada por el visor (archivo del día aún no publicado)`;
   const notas = ['stock', 'cripto'].map(parte).filter(Boolean);
-  if (!notas.length) return 'Lectura del día precalculada por Hugo en la sincronización diaria.';
+  if (!notas.length) return 'Lectura del día precalculada por el Observatorio en la actualización diaria.';
   if (notas.length === 2) return 'Lectura calculada por el visor desde los registros: los archivos del día aún no están publicados.';
   return 'Lectura del día. ' + notas[0] + '.';
 }
@@ -177,7 +177,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   const fuente=texto('p','','rachas-nota');
   const cuerpo=document.createElement('div'); cuerpo.className='rachas-cuerpo';
   const reglas=document.createElement('details'); reglas.className='rachas-reglas'; reglas.append(texto('summary','Cómo leer los datos'));
-  reglas.append(texto('p','Lectura del día: Hugo deja calculadas estas métricas cada día sobre la ventana de 90 días. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
+  reglas.append(texto('p','Lectura del día: el Observatorio deja calculadas estas métricas cada día sobre la ventana de 90 días. Si el archivo del día aún no está publicado, el visor calcula la misma ventana en la visita.'));
   reglas.append(texto('p','Activo: el código del activo; su fila abre su gráfica habitual.'));
   reglas.append(texto('p','R %: rango diario, la amplitud de la última vela: lo que separa su máximo de su mínimo, como porcentaje de su apertura.'));
   reglas.append(texto('p','Racha: días seguidos cerrando en la misma dirección; el sentido lo da el color. ≥ y * avisan de que pudo ser más larga, cortada por un hueco en los datos o por el inicio de la ventana.'));

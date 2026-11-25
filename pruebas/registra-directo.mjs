@@ -74,16 +74,6 @@ test('reanudacion tras SIGKILL antes/despues de enlace y avance, sin perder ni p
   }finally{fs.rmSync(root,{recursive:true,force:true});}
  }
 });
-test('integracion del comando: lista, datos faltantes, duplicados, orden directa y control de acceso intacto',async()=>{
- const {registrar}=await import('../app/modulos/velas.mjs');let handler,patron;const msgs=[];const init=[];
- registrar(conectarCaja({conf:{},app:{client:{chat:{postMessage:async m=>msgs.push(m.text)}}},comando:(p,f,o)=>{if(String(p).includes('registr')&&!String(p).includes('descarta')){handler=f;patron=p;}assert.equal(o&&o.delegable,undefined);},alIniciar:f=>init.push(f),activas:new Map()}));
- assert.ok(patron.test('registra stock AA BB'));
- for(const x of ['registra AA','registra stock','registra stock AA AA'])await handler(event,x);
- assert.equal(msgs.length,3);assert.ok(msgs.every(m=>!m.includes('👍')));
- const app=fs.readFileSync(new URL('../app/app.mjs',import.meta.url),'utf8');assert.ok(!app.includes('Orden ignorada'),'cualquiera puede pedir cualquier comando (decisión del usuario, 20-nov-2026)');assert.ok(!app.includes('delegable'));
- for(const f of ['github.mjs','actualizar.mjs','archivos.mjs','borrar-hilo.mjs'])assert.match(fs.readFileSync(new URL('../app/modulos/'+f,import.meta.url),'utf8'),/ctx.confirmar/);
-});
-
 test('el avance se guarda antes de la primera consulta y el progreso conserva hilo de origen',async()=>{
  let s; s=setup({aviso:async(j,t)=>{const a=leerEstado(s.estado);assert.ok(a);assert.equal(j.channel,event.channel);assert.equal(j.thread_ts,event.ts);}});
  try{await s.run();assert.equal(leerEstado(s.estado).estado,'terminado');}finally{s.close();}

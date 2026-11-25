@@ -298,24 +298,6 @@ test('guardia del visor: las barras solo en la Superficie del día, colores de l
   assert.doesNotMatch(visor, /<th>Porcentaje<\/th>/); // sin columna extra: se conserva el ancho // el formato del usuario en los dos instantes
 });
 
-test('guardia de la casa: la orden barra ya no está registrada y el manual lo dice', () => {
-  const app = fs.readFileSync(new URL('../app/app.mjs', import.meta.url), 'utf8');
-  assert.doesNotMatch(app, /barra-movil\.mjs/);
-  assert.doesNotMatch(app, /estado-registro\.mjs/);
-  const modulo = fs.readFileSync(new URL('../app/modulos/barra-movil.mjs', import.meta.url), 'utf8');
-  assert.doesNotMatch(modulo, /export function registrar/);
-  const manual = fs.readFileSync(new URL('../manual/manual-hugo.md', import.meta.url), 'utf8');
-  assert.match(manual, /Retirada \(decisión del usuario, 23-nov-2026\)/);
-  assert.doesNotMatch(manual, /^\| `barra` \|/m);
-  assert.doesNotMatch(manual, /^\| `estado del registro`/m);
-  assert.match(manual, /historial local/);
-  assert.match(manual, /Movimiento entre lecturas/);
-  assert.match(manual, /sin cierre nuevo/);
-  assert.match(manual, /Primera barra: variación desde la primera lectura real/);
-  assert.match(manual, /referencia intradiaria/);
-  assert.match(manual, /timestamp de la lectura anterior/);
-});
-
 test('la copia retirada no participa en la sincronización ni el visor', () => {
   const sync = fs.readFileSync(new URL('../app/modulos/sincronizar-registros.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(sync, /esRutaBarra|actual_barra/);

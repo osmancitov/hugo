@@ -1,4 +1,6 @@
-# Manual de Hugo
+# Manual de Hugo (histórico)
+
+> **El bot de Slack y su servicio en la Debian se retiraron de este repositorio.** Este manual se conserva solo como referencia histórica de lo que hacía; las secciones de órdenes de Slack, consola de la Debian y actualización ya no se aplican. Lo vigente está en `manual/operacion-nube.md`.
 
 Referencia de esta versión: qué hace, cómo se opera y cómo se modifica. Publicar código en GitHub no lo instala en la Debian: la actualización requiere la propuesta de Hugo y tu 👍. La historia de cambios va aparte, en `manual/historial-hugo.md` (solo local).
 
