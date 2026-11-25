@@ -1658,8 +1658,9 @@ function graficaAdaptable(caja, geometriaPara, dibujar, alLimpiar) {
 // controlador y una sola duración; cada gráfica aporta solo su dibujo, dibujar(hasta),
 // donde hasta es el número de puntos ya trazados y sin él se dibuja completa.
 const DURACION_TRAZADO_MS = 1000; // decisión del usuario, 20-nov-2026: bajar el graficado a 1 segundo
+const movimientoReducido = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function trazadoAnimado(caja, total, dibujar) {
-  const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sinMovimiento = movimientoReducido();
   let animId = null;
   const t = {};
   t.cancelar = () => { if (animId) cancelAnimationFrame(animId); animId = null; };
@@ -2214,6 +2215,15 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir){
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   caja.replaceChildren(svg);
+  // Trazado de entrada: una sola vez, cuando la gráfica entra en pantalla (1 s, como el resto). Reelegir un activo no lo repite.
+  if(!caja.dataset.trazado&&!movimientoReducido()&&typeof IntersectionObserver!=='undefined'){
+    const lins=[...svg.querySelectorAll('.camp-lin')];
+    for(const l of lins){l.setAttribute('pathLength','1');l.style.strokeDasharray='1';l.style.strokeDashoffset='1';}
+    const io=new IntersectionObserver(es=>{if(!es.some(e=>e.isIntersecting))return;io.disconnect();caja.dataset.trazado='1';
+      for(const l of lins){l.style.transition=`stroke-dashoffset ${DURACION_TRAZADO_MS}ms ease-out`;l.style.strokeDashoffset='0';}
+      setTimeout(()=>{for(const l of lins){l.style.strokeDasharray='';l.style.strokeDashoffset='';l.style.transition='';l.removeAttribute('pathLength');}},DURACION_TRAZADO_MS+80);},{threshold:.3});
+    io.observe(svg);
+  }
 }
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
