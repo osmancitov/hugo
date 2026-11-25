@@ -91,7 +91,7 @@ a:hover { text-decoration: underline; }
 .camp-tit-enlace { color: inherit; }
 .camp-tit-enlace:hover { text-decoration: underline; }
 .camp-fila { cursor: pointer; flex-wrap: wrap; }
-.activo-fila.camp-fila .tipo { margin-left: 0; color: var(--tenue); font-size: .72rem; line-height: 1.15; max-width: 7.5em; white-space: normal; text-align: right; flex: 0 1 auto; }
+.activo-fila.camp-fila .tipo { margin-left: 0; color: var(--tenue); font-size: .72rem; line-height: 1.15; max-width: 7.5em; white-space: nowrap; text-align: right; flex: 0 0 auto; }
 .camp-fila .cap { flex: 0 0 auto; }
 .camp-fila { align-items: center; flex-wrap: nowrap; }
 .camp-fila .nom { min-width: 4em; }
@@ -2070,7 +2070,7 @@ async function vistaCampana(n,inicial){
       const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
       f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
       f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
-      {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=t.charAt(0).toUpperCase()+t.slice(1);}
+      {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
       f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
       f.querySelector('.nom').textContent=e?e.nombre:'';
       f.querySelector('.cap').textContent=`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`;

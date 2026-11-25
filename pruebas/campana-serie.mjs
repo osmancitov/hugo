@@ -52,7 +52,7 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /tl\.href='#\/a\/'\+id\.split\(':'\)\[0\]\+'\/'\+encodeURIComponent\(cod\)/);
   assert.doesNotMatch(h, /camp-det/);
-  assert.match(h, /toUpperCase\(\)\+t\.slice\(1\)/);
+  assert.match(h, /\^fondo ETF\/i\.test\(t\)\?'Fondo ETF'/);
   assert.match(h, /startsWith\('cripto:'\)\?'Cripto'/);
   assert.doesNotMatch(h, /camp-enlace/);
 });
