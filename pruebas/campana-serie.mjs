@@ -37,3 +37,14 @@ test('la carrera ya escrita no se reescribe y las existentes coinciden con su re
   assert.equal(nombreCarrera(Date.UTC(2026, 9, 29)), '260801-261029_carrera-90d');
   assert.equal(grupoDe(1, 1), 'premium'); assert.equal(grupoDe(1, 0.9), 'potentes'); assert.equal(grupoDe(0.9, 1), 'constantes'); assert.equal(grupoDe(0.99, 0.99), 'rezagados');
 });
+test('60d y 30d: nombres, primera carrera y serie topada a 90 puntos', async () => {
+  const c = await import('../app/modulos/campana-carrera.mjs');
+  const { construirSerie, MAX_PUNTOS } = await import('../app/modulos/campana-serie.mjs');
+  assert.equal(new Date(c.primeraCarrera(60)).toISOString().slice(0, 10), '2026-09-29');
+  assert.equal(new Date(c.primeraCarrera(30)).toISOString().slice(0, 10), '2026-08-30');
+  assert.equal(c.nombreCarrera(Date.UTC(2026, 10, 24), 60), '260926-261124_carrera-60d');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'camp-'));
+  for (let i = 0; i < 95; i++) { const f = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10); const e = f.slice(2).replace(/-/g, ''); fs.writeFileSync(path.join(d, `${e}-${e}_carrera-30d`), JSON.stringify(dia(f, [a('stock:A', 1, 1, 1)]))); }
+  assert.equal(construirSerie(d, 30).fechas.length, MAX_PUNTOS);
+  assert.throws(() => construirSerie(d, 60), /Sin archivos de carrera 60d/);
+});

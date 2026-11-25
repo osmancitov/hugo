@@ -1965,13 +1965,13 @@ function vistaCapitalizacion(lista) {
 }
 // Campaña 90d: listas del último día cerrado (4 grupos) y dos gráficas por la serie de los archivos diarios.
 // Lectura: registros/categorias/serie_carrera-90d (la junta app/modulos/campana-serie.mjs) y el último día.
-let campanaDatos=null;
-async function cargarCampana(){
-  if(campanaDatos)return campanaDatos;
+const campanaDatos={};
+async function cargarCampana(n){
+  if(campanaDatos[n])return campanaDatos[n];
   const base='registros/categorias/';
   const leer=async n=>{const r=await fetch(base+n,{cache:'no-cache'});if(!r.ok)throw Error('No se pudo leer '+n);return r.json();};
-  const s=await leer('serie_carrera-90d'),u=await leer(s.ultimo);
-  return campanaDatos={s,u};
+  const s=await leer(`serie_carrera-${n}d`),u=await leer(s.ultimo);
+  return campanaDatos[n]={s,u};
 }
 const SVGNS='http://www.w3.org/2000/svg';
 function svgEl(nombre,attrs={},hijos=[]){const e=document.createElementNS(SVGNS,nombre);for(const k in attrs)e.setAttribute(k,attrs[k]);for(const h of hijos)e.append(h);return e;}
@@ -2009,7 +2009,7 @@ function graficaActivoCampana(caja,s,id){
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
   const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con las 90 velas. Los días sin punto quedan en blanco.`;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} carreras con la ventana completa. Los días sin punto quedan en blanco.`;
   let mx=1;for(const p of serie)if(p)mx=Math.max(mx,p[1],p[2]);mx*=1.08;
   const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=v=>T+(1-v/mx)*(H-T-B);
   const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de '+cod});
@@ -2026,18 +2026,20 @@ function graficaActivoCampana(caja,s,id){
   ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
   caja.replaceChildren(tit,sub,svg,ley);
 }
-async function vistaCampana(inicial){
+async function vistaCampana(n,inicial){
   app.replaceChildren();
   const cab=document.createElement('p');cab.className='camp-sub';cab.textContent='Cargando la Campaña…';app.append(cab);
-  let datos;try{datos=await cargarCampana();}catch(err){cab.textContent=err.message;return;}
+  let datos;try{datos=await cargarCampana(n);}catch(err){cab.textContent=err.message;return;}
   const {s,u}=datos,N=s.fechas.length;
   const raiz=document.createElement('section');raiz.className='campana';
-  const t=document.createElement('h2');t.className='camp-tit';t.textContent='Campaña de 90 días';
+  const t=document.createElement('h2');t.className='camp-tit';t.textContent=`Campaña de ${n} días`;
   const sub=document.createElement('p');sub.className='camp-sub';
-  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de 90 días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las 90 velas.`;
+  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas.`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';
-  raiz.append(t,sub,cEsp,cAct,lista);app.replaceChildren(raiz);
+  const ven=document.createElement('nav');ven.className='mercados camp-ventanas';ven.setAttribute('aria-label','Ventana de la campaña');
+  for(const v of [90,60,30]){const a=document.createElement('a');a.textContent=v+' días';a.href=v===90?'#/campana':`#/campana/${v}d`;if(v===n)a.classList.add('actual');ven.append(a);}
+  raiz.append(ven,t,sub,cEsp,cAct,lista);app.replaceChildren(raiz);
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   const pintarSel=(irA)=>{
@@ -2048,7 +2050,7 @@ async function vistaCampana(inicial){
   };
   function elegir(id){
     sel=sel===id?null:id;
-    history.replaceState(null,'',sel?'#/campana/'+sel.replace(':','/'):'#/campana');
+    history.replaceState(null,'',(n===90?'#/campana':`#/campana/${n}d`)+(sel?'/'+sel.replace(':','/'):''));
     if(sel){const g=u.clasificados.find(a=>a.id===sel)?.grupo;const d=g&&lista.querySelector(`details[data-g="${g}"]`);if(d)d.open=true;}
     pintarSel(true);
   }
@@ -2058,7 +2060,7 @@ async function vistaCampana(inicial){
     const sm=document.createElement('summary');sm.textContent=`${nombre} (${items.length})`;d.append(sm);
     for(const a of items){
       const e=entradaCampana(a.id),f=document.createElement('a');f.className='activo-fila';
-      f.href='#/campana/'+a.id.replace(':','/');f.dataset.id=a.id;
+      f.href=(n===90?'#/campana':`#/campana/${n}d`)+'/'+a.id.replace(':','/');f.dataset.id=a.id;
       f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="cap"></span>';
       f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
       f.querySelector('.nom').textContent=e?e.nombre:'';
@@ -2078,7 +2080,7 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|persistencia|indicadores))?$/);
-  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
+  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
   if(!m&&!mi&&!r&&!esBusqueda&&!esCampana&&hash!=='#/') {
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
@@ -2114,7 +2116,7 @@ async function ruta() {
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
-  if(mc){vistaCampana(mc[1]?mc[1]+':'+decodeURIComponent(mc[2]):null);return;}
+  if(mc){vistaCampana(Number(mc[1]||90),mc[2]?mc[2]+':'+decodeURIComponent(mc[3]):null);return;}
   app.replaceChildren();
   if(!ranking){
     const guardado=estadoLista;estadoLista=null;
