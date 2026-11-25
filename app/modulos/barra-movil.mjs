@@ -78,10 +78,10 @@ export function particionar(codigos) {
 
 // Una tanda: una consulta con su lista de simbolos. Error explicito si Binance no responde
 // bien: una respuesta mala NO equivale a una barra vacia.
-export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_POR_DEFECTO } = {}) {
+export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_POR_DEFECTO, simbolo = simboloStock } = {}) {
   if (!codigos.length) return [];
   if (codigos.length > MAX_SIMBOLOS) throw new Error(`Tanda de ${codigos.length} simbolos; el maximo documentado es ${MAX_SIMBOLOS}.`);
-  const lista = encodeURIComponent(JSON.stringify(codigos.map(simboloStock)));
+  const lista = encodeURIComponent(JSON.stringify(codigos.map(simbolo)));
   const r = await fetchImpl(`${host}/api/v3/ticker?symbols=${lista}&windowSize=1d`, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'hugo' } });
   const cuerpo = await r.text();
   if (!r.ok) throw new Error(`Binance HTTP ${r.status}; no equivale a una barra vacia.`);
@@ -97,7 +97,7 @@ export async function consultarTanda(codigos, { fetchImpl = fetch, host = HOST_P
 // guarda el rango de cierres (cierreMin, fin) y el menor inicio, sin presentarlos como un
 // solo corte. Sin dato (falta el ticker o los precios no se leen) se cuenta aparte y no
 // entra en la frontera.
-export function calcularBarra(tandas, universo) {
+export function calcularBarra(tandas, universo, sufijo = 'BUSDT') {
   const tickers = tandas.flat();
   let suben = 0, bajan = 0, sinDato = 0, inicio = null, fin = null, minCierre = null, maxCierre = null;
   const activos = [];
@@ -115,7 +115,7 @@ export function calcularBarra(tandas, universo) {
     // Por activo, para la comparacion con la proxima lectura: su ultimo precio (texto tal
     // cual vino, sin recomponer) y el cierre de SU ventana. Sin ellos no hay movimiento.
     const simbolo = String(t?.symbol || '');
-    const codigo = simbolo.endsWith('BUSDT') ? simbolo.slice(0, -5) : simbolo;
+    const codigo = simbolo.endsWith(sufijo) ? simbolo.slice(0, -sufijo.length) : simbolo;
     activos.push({ codigo, ultimo, ultimoTexto: String(t.lastPrice), aperturaTexto: String(t.openPrice), cierre: Number.isFinite(c) ? c : null });
   }
   const respondieron = new Set(tickers.map((t) => t?.symbol)).size;
@@ -353,8 +353,9 @@ export function leerBarra(texto) {
 
 // La consulta completa: universo del registro, dos tandas, barra, comparacion con la
 // lectura anterior recibida del historial; sin previa no se inventa movimiento.
-export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), anteriorTexto = null, inicialTexto = null } = {}) {
-  const universo = universoBarra(dirVelas);
+export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_POR_DEFECTO, ahora = Date.now(), anteriorTexto = null, inicialTexto = null, universo: universoDado = null, simbolo = simboloStock, sufijo = 'BUSDT' } = {}) {
+  // Cripto pasa su propio universo, símbolo y sufijo; sin ellos todo queda exactamente como en stocks.
+  const universo = universoDado ?? universoBarra(dirVelas);
   if (!universo.length) throw new Error('No hay carpetas de stocks en el registro de velas; no invento la barra.');
   let previos = null, comparadaCon = null;
   if (anteriorTexto !== null) {
@@ -362,8 +363,8 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
     if (anterior.activos.size) { previos = anterior.activos; comparadaCon = anterior.generada; }
   }
   const tandas = [];
-  for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host }));
-  const barra = calcularBarra(tandas, universo);
+  for (const tanda of particionar(universo)) tandas.push(await consultarTanda(tanda, { fetchImpl, host, simbolo }));
+  const barra = calcularBarra(tandas, universo, sufijo);
   // Lectura del día independiente del registro diario: primera foto real como base.
   const inicial = inicialTexto === null ? null : leerBarra(inicialTexto);
   const base = inicial?.activos ?? new Map(barra.activos.map(a=>[a.codigo,a]));

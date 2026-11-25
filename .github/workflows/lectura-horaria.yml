@@ -80,3 +80,36 @@ jobs:
         with:
           path: .estado-intradia
           key: intradia-estado-${{ github.run_id }}
+
+  # Cripto (25-nov-2026): trabajo aparte del de stocks, con su propio commit. Si falla, la lectura
+  # de stocks no se ve afectada. Solo escribe registros/intradia/cripto.
+  cripto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 29
+    continue-on-error: true
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Node 22, como la Debian
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tomar la lectura de cripto
+        if: ${{ github.event.inputs.intrahora != 'true' }}
+        run: node .github/lectura-horaria-cripto.mjs
+      - name: Publicar la lectura de cripto
+        if: ${{ github.event.inputs.intrahora != 'true' }}
+        run: |
+          git config user.name Osmancito
+          git config user.email osmanvielma@gmail.com
+          git add registros/intradia/cripto
+          if git diff --cached --quiet; then echo "Sin lectura de cripto que publicar."; exit 0; fi
+          git commit -m "Guardar lectura horaria de cripto de las $(date -u +'%H:%M') UTC desde Actions"
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase --quiet origin main
+            sleep $((i * 5))
+          done
+          echo "No pude publicar la lectura de cripto."; exit 1
