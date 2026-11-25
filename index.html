@@ -102,9 +102,9 @@ a:hover { text-decoration: underline; }
 .camp-rej { stroke: var(--borde); stroke-width: 1; }
 .camp-eje { fill: var(--tenue); font-size: 11px; }
 .camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .12; stroke-width: 1; pointer-events: none; }
-.camp-lin.camp-sel { stroke: var(--oro); stroke-opacity: 1; stroke-width: 2.6; }
+.camp-lin.camp-sel { stroke: #e4748c; stroke-opacity: 1; stroke-width: 2.6; }
 .camp-hit { fill: none; stroke: transparent; stroke-width: 7; cursor: pointer; }
-.camp-hit:hover { stroke: rgba(194,161,90,.35); }
+.camp-hit:hover { stroke: rgba(228,116,140,.45); }
 .camp-ejes, .camp-ley { color: var(--tenue); font-size: .8rem; margin: .35rem 0 0; }
 .camp-uno { stroke: var(--texto); stroke-opacity: .6; stroke-dasharray: 5 4; }
 .camp-curva { fill: none; stroke-width: 2; }
@@ -2183,8 +2183,7 @@ function graficaCampo(caja,u,seleccion,alElegir){
   }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
-  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1, no en cero. Los números de la derecha son la Campaña a esa distancia, en escala logarítmica: de 0,25 a 0,5, a 1 y a 2 hay siempre la misma distancia. La cerca verde es la Campaña 1. A la izquierda manda la potencia, a la derecha la constancia.';
-  envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley,ej);
+  envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley);
 }
 async function vistaCampana(n,inicial){
   app.replaceChildren();

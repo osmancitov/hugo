@@ -81,7 +81,7 @@ test('Campañas: campo con radio logarítmico solo en r desde 0,1, un color por 
   assert.doesNotMatch(h, /camp-grupo|createElement\('details'\)/);
   assert.match(h, /tx\('Premium',pol\(RMAX\*\.9,0\)/);
   assert.doesNotMatch(h, /y2:pol\(RMAX,0\)\[1\],class:'camp-uno'/); // sin guía central punteada en el campo
-  assert.match(h, /Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1/);
+  assert.ok(!h.includes('Home es solo la salida de la pelota'));
 });
 
 test('la superficie 3D tiene selectores de grupo y ventana que solo filtran lo dibujado', () => {
