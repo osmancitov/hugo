@@ -92,10 +92,9 @@ a:hover { text-decoration: underline; }
 .camp-tit-enlace:hover { text-decoration: underline; }
 .camp-fila { cursor: pointer; flex-wrap: wrap; }
 .activo-fila.camp-fila .tipo { margin-left: 0; color: var(--tenue); font-size: .72rem; line-height: 1.15; max-width: 7.5em; white-space: normal; text-align: right; flex: 0 1 auto; }
-.camp-fila .camp-det, .camp-fila .cap { flex: 0 0 auto; }
+.camp-fila .cap { flex: 0 0 auto; }
 .camp-fila { align-items: center; flex-wrap: nowrap; }
 .camp-fila .nom { min-width: 4em; }
-.camp-fila .camp-det { font-size: .8rem; white-space: nowrap; }
 .camp-fila .cap { margin-left: auto; }
 .camp-sub { color: var(--tenue); font-size: .85rem; margin: .1rem 0 .6rem; }
 .camp-caja { margin: .6rem 0 1rem; }
@@ -2070,9 +2069,8 @@ async function vistaCampana(n,inicial){
     for(const a of items){
       const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
       f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
-      f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><a class="camp-det">Detalles</a><span class="cap"></span>';
-      f.querySelector('.tipo').textContent=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
-      f.querySelector('.camp-det').href='#/a/'+a.id.replace(':','/').replace(/\/(.+)$/,(m,c)=>'/'+encodeURIComponent(c));
+      f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
+      {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=t.charAt(0).toUpperCase()+t.slice(1);}
       f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
       f.querySelector('.nom').textContent=e?e.nombre:'';
       f.querySelector('.cap').textContent=`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`;
@@ -2081,8 +2079,8 @@ async function vistaCampana(n,inicial){
     if(sel&&items.some(a=>a.id===sel))d.open=true;
     lista.append(d);
   }
-  lista.addEventListener('click',ev=>{if(ev.target.closest('a.camp-det'))return;const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id);});
-  lista.addEventListener('keydown',ev=>{if(ev.key!=='Enter'&&ev.key!==' ')return;const f=ev.target.closest('.camp-fila');if(!f||ev.target.closest('a.camp-det'))return;ev.preventDefault();elegir(f.dataset.id);});
+  lista.addEventListener('click',ev=>{const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id);});
+  lista.addEventListener('keydown',ev=>{if(ev.key!=='Enter'&&ev.key!==' ')return;const f=ev.target.closest('.camp-fila');if(!f)return;ev.preventDefault();elegir(f.dataset.id);});
   pintarSel(false);
 }
 async function ruta() {
