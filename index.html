@@ -2146,7 +2146,7 @@ function graficaCampo(caja,u,seleccion,alElegir){
     const ti=svgEl('title');ti.textContent=etiquetaActivo(a.id)+' · Campaña '+fmtCoef(rr(a))+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
   }
   if(seleccion){const a=cl.find(q=>q.id===seleccion);if(a){
-    const [px,py]=pos(a),an=px>W*0.7?'end':'start';tx(etiquetaActivo(a.id),px+(an==='end'?-12:12),py+4,'camp-cuad-cod',an);
+    const [px,py]=pos(a),an=px>W*0.7?'end':'start';tx((entradaCampana(a.id)?.codigo)||a.id.split(':')[1],px+(an==='end'?-12:12),py+4,'camp-cuad-cod',an);
     // Trayectoria de la bola: de home al punto, con un arco hacia arriba; se anima una sola vez por selección.
     const cx=(HX+px)/2,cy=Math.min(HY,py)-Math.hypot(px-HX,py-HY)*0.28;
     const tr=svgEl('path',{d:`M${HX} ${HY} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)}`,class:'camp-campo-tray'});svg.append(tr);
