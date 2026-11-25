@@ -1509,8 +1509,11 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
   pie.className = 'pie-grafica';
   if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
-  cargarIndicador(codigo).then((todos) => {
-    const puntos = ndias && todos.length ? todos.filter(([ms]) => ms >= todos[todos.length - 1][0] - (ndias - 1) * 86400000) : todos; // período global de Mercado: solo recorte temporal (25-nov-2026)
+  // Mercado (25-nov-2026): el balance diario sale del precálculo del cierre (registros/categorias/balance_carrera-Nd): los clasificados del último cierre de la campaña elegida, seguidos hacia atrás.
+  // Si ese archivo aún no existe se conserva el conteo anterior (113 acciones) recortado al período, y se avisa.
+  const balanceP = limpio && ndias && e.iceberg ? fetch(`registros/categorias/balance_carrera-${ndias}d`, { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
+  Promise.all([cargarIndicador(codigo), balanceP]).then(([todos, bal]) => {
+    const puntos = bal ? bal.puntos : (ndias && todos.length ? todos.filter(([ms]) => ms >= todos[todos.length - 1][0] - (ndias - 1) * 86400000) : todos); // período global de Mercado
     estado.remove();
     if (puntos.length < 2) {
       caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>';
@@ -1533,7 +1536,18 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
       fecha: () => uf,
       sinDescarga: limpio,
     });
-    if (limpio) return; // prototipo unificada (25-nov-2026): sin texto explicativo ni descarga
+    if (limpio) { // prototipo unificada (25-nov-2026): sin descarga; solo el conjunto y su denominador, visibles
+      if (ndias && e.iceberg) {
+        const nota = Object.assign(document.createElement('p'), { className: 'camp-sub' });
+        if (bal) {
+          const b = bal.balance, tot = bal.puntos.map((q) => q[1] + q[2] + q[3]);
+          const rango = Math.min(...tot) === Math.max(...tot) ? `${tot[0]}` : `${Math.min(...tot)} a ${Math.max(...tot)}`;
+          nota.textContent = `Conjunto: ${b.cohorte.total} clasificados del cierre del ${b.ventana.fin} en la campaña de ${b.ventana.cantidad} días (${b.cohorte.stock} acciones y fondos, ${b.cohorte.cripto} cripto), sin Rezagados. Activos con vela cada día: ${rango}. Sube, baja o queda igual; un activo sin vela no cuenta.`;
+        } else nota.textContent = 'Todavía no hay balance del conjunto clasificado para este período: se calcula en el próximo cierre diario. Mientras tanto se muestra el conteo anterior de las 113 acciones.';
+        pie.append(nota);
+      }
+      return;
+    }
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
     nota.className = 'nota';
