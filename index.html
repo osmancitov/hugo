@@ -114,7 +114,6 @@ a:hover { text-decoration: underline; }
 .camp-punto.camp-pot { fill: var(--oro); } .camp-punto.camp-con { fill: #7fb2e5; }
 .camp-k { display: inline-block; width: 1.1em; height: 3px; vertical-align: middle; margin: 0 .2em 0 .5em; }
 .camp-k.camp-pot { background: var(--oro); } .camp-k.camp-con { background: #7fb2e5; } .camp-uno-k { background: var(--texto); opacity: .6; }
-.camp-cuad-zona { fill: rgba(111,191,138,.12); stroke: #6fbf8a; stroke-width: 1; }
 .camp-cuad-pto { fill: var(--tenue); fill-opacity: .6; cursor: pointer; }
 .camp-g-premium { fill: #6fbf8a; fill-opacity: .95; background: #6fbf8a; } /* verde = amarillo (potencia) + azul (constancia); usuario, Slack 1795610271.848919 */
 .camp-g-potentes { fill: var(--oro); fill-opacity: .8; background: var(--oro); }
@@ -134,6 +133,16 @@ a:hover { text-decoration: underline; }
 .camp-cuad-pto.camp-sel { fill-opacity: 1; stroke: #fff3cf; stroke-width: 2; }
 .camp-cuad-rot { fill: var(--oro); font-size: 16px; letter-spacing: .06em; text-transform: uppercase; opacity: .9; pointer-events: none; }
 .camp-cuad-rot.camp-rot-premium { fill: #6fbf8a; } .camp-cuad-rot.camp-rot-potentes { fill: var(--oro); } .camp-cuad-rot.camp-rot-constantes { fill: #7fb2e5; } .camp-cuad-rot.camp-rot-rezagados { fill: #8d8a99; }
+
+.camp-campo-fuera { fill: rgba(111,191,138,.07); }
+.camp-campo-dentro { fill: rgba(255,255,255,.04); }
+.camp-campo-cerca { fill: none; stroke: #6fbf8a; stroke-width: 2; }
+.camp-campo-cerca-n { fill: #6fbf8a; font-weight: 700; }
+.camp-campo-foul { stroke-width: 2; opacity: .85; }
+.camp-campo-foul.camp-eje-pot { stroke: var(--oro); } .camp-campo-foul.camp-eje-con { stroke: #7fb2e5; }
+.camp-campo-home { fill: var(--texto); }
+.camp-campo-tray { fill: none; stroke: #fff3cf; stroke-width: 2; stroke-linecap: round; opacity: .9; pointer-events: none; }
+.camp-campo-bola { fill: #fff; stroke: #c0392b; stroke-width: 1.5; pointer-events: none; }
 .camp-cuad-eje { fill: var(--tenue); font-size: 16px; }
 .camp-cuad-eje.camp-eje-pot { fill: var(--oro); } .camp-cuad-eje.camp-eje-con { fill: #7fb2e5; } /* mismos colores que las curvas: Potencia amarillo, Constancia azul (usuario, Slack 1795610220.251959) */
 .camp-cuad-cod { fill: var(--texto); font-size: 19px; font-weight: 700; pointer-events: none; }
@@ -2089,50 +2098,68 @@ function graficaActivoCampana(caja,s,id){
   ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
   caja.replaceChildren(sub,svg,ley); // el nombre del activo va arriba, junto a los cuadrantes
 }
-function graficaCuadrantes(caja,u,seleccion,alElegir){
-  const W=560,H=440,L=56,R=12,T=14,B=46,cl=u.clasificados;
-  // Escala logarítmica en ambos ejes: 2 y 1/2 quedan a la misma distancia del 1.
-  let lc=[-1,1],lp=[-1,1];
-  for(const a of cl){const c=Math.log2(a.constancia),p=Math.log2(a.potencia);if(c<lc[0])lc[0]=c;if(c>lc[1])lc[1]=c;if(p<lp[0])lp[0]=p;if(p>lp[1])lp[1]=p;}
-  lc=[lc[0]-.08,lc[1]+.08];lp=[lp[0]-.08,lp[1]+.08];
-  const x=c=>L+(Math.log2(c)-lc[0])/(lc[1]-lc[0])*(W-L-R),y=p=>T+(lp[1]-Math.log2(p))/(lp[1]-lp[0])*(H-T-B);
-  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de cada activo, en cuatro cuadrantes y escala logarítmica'});
-  svg.append(svgEl('rect',{x:x(1),y:T,width:W-R-x(1),height:y(1)-T,class:'camp-cuad-zona'}));
-  const marcas=[0.25,0.5,1,2,4],fm=v=>v===0.25?'¼':v===0.5?'½':String(v);
-  for(const v of marcas){
-    if(Math.log2(v)>=lp[0]&&Math.log2(v)<=lp[1]){svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+5,'text-anchor':'end',class:'camp-cuad-eje camp-eje-pot'});t.textContent=fm(v);svg.append(t);}
-    if(Math.log2(v)>=lc[0]&&Math.log2(v)<=lc[1]){svg.append(svgEl('line',{x1:x(v),x2:x(v),y1:T,y2:H-B,class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:x(v),y:H-B+18,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-con'});t.textContent=fm(v);svg.append(t);}
-  }
-  const et=(txt,ax,ay,an)=>{const t=svgEl('text',{x:ax,y:ay,'text-anchor':an,class:'camp-cuad-rot camp-rot-'+txt.toLowerCase()});t.textContent=txt;svg.append(t);};
-  et('Premium',W-R-6,T+16,'end');et('Potentes',x(1)-6,T+16,'end');et('Constantes',W-R-6,H-B-8,'end');et('Rezagados',x(1)-6,H-B-8,'end');
-  const xt=svgEl('text',{x:(L+W-R)/2,y:H-10,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-con'});xt.textContent='Constancia →';svg.append(xt);
-  const yt=svgEl('text',{transform:`translate(15 ${(T+H-B)/2}) rotate(-90)`,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-pot'});yt.textContent='Potencia →';svg.append(yt);
+// El campo de béisbol (pedido por el usuario, Slack 1795611217.847959) sustituye a los cuatro cuadrantes. Home en el 0,0, distancia r = Campaña
+// normalizada, dirección = balance entre P y C. La cerca es r = 1. No cambia clasificación ni cortes.
+let campoUltimaBola=null;
+function graficaCampo(caja,u,seleccion,alElegir){
+  const W=560,cl=u.clasificados,rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
+  // Escala fiel: el radio visible abarca al activo más lejano (nunca se recorta ni se acerca un punto).
+  // Radio híbrido y continuo: lineal de 0 a 0,5 (home sigue siendo el 0) y logarítmico desde 0,5, con la misma
+  // pendiente en el empalme. Así 0,5, 1 y 2 quedan a igual distancia unos de otros (no es logaritmo puro).
+  const R0=0.1,rho=r=>Math.log2(r/R0); // radio logarítmico solo en r; home es el origen del dibujo (Campaña 0,1), no un valor medido
+  const RMAX=Math.max(2,Math.ceil(Math.max(...cl.map(rr))*10)/10+0.05),RHO=rho(RMAX),S=(W-64)/(2*RHO*Math.SQRT1_2),H0=Math.round(RHO*S+48),HX=W/2,HY=H0-22;
+  // Girado 45°: x=(C-P)/2, y=(C+P)/2 conserva las distancias (r); la dirección es el balance entre P y C.
+  const pos=a=>{const X=(a.constancia-a.potencia)/2,Y=(a.constancia+a.potencia)/2,r=Math.hypot(X,Y);if(!r)return [HX,HY];const k=rho(r)*S/r;return [HX+X*k,HY-Y*k];};
+  const ang=d=>d*Math.PI/180,pol=(r,gr)=>[HX+rho(r)*S*Math.sin(ang(gr)),HY-rho(r)*S*Math.cos(ang(gr))];
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H0}`,class:'camp-svg',role:'img','aria-label':'Campo de potencia y constancia: cada activo donde cayó su batazo; la cerca es Campaña 1'});
+  const arco=(r,a0,a1)=>{const [x0,y0]=pol(r,a0),[x1,y1]=pol(r,a1);return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${(rho(r)*S).toFixed(1)} ${(rho(r)*S).toFixed(1)} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;};
+  const [fx0,fy0]=pol(RMAX,-45),[fx1,fy1]=pol(RMAX,45);
+  svg.append(svgEl('path',{d:`M${HX} ${HY} L${fx0.toFixed(1)} ${fy0.toFixed(1)} A${RHO*S} ${RHO*S} 0 0 1 ${fx1.toFixed(1)} ${fy1.toFixed(1)} Z`,class:'camp-campo-fuera'}));
+  const [c0x,c0y]=pol(1,-45),[c1x,c1y]=pol(1,45);
+  svg.append(svgEl('path',{d:`M${HX} ${HY} L${c0x.toFixed(1)} ${c0y.toFixed(1)} A${rho(1)*S} ${rho(1)*S} 0 0 1 ${c1x.toFixed(1)} ${c1y.toFixed(1)} Z`,class:'camp-campo-dentro'}));
+  const aros=[0.25,0.5];for(let v=2;v<RMAX;v*=2)aros.push(v);
+  for(const r of aros)svg.append(svgEl('path',{d:arco(r,-45,45),class:'camp-rej',fill:'none'}));
+  svg.append(svgEl('line',{x1:HX,y1:HY,x2:pol(RMAX,0)[0],y2:pol(RMAX,0)[1],class:'camp-uno'}));
+  svg.append(svgEl('path',{d:arco(1,-45,45),class:'camp-campo-cerca'}));
+  svg.append(svgEl('line',{x1:HX,y1:HY,x2:fx0,y2:fy0,class:'camp-campo-foul camp-eje-pot'}));
+  svg.append(svgEl('line',{x1:HX,y1:HY,x2:fx1,y2:fy1,class:'camp-campo-foul camp-eje-con'}));
+  const tx=(txt,px,py,cls,an='middle')=>{const t=svgEl('text',{x:px,y:py,'text-anchor':an,class:cls});t.textContent=txt;svg.append(t);};
+  for(const v of [...aros,1].sort((m,n)=>m-n)){const [lx,ly]=pol(v,45);tx(fmtCoef(v).replace(/,00$/,'').replace(/,(\d)0$/,',$1'),lx+8,ly+4,v===1?'camp-cuad-eje camp-campo-cerca-n':'camp-cuad-eje','start');}
+  tx('Potencia',pol(RMAX*.9,-33)[0],pol(RMAX*.9,-33)[1],'camp-cuad-rot camp-rot-potentes');
+  tx('Constancia',pol(RMAX*.9,33)[0],pol(RMAX*.9,33)[1],'camp-cuad-rot camp-rot-constantes');
+  svg.append(svgEl('polygon',{points:`${HX},${HY+9} ${HX+9},${HY} ${HX},${HY-9} ${HX-9},${HY}`,class:'camp-campo-home'}));
   const orden=[...cl].sort((a,b)=>(a.id===seleccion)-(b.id===seleccion));
   for(const a of orden){
-    const sel=a.id===seleccion,prem=a.grupo==='premium';
-    const c=svgEl('circle',{cx:x(a.constancia).toFixed(1),cy:y(a.potencia).toFixed(1),r:sel?8:prem?5.5:3.8,class:'camp-cuad-pto camp-g-'+a.grupo+(sel?' camp-sel':''),'data-id':a.id});
-    const ti=svgEl('title');ti.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
+    const sel=a.id===seleccion,[px,py]=pos(a);
+    const c=svgEl('circle',{cx:px.toFixed(1),cy:py.toFixed(1),r:sel?8:a.grupo==='premium'?5.5:3.8,class:'camp-cuad-pto camp-g-'+a.grupo+(sel?' camp-sel':''),'data-id':a.id});
+    const ti=svgEl('title');ti.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · Campaña '+fmtCoef(rr(a))+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
   }
-  if(seleccion){const a=cl.find(q=>q.id===seleccion);if(a){const cx=x(a.constancia),an=cx>W*0.7?'end':'start';const t=svgEl('text',{x:cx+(an==='end'?-11:11),y:y(a.potencia)+4,'text-anchor':an,class:'camp-cuad-cod'});t.textContent=(entradaCampana(a.id)?.codigo)||a.id.split(':')[1];svg.append(t);}}
+  if(seleccion){const a=cl.find(q=>q.id===seleccion);if(a){
+    const [px,py]=pos(a),an=px>W*0.7?'end':'start';tx((entradaCampana(a.id)?.codigo)||a.id.split(':')[1],px+(an==='end'?-12:12),py+4,'camp-cuad-cod',an);
+    // Trayectoria de la bola: de home al punto, con un arco hacia arriba; se anima una sola vez por selección.
+    const cx=(HX+px)/2,cy=Math.min(HY,py)-Math.hypot(px-HX,py-HY)*0.28;
+    const tr=svgEl('path',{d:`M${HX} ${HY} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)}`,class:'camp-campo-tray'});svg.append(tr);
+    const bola=svgEl('circle',{r:4.5,class:'camp-campo-bola'});svg.append(bola);
+    // Mismo trazado común del visor (una duración, movimiento reducido incluido): el 'hasta' es el avance de 1 a 100.
+    const L=tr.getTotalLength();tr.style.strokeDasharray=L;
+    const traza=trazadoAnimado(caja,()=>100,(hasta)=>{const f=hasta===undefined?1:(hasta-1)/99,e=1-(1-f)*(1-f),p=tr.getPointAtLength(L*e);
+      bola.setAttribute('cx',p.x);bola.setAttribute('cy',p.y);bola.setAttribute('r',4.5+3*Math.sin(Math.PI*e));tr.style.strokeDashoffset=L*(1-e);});
+    if(campoUltimaBola!==seleccion){campoUltimaBola=seleccion;traza.trazar();}else traza.terminar();
+  }}else campoUltimaBola=null;
   const envol=document.createElement('div');envol.className='camp-cuad-envol';
   const sel2=document.createElement('div');sel2.className='camp-cuad-juntos';sel2.hidden=true;
   svg.addEventListener('click',ev=>{
     const pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());
-    const cerca=cl.map(a=>({a,d:Math.hypot(x(a.constancia)-q.x,y(a.potencia)-q.y)})).filter(o=>o.d<=9).sort((m,n)=>m.d-n.d);
+    const cerca=cl.map(a=>{const [px,py]=pos(a);return {a,d:Math.hypot(px-q.x,py-q.y)};}).filter(o=>o.d<=9).sort((m,n)=>m.d-n.d);
     if(!cerca.length){sel2.hidden=true;return;}
     if(cerca.length===1){alElegir(cerca[0].a.id);return;}
-    // Varios activos juntos: se elige de una lista, sin adivinar cuál era.
     sel2.replaceChildren();const p=document.createElement('p');p.textContent=`${cerca.length} activos juntos aquí. Elige uno:`;sel2.append(p);
     for(const {a} of cerca){const b=document.createElement('button');b.type='button';b.className='camp-cuad-op camp-g-'+a.grupo;b.dataset.id=a.id;
-      b.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);
-      b.addEventListener('click',()=>alElegir(a.id));sel2.append(b);}
-    // Ventanita junto al toque: no mueve nada de la página y queda a la vista.
+      b.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · Campaña '+fmtCoef(rr(a));b.addEventListener('click',()=>alElegir(a.id));sel2.append(b);}
     sel2.hidden=false;const cr=envol.getBoundingClientRect(),w=sel2.offsetWidth,h=sel2.offsetHeight;
-    const lx=Math.max(0,Math.min(ev.clientX-cr.left-w/2,cr.width-w));
-    let ty=ev.clientY-cr.top+14;if(ev.clientY+14+h>innerHeight)ty=ev.clientY-cr.top-h-14;
+    const lx=Math.max(0,Math.min(ev.clientX-cr.left-w/2,cr.width-w));let ty=ev.clientY-cr.top+14;if(ev.clientY+14+h>innerHeight)ty=ev.clientY-cr.top-h-14;
     sel2.style.left=lx+'px';sel2.style.top=Math.max(0,ty)+'px';
   });
-  document.addEventListener('keydown',function cerrar(e){if(!svg.isConnected){document.removeEventListener('keydown',cerrar);return;}if(e.key==='Escape')sel2.hidden=true;});
   const cab=document.createElement('div');cab.className='camp-cuad-cab';
   if(seleccion){
     const e=entradaCampana(seleccion),a=cl.find(q=>q.id===seleccion),cod=e?e.codigo:seleccion.split(':')[1];
@@ -2140,12 +2167,12 @@ function graficaCuadrantes(caja,u,seleccion,alElegir){
     const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');h.append(l);
     const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';
     const tipo=seleccion.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
-    d.textContent=[/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
+    d.textContent=[/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`Campaña ${fmtCoef(rr(a))} · P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
     cab.append(h,d);
   }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
-  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Cada punto es un activo, con su grupo en su color. Escala logarítmica: 2 y ½ quedan a la misma distancia del 1. Toca un punto para elegirlo.';
+  const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1, no en cero. Los números de la derecha son la Campaña a esa distancia, en escala logarítmica: de 0,25 a 0,5, a 1 y a 2 hay siempre la misma distancia. La cerca verde es la Campaña 1. A la izquierda manda la potencia, a la derecha la constancia.';
   envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley,ej);
 }
 async function vistaCampana(n,inicial){
@@ -2164,7 +2191,7 @@ async function vistaCampana(n,inicial){
   const filas=new Map();
   const pintarSel=(irA)=>{
     graficaEspaguetis(cEsp,s,sel,elegir);
-    graficaCuadrantes(cCuad,u,sel,elegir);
+    graficaCampo(cCuad,u,sel,elegir);
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,s,sel);
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
     if(sel&&irA){const r=cAct.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}

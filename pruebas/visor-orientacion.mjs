@@ -28,7 +28,10 @@ test('el trazado animado existe una sola vez, dentro del graficador común', () 
   assert.equal(visor.match(/requestAnimationFrame\(paso\)/g)?.length, 2); // arranque y cuadro siguiente, dentro de la pieza
   assert.equal(visor.match(/prefers-reduced-motion/g)?.length, 1);
   assert.equal(visor.match(/const DURACION_TRAZADO_MS = 1000;/g)?.length, 1);
-  assert.equal(visor.match(/= trazadoAnimado\(caja/g)?.length, 1); // solo dentro del graficador común
+  // Un mecanismo, dos llamadores: el graficador común y el campo (la bola). Ninguno trae su propio
+  // requestAnimationFrame ni su propia duración: los contadores de arriba siguen en 2 y 1.
+  assert.equal(visor.match(/=\s*trazadoAnimado\(caja/g)?.length, 2);
+  assert.match(visor, /function graficaCampo\([\s\S]*?trazadoAnimado\(caja,\(\)=>100/);
   assert.doesNotMatch(visor, /\/ 1000\)/);
 });
 

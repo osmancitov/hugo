@@ -57,19 +57,19 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
   assert.doesNotMatch(h, /camp-enlace/);
 });
 
-test('Campañas: gráfica de cuatro cuadrantes bajo espaguetis y curvas, con selección compartida', () => {
+test('Campañas: el campo de béisbol va bajo espaguetis y curvas, con selección compartida', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /function graficaCuadrantes\(caja,u,seleccion,alElegir\)/);
+  assert.match(h, /function graficaCampo\(caja,u,seleccion,alElegir\)/);
   assert.match(h, /raiz\.append\(t,sub,cCuad,cEsp,cAct,lista\)/);
-  assert.match(h, /graficaCuadrantes\(cCuad,u,sel,elegir\)/);
+  assert.match(h, /graficaCampo\(cCuad,u,sel,elegir\)/);
+  assert.doesNotMatch(h, /graficaCuadrantes/);
 });
 
-test('Campañas: cuadrantes en escala logarítmica y un color por grupo', () => {
+test('Campañas: campo con radio logarítmico solo en r desde 0,1 y un color por grupo', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /Math\.log2\(c\)-lc\[0\]/);
+  assert.match(h, /R0=0\.1,rho=r=>Math\.log2\(r\/R0\)/);
   assert.match(h, /camp-g-'\+a\.grupo/);
-  assert.match(h, /camp-cuad-juntos/); assert.match(h, /activos juntos aqu/);
-  assert.match(h, /const lg=v=>Math\.log2/);
+  assert.match(h, /Home es solo la salida de la pelota: el radio empieza en la Campaña 0,1/);
 });
 
 test('la superficie 3D tiene selectores de grupo y ventana que solo filtran lo dibujado', () => {
