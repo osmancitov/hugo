@@ -2152,12 +2152,12 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
   caja.replaceChildren(svg,ej);
 }
-function graficaActivoCampana(caja,s,id){
+function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
   const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(id)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas`;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=limpio?`${pts} de ${N} jornadas · cada punto es el valor de la ventana de ${s.carrera&&s.carrera.ventana||''} días que termina ese día · la línea gris marca 1, el corte`:`${pts} de ${N} jornadas`;
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
   const lg=v=>Math.log2(Math.max(v,1e-3));
   let lo=-1,hi=1;for(const p of serie)if(p)for(const k of [1,2]){lo=Math.min(lo,lg(p[k]));hi=Math.max(hi,lg(p[k]));}
@@ -2174,6 +2174,7 @@ function graficaActivoCampana(caja,s,id){
   }
   const ley=document.createElement('div');ley.className='camp-ley';
   const ult=serie.filter(Boolean).at(-1);
+  if(limpio){const f=(cls,nombre,v)=>{const sp=document.createElement('span');sp.innerHTML='<span class="camp-k '+cls+'"></span> ';sp.append(nombre+' ',Object.assign(document.createElement('b'),{textContent:fmtCoef(v)}));return sp;};ley.append(...(ult?[f('camp-pot','Potencia',ult[1]),' ',f('camp-con','Constancia',ult[2])]:[]));caja.replaceChildren(sub,svg,ley);return;}
   ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k camp-uno-k"></span> 1'+(ult?` · última: potencia ${fmtCoef(ult[1])}, constancia ${fmtCoef(ult[2])}`:'');
   caja.replaceChildren(sub,svg,ley); // el nombre del activo va arriba, junto a los cuadrantes
 }
@@ -2272,7 +2273,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     const sv=puente?recortarSerie(s,n):s;
     graficaEspaguetis(cEsp,sv,sel,elegir);
     graficaCampo(cCuad,u,sel,elegir);
-    cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel);
+    cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
     if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
   };
@@ -2304,7 +2305,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
 // que se refleja en todas las vistas. No sustituye ninguna página actual.
 // Fear & Greed de Bolsa y de Cripto en una sola gráfica (25-nov-2026): dos curvas distinguibles por color.
 // Colores fuera de los reservados a las categorías (verde, amarillo, azul) y al rojo: blanco hueso y magenta.
-const COLOR_FG_BOLSA = '#8b5cf6', COLOR_FG_CRIPTO = '#e879f9'; // pareja provisional (fucsia y violeta, mismo peso visual); sin blanco ni colores de categorías
+const COLOR_FG_BOLSA = '#0092BC', COLOR_FG_CRIPTO = '#F7931A'; // decisión del usuario (audio Slack 1795638015.713969): naranja Bitcoin (#F7931A) para cripto, azul Nasdaq (#0092BC) para bolsa; el azul de Constantes se revisa después
 function graficoFearGreedJunto(ctx, geo, hasta, S) {
   const { series, dias } = S, n = dias.length, k = hasta === undefined ? n : Math.min(hasta, n);
   const V = Boolean(geo.vertical), w = V ? 700 : LW, alto = geo.alto;
