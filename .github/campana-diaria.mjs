@@ -20,5 +20,12 @@ if (!escritos.length && !fs.existsSync(path.join(serieDir, 'serie_carrera-90d'))
 git('add', 'registros/categorias');
 if (!git('status', '--porcelain', 'registros/categorias')) { console.log('Campaña: sin días nuevos que registrar.'); process.exit(0); }
 git(...id, 'commit', '--quiet', '-m', `Campaña 90d: carrera de ${escritos.length ? escritos.map((n) => n.split('-')[1].slice(0, 6)).join(', ') : 'serie'}`);
-git('push', 'origin', 'HEAD:main');
+// La lectura horaria también sube a main: si la punta se movió, se rebasa y se reintenta (máx. 3 veces).
+for (let i = 1; ; i++) {
+  try { git('push', 'origin', 'HEAD:main'); break; } catch (e) {
+    if (i >= 3) throw e;
+    git('fetch', '--quiet', 'origin', 'main');
+    git(...id, 'rebase', 'origin/main');
+  }
+}
 console.log(`Campaña: ${escritos.length} día(s) nuevos subidos a main: ${escritos.join(', ') || 'solo serie'}.`);
