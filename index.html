@@ -2466,6 +2466,12 @@ function vistaUnificada(inicial=null,dias=90){
   vistaIndicador('iceberg-stock',sec(),null,true,dias);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec('mercado-camp');
+  // Reserva de altura: los bloques de arriba se rellenan después de pintar y empujaban el Relieve (737 px en móvil, medido 25-nov-2026). Se reserva la última altura
+  // medida (o, la primera vez en pantalla angosta, una proporción medida del ancho) y se libera cuando el bloque ya cargó. Solo afecta a Mercado.
+  {const wv=Math.round(app.clientWidth||innerWidth),clave='mercado-alturas-'+wv,guard=(()=>{try{return JSON.parse(sessionStorage.getItem(clave)||'null');}catch(e){return null;}})();
+   const bloques=[...app.children].slice(1,4),prop=[2.13,2.33,0.8];
+   bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
+   setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
