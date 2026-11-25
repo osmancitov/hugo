@@ -114,10 +114,10 @@ a:hover { text-decoration: underline; }
 .camp-punto.camp-pot { fill: var(--oro); } .camp-punto.camp-con { fill: #7fb2e5; }
 .camp-k { display: inline-block; width: 1.1em; height: 3px; vertical-align: middle; margin: 0 .2em 0 .5em; }
 .camp-k.camp-pot { background: var(--oro); } .camp-k.camp-con { background: #7fb2e5; } .camp-uno-k { background: var(--texto); opacity: .6; }
-.camp-cuad-zona { fill: rgba(194,161,90,.12); stroke: var(--oro); stroke-width: 1; }
+.camp-cuad-zona { fill: rgba(111,191,138,.12); stroke: #6fbf8a; stroke-width: 1; }
 .camp-cuad-pto { fill: var(--tenue); fill-opacity: .6; cursor: pointer; }
-.camp-g-premium { fill: var(--oro); fill-opacity: .95; background: var(--oro); }
-.camp-g-potentes { fill: #e07a5f; fill-opacity: .8; background: #e07a5f; }
+.camp-g-premium { fill: #6fbf8a; fill-opacity: .95; background: #6fbf8a; } /* verde = amarillo (potencia) + azul (constancia); usuario, Slack 1795610271.848919 */
+.camp-g-potentes { fill: var(--oro); fill-opacity: .8; background: var(--oro); }
 .camp-g-constantes { fill: #7fb2e5; fill-opacity: .8; background: #7fb2e5; }
 .camp-g-rezagados { fill: #8d8a99; fill-opacity: .6; background: #8d8a99; }
 .camp-cuad-ley { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
@@ -133,7 +133,9 @@ a:hover { text-decoration: underline; }
 .camp-cuad-pto:hover { stroke: var(--texto); stroke-width: 1.5; }
 .camp-cuad-pto.camp-sel { fill-opacity: 1; stroke: #fff3cf; stroke-width: 2; }
 .camp-cuad-rot { fill: var(--oro); font-size: 16px; letter-spacing: .06em; text-transform: uppercase; opacity: .9; pointer-events: none; }
+.camp-cuad-rot.camp-rot-premium { fill: #6fbf8a; } .camp-cuad-rot.camp-rot-potentes { fill: var(--oro); } .camp-cuad-rot.camp-rot-constantes { fill: #7fb2e5; } .camp-cuad-rot.camp-rot-rezagados { fill: #8d8a99; }
 .camp-cuad-eje { fill: var(--tenue); font-size: 16px; }
+.camp-cuad-eje.camp-eje-pot { fill: var(--oro); } .camp-cuad-eje.camp-eje-con { fill: #7fb2e5; } /* mismos colores que las curvas: Potencia amarillo, Constancia azul (usuario, Slack 1795610220.251959) */
 .camp-cuad-cod { fill: var(--texto); font-size: 19px; font-weight: 700; pointer-events: none; }
 .camp-grupo > summary { cursor: pointer; padding: .7rem .2rem; font-family: 'Cinzel', 'Lora', serif; font-size: 1.05rem; }
 .camp-grupo .cap { white-space: nowrap; }
@@ -2098,13 +2100,13 @@ function graficaCuadrantes(caja,u,seleccion,alElegir){
   svg.append(svgEl('rect',{x:x(1),y:T,width:W-R-x(1),height:y(1)-T,class:'camp-cuad-zona'}));
   const marcas=[0.25,0.5,1,2,4],fm=v=>v===0.25?'¼':v===0.5?'½':String(v);
   for(const v of marcas){
-    if(Math.log2(v)>=lp[0]&&Math.log2(v)<=lp[1]){svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+5,'text-anchor':'end',class:'camp-cuad-eje'});t.textContent=fm(v);svg.append(t);}
-    if(Math.log2(v)>=lc[0]&&Math.log2(v)<=lc[1]){svg.append(svgEl('line',{x1:x(v),x2:x(v),y1:T,y2:H-B,class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:x(v),y:H-B+18,'text-anchor':'middle',class:'camp-cuad-eje'});t.textContent=fm(v);svg.append(t);}
+    if(Math.log2(v)>=lp[0]&&Math.log2(v)<=lp[1]){svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+5,'text-anchor':'end',class:'camp-cuad-eje camp-eje-pot'});t.textContent=fm(v);svg.append(t);}
+    if(Math.log2(v)>=lc[0]&&Math.log2(v)<=lc[1]){svg.append(svgEl('line',{x1:x(v),x2:x(v),y1:T,y2:H-B,class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:x(v),y:H-B+18,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-con'});t.textContent=fm(v);svg.append(t);}
   }
-  const et=(txt,ax,ay,an)=>{const t=svgEl('text',{x:ax,y:ay,'text-anchor':an,class:'camp-cuad-rot'});t.textContent=txt;svg.append(t);};
+  const et=(txt,ax,ay,an)=>{const t=svgEl('text',{x:ax,y:ay,'text-anchor':an,class:'camp-cuad-rot camp-rot-'+txt.toLowerCase()});t.textContent=txt;svg.append(t);};
   et('Premium',W-R-6,T+16,'end');et('Potentes',x(1)-6,T+16,'end');et('Constantes',W-R-6,H-B-8,'end');et('Rezagados',x(1)-6,H-B-8,'end');
-  const xt=svgEl('text',{x:(L+W-R)/2,y:H-10,'text-anchor':'middle',class:'camp-cuad-eje'});xt.textContent='Constancia →';svg.append(xt);
-  const yt=svgEl('text',{transform:`translate(15 ${(T+H-B)/2}) rotate(-90)`,'text-anchor':'middle',class:'camp-cuad-eje'});yt.textContent='Potencia →';svg.append(yt);
+  const xt=svgEl('text',{x:(L+W-R)/2,y:H-10,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-con'});xt.textContent='Constancia →';svg.append(xt);
+  const yt=svgEl('text',{transform:`translate(15 ${(T+H-B)/2}) rotate(-90)`,'text-anchor':'middle',class:'camp-cuad-eje camp-eje-pot'});yt.textContent='Potencia →';svg.append(yt);
   const orden=[...cl].sort((a,b)=>(a.id===seleccion)-(b.id===seleccion));
   for(const a of orden){
     const sel=a.id===seleccion,prem=a.grupo==='premium';
@@ -2221,7 +2223,7 @@ async function ruta() {
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   document.getElementById('mercado-campana').href='#/campana';
   document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
-  if(esCampana){navCat.hidden=false;for(const v of [90,60,30])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
+  if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
   }
