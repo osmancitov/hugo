@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { conectarCaja } from './caja.mjs';
 import { crearRemoto } from './git-remoto.mjs';
-import { fijarPasoIndicador, fijarPasoPreCalculo, fijarPasoCatalogo } from '../app/modulos/sincronizar-registros.mjs';
+import { fijarPasoIndicador, fijarPasoPreCalculo, fijarPasoCatalogo, fijarPasoInventario } from '../app/modulos/sincronizar-registros.mjs';
 
 const vela = (t) => [t, '1', '2', '1', '2', '10', t + 86400000 - 1, '10', 3, '1', '2', '0'];
 const serie = JSON.stringify([vela(Date.UTC(2026, 10, 1)), vela(Date.UTC(2026, 10, 2))]);
@@ -29,6 +29,7 @@ async function banco({ locales = {}, remotos = {}, pre = { lineas: [] }, cat = {
   fijarPasoIndicador(async () => ({ series: [] }));
   fijarPasoPreCalculo(async () => pre);
   fijarPasoCatalogo(async () => cat);
+  fijarPasoInventario(async () => ({ lineas: [] })); // el inventario tiene sus propias pruebas
   const { registrar } = await import('../app/modulos/sincronizar-registros.mjs');
   const ctx = {
     conf: { HUGO_GITHUB: 'osman/repo', HUGO_REPO_SYNC_URL: rem.url, HUGO_REPO_SYNC_DIR: path.join(root, 'clon') },
