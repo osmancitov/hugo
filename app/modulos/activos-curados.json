@@ -515,7 +515,7 @@
 {"codigo":"ZKP","nombre":"zkPass","cap":6700000},
 {"codigo":"ZRO","nombre":"LayerZero","cap":630000000},
 {"codigo":"ZRX","nombre":"0x","cap":74000000},
-{"codigo":"币安人生","nombre":"币安人生","lectura":"Bì'ān Rénshēng","cap":500000000},
-{"codigo":"牛来","nombre":"牛来","lectura":"Niú Lái","cap":58000000}
+{"codigo":"币安人生","nombre":"币安人生","lectura":"Bì'ān Rénshēng","traduccion":"Vida Binance","cap":500000000},
+{"codigo":"牛来","nombre":"牛来","lectura":"Niú Lái","traduccion":"llega el toro","cap":58000000}
 ]
 }

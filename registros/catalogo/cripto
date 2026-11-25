@@ -4413,6 +4413,8 @@
    "codigo": "币安人生",
    "nombre": "币安人生",
    "cap": 500000000,
+   "lectura": "Bì'ān Rénshēng",
+   "traduccion": "Vida Binance",
    "meses": [
     "2608",
     "2609",
@@ -4424,6 +4426,8 @@
    "codigo": "牛来",
    "nombre": "牛来",
    "cap": 58000000,
+   "lectura": "Niú Lái",
+   "traduccion": "llega el toro",
    "meses": [
     "2609",
     "2610",

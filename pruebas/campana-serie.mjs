@@ -96,7 +96,8 @@ test('Campañas: el activo elegido se identifica junto a los cuadrantes y se dic
   assert.match(h, /camp-cuad-nombre/);
   assert.ok(!h.includes("'Cuatro cuadrantes'"));
   assert.ok(!/carreras con la ventana|Carreras en horizontal|en cada carrera/.test(h));
-  assert.match(h, /jornadas · escala logarítmica/);
+  assert.match(h, /jornadas`/);
+  assert.ok(!h.includes('jornadas · escala logarítmica'));
 });
 
 test('Campañas: el botón solo muestra los tres botones de ventana; la campaña se abre al elegir', () => {

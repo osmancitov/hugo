@@ -476,7 +476,7 @@ function filaActivo(e, conCap) {
   a.href = e.indicador ? '#/i/' + (e.codigo==='iceberg-stock/superficie'?e.codigo:encodeURIComponent(e.codigo)) : '#/a/' + e.clase + '/' + encodeURIComponent(e.codigo);
   // Indicadores: una sola pieza de título (decisión del usuario, 19-nov-2026); sin código técnico a la vista.
   if (e.indicador) { a.innerHTML = '<span class="cod"></span>'; a.querySelector('.cod').textContent = e.nombre; return a; }
-  const lectura = e.lectura ? ` · ${e.lectura}` : '';
+  const lectura = parentesisLectura(e);
   const der = conCap && e.cap ? 'caps' : (e.tipo ? 'tipo' : '');
   a.innerHTML = `<span class="cod"></span><span class="nom"></span>` +
     (der === 'caps' ? '<span class="caps">' + ('cap_sub' in e ? '<span class="cap-sub"></span>' : '') + '<span class="cap"></span></span>'
@@ -1922,7 +1922,7 @@ function vistaActivo(clase, codigo) {
   ficha.appendChild(h1);
   if (e.lectura) {
     const p = document.createElement('p');
-    p.className = 'lectura'; p.textContent = 'se lee: ' + e.lectura;
+    p.className = 'lectura'; p.textContent = 'se lee: ' + e.lectura + (e.traduccion ? ' · significa: ' + e.traduccion : '');
     ficha.appendChild(p);
   }
   const meta = document.createElement('div');
@@ -2060,6 +2060,9 @@ function trazoConHuecos(puntos){ // puntos: [x,y]|null; null corta la línea
 function fmtCoef(v){return v==null?'—':v.toFixed(2).replace('.',',');}
 const GRUPOS_CAMPANA=[['premium','Premium'],['potentes','Potentes'],['constantes','Constantes'],['rezagados','Rezagados']];
 function entradaCampana(id){return TODOS.find(e=>e.clase+':'+e.codigo===id)||null;}
+// Un solo rótulo para un activo: el código y, si lo trae el catálogo, su lectura latina entre paréntesis (nombres en caracteres chinos).
+function parentesisLectura(e){return e&&e.lectura?` (${e.lectura}${e.traduccion?', '+e.traduccion:''})`:'';} // lectura y significado, muy breve
+function etiquetaActivo(id){const e=entradaCampana(id),c=e?e.codigo:id.split(':')[1];return c+parentesisLectura(e);}
 function graficaEspaguetis(caja,s,seleccion,alElegir){
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
   let maxP=2;for(const id in s.activos)for(const p of s.activos[id])if(p&&p[0]>maxP)maxP=p[0];
@@ -2075,7 +2078,7 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
   for(const id of Object.keys(s.activos)){
     const d=trazo(id),sel=id===seleccion,g=sel?cima:capa;
     g.append(svgEl('path',{d,class:sel?'camp-lin camp-sel':'camp-lin','data-id':id},[]));
-    {const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=(entradaCampana(id)?.codigo)||id;hit.append(ti);g.append(hit);} // también la seleccionada: un segundo clic la suelta
+    {const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);} // también la seleccionada: un segundo clic la suelta
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
@@ -2084,9 +2087,9 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
 function graficaActivoCampana(caja,s,id){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
-  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');tit.append(tl);
+  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas · escala logarítmica`;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas`;
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
   const lg=v=>Math.log2(Math.max(v,1e-3));
   let lo=-1,hi=1;for(const p of serie)if(p)for(const k of [1,2]){lo=Math.min(lo,lg(p[k]));hi=Math.max(hi,lg(p[k]));}
@@ -2140,10 +2143,10 @@ function graficaCampo(caja,u,seleccion,alElegir){
   for(const a of orden){
     const sel=a.id===seleccion,[px,py]=pos(a);
     const c=svgEl('circle',{cx:px.toFixed(1),cy:py.toFixed(1),r:sel?8:a.grupo==='premium'?5.5:3.8,class:'camp-cuad-pto camp-g-'+a.grupo+(sel?' camp-sel':''),'data-id':a.id});
-    const ti=svgEl('title');ti.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · Campaña '+fmtCoef(rr(a))+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
+    const ti=svgEl('title');ti.textContent=etiquetaActivo(a.id)+' · Campaña '+fmtCoef(rr(a))+' · P '+fmtCoef(a.potencia)+' · C '+fmtCoef(a.constancia);c.append(ti);svg.append(c);
   }
   if(seleccion){const a=cl.find(q=>q.id===seleccion);if(a){
-    const [px,py]=pos(a),an=px>W*0.7?'end':'start';tx((entradaCampana(a.id)?.codigo)||a.id.split(':')[1],px+(an==='end'?-12:12),py+4,'camp-cuad-cod',an);
+    const [px,py]=pos(a),an=px>W*0.7?'end':'start';tx(etiquetaActivo(a.id),px+(an==='end'?-12:12),py+4,'camp-cuad-cod',an);
     // Trayectoria de la bola: de home al punto, con un arco hacia arriba; se anima una sola vez por selección.
     const cx=(HX+px)/2,cy=Math.min(HY,py)-Math.hypot(px-HX,py-HY)*0.28;
     const tr=svgEl('path',{d:`M${HX} ${HY} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)}`,class:'camp-campo-tray'});svg.append(tr);
@@ -2163,7 +2166,7 @@ function graficaCampo(caja,u,seleccion,alElegir){
     if(cerca.length===1){alElegir(cerca[0].a.id);return;}
     sel2.replaceChildren();const p=document.createElement('p');p.textContent=`${cerca.length} activos juntos aquí. Elige uno:`;sel2.append(p);
     for(const {a} of cerca){const b=document.createElement('button');b.type='button';b.className='camp-cuad-op camp-g-'+a.grupo;b.dataset.id=a.id;
-      b.textContent=((entradaCampana(a.id)?.codigo)||a.id.split(':')[1])+' · Campaña '+fmtCoef(rr(a));b.addEventListener('click',()=>alElegir(a.id));sel2.append(b);}
+      b.textContent=etiquetaActivo(a.id)+' · Campaña '+fmtCoef(rr(a));b.addEventListener('click',()=>alElegir(a.id));sel2.append(b);}
     sel2.hidden=false;const cr=envol.getBoundingClientRect(),w=sel2.offsetWidth,h=sel2.offsetHeight;
     const lx=Math.max(0,Math.min(ev.clientX-cr.left-w/2,cr.width-w));let ty=ev.clientY-cr.top+14;if(ev.clientY+14+h>innerHeight)ty=ev.clientY-cr.top-h-14;
     sel2.style.left=lx+'px';sel2.style.top=Math.max(0,ty)+'px';
@@ -2172,7 +2175,7 @@ function graficaCampo(caja,u,seleccion,alElegir){
   if(seleccion){
     const e=entradaCampana(seleccion),a=cl.find(q=>q.id===seleccion),cod=e?e.codigo:seleccion.split(':')[1];
     const h=document.createElement('h2');h.className='camp-tit camp-cuad-nombre';
-    const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=cod+(e&&e.nombre?' · '+e.nombre:'');h.append(l);
+    const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');h.append(l);
     const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';
     const tipo=seleccion.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
     d.textContent=[/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`Campaña ${fmtCoef(rr(a))} · P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
@@ -2202,12 +2205,12 @@ async function vistaCampana(n,inicial){
     graficaCampo(cCuad,u,sel,elegir);
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,s,sel);
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
-    if(sel&&irA){const r=cAct.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
+    if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
   };
   function elegir(id,desdeLista){
     sel=sel===id?null:id;
     history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
-    pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista baja al detalle
+    pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista sube al campo
   }
   lista.className='camp-lista';
   {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña']]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
@@ -2217,7 +2220,7 @@ async function vistaCampana(n,inicial){
     f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
     {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
     f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
-    f.querySelector('.nom').textContent=e?e.nombre:'';
+    f.querySelector('.nom').textContent=e?e.nombre+parentesisLectura(e):'';
     const cp=f.querySelector('.cap');cp.textContent=fmtCoef(campana(a));cp.classList.add('camp-n-'+a.grupo);
     cp.title=(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]+' · Campaña = raíz((P² + C²) / 2)';
     filas.set(a.id,f);lista.append(f);

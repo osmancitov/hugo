@@ -82,7 +82,7 @@ export function leerRetirados(dirRaiz, clase) {
 // web oficial y si lleva fichas de Stock Analysis y TipRanks. La pasada los copia al catálogo
 // publicado y el visor lee solo el catálogo.
 export const RUTA_CURADOS = new URL('./activos-curados.json', import.meta.url);
-const CAMPOS_CURADOS = ['cap', 'cap_sub', 'cap_fecha', 'edgar', 'edgar_titulo', 'web', 'ficha'];
+const CAMPOS_CURADOS = ['cap', 'cap_sub', 'cap_fecha', 'edgar', 'edgar_titulo', 'web', 'ficha', 'lectura', 'traduccion'];
 export function capaCuradaDesdeJson(texto) {
   const j = JSON.parse(texto || '');
   const capa = { stock: new Map(), cripto: new Map() };
