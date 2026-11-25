@@ -146,8 +146,11 @@ a:hover { text-decoration: underline; }
 .camp-cuad-eje { fill: var(--tenue); font-size: 16px; }
 .camp-cuad-eje.camp-eje-pot { fill: var(--oro); } .camp-cuad-eje.camp-eje-con { fill: #7fb2e5; } /* mismos colores que las curvas: Potencia amarillo, Constancia azul (usuario, Slack 1795610220.251959) */
 .camp-cuad-cod { fill: var(--texto); font-size: 19px; font-weight: 700; pointer-events: none; }
-.camp-grupo > summary { cursor: pointer; padding: .7rem .2rem; font-family: 'Cinzel', 'Lora', serif; font-size: 1.05rem; }
-.camp-grupo .cap { white-space: nowrap; }
+.camp-lista .cap { white-space: nowrap; }
+.camp-n-premium { color: #6fbf8a !important; }
+.camp-n-potentes { color: var(--oro) !important; }
+.camp-n-constantes { color: #7fb2e5 !important; }
+.camp-n-rezagados { color: #8d8a99 !important; }
 
 .activo-fila {
   display: flex; gap: .6rem; align-items: baseline;
@@ -2184,7 +2187,7 @@ async function vistaCampana(n,inicial){
   const raiz=document.createElement('section');raiz.className='campana';
   const t=document.createElement('h2');t.className='camp-tit';t.textContent=`Campaña de ${n} días`;
   const sub=document.createElement('p');sub.className='camp-sub';
-  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas. Campaña = √((P²+C²)/2), de mayor a menor en cada grupo.`;
+  sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días). ${u.clasificados.length} clasificados, ${u.no_clasificados.length} sin las ${n} velas. Campaña = √((P²+C²)/2), de mayor a menor; el color del número indica el grupo.`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
   raiz.append(t,sub,cCuad,cEsp,cAct,lista);app.replaceChildren(raiz);
@@ -2200,26 +2203,19 @@ async function vistaCampana(n,inicial){
   function elegir(id,desdeLista){
     sel=sel===id?null:id;
     history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
-    if(sel){const g=u.clasificados.find(a=>a.id===sel)?.grupo;const d=g&&lista.querySelector(`details[data-g="${g}"]`);if(d)d.open=true;}
     pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista baja al detalle
   }
-  for(const [g,nombre] of GRUPOS_CAMPANA){
-    const items=u.clasificados.filter(a=>a.grupo===g);
-    items.splice(0,items.length,...ordenarCampana(items));
-    const d=document.createElement('details');d.dataset.g=g;d.className='camp-grupo';
-    const sm=document.createElement('summary');sm.textContent=`${nombre} (${items.length})`;d.append(sm);
-    for(const a of items){
-      const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
-      f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
-      f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
-      {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
-      f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
-      f.querySelector('.nom').textContent=e?e.nombre:'';
-      f.querySelector('.cap').textContent=`Campaña ${fmtCoef(campana(a))}`;f.querySelector('.cap').title='Campaña = raíz((P² + C²) / 2)';
-      filas.set(a.id,f);d.append(f);
-    }
-    if(sel&&items.some(a=>a.id===sel))d.open=true;
-    lista.append(d);
+  lista.className='camp-lista';
+  for(const a of ordenarCampana(u.clasificados)){
+    const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
+    f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
+    f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
+    {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
+    f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
+    f.querySelector('.nom').textContent=e?e.nombre:'';
+    const cp=f.querySelector('.cap');cp.textContent=`Campaña ${fmtCoef(campana(a))}`;cp.classList.add('camp-n-'+a.grupo);
+    cp.title=(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]+' · Campaña = raíz((P² + C²) / 2)';
+    filas.set(a.id,f);lista.append(f);
   }
   lista.addEventListener('click',ev=>{const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id,true);});
   lista.addEventListener('keydown',ev=>{if(ev.key!=='Enter'&&ev.key!==' ')return;const f=ev.target.closest('.camp-fila');if(!f)return;ev.preventDefault();elegir(f.dataset.id,true);});
