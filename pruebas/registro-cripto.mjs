@@ -64,3 +64,10 @@ test('el registro de cripto empieza el 26-nov 00:00 UTC y la corrida anterior no
   const { spawnSync } = await import('node:child_process');
   if (Date.now() < INICIO_CRIPTO - 20 * 60000) { const r = spawnSync('node', ['.github/lectura-horaria-cripto.mjs'], { encoding: 'utf8', timeout: 30000 }); assert.match(r.stdout + r.stderr, /empieza el 2026-11-26|Ninguna fuente/); }
 });
+
+test('las tablas de las barras de cripto enlazan a cripto y leen su registro', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes("&mercado=cripto"));
+  assert.ok(html.includes("'#/a/' + mercadoTabla + '/'"));
+  assert.ok(html.includes('cargarDiaObservatorio(parametros.get(\'dia\')??diaUTC(ms), mercadoTabla)'));
+});

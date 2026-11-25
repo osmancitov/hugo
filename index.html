@@ -782,8 +782,8 @@ function periodoBarra(desde, hasta, modo) {
   }
   return `${fechaPeriodoBarra(desde)}-${fechaPeriodoBarra(hasta)} UTC`;
 }
-function vistaBarra(b, { historica = false, compacta = false } = {}) {
-  const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}&dia=${diaUTC(b.dia.base??b.generada)}` : '';
+function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock' } = {}) {
+  const sufijo = historica ? `?lectura=${encodeURIComponent(new Date(b.generada).toISOString())}&dia=${diaUTC(b.dia.base??b.generada)}${mercado === 'cripto' ? '&mercado=cripto' : ''}` : '';
   const caja = document.createElement('div');
   caja.className = 'barra-movil';
   const seccion = (tituloTxt, suben, bajan, base, notaTxt, enlace, periodo, iguales = 0) => {
@@ -946,13 +946,14 @@ async function vistaTablaBarra(clave, instante = null) {
   const estado = document.createElement('p');
   estado.className = 'estado'; estado.textContent = 'Trayendo la instantánea…';
   app.append(volver, ficha, estado);
-  let b;
+  let b, mercadoTabla = 'stock';
   try {
     if (instante) {
       const parametros=new URLSearchParams('lectura='+instante);
       const ms = Date.parse(parametros.get('lectura'));
       if (!Number.isFinite(ms)) throw Error('Instante de lectura inválido.');
-      const registro = await cargarDiaObservatorio(parametros.get('dia')??diaUTC(ms));
+      mercadoTabla = parametros.get('mercado') === 'cripto' ? 'cripto' : 'stock';
+      const registro = await cargarDiaObservatorio(parametros.get('dia')??diaUTC(ms), mercadoTabla);
       const lectura = registro?.dia.lecturas.find((l) => Date.parse(l.generada) === ms);
       if (!lectura) throw Error('Esa lectura no está publicada.');
       b = barraContextual(registro,registro.dia.lecturas.indexOf(lectura));
@@ -990,7 +991,7 @@ async function vistaTablaBarra(clave, instante = null) {
     const tdA = document.createElement('td'); tdA.className = 'col-activo';
     const enlaceActivo = document.createElement('a');
     enlaceActivo.className = 'barra-activo-enlace';
-    enlaceActivo.href = '#/a/stock/' + encodeURIComponent(f.codigo);
+    enlaceActivo.href = '#/a/' + mercadoTabla + '/' + encodeURIComponent(f.codigo);
     enlaceActivo.textContent = f.codigo;
     tdA.append(enlaceActivo);
     const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;
@@ -1037,7 +1038,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
     grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
       const b = soloFiltro(barraContextual(registro,i));
-      barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true }));
+      barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true, mercado }));
     } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {

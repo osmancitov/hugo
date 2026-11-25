@@ -273,7 +273,7 @@ test('generarBarra compara con la lectura anterior del propio archivo vivo; sin 
 test('guardia del visor: las barras solo en la Superficie del día, colores de la casa, ausentes si el archivo falta', () => {
   const visor = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(visor, /actual_barra/);
-  assert.match(visor, /vistaBarra\(b, \{ historica: true, compacta: true \}\)/); // solo dentro de la Superficie del día (decisión del usuario, 21-nov-2026)
+  assert.match(visor, /vistaBarra\(b, \{ historica: true, compacta: true, mercado \}\)/); // solo dentro de la Superficie del día (decisión del usuario, 21-nov-2026)
   assert.doesNotMatch(visor, /cargarBarra\(\)\.then/); // fuera del Iceberg: las vistas no se enlazan
   assert.match(visor, /return null; \/\/ Sin historial/); // sin archivo publicado, sin bloque
   assert.match(visor, /ventana móvil/);
