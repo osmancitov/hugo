@@ -306,7 +306,7 @@ a.tit-link:hover { text-decoration: none; }
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
-<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="cuenta/">Cimiento</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="cuenta/">Cimiento</a><a href="#/unificada" id="mercado-unificada">Mercado</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -1106,7 +1106,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       });
       const pintar = () => { gr.pintar(); ca.pintar(); };
       pintar(); aplicarFiltro();
-      controles.append(etiqueta, ca.et, gr.et); // sin «Actualizar» (25-nov-2026): la vista se actualiza sola
+      controles.append(ca.et, gr.et); // sin selector de día (25-nov-2026, día en curso) ni «Actualizar» (25-nov-2026): la vista se actualiza sola
     } else controles.append(etiqueta, etGrupo, etVentana, recargar);
     ficha.append(controles);
     elegirDia.onchange = async () => {
@@ -2294,14 +2294,95 @@ async function vistaCampana(n,inicial,en=null,puente=null){
 // Vista unificada, página de prueba (25-nov-2026, audio del usuario): los indicadores de stocks, la
 // superficie 3D, la ficha del activo y la Campaña de 30 días en una sola página, con un activo elegido
 // que se refleja en todas las vistas. No sustituye ninguna página actual.
+// Fear & Greed de Bolsa y de Cripto en una sola gráfica (25-nov-2026): dos curvas distinguibles por color.
+// Colores fuera de los reservados a las categorías (verde, amarillo, azul) y al rojo: blanco hueso y magenta.
+const COLOR_FG_BOLSA = '#e5e7eb', COLOR_FG_CRIPTO = '#e879f9';
+function graficoFearGreedJunto(ctx, geo, hasta, S) {
+  const { series, dias } = S, n = dias.length, k = hasta === undefined ? n : Math.min(hasta, n);
+  const V = Boolean(geo.vertical), w = V ? 700 : LW, alto = geo.alto;
+  const l = V ? 88 : ML, r = V ? 612 : LW - MR, t = V ? 150 : MT + 22, b = V ? alto - 110 : MT + PH;
+  const P = (i, v) => V ? [l + (v / 100) * (r - l), t + (n === 1 ? 0 : (i / (n - 1)) * (b - t))] : [l + (n === 1 ? (r - l) / 2 : (i / (n - 1)) * (r - l)), b - (v / 100) * (b - t)];
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14) + 'px ' + FUENTE; ctx.fillText('Fear and greed · Bolsa y Cripto', w / 2, V ? 26 : 15);
+  ctx.fillStyle = TICK; ctx.font = (V ? 18 : 11) + 'px ' + FUENTE; ctx.fillText(`0 = miedo extremo · 100 = codicia extrema · ${n} días`, w / 2, V ? 58 : 38);
+  // leyenda: cada curva con su color
+  let lx = w / 2 - (V ? 150 : 150);
+  ctx.textAlign = 'left';
+  for (const se of series) {
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3; ctx.beginPath(); ctx.moveTo(lx, V ? 96 : 56); ctx.lineTo(lx + (V ? 36 : 28), V ? 96 : 56); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36), V ? 96 : 56);
+    lx += V ? 190 : 150;
+  }
+  // rejilla por fecha (1 y 15) y por valor
+  ctx.font = (V ? 20 : 10.5) + 'px ' + FUENTE;
+  for (let i = 0; i < n; i++) {
+    const f = new Date(dias[i]), dia = f.getUTCDate();
+    if (dia !== 1 && dia !== 15) continue;
+    const [x, y] = P(i, 0), [x2, y2] = P(i, 100);
+    ctx.strokeStyle = dia === 1 ? GRID_1 : GRID_15; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(V ? r : x2, V ? y2 : t); ctx.stroke();
+    ctx.fillStyle = TICK;
+    if (V) { ctx.textAlign = 'right'; ctx.fillText(String(dia).padStart(2, '0') + ' ' + MESES_ES[f.getUTCMonth()], l - 14, y); }
+    else { ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_EN[f.getUTCMonth()]}`, x, b + 8); ctx.textBaseline = 'middle'; }
+  }
+  for (const v of [0, 25, 50, 75, 100]) {
+    const [x, y] = P(0, v), [x2, y2] = P(n - 1, v);
+    ctx.strokeStyle = v === 0 || v === 100 ? MARCO : GRID_D; ctx.lineWidth = v === 0 || v === 100 ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(V ? x : x2, V ? b : y2); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 10.5) + 'px ' + FUENTE;
+    if (V) { ctx.textAlign = 'center'; ctx.fillText(String(v), x, t - 23); ctx.fillText(String(v), x, b + 26); }
+    else { ctx.textAlign = 'right'; ctx.fillText(String(v), l - 8, y); }
+  }
+  ctx.strokeStyle = MARCO; ctx.lineWidth = 1.5; ctx.strokeRect(l, t, r - l, b - t);
+  ctx.save(); ctx.beginPath(); ctx.rect(l, t, r - l, b - t); ctx.clip();
+  for (const se of series) {
+    const pts = se.puntos.filter((p) => p.i < k);
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 3 : 2; ctx.lineJoin = 'round';
+    ctx.beginPath(); pts.forEach((p, j) => { const [x, y] = P(p.i, p.v); if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
+    ctx.fillStyle = se.color; for (const p of pts) { const [x, y] = P(p.i, p.v); ctx.beginPath(); ctx.arc(x, y, V ? 3 : 2.2, 0, 7); ctx.fill(); }
+  }
+  ctx.restore();
+  if (k >= n) for (const se of series) {
+    const u = se.puntos[se.puntos.length - 1], [x, y] = P(u.i, u.v);
+    ctx.font = 'bold ' + (V ? 20 : 13) + 'px ' + FUENTE; ctx.fillStyle = se.color; ctx.textAlign = V ? (x > (l + r) / 2 ? 'right' : 'left') : 'right'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 5; ctx.strokeStyle = BG;
+    const tx = V ? (x > (l + r) / 2 ? Math.min(x - 14, r - 8) : Math.max(x + 14, l + 8)) : Math.min(x - 10, r), ty = V ? Math.max(y - 22 + (se.nombre === 'Cripto' ? 22 : 0), t + 14) : Math.max(y - 14, t + 8);
+    const txt = `${se.nombre} ${u.v}`; ctx.strokeText(txt, tx, ty); ctx.fillText(txt, tx, ty);
+  }
+  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11) + 'px ' + FUENTE;
+  ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - (V ? 13 : 13));
+}
+function vistaFearGreedJunto(en) {
+  const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
+  const h = Object.assign(document.createElement('h2'), { textContent: 'Fear and greed · Bolsa y Cripto' });
+  ficha.append(h, Object.assign(document.createElement('div'), { className: 'meta', textContent: 'índice, dos curvas' }));
+  const caja = Object.assign(document.createElement('div'), { className: 'lienzo-caja' });
+  const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo los registros…' });
+  const pie = Object.assign(document.createElement('div'), { className: 'pie-grafica' });
+  caja.append(estado); en.append(ficha, caja, pie);
+  Promise.all([cargarIndicador('feargreedchart-bolsa'), cargarIndicador('alternative-fear-greed')]).then(([bolsa, cripto]) => {
+    estado.remove();
+    if (!caja.isConnected) return;
+    if (bolsa.length < 2 && cripto.length < 2) { caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>'; return; }
+    const D = 86400000, dia = (ms) => Math.floor(ms / D) * D;
+    const t0 = Math.min(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[0][0]))), t1 = Math.max(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[s.length - 1][0])));
+    const dias = []; for (let t = t0; t <= t1; t += D) dias.push(t);
+    const conv = (s, nombre, color) => ({ nombre, color, puntos: s.map(([ms, v]) => ({ i: Math.round((dia(ms) - t0) / D), v })) });
+    const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length) };
+    const uf = new Date(t1);
+    graficador(caja, pie, { total: () => dias.length, dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, geo, hasta, S), codigo: 'fear-greed-bolsa-cripto', fecha: () => uf });
+    const nota = Object.assign(document.createElement('span'), { className: 'nota', textContent: `Trazada en vivo desde los registros publicados · datos hasta el ${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()} (UTC) · Bolsa solo con días de sesión bursátil · Cada índice conserva sus propios umbrales oficiales; aquí solo se compara el nivel 0-100.` });
+    pie.append(nota);
+  }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
+}
 function vistaUnificada(inicial=null){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
   const aviso=Object.assign(document.createElement('p'),{className:'camp-sub',textContent:'Vista unificada de prueba. Las páginas de siempre siguen donde estaban.'});app.append(aviso);
   // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
-  vistaIndicador('feargreedchart-bolsa',sec(),'Bolsa');
-  vistaIndicador('alternative-fear-greed',sec(),'Cripto');
+  vistaFearGreedJunto(sec());
   vistaIndicador('iceberg-stock',sec());
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
@@ -2366,6 +2447,8 @@ async function ruta() {
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.getElementById('mercado-stock').href='#/stock';document.getElementById('mercado-cripto').href='#/cripto';
   document.getElementById('mercado-stock').classList.toggle('actual',mercado==='stock');document.getElementById('mercado-cripto').classList.toggle('actual',mercado==='cripto');
+  document.getElementById('mercado-unificada').href='#/unificada';
+  document.getElementById('mercado-unificada').classList.toggle('actual',Boolean(mu));
   document.getElementById('mercado-buscar').href='#/buscar';
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   document.getElementById('mercado-campana').href='#/campana';
@@ -2379,7 +2462,7 @@ async function ruta() {
     for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
-  contraerNavegacion(navMerc,mercado||esBusqueda||esCampana,'#/');
+  contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/');
   contraerNavegacion(navCat,esCampana?mc[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;

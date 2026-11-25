@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>{
- assert.match(html,/contraerNavegacion\(navMerc,mercado\|\|esBusqueda\|\|esCampana,'#\/'\)/);
+ assert.match(html,/contraerNavegacion\(navMerc,mercado\|\|esBusqueda\|\|esCampana\|\|Boolean\(mu\),'#\/'\)/);
  assert.match(html,/contraerNavegacion\(navCat,/);
  assert.match(html,/contraerNavegacion\(navV,ranking,/);
  assert.match(html,/a.hidden=!a.classList.contains\('actual'\)/);
@@ -22,8 +22,8 @@ test('Variación sin párrafo introductorio eliminado',()=>{
  assert.match(src,/contenedor.append\(controles,estado,fuente,reglas,cuerpo\)/);
 });
 
-test('menú principal ordena Campaña y Cimiento antes de Stocks, Cripto y Buscar',()=>{
+test('menú principal ordena Campaña, Cimiento y Mercado antes de Stocks, Cripto y Buscar',()=>{
  const m=html.match(/<nav class="mercados" aria-label="Mercados">(.*?)<\/nav>/)?.[1];
  assert.ok(m, 'menú principal presente');
- assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Campaña','Cimiento','Stocks','Cripto','Buscar']);
+ assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Campaña','Cimiento','Mercado','Stocks','Cripto','Buscar']);
 });

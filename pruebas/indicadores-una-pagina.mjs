@@ -6,7 +6,7 @@ const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url),
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
 test('vista unificada de prueba: Fear & Greed, Iceberg 2D, barras, superficie, ficha y Campaña de 30 días, en ese orden', () => {
   const f = unif();
-  const orden = ["'feargreedchart-bolsa'", "'iceberg-stock'", 'cajaBarras=sec', 'cSup=sec()', 'cFicha=sec'].map((t) => f.indexOf(t));
+  const orden = ["vistaFearGreedJunto(sec())", "'iceberg-stock'", 'cajaBarras=sec', 'cSup=sec()', 'cFicha=sec'].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
 });
@@ -36,6 +36,7 @@ test('la superficie elige acciones; la Campaña también puede elegir cripto (si
 
 test('la vista unificada muestra al principio Fear & Greed de Bolsa y de Cripto, identificados', () => {
   const f = unif();
-  assert.ok(f.indexOf("'feargreedchart-bolsa',sec(),'Bolsa'") > 0 && f.indexOf("'alternative-fear-greed',sec(),'Cripto'") > f.indexOf("'Bolsa'"));
-  assert.ok(f.indexOf("'Cripto'") < f.indexOf("'iceberg-stock'"));
+  const j = html.slice(html.indexOf('function vistaFearGreedJunto'), html.indexOf('function vistaUnificada'));
+  assert.ok(j.includes("cargarIndicador('feargreedchart-bolsa')") && j.includes("cargarIndicador('alternative-fear-greed')") && j.includes("'Bolsa'") && j.includes("'Cripto'"));
+  assert.ok(f.indexOf('vistaFearGreedJunto(sec())') < f.indexOf("'iceberg-stock'"));
 });

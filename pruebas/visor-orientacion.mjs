@@ -38,7 +38,7 @@ test('el trazado animado existe una sola vez, dentro del graficador común', () 
 test('los dibujos de indicador aceptan trazado parcial (hasta) y no pintan el último valor antes de terminar', () => {
   assert.match(visor, /function graficoIndicador\(ctx, puntos, e, hasta\)/);
   assert.match(visor, /function graficoIndicadorVertical\(ctx, puntos, e, alto, hasta\)/);
-  assert.equal(visor.match(/if \(k >= n\)/g)?.length, 4); // los cuatro dibujos: índice e iceberg, horizontales y verticales
+  assert.equal(visor.match(/if \(k >= n\)/g)?.length, 5); // índice, iceberg y Fear & Greed junto (prototipo), horizontales y verticales
 });
 
 // Guardia del graficador configurable: cada caso entrega datos y solo su desviación
@@ -46,7 +46,7 @@ test('los dibujos de indicador aceptan trazado parcial (hasta) y no pintan el ú
 test('activos e indicadores pasan por el graficador común y heredan sus valores por defecto', () => {
   assert.match(visor, /function graficador\(caja, pie, deCaso\)/);
   assert.match(visor, /const GRAFICADOR_COMUN = \{/);
-  assert.equal(visor.match(/= graficador\(caja, pie, \{|^\s+graficador\(caja, pie, \{/gm)?.length, 2);
+  assert.equal(visor.match(/= graficador\(caja, pie, \{|^\s+graficador\(caja, pie, \{/gm)?.length, 3); // activo, indicador y Fear & Greed junto
   // Ningún caso repite la geometría común ni la descarga; los botones Repetir trazado, Escala y Ver todo ya no existen.
   assert.equal(visor.match(/'Repetir trazado'|Escala: ±|'Ver todo'/g)?.length ?? 0, 0);
   assert.equal(visor.match(/'Descargar imagen'/g)?.length, 1);
