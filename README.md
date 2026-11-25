@@ -7,6 +7,7 @@ Visor público de mercado (Pages), con sus registros, la lectura horaria y la pu
 El bot de Slack que corría en una Debian se retiró de este repositorio.
 
 ## Documentación (empieza aquí)
+- [docs/construccion.md](docs/construccion.md): **la explicación principal**. Cómo se construye y cómo funciona el Observatorio, de cero y en orden, para alguien que no conoce nada. Lo demás es referencia de apoyo.
 - [docs/arquitectura.md](docs/arquitectura.md): qué es, flujo de punta a punta, mapa de carpetas y módulos.
 - [docs/datos.md](docs/datos.md): cada carpeta de `registros/`, su formato, quién la escribe y quién la lee.
 - [docs/flujos-github.md](docs/flujos-github.md): los tres flujos de Actions, el disparo externo y cómo comprobar que corrieron.

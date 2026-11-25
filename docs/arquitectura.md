@@ -1,5 +1,7 @@
 # Arquitectura del Observatorio Bursátil
 
+Referencia técnica. La explicación completa, en el orden en que se construye, está en [construccion.md](construccion.md).
+
 Estado leído del código y de los flujos de este repositorio el 25-nov-2026. Lo que no se puede ver desde aquí está marcado "no verificado aquí".
 
 ## Qué es
