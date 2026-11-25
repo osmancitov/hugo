@@ -153,5 +153,5 @@ test('revelado progresivo: entrada limpia, rankings e Indicadores por mercado', 
   assert.match(visor, /botonNav\(navV,'Indicadores'/);
   assert.match(visor, /vistaIndicadoresMercado\(mercado\)/);
   assert.match(visor, /montarRachas\(seccion,TODOS/);
-  assert.match(visor, /montarPersistencia\(seccion,TODOS/);
+  assert.doesNotMatch(visor, /montarPersistencia/);
 });

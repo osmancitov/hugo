@@ -8,6 +8,10 @@ const aamm = (ts) => aammdd(ts).slice(0, 4);
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const fecha = fechaLegibleUTC;
 const fechaCorta = t => { const f = new Date(t); return f.getUTCDate() + ' ' + MESES[f.getUTCMonth()]; };
+// Rango de la lista (decisión del usuario, 25-nov-2026): «27 de agosto → 24 de noviembre • 403 de 403 activos», sin año ni notas de funcionamiento.
+const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const fechaLarga = t => { const f = new Date(t); return f.getUTCDate() + ' de ' + MESES_LARGOS[f.getUTCMonth()]; };
+export const resumenLista = (inicio, fin, conLectura, total) => `${fechaLarga(inicio)} → ${fechaLarga(fin)} • ${conLectura} de ${total} activos`;
 const pct = n => (n > 0 ? '+' : '') + n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // Solo presentación: redondeo simétrico; ±0,5 se muestra ±1 y los ceros no llevan signo.
 export const enteroPorcentaje = n => Math.sign(n) * Math.round(Math.abs(n));
@@ -15,7 +19,7 @@ export const clasePorcentaje = n => enteroPorcentaje(n) === 0 ? 'igual' : n < 0 
 export const porcentajeEntero = n => { const v = enteroPorcentaje(n); return v === 0 ? '0' : (v > 0 ? '+' : '') + v.toLocaleString('es'); };
 const pct0 = porcentajeEntero;
 const texto = (tag, valor, clase = '') => { const n = document.createElement(tag); n.textContent = valor; if (clase) n.className = clase; return n; };
-let pendiente, ultimo, clase = 'todos', orden = 'gp', direccionRacha = 'todas';
+let pendiente, ultimo, clase = 'todos', orden = 'gp';
 async function json(url) {
   const r = await fetch(url, { signal: AbortSignal.timeout(25000), cache: 'no-cache' });
   if (!r.ok) throw Error('No se pudo leer GitHub (HTTP ' + r.status + ')');
@@ -128,7 +132,7 @@ function textoFuente(origen) {
   const nombre = { stock: 'Stocks', cripto: 'Cripto' };
   const parte = (m) => origen[m] === 'archivo' ? null : `${nombre[m]}: calculada por el visor (archivo del día aún no publicado)`;
   const notas = ['stock', 'cripto'].map(parte).filter(Boolean);
-  if (!notas.length) return 'Lectura del día precalculada por el Observatorio en la actualización diaria.';
+  if (!notas.length) return ''; // el caso normal no lleva nota; solo se avisa si algo cambia la lectura
   if (notas.length === 2) return 'Lectura calculada por el visor desde los registros: los archivos del día aún no están publicados.';
   return 'Lectura del día. ' + notas[0] + '.';
 }
@@ -141,20 +145,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   for (const [v,t] of [['todos','Todos'],['cripto','Cripto'],['stock','Stocks']]) { const o = texto('option',t); o.value=v; selector.append(o); } selector.value=clase;
   if (mercado) selector.hidden = true;
   const clasificar = document.createElement('select'); clasificar.setAttribute('aria-label','Orden de la lista');
-  for (const [v,t] of [['gp','G/P'],['ranking','Día'],['cambios','Oscilación'],['rango','Rango diario'],['dias','Racha'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
-  const filtroRacha = document.createElement('select'); filtroRacha.setAttribute('aria-label','Dirección de la racha');
-  // G/P y Día muestran la lista completa: sin filtro de racha heredado de otro modo.
-  // Día conserva los puestos diarios, sin recortes por dirección (22-nov-2026).
-  function pintarFiltroRacha() {
-    const soloTodas = orden==='gp' || orden==='ranking';
-    filtroRacha.hidden = soloTodas;
-    const ops = soloTodas ? [['todas','Rachas: todas']] : [['todas','Rachas: todas'],['bajan','Solo rachas a la baja'],['suben','Solo rachas al alza']];
-    filtroRacha.replaceChildren();
-    for (const [v,t] of ops) { const o=texto('option',t); o.value=v; filtroRacha.append(o); }
-    if (soloTodas) direccionRacha='todas';
-    filtroRacha.value=direccionRacha;
-  }
-  pintarFiltroRacha();
+  for (const [v,t] of [['gp','G/P'],['ranking','Día'],['cambios','Oscilación'],['rango','Rango diario'],['subida','Variación acumulada']]) { const o=texto('option',t); o.value=v; clasificar.append(o); } clasificar.value=orden;
   const recargar=texto('button','Actualizar lectura','boton');
   const estado=texto('p','Preparando la lectura…','rachas-nota'); estado.setAttribute('role','status');
   let avanceNum=null, avanceBarra=null, avanceCod=null;
@@ -187,28 +178,29 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
   reglas.append(texto('p','G/P: la razón de variación sobre la ventana de la lectura: la suma de las variaciones porcentuales de los días verdes dividida entre la magnitud de la suma de las de los rojos. Sin días rojos muestra ∞ y ordena primero; sin días verdes, 0.'));
   reglas.append(texto('p','OSC: oscilación, cambios de dirección en la ventana: cada vez que un día verde sigue a uno rojo o al revés.'));
   reglas.append(texto('p','Día: posición única por variación de la jornada (cierre frente a apertura), de la mayor subida a la mayor caída; un empate exacto se ordena por código.'));
-  controles.append(selector,clasificar,filtroRacha,recargar);
-  if (buscador) controles.appendChild(buscador); // la misma pieza de búsqueda, junto a la tabla que filtra
+  controles.append(selector,clasificar,recargar);
+  // Sin cuadro de búsqueda propio en Variación (decisión del usuario, 25-nov-2026); el parámetro `buscador` se conserva y se ignora.
   contenedor.append(controles,estado,fuente,reglas,cuerpo);
   function pintar() {
     if (!ultimo || !contenedor.isConnected) return;
     const todos=ultimo.resultados.filter(x=>(clase==='todos'||x.activo.clase===clase)&&filtroActivos(x.activo));
     const partes=separar(todos), q=consulta().toLowerCase();
     const coincide=x=>!q||[x.activo.codigo,x.activo.nombre,x.activo.lectura||''].some(t=>t.toLowerCase().includes(q));
-    const visibles=partes.comparables.filter(coincide).filter(x=>direccionRacha==='todas'||(direccionRacha==='bajan'?x.datos.direccion<0:x.datos.direccion>0));
+    const visibles=partes.comparables.filter(coincide);
     visibles.sort((a,b)=> {
       const x=a.datos,y=b.datos;
       const total=(u,v)=>Number(u.limitada)-Number(v.limitada)||u.acumulado-v.acumulado;
       const gp=v=>v.gp===Infinity?Number.MAX_VALUE:Math.round(v.gp*100)/100; // un solo valor, a dos decimales, para ordenar y mostrar
-      const d=orden==='subida'?total(y,x):orden==='dias'?y.dias-x.dias:orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='ranking'?(x.puesto??Number.MAX_VALUE)-(y.puesto??Number.MAX_VALUE):orden==='gp'?gp(y)-gp(x):total(x,y);
+      const d=orden==='subida'?total(y,x):orden==='cambios'?y.cambios-x.cambios:orden==='rango'?y.rango-x.rango:orden==='ranking'?(x.puesto??Number.MAX_VALUE)-(y.puesto??Number.MAX_VALUE):orden==='gp'?gp(y)-gp(x):total(x,y);
       return d || a.activo.clase.localeCompare(b.activo.clase) || a.activo.codigo.localeCompare(b.activo.codigo);
     });
     cuerpo.replaceChildren();
     finCarga();
     const v=ultimo.ventanaPorMercado[clase]||ultimo.ventanaPorMercado.stock||ultimo.ventanaPorMercado.cripto;
-    estado.textContent=partes.fecha===null?'No hay datos comparables.':`Jornada de referencia: ${fecha(partes.fecha)} UTC · ventana ${fechaCorta(v.inicio)} → ${fechaCorta(v.fin)} · ${partes.comparables.length}/${todos.length} activos con esa vela · ${visibles.length} visibles.`;
+    estado.textContent=partes.fecha===null?'No hay datos comparables.':resumenLista(v.inicio,v.fin,partes.comparables.length,todos.length);
     if (partes.fecha!==null && partes.fecha < ultimo.corte-DIA) estado.textContent+=' El registro está atrasado respecto al último día cerrado en UTC.';
     fuente.textContent=textoFuente(ultimo.origen);
+    fuente.hidden=!fuente.textContent;
     const caja=texto('div','','rachas-tabla-caja'); const tabla=document.createElement('table'); tabla.className='rachas-tabla';
     const cab=document.createElement('thead'); const tr=document.createElement('tr');
     for(const t of (orden==='ranking'?['#','Activo','R %','Racha','A %','G/P','OSC']:['Activo','R %','Racha','A %','G/P','OSC'])) { const th=texto('th',t); th.scope='col'; if(t==='Activo') th.className='col-activo'; tr.append(th); } cab.append(tr);
@@ -234,7 +226,7 @@ export function montarRachas(contenedor, catalogo, consulta, mercado = null, bus
       const ul=document.createElement('ul'); for(const x of incidencias) ul.append(texto('li',x.activo.codigo+' · '+x.activo.clase+': '+(x.datos?'última vela '+fecha(x.datos.fecha)+' UTC':x.error))); det.append(ul); cuerpo.append(det);
     }
   }
-  selector.onchange=()=>{clase=selector.value;pintar();}; clasificar.onchange=()=>{orden=clasificar.value;pintarFiltroRacha();pintar();}; filtroRacha.onchange=()=>{direccionRacha=filtroRacha.value;pintar();};
+  selector.onchange=()=>{clase=selector.value;pintar();}; clasificar.onchange=()=>{orden=clasificar.value;pintar();};
   async function iniciar(forzar=false) {
     recargar.disabled=true;
     if(forzar) {ultimo=null;pendiente=null;cuerpo.replaceChildren();}

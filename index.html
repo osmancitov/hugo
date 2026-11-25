@@ -257,7 +257,6 @@ a.tit-link:hover { text-decoration: none; }
 .rachas-tabla .rachas-enlace { display:inline; color:var(--oro); font-weight:bold; padding:0; }
 .rachas-nombre, .rachas-limite { display:block; font-size:.72rem; color:var(--tenue); margin-top:.25rem; white-space:normal; }
 .rachas-limite { overflow-wrap:anywhere; } /* la nota de la racha no ensancha la columna */
-.promedio-dias-rojo { color:#ec9698; }
 .negativo { color:#ec9698; } .positivo { color:#78caa4; } .igual { color:#9aa0ac; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
 /* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
@@ -300,7 +299,7 @@ a.tit-link:hover { text-decoration: none; }
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
-<nav class="mercados" aria-label="Mercados"><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Criptos</a><a href="#/campana" id="mercado-campana">Campañas</a><a href="cuenta/">Cimiento</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="cuenta/">Cimiento</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -319,12 +318,11 @@ document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(loca
 </script>
 <script type="module">
 import { parentesisLectura } from './app/modulos/lectura-latina.mjs?v=1';
-import { montarPersistencia } from './visor-persistencia.mjs?v=11';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
 import { ordenarCampana, campana } from './app/modulos/campana-orden.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
-import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=9'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
+import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=10'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=25';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
@@ -2009,7 +2007,6 @@ function vistaActivo(clase, codigo) {
 
 /* ---------- arranque ---------- */
 let actualizarCapitalizacion = () => {};
-let actualizarPersistencia = () => {};
 function botonNav(nav, titulo, href, actual=false) {
   const a=document.createElement('a');a.textContent=titulo;a.href=href;
   a.classList.toggle('actual',actual);nav.append(a);return a;
@@ -2234,10 +2231,11 @@ async function ruta() {
   const hash=location.hash||'#/';
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
-  const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|persistencia|indicadores))?$/);
+  const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(!m&&!mi&&!r&&!esBusqueda&&!esCampana&&hash!=='#/') {
+    if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
     if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
     location.replace('#/');return;
@@ -2260,14 +2258,14 @@ async function ruta() {
   }
   if(!fuera&&((mercado==='stock'&&categoria)||mercado==='cripto')){
     navV.hidden=false;const base='#/'+mercado+(categoria?'/'+categoria:'');
-    for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación'],['persistencia','Promedio']])botonNav(navV,t,base+'/'+v,ranking===v);
+    for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana,'#/');
   contraerNavegacion(navCat,esCampana?mc[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
-  elBuscar.hidden=fuera||!ranking||ranking==='indicadores';rot.hidden=true;
-  const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',persistencia:'Promedio',indicadores:'Indicadores'};
+  elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
+  const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
@@ -2287,10 +2285,7 @@ async function ruta() {
   if(ranking==='capitalizacion')vistaCapitalizacion(lista);
   else if(ranking==='variacion'){
     const seccion=document.createElement('section');app.append(seccion);
-    actualizarRachas=montarRachas(seccion,TODOS,()=>elBuscar.value.trim(),mercado,elBuscar,seleccion);
-  }else{
-    const seccion=document.createElement('section');app.append(seccion);
-    actualizarPersistencia=await montarPersistencia(seccion,TODOS,seleccion,()=>elBuscar.value.trim(),elBuscar);
+    actualizarRachas=montarRachas(seccion,TODOS,()=>'',mercado,null,seleccion); // Variación no lleva cuadro de filtrar (decisión del usuario, 25-nov-2026)
   }
   const guardado=estadoLista;estadoLista=null;
   if(guardado)requestAnimationFrame(()=>window.scrollTo(0,guardado.y));
@@ -2304,7 +2299,6 @@ elBuscar.addEventListener('input', () => {
   }
   if (location.hash.endsWith('/capitalizacion')) { actualizarCapitalizacion(); return; }
   if (location.hash.endsWith('/variacion')) { actualizarRachas(); return; }
-  if (location.hash.endsWith('/persistencia')) { actualizarPersistencia(); return; }
   ruta();
 });
 // Volver al inicio desde el título limpia la búsqueda y muestra el catálogo completo.

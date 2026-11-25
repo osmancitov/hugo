@@ -266,7 +266,6 @@
    "tipo": "empresa",
    "cap": 6700000,
    "cap_sub": 234590000000,
-   "cap_fecha": "11-nov",
    "edgar": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001577552",
    "edgar_titulo": "Alibaba Group Holding Ltd",
    "web": "https://www.alibabagroup.com",

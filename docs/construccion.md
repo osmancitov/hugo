@@ -106,7 +106,7 @@ Binance (API pública, solo lectura)
    ▼
 [D] CÁLCULOS que leen velas filtradas por el catálogo
    ├─ iceberg, ranking, lectura del día   (pre-calculado)
-   ├─ persistencia                         (derivado en Pages)
+   ├─ persistencia                         (motor de la Campaña; sin vista propia)
    └─ Campaña 90/60/30                     (paso aparte, tras la pasada)
    │
 [E] Foto horaria de los stocks ───────────────────────────►
@@ -300,7 +300,7 @@ Archivo: `registros/pre-calculado/<mercado>/lectura-dia-90d/<AAMMDD>_lectura-dia
 **Cómo funciona** (`persistencia.mjs`). Cada fecha UTC con velas cerradas es una **carrera**. En cada carrera se ordenan **todos los activos con vela ese día, de los dos mercados juntos** (una competencia global, hecho: `prepararPersistenciaGlobal`), por variación de mayor a menor; un empate exacto, por código. El **puesto** es la posición en esa lista (1 = la mejor variación). La **persistencia** de un activo es el **promedio simple de sus puestos** en las carreras en que participó. Sin vela no hay participación. No hay pesos ni umbrales.
 - Menor promedio = mejor.
 - La ventana es de 90 días, igual que el resto.
-- `app/generar-persistencia.mjs` la calcula **al publicar Pages** y escribe `persistencia-90d.json` en la raíz del sitio. Ese archivo es un derivado: **no existe en el repositorio** (se genera en cada publicación) y no es historia.
+- Desde el 25-nov-2026 la vista «Promedio» y su archivo derivado `persistencia-90d.json` ya no existen (retirados por decisión del usuario). El cálculo (`app/modulos/persistencia.mjs`) se conserva porque la Campaña lo usa para decidir qué activos entran y su puesto diario.
 
 ### 7.6 La Campaña
 **El problema.** Combinar dos ideas: que un activo gane más de lo que pierde (potencia) y que gane más días de los que pierde (constancia), y clasificarlo en grupos fáciles de entender.
@@ -382,10 +382,10 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 ## 10. Publicar y ver: Pages y el visor
 
 **Pages** (`pages.yml`). En cada `push` a `main` (salvo cuando solo cambian las fotos intradiarias) corre en GitHub, en este orden:
-`node cuenta/generar.mjs`, `node app/generar-persistencia.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`, y empaqueta **toda la raíz del repositorio** y la publica. Si la publicación falla, espera 20 segundos y reintenta una vez. Los tres generadores escriben derivados que no son historia: `persistencia-90d.json`, `iceberg-colores.json` y `superficie.html` (con su vista previa propia). Ninguno existe en el repositorio.
+`node cuenta/generar.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`, y empaqueta **toda la raíz del repositorio** y la publica. Si la publicación falla, espera 20 segundos y reintenta una vez. Los tres generadores escriben derivados que no son historia: `persistencia-90d.json`, `iceberg-colores.json` y `superficie.html` (con su vista previa propia). Ninguno existe en el repositorio.
 Después de la diaria, `.github/publicar-visor.mjs` pide explícitamente una corrida de Pages y espera su resultado (hasta 22 minutos). Si falla, pide **una** nueva; si falla otra vez, termina con error visible.
 
-**El visor.** `index.html` (HTML, estilos y el script principal) y los módulos `visor-rachas.mjs`, `visor-persistencia.mjs` y `visor-superficie.mjs`. Importa módulos de `app/modulos/` con `?v=N` en la URL: al cambiar un módulo hay que subir ese número, o los navegadores siguen usando el viejo. Dibuja listas por mercado, la ficha de cada activo, los indicadores, la superficie 3D, la persistencia y la Campaña con su campo de béisbol. Detalles de pantallas y de la regla visual: [visor.md](visor.md). Reglas de nombre: el título visible es "Observatorio Bursátil"; "hugo" solo queda en la URL y el nombre del repositorio. Los nombres en caracteres chinos se muestran con su lectura y traducción entre paréntesis, con una sola función (`app/modulos/lectura-latina.mjs`).
+**El visor.** `index.html` (HTML, estilos y el script principal) y los módulos `visor-rachas.mjs` y `visor-superficie.mjs`. Importa módulos de `app/modulos/` con `?v=N` en la URL: al cambiar un módulo hay que subir ese número, o los navegadores siguen usando el viejo. Dibuja listas por mercado, la ficha de cada activo, los indicadores, la superficie 3D, la persistencia y la Campaña con su campo de béisbol. Detalles de pantallas y de la regla visual: [visor.md](visor.md). Reglas de nombre: el título visible es "Observatorio Bursátil"; "hugo" solo queda en la URL y el nombre del repositorio. Los nombres en caracteres chinos se muestran con su lectura y traducción entre paréntesis, con una sola función (`app/modulos/lectura-latina.mjs`).
 
 **Aparte del Observatorio.** El repositorio también contiene `cuenta/` ("Proyecto Cimiento"): un registro de operaciones propias con su página. Comparte el repositorio y su publicación, pero no forma parte de los datos ni de los cálculos del Observatorio.
 

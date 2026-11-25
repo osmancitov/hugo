@@ -30,7 +30,6 @@ jobs:
       - name: Generar entrada de superficie con Open Graph propio
         run: |
           node cuenta/generar.mjs
-          node app/generar-persistencia.mjs
           node app/generar-colores-iceberg.mjs
           node app/generar-pagina-superficie.mjs
       - name: Preparar Pages

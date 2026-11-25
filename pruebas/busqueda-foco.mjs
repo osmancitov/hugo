@@ -44,5 +44,5 @@ test('el evento input usa la actualización local de Capitalización y no ruta()
   const evento = html.slice(html.indexOf("elBuscar.addEventListener('input'"), html.indexOf('// Volver al inicio desde el título'));
   assert.match(evento, /if \(location.hash.endsWith\('\/capitalizacion'\)\) \{ actualizarCapitalizacion\(\); return; \}/);
   assert.match(evento, /actualizarRachas\(\)/);
-  assert.match(evento, /actualizarPersistencia\(\)/);
+  assert.doesNotMatch(evento, /actualizarPersistencia/);
 });

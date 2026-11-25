@@ -10,9 +10,10 @@ test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>
  assert.match(html,/a.href=volver/);
  assert.match(html,/rot.hidden=true/);
 });
-test('capitalización sin explicación eliminada, Promedio conserva su módulo',()=>{
+test('capitalización sin explicación eliminada; la vista Promedio ya no existe',()=>{
  assert.doesNotMatch(html,/Capitalización del token y, en su caso/);
- assert.match(html,/montarPersistencia\(seccion,TODOS/);
+ assert.doesNotMatch(html,/montarPersistencia|visor-persistencia|persistencia:'Promedio'/);
+ assert.match(html,/location.replace\(hash.replace\('\/persistencia','\/variacion'\)\)/);
 });
 
 test('Variación sin párrafo introductorio eliminado',()=>{

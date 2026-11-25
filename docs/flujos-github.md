@@ -54,7 +54,7 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
 
 ## 3. Visor (`pages.yml`)
 - Disparo: `push` a `main` salvo cambios solo en `registros/intradia/stock/**` o en `registros/pre-calculado/stock/barra-24h/actual_barra`, y `workflow_dispatch`. Permisos: `contents: read`, `pages: write`, `id-token: write`. Concurrencia `pages` sin cancelar.
-- Pasos: `node cuenta/generar.mjs`, `node app/generar-persistencia.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`; configura Pages; empaqueta la raíz del repositorio (`path: '.'`); despliega, con un reintento tras 20 s si falla. Los pasos de despliegue usan acciones de GitHub en las versiones del archivo.
+- Pasos: `node cuenta/generar.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`; configura Pages; empaqueta la raíz del repositorio (`path: '.'`); despliega, con un reintento tras 20 s si falla. Los pasos de despliegue usan acciones de GitHub en las versiones del archivo.
 - Por eso lo que esté en la raíz (incluido `manual/` y `docs/`) queda público.
 
 ## Comprobar que todo corrió

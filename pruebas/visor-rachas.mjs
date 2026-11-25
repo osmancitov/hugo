@@ -137,10 +137,11 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  // Sin repaso cosmético (decisión del usuario, 20-nov-2026): la lectura precalculada pinta directo;
  // la barra de avance queda solo para el repliegue en vivo.
  assert.ok(!src.includes('Activos analizados'),'sin repaso'); assert.ok(!src.includes('repasar'),'sin repaso');
- // En el orden G/P el selector de racha desaparece entero y no recorta (decisión del usuario, 20-nov-2026).
- assert.ok(src.includes("const soloTodas = orden==='gp' || orden==='ranking'"),'G/P y Día sin opciones de racha');
- assert.ok(src.includes('filtroRacha.hidden = soloTodas'),'G/P oculta el selector entero');
- assert.ok(src.includes("if (soloTodas) direccionRacha='todas'"),'G/P fuerza todas');
+ // El selector de dirección de la racha ya no existe en ningún orden (decisión del usuario, 25-nov-2026): todas las rachas juntas.
+ assert.ok(!src.includes('filtroRacha')&&!src.includes('direccionRacha')&&!src.includes('Dirección de la racha')&&!src.includes('Solo rachas'),'sin selector de dirección de racha');
+ const idx=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.ok(idx.includes("ranking==='indicadores'||ranking==='variacion'"),'el cuadro de filtrar se oculta en Variación');
+ assert.ok(!src.includes("['dias','Racha']"),'Racha no es opción de orden');
  assert.ok(!src.includes('/git/trees/')); assert.ok(!src.includes('/commits/main'));
  // La importación del módulo lleva versión en la URL para que cada publicación llegue sin esperar la caché de Pages (10 min).
  const ind=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
@@ -150,7 +151,7 @@ test('la vista lee los pre-cálculos y ya no recorre el registro completo ni el 
  assert.ok(!src.includes("dias.append(texto('small',d.motivo,'rachas-limite'))"),'nota fuera de la celda estrecha');
 });
 
-test('Día descarta una racha filtrada y vuelve a mostrar todos los puestos, sin alterar G/P', async () => {
+test('Variación no filtra por dirección de racha en ningún orden y cada orden ordena por su criterio', async () => {
  const anteriorDocumento=globalThis.document, anteriorFetch=globalThis.fetch;
  class Elemento {
   constructor(tag) { this.tagName=tag; this.hijos=[]; this.atributos={}; this.isConnected=true; }
@@ -163,22 +164,23 @@ test('Día descarta una racha filtrada y vuelve a mostrar todos los puestos, sin
   globalThis.document={createElement:t=>new Elemento(t),createTextNode:t=>({textContent:t})};
   const fin=corteUTC()-DIA;
   const catalogo=['AAA','BBB','CCC'].map(codigo=>({codigo,nombre:codigo,clase:'stock'}));
-  const activos=Object.fromEntries(catalogo.map((a,i)=>[a.codigo,{fecha:fin,direccion:i===0?-1:1,dias:1,acumulado:i-1,rango:3-i,gp:3-i,puesto:i+1}]));
+  const dias=[1,3,2], dir=[-1,1,-1], acum=[-1,0,5];
+  const activos=Object.fromEntries(catalogo.map((a,i)=>[a.codigo,{fecha:fin,direccion:dir[i],dias:dias[i],acumulado:acum[i],cambios:i,rango:3-i,gp:3-i,puesto:i+1}]));
   const pre={corte:fin,ventana:{inicio:fin-89*DIA,fin},activos};
   globalThis.fetch=async url=>({ok:true,json:async()=>String(url).includes('ranking-24h')?[['AAA',-1],['BBB',0],['CCC',1]]:pre});
-  const {montarRachas}=await import('../visor-rachas.mjs?prueba-dia-sin-filtro');
+  const {montarRachas}=await import('../visor-rachas.mjs?prueba-sin-filtro-racha');
   const contenedor=new Elemento('main');
   montarRachas(contenedor,catalogo,()=>'', 'stock');
   await new Promise(r=>setImmediate(r));
-  const controles=contenedor.hijos[0], modo=controles.hijos[1], filtro=controles.hijos[2], cuerpo=contenedor.hijos.at(-1);
+  const controles=contenedor.hijos[0], modo=controles.hijos[1], cuerpo=contenedor.hijos.at(-1);
+  assert.equal(controles.hijos.filter(c=>c.tagName==='select').length,2); // clase (oculta en el espacio por mercado) y orden; ninguno de dirección
+  assert.ok(!controles.hijos.some(c=>c.atributos?.['aria-label']==='Dirección de la racha'));
+  assert.ok(!controles.hijos.some(c=>c.tagName==='input'||c.id==='buscar')); // sin cuadro de filtrar en Variación
+  assert.deepEqual(modo.hijos.map(o=>o.value),['gp','ranking','cambios','rango','subida']); // G/P, Día, Oscilación, Rango diario y Variación acumulada; sin Racha como orden
   const codigos=()=>cuerpo.hijos[0].hijos[0].hijos[1].hijos.map(f=>f.hijos.find(td=>td.className==='col-activo').hijos[0].textContent);
-  assert.equal(modo.value,'gp'); assert.equal(filtro.hidden,true);
-  modo.value='dias';modo.onchange(); filtro.value='suben';filtro.onchange();
-  assert.equal(filtro.hidden,false); assert.deepEqual(codigos(),['BBB','CCC']);
-  modo.value='ranking';modo.onchange();
-  assert.equal(filtro.hidden,true); assert.equal(filtro.value,'todas'); assert.deepEqual(codigos(),['CCC','BBB','AAA']);
-  modo.value='dias';modo.onchange(); assert.equal(filtro.value,'todas');
-  modo.value='gp';modo.onchange(); assert.equal(filtro.hidden,true); assert.deepEqual(codigos(),['AAA','BBB','CCC']);
+  const esperado={gp:['AAA','BBB','CCC'],ranking:['CCC','BBB','AAA'],subida:['CCC','BBB','AAA'],rango:['AAA','BBB','CCC']};
+  for (const [orden,cods] of Object.entries(esperado)) { modo.value=orden; modo.onchange(); assert.deepEqual(codigos(),cods,orden); } // siempre los tres: rachas al alza y a la baja juntas
+  modo.value='cambios'; modo.onchange(); assert.equal(codigos().length,3);
  } finally {globalThis.document=anteriorDocumento;globalThis.fetch=anteriorFetch;}
 });
 

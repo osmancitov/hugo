@@ -20,17 +20,21 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Racha**: días seguidos con la misma dirección, alza o baja.
 
 
-`index.html` contiene el HTML, el CSS y el script principal. Las vistas de rachas, persistencia y superficie están en `visor-rachas.mjs`, `visor-persistencia.mjs` y `visor-superficie.mjs`. Los módulos de `app/modulos/` se importan con `?v=N` en la URL (por ejemplo `visor-rachas.mjs?v=9`): al cambiar un módulo hay que subir N, porque Pages cachea unos 10 minutos y sin eso el navegador sigue con la copia vieja. Un guard de las pruebas exige esa importación versionada.
+`index.html` contiene el HTML, el CSS y el script principal. Las vistas de rachas y superficie están en `visor-rachas.mjs` y `visor-superficie.mjs`. Los módulos de `app/modulos/` se importan con `?v=N` en la URL (por ejemplo `visor-rachas.mjs?v=9`): al cambiar un módulo hay que subir N, porque Pages cachea unos 10 minutos y sin eso el navegador sigue con la copia vieja. Un guard de las pruebas exige esa importación versionada.
 
 ## Rutas (el enrutador está en `index.html`)
 | Ruta | Vista |
 |---|---|
-| `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion`, `persistencia` o `indicadores` | Listas por mercado. |
+| `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion` o `indicadores` | Listas por mercado. Los enlaces viejos a `persistencia` llevan a `variacion`. |
 | `#/a/<stock\|cripto>/<código>` | Ficha del activo (nombre, lectura y significado si los hay, enlaces, radiografía). |
 | `#/i/iceberg-stock/barra-dia`, `barra-24h`, `barra-movimiento` | Indicadores de barra del iceberg de stocks. |
 | `#/i/iceberg-stock/superficie` | Superficie 3D (solo dibuja stocks). Filtros de grupo y ventana. |
 | `#/campana`, `#/campana/<90\|60\|30>d`, `#/campana/<90\|60\|30>d/<clase>/<código>` | Campaña de la ventana, con el activo elegido. |
 | `#/buscar` | Búsqueda por código, nombre o lectura. |
+
+Menú principal, en este orden: Campaña, Stocks, Cripto, Cimiento, Buscar.
+
+Variación (stocks empresas, fondos y cripto): el selector tiene cinco órdenes, G/P, Día, Oscilación, Rango diario y Variación acumulada, sin selector de dirección y sin cuadro de filtro propio (queda la búsqueda global). La racha se ve como columna de datos. Debajo del selector solo se lee «27 de agosto → 24 de noviembre • N de M activos» (sin año; N = activos comparables, M = todos los de la lista). Un aviso de fuente aparece únicamente si el archivo del día falta o está atrasado.
 
 ## Campaña
 Cada día cerrado se clasifica a cada activo que tenga todas las velas de la ventana (90, 60 o 30 días).
@@ -52,7 +56,7 @@ Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛�
 
 ## Otras vistas
 - **Iceberg**: por día cerrado UTC, activos en alza y a la baja (barra verde y roja). Ventana de 90 días en `registros/pre-calculado/<mercado>/iceberg-90d` (la vela plana cuenta como verde). Las carpetas `registros/iceberg-*` son una serie vieja congelada.
-- **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). Archivo derivado `persistencia-90d.json`.
+- **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). Ya no tiene vista propia (retirada el 25-nov-2026); el cálculo lo usa la Campaña. Los enlaces antiguos `#/…/persistencia` llevan a Variación.
 - **Variación y rachas**: razón G/P y racha por activo desde sus velas diarias (`visor-rachas-datos.mjs`).
 - **Barra móvil de 24 h**: foto intradiaria de los stocks (ventana móvil de 24 h, no el día cerrado del iceberg).
 - **Capitalización**: lista por capitalización con fichas curadas.

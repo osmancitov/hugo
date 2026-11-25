@@ -54,9 +54,9 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 | Ruta | Qué hay |
 |---|---|
 | `index.html` | El visor completo (HTML, CSS y el script principal). |
-| `visor-rachas.mjs`, `visor-persistencia.mjs`, `visor-superficie.mjs` | Vistas que viven en su propio módulo. Se importan con `?v=N`; hay que subir N al cambiarlas para saltar la caché de Pages. |
+| `visor-rachas.mjs`, `visor-superficie.mjs` | Vistas que viven en su propio módulo. Se importan con `?v=N`; hay que subir N al cambiarlas para saltar la caché de Pages. |
 | `app/modulos/` | Lógica compartida por el visor y los flujos. Detalle en la tabla siguiente. |
-| `app/generar-*.mjs` | Generadores que corren en Pages: `generar-persistencia` (`persistencia-90d.json`), `generar-colores-iceberg` (`iceberg-colores.json`), `generar-pagina-superficie` (`superficie.html`). Son derivados: nunca escriben `registros/`. |
+| `app/generar-*.mjs` | Generadores que corren en Pages: `generar-colores-iceberg` (`iceberg-colores.json`), `generar-pagina-superficie` (`superficie.html`). Son derivados: nunca escriben `registros/`. |
 | `.github/workflows/` | Los tres flujos. |
 | `.github/*.mjs` | Los scripts que ejecutan los flujos. |
 | `registros/` | Todos los datos publicados. Ver `datos.md`. |
