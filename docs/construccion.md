@@ -15,6 +15,14 @@ El Observatorio Bursátil es una página web que cada día ordena cientos de act
 - **Commit**: un cambio guardado en el historial del repositorio, con autor, fecha y mensaje. Un **hash** es el código corto que identifica un commit.
 - **GitHub Actions**: servicio de GitHub que ejecuta programas en sus servidores. Un **workflow** es un archivo que dice qué programa ejecutar y cuándo.
 - **GitHub Pages (Pages)**: servicio de GitHub que publica los archivos del repositorio como página web.
+- **Piso**: la fecha más antigua que se guarda y se calcula: el 1 de agosto de 2026. Nada anterior existe en el Observatorio.
+- **Rama**: una línea de historial del repositorio. `main` es la rama principal, la que Pages publica y de donde el visor lee los datos.
+- **Mercado**: uno de los dos grupos de activos, `stock` (acciones y fondos) o `cripto` (criptomonedas).
+- **Carrera**: un día de comparación. Ese día se ordenan todos los activos por su variación, y la posición de cada uno es su **puesto** (1 es la mejor variación).
+- **Pre-calculado**: resultado ya calculado y guardado como archivo para que el visor lo lea sin calcular.
+- **`workflow_dispatch`**: modo de lanzar un workflow a mano o desde otro programa, mediante una llamada a GitHub.
+- **Error 429**: respuesta de un servidor que significa «demasiadas peticiones, espera».
+- **Rebase**: poner los cambios propios encima de la última versión de la rama, para publicarlos sin pisar cambios ajenos.
 - **Ventana de N días**: los últimos N días terminados, contados hacia atrás desde la fecha de corte.
 - **Node**: programa que ejecuta código JavaScript fuera del navegador. Los archivos `.mjs` son código JavaScript para Node.
 - **Prueba**: programa que comprueba que otro programa da el resultado esperado. La suite es el conjunto de pruebas.
