@@ -30,5 +30,5 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
 - Antes de publicar se corre la suite completa; hoy fallan dos pruebas conocidas (ver `visor.md`); cualquier otra roja es nueva.
-- La primera diaria tras un cambio de regla se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
+- La primera diaria tras un cambio en el cálculo de las categorías se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.
