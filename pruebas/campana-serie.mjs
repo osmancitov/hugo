@@ -35,7 +35,13 @@ test('la carrera ya escrita no se reescribe y las existentes coinciden con su re
   const r = generarCarreras({ raiz: process.cwd(), hasta: Date.UTC(2026, 9, 29) });
   assert.deepEqual(r.escritos, []); // 29-oct ya existe en registros/categorias
   assert.equal(nombreCarrera(Date.UTC(2026, 9, 29)), '260801-261029_carrera-90d');
-  assert.equal(grupoDe(1, 1), 'premium'); assert.equal(grupoDe(1, 0.9), 'potentes'); assert.equal(grupoDe(0.9, 1), 'constantes'); assert.equal(grupoDe(0.99, 0.99), 'rezagados');
+  // Regla: campaña = raiz((P²+C²)/2); campaña <= 1 es rezagado; sobre 1, premium con P y C >= 1, potentes solo P, constantes solo C.
+  assert.equal(grupoDe(1, 1), 'rezagados'); assert.equal(grupoDe(1.01, 1.01), 'premium'); assert.equal(grupoDe(1, 0.9), 'rezagados'); assert.equal(grupoDe(1.5, 0.9), 'potentes'); assert.equal(grupoDe(0.9, 1.5), 'constantes'); assert.equal(grupoDe(0.99, 0.99), 'rezagados');
+  assert.equal(grupoDe(1.4, 1.4), 'premium'); assert.equal(grupoDe(2, 0.1), 'potentes'); assert.equal(grupoDe(0.5, 1.5), 'constantes');
+  const dir = path.join(process.cwd(), 'registros', 'categorias');
+  for (const f of fs.readdirSync(dir).filter((f) => /^\d{6}-\d{6}_carrera-\d+d$/.test(f))) {
+    for (const a of JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).clasificados) assert.equal(a.grupo, grupoDe(a.potencia, a.constancia), `${f} ${a.id}`);
+  }
 });
 test('60d y 30d: nombres, primera carrera y serie topada a 90 puntos', async () => {
   const c = await import('../app/modulos/campana-carrera.mjs');
