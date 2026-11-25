@@ -2386,6 +2386,7 @@ function vistaUnificada(inicial=null,dias=90){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
+  const cTop=sec('mercado-controles'); // el filtro Grupo sube aquí, junto al período elegido arriba, sin repetirlo junto a la 3D (25-nov-2026)
   // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
   vistaFearGreedJunto(sec(),dias);
   vistaIndicador('iceberg-stock',sec(),null,true);
@@ -2434,6 +2435,8 @@ function vistaUnificada(inicial=null,dias=90){
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
+  {const subir=()=>{const et=[...cSup.querySelectorAll('label')].find(l=>/^Grupo/.test(l.textContent));if(!et)return false;et.classList.add('grupo-arriba');cTop.append(et);return true;};
+   if(!subir()){const mo=new MutationObserver(()=>{if(subir())mo.disconnect();});mo.observe(cSup,{childList:true,subtree:true});setTimeout(()=>mo.disconnect(),15000);}}
   pintarFicha();
 }
 async function ruta() {
