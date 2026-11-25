@@ -1,6 +1,36 @@
 # Arquitectura del Observatorio Bursátil
 
-Referencia técnica. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+Referencia técnica de consulta. El porqué de cada pieza está en [construccion.md](construccion.md).
+
+## Términos de este documento
+- **UTC**: hora universal, sin cambio de horario; cada día de velas va de las 00:00 a las 23:59 UTC.
+- **Vela diaria**: los precios de apertura, máximo, mínimo y cierre de un activo en un día, más su volumen.
+- **Binance**: plataforma que lista activos y publica sus precios.
+- **API**: dirección web que responde con datos cuando se la consulta.
+- **Commit**: un cambio guardado en el historial de un repositorio, con autor, fecha y mensaje.
+- **GitHub Actions**: servicio de GitHub que ejecuta programas en sus servidores; un workflow (flujo) es el archivo que dice qué ejecutar y cuándo.
+- **GitHub Pages**: servicio de GitHub que publica los archivos de un repositorio como página web.
+- **Repositorio**: carpeta de archivos con su historial de cambios, alojada en GitHub.
+- **`workflow_dispatch`**: modo de lanzar un workflow mediante una llamada a GitHub, a mano o por programa.
+- **`push`, `fetch`, `reset --hard`, `rebase`**: órdenes de git: subir cambios; bajar cambios sin aplicarlos; dejar la copia local igual a una versión; poner los cambios propios encima de la última versión.
+- **Caché de Actions**: almacén de GitHub donde un workflow guarda archivos para su próxima ejecución.
+- **Piso**: fecha más antigua que se guarda y se calcula: 1 de agosto de 2026.
+- **Carrera y puesto**: una carrera es un día de comparación; ese día se ordenan todos los activos por variación y el puesto es la posición (1 es la mejor variación).
+- **Campaña, P y C**: P es la potencia (suma de variaciones positivas entre el valor absoluto de la suma de las negativas) y C la constancia (días al alza entre días a la baja); Campaña = raíz((P² + C²) / 2).
+- **Iceberg**: para cada día, cuántos activos subieron (cierre igual o mayor que apertura) y cuántos bajaron.
+- **Persistencia**: promedio simple de los puestos de un activo en las carreras donde participó.
+- **Ranking**: lista de activos con su variación porcentual de un día.
+- **Pre-calculado**: resultado calculado de antemano y guardado como archivo para que el visor lo lea sin calcular.
+- **Mercado**: `stock` (acciones y fondos tokenizados) o `cripto` (criptomonedas).
+- **Catálogo**: la lista oficial de los activos que cuentan en cada mercado.
+- **ETF**: fondo de inversión que se compra y se vende en bolsa como una acción.
+- **`cap`**: capitalización: valor total de mercado de un activo.
+- **Stablecoin**: criptomoneda que busca valer una moneda fija, como el dólar.
+- **`raw.githubusercontent.com`**: dirección desde la que GitHub entrega el contenido crudo de un archivo del repositorio.
+- **`main`**: la rama principal del repositorio: la línea de historial que publica Pages.
+- **Racha**: días seguidos con la misma dirección, alza o baja.
+- **Google Apps Script**: servicio de Google que ejecuta programas pequeños; aquí, el que el repositorio menciona como lanzador externo, no comprobado.
+
 
 Estado leído del código y de los flujos de este repositorio el 25-nov-2026. Lo que no se puede ver desde aquí está marcado "no verificado aquí".
 
@@ -15,7 +45,7 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 1. **Disparo.** Los flujos diario y horario se lanzan con `workflow_dispatch`: una llamada a GitHub, a mano desde su página o por programa mediante la API. No hay `cron` en los flujos (comprobado en los tres archivos de `.github/workflows/`). Quién hace hoy esas llamadas no está comprobado: el repositorio menciona un script de Google Apps Script que no está aquí. Ver `flujos-github.md`.
 2. **Lectura horaria** (`lectura-horaria.yml`): toma una foto intradiaria de los stocks a la hora en punto UTC y la guarda en `registros/intradia/stock/`.
 3. **Puesta al día diaria** (`actualizacion-diaria.yml`), pensada para las 00:05 a 00:14 UTC, con la vela diaria cerrada:
-   - `actualizacion-diaria.mjs`: ingesta de velas diarias de Binance (solo lo que falta) y «pasada de publicación»: indicadores (iceberg, miedo y codicia), pre-cálculos, ranking, catálogo, inventario de días. Un commit.
+   - `actualizacion-diaria.mjs`: ingesta de velas diarias de Binance (solo lo que falta) y «pasada de publicación»: indicadores (miedo y codicia), catálogo, pre-cálculos (iceberg, lectura del día, ranking), inventario de días. Un commit.
    - `campana-diaria.mjs`: genera los días que faltan de la carrera de Campaña en las tres ventanas (90, 60 y 30 días) y la serie de cada ventana. Otro commit.
    - `publicar-visor.mjs`: pide la publicación de Pages y comprueba que terminó bien.
 4. **Pages** (`pages.yml`): con cada push a `main` (salvo las lecturas intradiarias) genera las entradas derivadas y publica el sitio desde la raíz del repositorio.

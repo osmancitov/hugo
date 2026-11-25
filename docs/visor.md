@@ -1,6 +1,25 @@
 # El visor
 
-Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+Referencia técnica de consulta. El porqué de cada pieza está en [construccion.md](construccion.md).
+
+## Términos de este documento
+- **UTC**: hora universal, sin cambio de horario; cada día de velas va de las 00:00 a las 23:59 UTC.
+- **Vela diaria**: los precios de apertura, máximo, mínimo y cierre de un activo en un día, más su volumen.
+- **Binance**: plataforma que lista activos y publica sus precios.
+- **JSON**: formato de texto para guardar datos: pares nombre y valor, y listas ordenadas de valores.
+- **GitHub Pages**: servicio de GitHub que publica los archivos de un repositorio como página web.
+- **Carrera y puesto**: una carrera es un día de comparación; ese día se ordenan todos los activos por variación y el puesto es la posición (1 es la mejor variación).
+- **Campaña, P y C**: P es la potencia (suma de variaciones positivas entre el valor absoluto de la suma de las negativas) y C la constancia (días al alza entre días a la baja); Campaña = raíz((P² + C²) / 2).
+- **Iceberg**: para cada día, cuántos activos subieron (cierre igual o mayor que apertura) y cuántos bajaron.
+- **Persistencia**: promedio simple de los puestos de un activo en las carreras donde participó.
+- **Pre-calculado**: resultado calculado de antemano y guardado como archivo para que el visor lo lea sin calcular.
+- **Mercado**: `stock` (acciones y fondos tokenizados) o `cripto` (criptomonedas).
+- **Catálogo**: la lista oficial de los activos que cuentan en cada mercado.
+- **Pinyin**: escritura de los sonidos del chino con letras latinas.
+- **`cap`**: capitalización: valor total de mercado de un activo.
+- **G/P**: razón entre la suma de variaciones positivas y el valor absoluto de la suma de las negativas.
+- **Racha**: días seguidos con la misma dirección, alza o baja.
+
 
 `index.html` contiene el HTML, el CSS y el script principal. Las vistas de rachas, persistencia y superficie están en `visor-rachas.mjs`, `visor-persistencia.mjs` y `visor-superficie.mjs`. Los módulos de `app/modulos/` se importan con `?v=N` en la URL (por ejemplo `visor-rachas.mjs?v=9`): al cambiar un módulo hay que subir N, porque Pages cachea unos 10 minutos y sin eso el navegador sigue con la copia vieja. Un guard de las pruebas exige esa importación versionada.
 
@@ -43,4 +62,4 @@ Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛�
 «Observatorio Bursátil» en `<title>`, `og:title`, `<h1>` y el alt del avatar. El visor no usa las palabras «caballo» ni «hipódromo».
 
 ## Pruebas
-`node --test pruebas/*.mjs` (unos 75 s, sin red). Dos pruebas fallan de origen y se aceptan: «superficie tiene entrada estática con metadatos propios antes de ejecutar JS» y «los rótulos visibles de los icebergs viven en la fuente única de rótulos». Cualquier otra roja es una regresión.
+`node --test pruebas/*.mjs` (unos 75 s, sin red). Hoy fallan dos pruebas, conocidas desde antes de este documento y sin causa investigada: «superficie tiene entrada estática con metadatos propios antes de ejecutar JS» y «los rótulos visibles de los icebergs viven en la fuente única de rótulos». Cualquier otra roja es nueva.

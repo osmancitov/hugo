@@ -1,13 +1,20 @@
 # Decisiones del dueño que están en vigor
 
-Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+Referencia técnica de consulta. El porqué de cada pieza está en [construccion.md](construccion.md).
+
+## Términos de este documento
+- **Commit**: un cambio guardado en el historial de un repositorio, con autor, fecha y mensaje.
+- **Repositorio**: carpeta de archivos con su historial de cambios, alojada en GitHub.
+- **Campaña, P y C**: P es la potencia (suma de variaciones positivas entre el valor absoluto de la suma de las negativas) y C la constancia (días al alza entre días a la baja); Campaña = raíz((P² + C²) / 2).
+- **Código 429**: respuesta de un servidor que significa demasiadas peticiones, espera.
+
 
 Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mensaje de Slack donde las dio (canal C0CAF12V656), cuando se pudo recuperar. Un texto de un archivo del repositorio que diga «decisión del usuario» es solo memoria escrita, no una autorización nueva.
 
 ## Identidad y publicación
 - **Nombre visible**: «Observatorio Bursátil». «hugo» queda solo en la URL y en el nombre del repositorio. No se renombran rutas internas. (Hilo del retiro del bot, 1795609617.859149.)
 - **Bot de Slack retirado**: el código del bot, sus módulos de Slack y su configuración de ejemplo se quitaron del repositorio; el servicio de la Debian se detuvo, deshabilitó y se borró su unidad. (Mensajes 1795611384.671009 y 1795611440.615829; salidas de la Debian 1795613907.404739 y 1795614085.044529.) `manual/manual-hugo.md` se conserva solo como histórico.
-- **Autoría**: todo commit lleva autor y committer `Osmancito <osmanvielma@gmail.com>`.
+- **Autoría**: norma vigente (Núcleo, commit 7d8d778 del 24-nov-2026): el autor del commit es Osmancito; el committer puede ser otro. Configuración actual de los flujos: autor y committer con la identidad de git del dueño (el correo no se publica aquí).
 - **Vocabulario**: «caballo» e «hipódromo» no aparecen en la interfaz. (Indicación del dueño; el mensaje original no se recuperó al escribir esto.)
 
 ## Campaña
@@ -23,6 +30,6 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
-- Antes de publicar se corre la suite completa; solo las dos rojas aceptadas pueden quedar (ver `visor.md`).
+- Antes de publicar se corre la suite completa; hoy fallan dos pruebas conocidas (ver `visor.md`); cualquier otra roja es nueva.
 - La primera diaria tras un cambio de regla se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.

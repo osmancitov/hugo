@@ -1,8 +1,30 @@
 # Datos: carpeta `registros/`
 
-Referencia técnica de consulta rápida. Las palabras técnicas (UTC, API, JSON, commit, Actions, Pages, vela) se definen en la sección «Palabras que este documento usa» de [construccion.md](construccion.md), que también explica el porqué de cada pieza.
+Referencia técnica de consulta. El porqué de cada pieza está en [construccion.md](construccion.md).
 
-Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión. Las fechas internas son milisegundos UTC (época Unix). Piso fijo: 1-ago-2026. Los registros históricos no se reescriben: los generadores de Pages escriben solo derivados fuera de esta carpeta.
+## Términos de este documento
+- **UTC**: hora universal, sin cambio de horario; cada día de velas va de las 00:00 a las 23:59 UTC.
+- **Vela diaria**: los precios de apertura, máximo, mínimo y cierre de un activo en un día, más su volumen.
+- **Binance**: plataforma que lista activos y publica sus precios.
+- **JSON**: formato de texto para guardar datos: pares nombre y valor, y listas ordenadas de valores.
+- **Commit**: un cambio guardado en el historial de un repositorio, con autor, fecha y mensaje.
+- **GitHub Pages**: servicio de GitHub que publica los archivos de un repositorio como página web.
+- **Repositorio**: carpeta de archivos con su historial de cambios, alojada en GitHub.
+- **AAMM y AAMMDD**: año, mes y día con dos cifras cada uno: `2611` es noviembre de 2026, `261124` el 24 de noviembre de 2026.
+- **ms (milisegundo)**: milésima de segundo; las fechas internas cuentan milisegundos desde el 1 de enero de 1970 UTC (época Unix).
+- **Piso**: fecha más antigua que se guarda y se calcula: 1 de agosto de 2026.
+- **Carrera y puesto**: una carrera es un día de comparación; ese día se ordenan todos los activos por variación y el puesto es la posición (1 es la mejor variación).
+- **Campaña, P y C**: P es la potencia (suma de variaciones positivas entre el valor absoluto de la suma de las negativas) y C la constancia (días al alza entre días a la baja); Campaña = raíz((P² + C²) / 2).
+- **Iceberg**: para cada día, cuántos activos subieron (cierre igual o mayor que apertura) y cuántos bajaron.
+- **Persistencia**: promedio simple de los puestos de un activo en las carreras donde participó.
+- **Ranking**: lista de activos con su variación porcentual de un día.
+- **Pre-calculado**: resultado calculado de antemano y guardado como archivo para que el visor lo lea sin calcular.
+- **Mercado**: `stock` (acciones y fondos tokenizados) o `cripto` (criptomonedas).
+- **`cap`**: capitalización: valor total de mercado de un activo.
+- **G/P**: razón entre la suma de variaciones positivas y el valor absoluto de la suma de las negativas.
+
+
+Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión. Las fechas internas son milisegundos UTC (época Unix). Piso fijo: 1-ago-2026. Los registros históricos no se reescriben (excepción: el regrupado de `grupo` del 25-nov-2026, abajo): los generadores de Pages escriben solo derivados fuera de esta carpeta.
 
 | Carpeta | Archivo | Contenido | Escribe | Lee |
 |---|---|---|---|---|
