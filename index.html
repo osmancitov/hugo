@@ -262,6 +262,7 @@ a.tit-link:hover { text-decoration: none; }
 @media(max-width:560px) { .rachas-tabla { font-size:.79rem; } .rachas-tabla td, .rachas-tabla th { padding:.6rem .25rem; } .rachas-tabla th { font-size:.66rem; } .rachas-nombre { max-width:6rem; } .rachas-controles { gap:.5rem; } }
 /* Registro intradiario y superficie: conserva los colores y la tipografía de Hugo. */
 .mercado-bloque { margin-top: 2.2rem; }
+.mercado-bloque.mercado-camp { margin-top: .9rem; } /* la Campaña continúa la ficha del activo: sin el hueco de un bloque aparte */
 .mercado-reloj { margin-top: 1.2rem; }
 .mercado-reloj .superficie-reloj { margin: 0; padding-left: .6rem; }
 .mercado-reloj .superficie-reloj-titulo { display: inline; margin: 0 .5rem 0 0; }
@@ -2186,6 +2187,34 @@ function graficaEspaguetis(caja,s,seleccion,alElegir,limpio=false){
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
   caja.replaceChildren(...(limpio?[svg]:[svg,ej]));
 }
+function graficaEvolucionCampana(caja,s,u,seleccion,alElegir){
+  // Mercado (aprobado por el usuario, Slack 1795644099.837059): evolución del indicador Campaña, raíz((P²+C²)/2) de la ventana que termina cada día,
+  // solo para los VIP (sin Rezagados) del último cierre de la campaña elegida, en un eje logarítmico común con la referencia 1. Sin relleno: donde falta dato, la línea se corta.
+  const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
+  const grupo=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados').map(a=>[a.id,a.grupo]));
+  const COL={premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'};
+  const camp=p=>Math.sqrt((p[1]*p[1]+p[2]*p[2])/2),lg=v=>Math.log2(Math.max(v,1e-3));
+  const ids=Object.keys(grupo).filter(id=>s.activos[id]);
+  let lo=-1,hi=1;for(const id of ids)for(const p of s.activos[id])if(p){const v=lg(camp(p));lo=Math.min(lo,v);hi=Math.max(hi,v);}
+  lo-=.06;hi+=.06;
+  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=v=>T+(hi-lg(v))/(hi-lo)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Evolución del indicador Campaña de los VIP de la campaña elegida'});
+  for(const v of [0.25,0.5,2,4,8]){if(lg(v)<lo||lg(v)>hi)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=fmtCoef(v).replace(/,00$/,'').replace(/,(\d)0$/,',$1');svg.append(t);}
+  {const t=svgEl('text',{x:L-6,y:y(1)+4,'text-anchor':'end',class:'camp-eje'});t.textContent='1';svg.append(t);}
+  svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
+  [0,N-1].forEach((i,k)=>{if(k&&i===0)return;const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':k?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);});
+  const trazo=id=>trazoConHuecos(s.activos[id].map((p,i)=>p?[x(i),y(camp(p))]:null));
+  const capa=svgEl('g'),cima=svgEl('g');svg.append(capa,cima);
+  for(const id of ids){
+    const d=trazo(id),sel=id===seleccion,g=sel?cima:capa;
+    const lin=svgEl('path',{d,class:sel?'camp-lin camp-sel':'camp-lin','data-id':id});
+    if(!sel){lin.style.stroke=COL[grupo[id]];lin.style.strokeOpacity='.32';lin.style.strokeWidth='1';}
+    g.append(lin);
+    const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);
+  }
+  svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
+  caja.replaceChildren(svg);
+}
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
@@ -2216,7 +2245,7 @@ function graficaActivoCampana(caja,s,id,limpio=false){
 // normalizada, dirección = balance entre P y C. La cerca es r = 1. No cambia clasificación ni cortes.
 let campoUltimaBola=null;
 function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
-  const W=560,cl=u.clasificados,rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
+  const W=560,cl=limpio?u.clasificados.filter(a=>a.grupo!=='rezagados'):u.clasificados,rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
   // Escala fiel: el radio visible abarca al activo más lejano (nunca se recorta ni se acerca un punto).
   // Radio híbrido y continuo: lineal de 0 a 0,5 (home sigue siendo el 0) y logarítmico desde 0,5, con la misma
   // pendiente en el empalme. Así 0,5, 1 y 2 quedan a igual distancia unos de otros (no es logaritmo puro).
@@ -2274,7 +2303,7 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
     const lx=Math.max(0,Math.min(ev.clientX-cr.left-w/2,cr.width-w));let ty=ev.clientY-cr.top+14;if(ev.clientY+14+h>innerHeight)ty=ev.clientY-cr.top-h-14;
     sel2.style.left=lx+'px';sel2.style.top=Math.max(0,ty)+'px';
   });
-  const cab=document.createElement('div');cab.className='camp-cuad-cab';
+  const cab=document.createElement('div');cab.className='camp-cuad-cab';if(limpio)cab.style.minHeight='0';
   if(seleccion){
     const e=entradaCampana(seleccion),a=cl.find(q=>q.id===seleccion),cod=e?e.codigo:seleccion.split(':')[1];
     const h=document.createElement('h2');h.className='camp-tit camp-cuad-nombre';
@@ -2285,7 +2314,7 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
     cab.append(...(limpio?[d]:[h,d])); // Mercado: el nombre y el tipo ya están en la cabecera única de la ficha (audio 1795642694.105409)
   }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
-  for(const [g,nombre] of GRUPOS_CAMPANA){const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
+  for(const [g,nombre] of GRUPOS_CAMPANA){if(limpio&&g==='rezagados')continue;const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley);
 }
 async function vistaCampana(n,inicial,en=null,puente=null){
@@ -2305,7 +2334,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const filas=new Map();
   const pintarSel=(irA)=>{
     const sv=puente?recortarSerie(s,n):s;
-    graficaEspaguetis(cEsp,sv,sel,elegir,Boolean(puente));
+    if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
     graficaCampo(cCuad,u,sel,elegir,Boolean(puente));
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
@@ -2426,7 +2455,7 @@ function vistaUnificada(inicial=null,dias=90){
   vistaFearGreedJunto(sec(),dias);
   vistaIndicador('iceberg-stock',sec(),null,true,dias);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
-  const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
+  const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec('mercado-camp');
   let sel=inicial,ventana=dias,grupo='todos';
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.

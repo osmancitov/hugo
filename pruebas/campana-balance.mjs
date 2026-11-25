@@ -78,3 +78,11 @@ test('Mercado: sin título "Campaña de N días" ni nota "Trazada en vivo" repet
   assert.match(html, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\)/);
   assert.match(html, /if \(!en\) pie\.append\(nota\)/);
 });
+
+test('Mercado: el espagueti pasa a evolución de Campaña de los VIP, eje log común y referencia 1; campo y leyenda sin Rezagados', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /function graficaEvolucionCampana\(caja,s,u,seleccion,alElegir\)/);
+  assert.match(html, /if\(puente\)graficaEvolucionCampana\(cEsp,sv,u,sel,elegir\);else graficaEspaguetis\(cEsp,sv,sel,elegir,false\)/);
+  assert.match(html, /a\.grupo!=='rezagados'\):u\.clasificados/);
+  assert.match(html, /if\(limpio&&g==='rezagados'\)continue/);
+});
