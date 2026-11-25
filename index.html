@@ -1109,7 +1109,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       });
       const pintar = () => { gr.pintar(); ca.pintar(); };
       pintar(); aplicarFiltro();
-      controles.append(...(puente?.fijaVentana ? [gr.et] : [ca.et, gr.et])); // en Mercado el período se elige arriba (30, 60 o 90) y manda sobre todo; no hay selector de Campaña aquí // sin selector de día (25-nov-2026, día en curso) ni «Actualizar» (25-nov-2026): la vista se actualiza sola
+      controles.append(...(puente?.fijaVentana ? [] : [ca.et, gr.et])); // en Mercado el período se elige arriba (30, 60 o 90) y manda sobre todo; no hay selector de Campaña aquí // sin selector de día (25-nov-2026, día en curso) ni «Actualizar» (25-nov-2026): la vista se actualiza sola
     } else controles.append(etiqueta, etGrupo, etVentana, recargar);
     ficha.append(controles);
     elegirDia.onchange = async () => {
@@ -1475,7 +1475,7 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   }
 }
 
-function vistaIndicador(codigo, en = null, rotulo = null, limpio = false) {
+function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias = null) {
   const e = INDICADORES.find((x) => x.codigo === codigo);
   if (!e) { location.hash = ''; return; }
   if (!en) app.innerHTML = '';
@@ -1501,7 +1501,8 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false) {
   pie.className = 'pie-grafica';
   if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
-  cargarIndicador(codigo).then((puntos) => {
+  cargarIndicador(codigo).then((todos) => {
+    const puntos = ndias && todos.length ? todos.filter(([ms]) => ms >= todos[todos.length - 1][0] - (ndias - 1) * 86400000) : todos; // período global de Mercado: solo recorte temporal (25-nov-2026)
     estado.remove();
     if (puntos.length < 2) {
       caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>';
@@ -1990,7 +1991,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90) {
   ficha.appendChild(h1);
   if (e.lectura) {
     const p = document.createElement('p');
-    p.className = 'lectura'; p.textContent = 'se lee: ' + e.lectura + (e.traduccion ? ' · significa: ' + e.traduccion : '');
+    p.className = 'lectura'; p.textContent = en ? e.lectura + (e.traduccion ? ' · ' + e.traduccion : '') : 'se lee: ' + e.lectura + (e.traduccion ? ' · significa: ' + e.traduccion : '');
     ficha.appendChild(p);
   }
   const meta = document.createElement('div');
@@ -2131,7 +2132,7 @@ function entradaCampana(id){return TODOS.find(e=>e.clase+':'+e.codigo===id)||nul
 function etiquetaActivo(id){const e=entradaCampana(id),c=e?e.codigo:id.split(':')[1];return c+parentesisLectura(e);}
 // En la vista Mercado la serie sigue la campaña elegida: solo las últimas n jornadas (30, 60 o 90). Las páginas originales no la recortan.
 function recortarSerie(s,n){const k=Math.max(2,n),N=s.fechas.length;if(N<=k)return s;const a=N-k;const activos={};for(const id in s.activos)activos[id]=s.activos[id].slice(a);return {...s,fechas:s.fechas.slice(a),activos};}
-function graficaEspaguetis(caja,s,seleccion,alElegir){
+function graficaEspaguetis(caja,s,seleccion,alElegir,limpio=false){
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
   let maxP=2;for(const id in s.activos)for(const p of s.activos[id])if(p&&p[0]>maxP)maxP=p[0];
   const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2),y=p=>T+(p-1)/(maxP-1)*(H-T-B);
@@ -2150,14 +2151,14 @@ function graficaEspaguetis(caja,s,seleccion,alElegir){
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
-  caja.replaceChildren(svg,ej);
+  caja.replaceChildren(...(limpio?[svg]:[svg,ej]));
 }
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
   const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(id)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
-  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=limpio?`${pts} de ${N} jornadas · cada punto es el valor de la ventana de ${s.carrera&&s.carrera.ventana||''} días que termina ese día · la línea gris marca 1, el corte`:`${pts} de ${N} jornadas`;
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas`;if(limpio)sub.hidden=true; // en Mercado el texto se quita; la explicación técnica va a la documentación (25-nov-2026)
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
   const lg=v=>Math.log2(Math.max(v,1e-3));
   let lo=-1,hi=1;for(const p of serie)if(p)for(const k of [1,2]){lo=Math.min(lo,lg(p[k]));hi=Math.max(hi,lg(p[k]));}
@@ -2271,8 +2272,9 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const filas=new Map();
   const pintarSel=(irA)=>{
     const sv=puente?recortarSerie(s,n):s;
-    graficaEspaguetis(cEsp,sv,sel,elegir);
+    graficaEspaguetis(cEsp,sv,sel,elegir,Boolean(puente));
     graficaCampo(cCuad,u,sel,elegir);
+    if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
     if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
@@ -2386,10 +2388,9 @@ function vistaUnificada(inicial=null,dias=90){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
-  const cTop=sec('mercado-controles'); // el filtro Grupo sube aquí, junto al período elegido arriba, sin repetirlo junto a la 3D (25-nov-2026)
   // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
   vistaFearGreedJunto(sec(),dias);
-  vistaIndicador('iceberg-stock',sec(),null,true);
+  vistaIndicador('iceberg-stock',sec(),null,true,dias);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
   let sel=inicial,ventana=dias,grupo='todos';
@@ -2435,8 +2436,6 @@ function vistaUnificada(inicial=null,dias=90){
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
-  {const subir=()=>{const et=[...cSup.querySelectorAll('label')].find(l=>/^Grupo/.test(l.textContent));if(!et)return false;et.classList.add('grupo-arriba');cTop.append(et);return true;};
-   if(!subir()){const mo=new MutationObserver(()=>{if(subir())mo.disconnect();});mo.observe(cSup,{childList:true,subtree:true});setTimeout(()=>mo.disconnect(),15000);}}
   pintarFicha();
 }
 async function ruta() {
