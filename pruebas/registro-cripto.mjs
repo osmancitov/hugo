@@ -13,12 +13,12 @@ function arbol() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cripto-'));
   const raiz = path.join(base, 'registros');
   const w = (r, t) => { fs.mkdirSync(path.dirname(path.join(raiz, r)), { recursive: true }); fs.writeFileSync(path.join(raiz, r), t); };
-  w('catalogo/cripto', JSON.stringify({ mercado: 'cripto', activos: ['BNB', 'BTC', 'ETH', 'SOL', 'XRP'].map((codigo) => ({ codigo })) }));
-  for (const c of ['BNB', 'BTC', 'ETH', 'SOL', 'XRP']) fs.mkdirSync(path.join(raiz, 'velas-24h', 'cripto', c), { recursive: true });
+  w('catalogo/cripto', JSON.stringify({ mercado: 'cripto', activos: ['BNB', 'BTC', 'ETH', 'SOL', 'XRP', '牛来'].map((codigo) => ({ codigo })) }));
+  for (const c of ['BNB', 'BTC', 'ETH', 'SOL', 'XRP', '牛来']) fs.mkdirSync(path.join(raiz, 'velas-24h', 'cripto', c), { recursive: true });
   const cl = (l) => JSON.stringify({ clasificados: l.map(([id, grupo]) => ({ id, grupo })) });
   w('categorias/261026-261124_carrera-30d', cl([['cripto:BNB', 'premium'], ['cripto:BTC', 'rezagados'], ['stock:AAPL', 'premium']]));
   w('categorias/261026-261124_carrera-60d', cl([['cripto:BNB', 'constantes'], ['cripto:ETH', 'potentes'], ['cripto:XRP', 'rezagados']]));
-  w('categorias/261026-261124_carrera-90d', cl([['cripto:SOL', 'constantes'], ['cripto:BTC', 'rezagados']]));
+  w('categorias/261026-261124_carrera-90d', cl([['cripto:SOL', 'constantes'], ['cripto:牛来', 'premium'], ['cripto:BTC', 'rezagados']]));
   return raiz;
 }
 const t = (symbol, o, l, ot, ct) => ({ symbol, openPrice: String(o), lastPrice: String(l), openTime: ot, closeTime: ct });
@@ -28,7 +28,7 @@ const falso = (visto) => async (url) => {
 };
 
 test('admitidos: unión de no rezagados de las tres campañas, sin duplicados ni stocks', () => {
-  assert.deepEqual(admitidosCripto(arbol()), ['BNB', 'ETH', 'SOL']);
+  assert.deepEqual(admitidosCripto(arbol()), ['BNB', 'ETH', 'SOL', '牛来']);
 });
 
 test('lectura de cripto: símbolo USDT, BNB conserva su código y la lectura valida y se acumula', async () => {
@@ -36,7 +36,7 @@ test('lectura de cripto: símbolo USDT, BNB conserva su código y la lectura val
   const ahora = Date.parse('2026-11-26T00:00:03Z');
   const universo = admitidosCripto(raiz);
   const r = await generarBarra({ dirVelas: path.join(raiz, 'velas-24h'), fetchImpl: falso(visto), host: 'https://x', universo, simbolo: simboloCripto, sufijo: 'USDT', ahora });
-  assert.deepEqual(visto.sort(), ['BNBUSDT', 'ETHUSDT', 'SOLUSDT']);
+  assert.deepEqual(visto.sort(), ['BNBUSDT', 'ETHUSDT', 'SOLUSDT', '牛来USDT']);
   const reg = guardarLecturaCripto(raiz, r.texto);
   assert.equal(reg.lecturas, 1);
   const est = estadoDiaCripto(raiz, ahora);
@@ -47,6 +47,7 @@ test('lectura de cripto: símbolo USDT, BNB conserva su código y la lectura val
   const dia = leerDia(fs.readFileSync(path.join(raiz, '..', rutaDiaCripto('2026-11-26')), 'utf8'));
   assert.equal(dia.lecturas.length, 2);
   assert.ok(dia.lecturas[0].texto.includes('BNB ultimo'));
+  assert.ok(dia.lecturas[0].texto.includes('牛来 ultimo'), 'un código no ASCII sobrevive al formato');
   assert.ok(!fs.existsSync(path.join(raiz, 'intradia', 'stock')));
 });
 

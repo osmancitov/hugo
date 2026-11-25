@@ -672,19 +672,20 @@ async function cargarIcebergPre(e) {
 // El historial intradiario es la única fuente de lecturas.
 const BASE_INTRADIA_WEB = 'https://raw.githubusercontent.com/osmancitov/hugo/main/registros/intradia/stock';
 const cacheIntradia = new Map();
-async function cargarRegistroIntradia(diaElegido = null) {
-  const clave = diaElegido || 'ultima';
+async function cargarRegistroIntradia(diaElegido = null, mercado = 'stock') {
+  const clave = mercado + '|' + (diaElegido || 'ultima');
+  const BASE = BASE_INTRADIA_WEB.replace(/\/stock$/, '/' + mercado);
   if (cacheIntradia.has(clave)) return cacheIntradia.get(clave);
   const promesa = (async () => {
     const marca = `?t=${Math.floor(Date.now() / 60000)}`;
-    const r = await fetch(`${BASE_INTRADIA_WEB}/indice.json${marca}`);
+    const r = await fetch(`${BASE}/indice.json${marca}`);
     if (r.status === 404) return null;
     if (!r.ok) throw Error('No pude leer el índice intradiario.');
     const indice = leerIndice(await r.text());
     const elegido = diaElegido || diaUTC(Date.parse(indice.ultima));
     if (!indice.dias.includes(elegido)) throw Error('No hay registro publicado para ese día.');
     const nombre = rutaDia(elegido).split('/').at(-1);
-    const d = await fetch(`${BASE_INTRADIA_WEB}/${nombre}${marca}`);
+    const d = await fetch(`${BASE}/${nombre}${marca}`);
     if (!d.ok) throw Error('El índice existe, pero no pude traer sus lecturas.');
     const dia = leerDia(await d.text(), (texto) => {
       const b = parsearBarraVisor(texto);
@@ -697,14 +698,14 @@ async function cargarRegistroIntradia(diaElegido = null) {
   cacheIntradia.set(clave, promesa);
   try { return await promesa; } catch (e) { cacheIntradia.delete(clave); throw e; }
 }
-async function cargarDiaObservatorio(diaElegido = null) {
-  const ultimo=await cargarRegistroIntradia(diaElegido);
+async function cargarDiaObservatorio(diaElegido = null, mercado = 'stock') {
+  const ultimo=await cargarRegistroIntradia(diaElegido, mercado);
   if(!ultimo)return null;
   const elegido=diaElegido??diaVisible(ultimo.indice,ultimo.dia);
-  const registro=elegido===ultimo.dia.dia?ultimo:await cargarRegistroIntradia(elegido);
+  const registro=elegido===ultimo.dia.dia?ultimo:await cargarRegistroIntradia(elegido, mercado);
   const siguiente=diaUTC(Date.parse(elegido)+86400000);
   let frontera=null;
-  if(registro.indice.dias.includes(siguiente))frontera=await cargarRegistroIntradia(siguiente);
+  if(registro.indice.dias.includes(siguiente))frontera=await cargarRegistroIntradia(siguiente, mercado);
   return {...registro,dia:lecturasConFrontera(registro.dia,frontera?.dia)};
 }
 function barraContextual(registro,i=registro.dia.lecturas.length-1){
@@ -722,7 +723,7 @@ function parsearBarraVisor(texto) {
   for (const linea of texto.split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
     if (m) { campos[m[1]] = m[2]; continue; }
-    const a = linea.match(/^([A-Z0-9]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/);
+    const a = linea.match(/^([\p{L}\p{N}]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/u);
     if (a) {
       const e = activos.get(a[1]) || {};
       e[a[2]] = a[3];
@@ -1021,7 +1022,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
   if (en) en.append(ficha, estado, cuerpo); else app.append(volver, ficha, estado, cuerpo);
-  let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false, filtro=null, registroActual=null;
+  let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false, filtro=null, registroActual=null, mercado='stock';
   const soloFiltro=(b)=>filtro&&b?{...b,activos:new Map([...b.activos].filter(([c])=>filtro.codigos.has(c)))}:b;
   const parsearVista=(t)=>soloFiltro(parsearBarraVisor(t));
   const limpiezaPrevia = limpiarGrafica;
@@ -1040,7 +1041,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {
-    const registro = await cargarDiaObservatorio();
+    const registro = await cargarDiaObservatorio(null, 'stock');
     if (!cuerpo.isConnected) return;
     estado.remove();
     if (!registro) { cuerpo.textContent = 'Todavía no hay registro intradiario publicado. La instantánea anterior no contiene un historial temporal.'; return; }
@@ -1069,9 +1070,9 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
         if (en) {
           // Prototipo (25-nov-2026): cada grupo es la unión de sus activos en las campañas de 30, 60 y 90 días, sin duplicar;
           // «Todos» es la unión de los tres grupos. No depende de la Campaña elegida abajo.
-          const codigos = new Set(); let fecha = '';
-          for (const n of [30, 60, 90]) { const { u } = await cargarCampana(n); fecha = fechaLegibleUTC(u.carrera.ventana.fin); for (const a of u.clasificados) if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g) && a.id.startsWith('stock:')) codigos.add(a.id.slice(6)); }
-          filtro = { codigos, nota: `${nombreGrupo(g)}: ${codigos.size} acciones, unión de las campañas de 30, 60 y 90 días sin repetir activos, clasificación al cierre del ${fecha}.${g === 'todos' ? ' Los Rezagados no entran.' : ''} Solo cambia lo que se dibuja.` };
+          const codigos = new Set(); let fecha = ''; const pref = mercado === 'cripto' ? 'cripto:' : 'stock:';
+          for (const n of [30, 60, 90]) { const { u } = await cargarCampana(n); fecha = fechaLegibleUTC(u.carrera.ventana.fin); for (const a of u.clasificados) if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g) && a.id.startsWith(pref)) codigos.add(a.id.slice(pref.length)); }
+          filtro = { codigos, nota: `${nombreGrupo(g)}: ${codigos.size} ${mercado === 'cripto' ? 'cripto' : 'acciones'}, unión de las campañas de 30, 60 y 90 días sin repetir activos, clasificación al cierre del ${fecha}.${g === 'todos' ? ' Los Rezagados no entran.' : ''} Solo cambia lo que se dibuja.` };
         } else if (g === 'todos') filtro = null;
         else {
           const n = ventanaVal, { u } = await cargarCampana(n);
@@ -1111,23 +1112,37 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       manual=true;
       const este = ++turno;
       try {
-        const r = await cargarDiaObservatorio(elegirDia.value);
+        const r = await cargarDiaObservatorio(elegirDia.value, mercado);
         if (este === turno && cuerpo.isConnected) await mostrar(r);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };
+    // Cripto en el prototipo: si hay registro de cripto publicado, la superficie y las barras pasan a leerlo al elegir un cripto.
+    const cambiarMercado = async (m) => {
+      if (m === mercado) return true;
+      const r = await cargarDiaObservatorio(null, m);
+      if (!r || !cuerpo.isConnected) return false;
+      mercado = m; manual = false; registroActual = r;
+      elegirDia.replaceChildren(); for (const dia of r.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: fechaLegibleUTC(dia) }));
+      elegirDia.value = r.dia.dia;
+      puente?.fijarMercado?.(m);
+      await aplicarFiltro();
+      return true;
+    };
+    if (en && puente) puente.cambiarMercado = cambiarMercado;
     await mostrar(registro);
+    if (en && puente?.selId?.()?.startsWith('cripto:')) { try { await cambiarMercado('cripto'); } catch (e) { console.warn('Cripto: sin lecturas.', e.message); } const c1 = puente.selId().slice(7); if (grafica?.datos.codigos.includes(c1)) grafica.elegirActivo(c1); puente.avisoSup?.(puente.selId()); }
     let ultimaVista=registro.indice.ultima;
     const revisar=async()=>{
       if(!cuerpo.isConnected)return;
       try{
         if(document.visibilityState!=='hidden'&&!refrescando){
           refrescando=true;
-          const r=await fetch(`${BASE_INTRADIA_WEB}/indice.json?t=${Math.floor(Date.now()/60000)}`,{cache:'no-cache'});
+          const r=await fetch(`${BASE_INTRADIA_WEB.replace(/\/stock$/, '/' + mercado)}/indice.json?t=${Math.floor(Date.now()/60000)}`,{cache:'no-cache'});
           if(!r.ok)throw Error('Índice todavía no disponible.');
           const indice=leerIndice(await r.text());
           if(indice.ultima!==ultimaVista){
             cacheIntradia.clear();const este=++turno;
-            const nuevo=await cargarDiaObservatorio(manual?elegirDia.value:null);
+            const nuevo=await cargarDiaObservatorio(manual?elegirDia.value:null, mercado);
             if(este===turno&&cuerpo.isConnected){
               for(const dia of nuevo.indice.dias)if(![...elegirDia.options].some(o=>o.value===dia))elegirDia.append(Object.assign(document.createElement('option'),{value:dia,textContent:fechaLegibleUTC(dia)}));
               elegirDia.value=nuevo.dia.dia;
@@ -1961,6 +1976,11 @@ function vistaActivo(clase, codigo, en = null) {
   h1.innerHTML = '<span class="cod"></span> <span class="nom"></span>';
   h1.querySelector('.cod').textContent = e.codigo;
   h1.querySelector('.nom').textContent = e.nombre;
+  if (en) { // prototipo: el tipo (empresa, fondo o cripto) va pegado al nombre
+    const t = clase === 'cripto' ? 'Cripto' : (e.tipo || 'Stock'), tt = /^fondo ETF/i.test(t) ? 'Fondo ETF' : t.charAt(0).toUpperCase() + t.slice(1);
+    h1.append(' ', Object.assign(document.createElement('span'), { className: 'tipo-activo', textContent: '· ' + tt }));
+    h1.querySelector('.tipo-activo').style.cssText = 'font-size:.55em;opacity:.85;white-space:nowrap';
+  }
   ficha.appendChild(h1);
   if (e.lectura) {
     const p = document.createElement('p');
@@ -2285,10 +2305,10 @@ function vistaUnificada(inicial=null){
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
   let sel=inicial,ventana=null,grupo='todos';
-  let codigosSupAct=null;const puente={fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);}};
+  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
-  const avisoSup=(id)=>{const c=id&&id.startsWith('stock:')?id.slice(6):null;const falta=id&&!(c&&codigosSupAct&&codigosSupAct.has(c));aviso2.hidden=!falta;if(falta)aviso2.textContent=(id.startsWith('cripto:')?'Cripto: ':'')+id.split(':')[1]+(id.startsWith('cripto:')?' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.');};
+  const avisoSup=(id)=>{const c=id&&id.startsWith(mercadoSup+':')?id.split(':')[1]:null;const falta=id&&!(c&&codigosSupAct&&codigosSupAct.has(c));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?(mercadoSup==='cripto'?'Cripto: '+n+' no está entre los admitidos con lectura horaria (el registro cubre a los que no quedan Rezagados en alguna campaña), así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':'Cripto: '+n+' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.'):n+' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.';}};
   puente.avisoSup=avisoSup;
   const FILAS_MATRIZ=[['premium','Premium','#3fb950'],['potentes','Potentes','#e3b341'],['constantes','Constantes','#58a6ff']];
   // Matriz 3×3 (25-nov-2026): columnas 30/60/90 días, filas Premium verde, Potentes amarillo, Constantes azul. Se enciende lo que le corresponde al activo; no incluye Rezagados.
@@ -2306,12 +2326,17 @@ function vistaUnificada(inicial=null){
     const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha);}};
   const elegido=(id,origen)=>{
     sel=id;history.replaceState(null,'','#/unificada'+(id?'/'+id.replace(':','/'):''));
-    if(origen!=='sup')puente.elegirSup(id&&id.startsWith('stock:')?id.slice(6):null);
-    if(origen!=='camp')puente.elegirCamp(id);
-    avisoSup(id);
     pintarFicha();
+    (async()=>{
+      const quiere=id&&id.startsWith('cripto:')?'cripto':'stock';
+      if(id&&quiere!==mercadoSup&&cambiarMercadoF){try{await cambiarMercadoF(quiere);}catch(e){console.warn('Cambio de mercado en la superficie:',e.message);}}
+      if(sel!==id)return;
+      if(origen!=='sup')puente.elegirSup(id&&id.startsWith(mercadoSup+':')?id.split(':')[1]:null);
+      if(origen!=='camp')puente.elegirCamp(id);
+      avisoSup(id);
+    })();
   };
-  const puenteSup={...puente,alElegir:(c)=>elegido(c?'stock:'+c:null,'sup'),get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
+  const puenteSup={...puente,alElegir:(c)=>elegido(c?mercadoSup+':'+c:null,'sup'),set cambiarMercado(f){cambiarMercadoF=f;},get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
   const puenteCamp={grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   pintarFicha();

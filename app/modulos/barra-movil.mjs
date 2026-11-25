@@ -274,7 +274,7 @@ export function leerBarra(texto) {
   for (const linea of String(texto).split('\n')) {
     const m = linea.match(/^([a-z_]+): (.*)$/);
     if (m) { campos[m[1]] = m[2]; continue; }
-    const a = linea.match(/^([A-Z0-9]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/);
+    const a = linea.match(/^([\p{L}\p{N}]+) (apertura|ultimo|cierre|dia_cierre|previo|mov): (.+)$/u);
     if (a) {
       if (activos.has(a[1]) && activos.get(a[1])[a[2]] !== undefined) throw new Error(`Instantanea de barra incoherente (${a[1]} repetido).`);
       const e = activos.get(a[1]) || {};

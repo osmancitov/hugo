@@ -22,7 +22,7 @@ export function leerDia(texto, validar = () => {}) {
     if (l.texto.match(/^dia_ref: (.+)$/m)?.[1] !== referenciaDia) throw Error('Referencia diaria de otro día.');
     const base=l.texto.match(/^dia_base: (.+)$/m)?.[1];
     for (const linea of l.texto.split('\n')) {
-      const a = /^([A-Z0-9]+) dia_cierre: (.+)$/.exec(linea);
+      const a = /^([\p{L}\p{N}]+) dia_cierre: (.+)$/u.exec(linea);
       if (!a || a[2] === 'sin dato') continue;
       const ref = Number(a[2]);
       if (!Number.isFinite(ref) || ref <= 0) throw Error('Cierre diario no positivo.');
