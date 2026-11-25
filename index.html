@@ -190,6 +190,7 @@ canvas { display: block; width: 100%; height: auto; margin: 0 auto; }
 .barra-movil-titulo { font-size: .85rem; color: var(--texto); margin-bottom: .25rem; }
 .barra-movil-graf { display: flex; height: .6rem; border-radius: 2px; overflow: hidden; background: var(--borde); }
 .barra-movil-graf span { display: block; height: 100%; }
+.barras-indicadores .barra-movil-graf span + span { border-left: 2px solid #000; box-sizing: border-box; }
 .barra-movil-nums { font-size: .85rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .barra-movil-periodo, .barra-movil-sec .barra-movil-nums { color: var(--tenue); font-size: .8rem; }
 .barra-movil-nota { color: var(--tenue); font-size: .8rem; font-style: italic; margin-top: .15rem; }
@@ -1472,7 +1473,7 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
   }
 }
 
-function vistaIndicador(codigo, en = null, rotulo = null) {
+function vistaIndicador(codigo, en = null, rotulo = null, limpio = false) {
   const e = INDICADORES.find((x) => x.codigo === codigo);
   if (!e) { location.hash = ''; return; }
   if (!en) app.innerHTML = '';
@@ -1519,7 +1520,9 @@ function vistaIndicador(codigo, en = null, rotulo = null) {
       },
       codigo: e.codigo,
       fecha: () => uf,
+      sinDescarga: limpio,
     });
+    if (limpio) return; // prototipo unificada (25-nov-2026): sin texto explicativo ni descarga
     const fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
     const nota = document.createElement('span');
     nota.className = 'nota';
@@ -1677,7 +1680,7 @@ function graficador(caja, pie, deCaso) {
   };
   const controles = document.createElement('div');
   controles.className = 'controles-grafica';
-  controles.append(boton('Descargar imagen', '', () => {
+  if (!cfg.sinDescarga) controles.append(boton('Descargar imagen', '', () => {
     traza.terminar();
     // Redibuja en alta resolución; limita el área para teléfonos con menos memoria.
     // No amplía los píxeles del lienzo mostrado en pantalla.
@@ -2296,22 +2299,21 @@ async function vistaCampana(n,inicial,en=null,puente=null){
 // que se refleja en todas las vistas. No sustituye ninguna página actual.
 // Fear & Greed de Bolsa y de Cripto en una sola gráfica (25-nov-2026): dos curvas distinguibles por color.
 // Colores fuera de los reservados a las categorías (verde, amarillo, azul) y al rojo: blanco hueso y magenta.
-const COLOR_FG_BOLSA = '#e5e7eb', COLOR_FG_CRIPTO = '#e879f9';
+const COLOR_FG_BOLSA = '#8b5cf6', COLOR_FG_CRIPTO = '#e879f9'; // pareja provisional (fucsia y violeta, mismo peso visual); sin blanco ni colores de categorías
 function graficoFearGreedJunto(ctx, geo, hasta, S) {
   const { series, dias } = S, n = dias.length, k = hasta === undefined ? n : Math.min(hasta, n);
   const V = Boolean(geo.vertical), w = V ? 700 : LW, alto = geo.alto;
-  const l = V ? 88 : ML, r = V ? 612 : LW - MR, t = V ? 150 : MT + 22, b = V ? alto - 110 : MT + PH;
+  const l = V ? 88 : ML, r = V ? 612 : LW - MR, t = V ? 116 : MT + 14, b = V ? alto - 110 : MT + PH;
   const P = (i, v) => V ? [l + (v / 100) * (r - l), t + (n === 1 ? 0 : (i / (n - 1)) * (b - t))] : [l + (n === 1 ? (r - l) / 2 : (i / (n - 1)) * (r - l)), b - (v / 100) * (b - t)];
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14) + 'px ' + FUENTE; ctx.fillText('Fear and greed · Bolsa y Cripto', w / 2, V ? 26 : 15);
-  ctx.fillStyle = TICK; ctx.font = (V ? 18 : 11) + 'px ' + FUENTE; ctx.fillText(`0 = miedo extremo · 100 = codicia extrema · ${n} días`, w / 2, V ? 58 : 38);
+  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14) + 'px ' + FUENTE; ctx.fillText('Fear and greed', w / 2, V ? 26 : 15);
   // leyenda: cada curva con su color
   let lx = w / 2 - (V ? 150 : 150);
   ctx.textAlign = 'left';
   for (const se of series) {
-    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3; ctx.beginPath(); ctx.moveTo(lx, V ? 96 : 56); ctx.lineTo(lx + (V ? 36 : 28), V ? 96 : 56); ctx.stroke();
-    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36), V ? 96 : 56);
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3; ctx.beginPath(); ctx.moveTo(lx, V ? 66 : 38); ctx.lineTo(lx + (V ? 36 : 28), V ? 66 : 38); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36), V ? 66 : 38);
     lx += V ? 190 : 150;
   }
   // rejilla por fecha (1 y 15) y por valor
@@ -2355,8 +2357,8 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
 }
 function vistaFearGreedJunto(en) {
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
-  const h = Object.assign(document.createElement('h2'), { textContent: 'Fear and greed · Bolsa y Cripto' });
-  ficha.append(h, Object.assign(document.createElement('div'), { className: 'meta', textContent: 'índice, dos curvas' }));
+  const h = Object.assign(document.createElement('h2'), { textContent: 'Fear and greed' });
+  ficha.append(h);
   const caja = Object.assign(document.createElement('div'), { className: 'lienzo-caja' });
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo los registros…' });
   const pie = Object.assign(document.createElement('div'), { className: 'pie-grafica' });
@@ -2367,23 +2369,20 @@ function vistaFearGreedJunto(en) {
     if (bolsa.length < 2 && cripto.length < 2) { caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>'; return; }
     const D = 86400000, dia = (ms) => Math.floor(ms / D) * D;
     const t0 = Math.min(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[0][0]))), t1 = Math.max(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[s.length - 1][0])));
-    const dias = []; for (let t = t0; t <= t1; t += D) dias.push(t);
-    const conv = (s, nombre, color) => ({ nombre, color, puntos: s.map(([ms, v]) => ({ i: Math.round((dia(ms) - t0) / D), v })) });
+    const dias = []; for (let t = Math.max(t0, t1 - 89 * D); t <= t1; t += D) dias.push(t); // 90 días, como la campaña más larga
+    const desde = Math.max(t0, t1 - 89 * D), conv = (s, nombre, color) => ({ nombre, color, puntos: s.filter(([ms]) => dia(ms) >= desde).map(([ms, v]) => ({ i: Math.round((dia(ms) - desde) / D), v })) });
     const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length) };
     const uf = new Date(t1);
-    graficador(caja, pie, { total: () => dias.length, dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, geo, hasta, S), codigo: 'fear-greed-bolsa-cripto', fecha: () => uf });
-    const nota = Object.assign(document.createElement('span'), { className: 'nota', textContent: `Trazada en vivo desde los registros publicados · datos hasta el ${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()} (UTC) · Bolsa solo con días de sesión bursátil · Cada índice conserva sus propios umbrales oficiales; aquí solo se compara el nivel 0-100.` });
-    pie.append(nota);
+    graficador(caja, pie, { total: () => dias.length, dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, geo, hasta, S), codigo: 'fear-greed-bolsa-cripto', fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
 function vistaUnificada(inicial=null){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=clase;app.appendChild(x);return x;};
-  const aviso=Object.assign(document.createElement('p'),{className:'camp-sub',textContent:'Vista unificada de prueba. Las páginas de siempre siguen donde estaban.'});app.append(aviso);
   // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
   vistaFearGreedJunto(sec());
-  vistaIndicador('iceberg-stock',sec());
+  vistaIndicador('iceberg-stock',sec(),null,true);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec();
   let sel=inicial,ventana=null,grupo='todos';
