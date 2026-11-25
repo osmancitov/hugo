@@ -988,16 +988,20 @@ async function vistaSuperficie() {
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo las lecturas guardadas…' });
   const cuerpo = document.createElement('section');
   app.append(volver, ficha, estado, cuerpo);
-  let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false;
+  let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false, filtro=null, registroActual=null;
+  const soloFiltro=(b)=>filtro&&b?{...b,activos:new Map([...b.activos].filter(([c])=>filtro.codigos.has(c)))}:b;
+  const parsearVista=(t)=>soloFiltro(parsearBarraVisor(t));
   limpiarGrafica = () => { turno++;clearTimeout(automatico);grafica?.desmontar();reloj.desmontar(); };
   async function mostrar(registro) {
-    grafica?.desmontar(); cuerpo.replaceChildren();
+    grafica?.desmontar(); cuerpo.replaceChildren(); registroActual=registro;
     const lecturas = registro.dia.lecturas;
+    if (filtro) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: filtro.nota }));
     if (lecturas.length === 1) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Solo hay una lectura guardada para este día. Se muestra su perfil; el terreno temporal necesita al menos dos. No se reconstruyen fotos anteriores.' }));
     const zona = document.createElement('div'), barra = document.createElement('div');
     cuerpo.append(zona, barra);
-    grafica = montarSuperficie(zona, lecturas, parsearBarraVisor, { alSeleccionar: (i) => {
-      const b = barraContextual(registro,i);
+    if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
+    grafica = montarSuperficie(zona, lecturas, parsearVista, { alSeleccionar: (i) => {
+      const b = soloFiltro(barraContextual(registro,i));
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true }));
     } });
   }
@@ -1013,7 +1017,31 @@ async function vistaSuperficie() {
     elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
     const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Actualizar' });
     recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); vistaSuperficie(); };
-    controles.append(etiqueta, recargar); ficha.append(controles);
+    // Subgrupo de la campaña: dos selectores (grupo y ventana). Solo filtra lo que se dibuja.
+    const etGrupo = Object.assign(document.createElement('label'), { textContent: 'Grupo ' });
+    const elegirGrupo = document.createElement('select');
+    for (const [v, t] of [['todos', 'Todos'], ['premium', 'Premium'], ['potentes', 'Potentes'], ['constantes', 'Constantes']]) elegirGrupo.append(Object.assign(document.createElement('option'), { value: v, textContent: t }));
+    etGrupo.append(elegirGrupo);
+    const etVentana = Object.assign(document.createElement('label'), { textContent: 'Ventana ' });
+    const elegirVentana = document.createElement('select');
+    for (const n of [90, 60, 30]) elegirVentana.append(Object.assign(document.createElement('option'), { value: n, textContent: n + 'd' }));
+    etVentana.append(elegirVentana); elegirVentana.disabled = true;
+    const aplicarFiltro = async () => {
+      const g = elegirGrupo.value; elegirVentana.disabled = g === 'todos';
+      const este = ++turno;
+      try {
+        if (g === 'todos') filtro = null;
+        else {
+          const n = Number(elegirVentana.value), { u } = await cargarCampana(n);
+          const codigos = new Set(u.clasificados.filter(a => a.grupo === g && a.id.startsWith('stock:')).map(a => a.id.slice(6)));
+          const nombre = elegirGrupo.selectedOptions[0].textContent;
+          filtro = { codigos, nota: `${nombre}, ventana de ${n} días, clasificación al cierre del ${fechaLegibleUTC(u.carrera.ventana.fin)}: ${codigos.size} acciones. Solo cambia lo que se dibuja; no se retira ningún activo.` };
+        }
+        if (este === turno && cuerpo.isConnected && registroActual) await mostrar(registroActual);
+      } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
+    };
+    elegirGrupo.onchange = aplicarFiltro; elegirVentana.onchange = aplicarFiltro;
+    controles.append(etiqueta, etGrupo, etVentana, recargar); ficha.append(controles);
     elegirDia.onchange = async () => {
       manual=true;
       const este = ++turno;

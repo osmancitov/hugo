@@ -71,3 +71,10 @@ test('Campañas: cuadrantes en escala logarítmica y un color por grupo', () => 
   assert.match(h, /camp-cuad-juntos/); assert.match(h, /activos juntos aqu/);
   assert.match(h, /const lg=v=>Math\.log2/);
 });
+
+test('la superficie 3D tiene selectores de grupo y ventana que solo filtran lo dibujado', () => {
+  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(h, /elegirGrupo/); assert.match(h, /elegirVentana/);
+  assert.match(h, /montarSuperficie\(zona, lecturas, parsearVista/);
+  assert.match(h, /no se retira ningún activo/);
+});
