@@ -2625,19 +2625,19 @@ async function vistaCampana(n,inicial,en=null,puente=null){
 const COLOR_FG_BOLSA = '#0092BC', COLOR_FG_CRIPTO = '#F7931A'; // decisión del usuario (audio Slack 1795638015.713969): naranja Bitcoin (#F7931A) para cripto, azul Nasdaq (#0092BC) para bolsa; el azul de Constantes se revisa después
 function graficoFearGreedJunto(ctx, geo, hasta, S) {
   const { series, dias } = S, n = dias.length, k = hasta === undefined ? n : Math.min(hasta, n);
-  const V = Boolean(geo.vertical), w = V ? 700 : (geo.ancho || LW), alto = geo.alto, F = V ? 1 : Math.max(1, Math.min(2.4, LW / w * 0.62)); // F: en pantalla angosta el lienzo es más chico y los rótulos se agrandan para leerse (~11-12 px reales)
-  const l = V ? 88 : ML * (F > 1 ? F * 0.75 : 1), r = V ? 612 : w - MR * (F > 1 ? F * 0.6 : 1), t = V ? 116 : (F > 1 ? 54 * F * 0.6 : MT + 14), b = V ? alto - 110 : alto - (F > 1 ? 44 * F * 0.6 : MB + 0); // sin ph: la altura de trazado sale del alto del lienzo // geo.ph: altura de trazado para el modo compacto del Triple play (sin recortar datos, solo la caja)
+  const V = Boolean(geo.vertical), w = V ? 700 : (geo.ancho || LW), alto = geo.alto, F = V ? 1 : Math.max(1, Math.min(2.4, LW / w * 0.45)); // F: en pantalla angosta el lienzo es más chico y los rótulos se agrandan para leerse (~11-12 px reales)
+  const l = V ? 88 : (F > 1 ? 56 : ML), r = V ? 612 : w - (F > 1 ? 18 : MR), t = V ? 116 : (F > 1 ? 66 : MT + 14), b = V ? alto - 110 : (F > 1 ? alto - 50 : alto - MB);// sin ph: la altura de trazado sale del alto del lienzo // geo.ph: altura de trazado para el modo compacto del Triple play (sin recortar datos, solo la caja)
   const P = (i, v) => V ? [l + (v / 100) * (r - l), t + (n === 1 ? 0 : (i / (n - 1)) * (b - t))] : [l + (n === 1 ? (r - l) / 2 : (i / (n - 1)) * (r - l)), b - (v / 100) * (b - t)];
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14 * F) + 'px ' + FUENTE; ctx.fillText('Fear and greed', w / 2, V ? 26 : 15 * F);
+  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14 * (F > 1 ? 1.15 : 1)) + 'px ' + FUENTE; ctx.fillText('Fear and greed', w / 2, V ? 26 : 15 * (F > 1 ? 1.1 : 1));
   // leyenda: cada curva con su color
-  let lx = w / 2 - (V ? 150 : 150 * Math.min(F, 1.6) * (F > 1 ? 0.7 : 1));
+  let lx = w / 2 - (V ? 150 : (F > 1 ? 70 : 150));
   ctx.textAlign = 'left';
   for (const se of series) {
-    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3 * Math.min(F, 1.6); ctx.beginPath(); ctx.moveTo(lx, V ? 66 : 38 * F * (F > 1 ? .8 : 1)); ctx.lineTo(lx + (V ? 36 : 28 * F), V ? 66 : 38 * F * (F > 1 ? .8 : 1)); ctx.stroke();
-    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12 * F) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36 * F), V ? 66 : 38 * F * (F > 1 ? .8 : 1));
-    lx += V ? 190 : 150 * F * (F > 1 ? .8 : 1);
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3 * Math.min(F, 1.6); ctx.beginPath(); ctx.moveTo(lx, V ? 66 : (F > 1 ? 44 : 38)); ctx.lineTo(lx + (V ? 36 : 28 * (F > 1 ? 1.2 : 1)), V ? 66 : (F > 1 ? 44 : 38)); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12 * F) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36 * (F > 1 ? 1.2 : 1)), V ? 66 : (F > 1 ? 44 : 38));
+    lx += V ? 190 : (F > 1 ? 110 : 150);
   }
   // rejilla por fecha (1 y 15) y por valor
   ctx.font = (V ? 20 : 10.5 * F) + 'px ' + FUENTE;
@@ -2649,7 +2649,7 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(V ? r : x2, V ? y2 : t); ctx.stroke();
     ctx.fillStyle = TICK;
     if (V) { ctx.textAlign = 'right'; ctx.fillText(String(dia).padStart(2, '0') + ' ' + MESES_ES[f.getUTCMonth()], l - 14, y); }
-    else { ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_EN[f.getUTCMonth()]}`, x, b + 8 * F); ctx.textBaseline = 'middle'; }
+    else { ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_EN[f.getUTCMonth()]}`, x, b + 8); ctx.textBaseline = 'middle'; }
   }
   for (const v of [0, 25, 50, 75, 100]) {
     const [x, y] = P(0, v), [x2, y2] = P(n - 1, v);
@@ -2675,8 +2675,8 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
     const tx = V ? (x > (l + r) / 2 ? Math.min(x - 14, r - 8) : Math.max(x + 14, l + 8)) : Math.min(x - 10, r), ty = V ? Math.max(y - 22 + (se.nombre === 'Cripto' ? 22 : 0), t + 14) : Math.max(y - 14 * F, t + 8 * F);
     const txt = `${se.nombre} ${u.v}`; ctx.strokeText(txt, tx, ty); ctx.fillText(txt, tx, ty);
   }
-  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11 * F) + 'px ' + FUENTE;
-  ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - 13 * (V ? 1 : F * (F > 1 ? .6 : 1)));
+  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11 * (F > 1 ? 1.1 : 1)) + 'px ' + FUENTE;
+  ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - 12);
 }
 function vistaFearGreedJunto(en, ndias = 90, solo = null) {
   const ANCHO_FG = () => (innerWidth < 600 ? 520 : LW), ALTO_FG = () => Math.round(ANCHO_FG() * 5 / 8); // proporción 8 de ancho por 5 de alto (audio Slack 1795697318.173719): antes 320 de alto, quedaba aplanada
@@ -2723,7 +2723,8 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  cFicha.style.minHeight=innerWidth<700?'130px':'92px'; // reserva solo lo que mide la ficha (101 px en móvil, 67 en ancho) para que elegir en la 3D no empuje nada ni deje huecos
+  {let h0=0;new MutationObserver(()=>{const h=cFicha.offsetHeight,d=h-h0;h0=h;if(d&&cFicha.getBoundingClientRect().bottom<=0)window.scrollBy({top:d,behavior:'instant'});}).observe(cFicha,{childList:true,subtree:true,attributes:true});} // sin reserva fija (dejaba un hueco al no haber activo); si la ficha crece o se encoge por encima de lo que se ve, el scroll se compensa y nada se mueve en pantalla
+   // reserva solo lo que mide la ficha (101 px en móvil, 67 en ancho) para que elegir en la 3D no empuje nada ni deje huecos
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,grupo2:()=>grupo2,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
@@ -2734,7 +2735,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   const anclarCamp=()=>{cCamp._fin?.();setTimeout(()=>{const y0=cCamp.getBoundingClientRect().top,t0=performance.now();let activo=true;const fin=()=>{activo=false;};cCamp._fin=fin;
     const sostener=()=>{if(!activo||performance.now()-t0>3000)return;const d=cCamp.getBoundingClientRect().top-y0;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});setTimeout(sostener,16);};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,fin,{once:true,passive:true});setTimeout(sostener,16);},0);};
-  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=Math.max(alto,parseFloat(cFicha.style.minHeight)||0)+'px';clearTimeout(cFicha._lib);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
+  const pintarFicha=()=>{clearTimeout(cFicha._lib);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
     mx.style.cssText='display:inline-grid;grid-template-columns:auto repeat(3,2.6rem);gap:.55rem .5rem;align-items:center;margin:.5rem 0 1rem;font-size:.85em';
     const celda=(t,css='')=>{const e=Object.assign(document.createElement('span'),{textContent:t});e.style.cssText=css;mx.append(e);return e;};
     celda('');for(const n of [30,60,90])celda(n+' d','text-align:center;opacity:.8');

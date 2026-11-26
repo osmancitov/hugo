@@ -169,7 +169,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   }
   function dibujar() {
     if (!viva) return;
-    const ancho = Math.max(280, caja.clientWidth), alto = crestas ? (ancho < 600 ? ancho : Math.round(Math.min(ancho, Math.max(560, (window.innerHeight || 800) * 0.85)))) /* área visible cercana a 1:1 (audio 09:03); en escritorio se limita al alto de la ventana */ : (ancho < 600 ? 560 : 640), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const ancho = Math.max(280, caja.clientWidth), alto = crestas ? (ancho < 600 ? Math.round(ancho * 1.05) : 560) : (ancho < 600 ? 560 : 640), dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = ancho * dpr; canvas.height = alto * dpr;
     canvas.style.height = `${alto}px`;
     const c = canvas.getContext('2d'); c.scale(dpr, dpr);
