@@ -2562,7 +2562,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
   raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct]:[]),cEsp,...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
-  if(puente){cAct.style.minHeight='410px';cAct.classList.add('camp-vip-series');}
+  if(puente){cAct.style.minHeight=Math.ceil((destino.clientWidth||innerWidth)*0.5+36)+'px';cAct.classList.add('camp-vip-series');}
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
@@ -2673,6 +2673,7 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
   ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - (V ? 13 : 13));
 }
 function vistaFearGreedJunto(en, ndias = 90, solo = null) {
+  const ALTO_FG = Math.round(LW * 5 / 8); // proporción 8 de ancho por 5 de alto (audio Slack 1795697318.173719): antes 320 de alto, quedaba aplanada
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const h = Object.assign(document.createElement('h2'), { textContent: 'Miedo y codicia' });
   ficha.append(h);
@@ -2691,7 +2692,7 @@ function vistaFearGreedJunto(en, ndias = 90, solo = null) {
     const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length && (!solo || x.nombre.toLowerCase() === solo)) };
     const uf = new Date(t1);
     // Triple play (audio 1795665712.382679): chiquito y horizontal como los fideos, también en pantalla vertical; un solo índice por vista.
-    graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: LW, alto: 320 }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: LW, alto: 320, ph: 320 - MT - MB }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
+    graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: LW, alto: ALTO_FG }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: LW, alto: ALTO_FG, ph: ALTO_FG - MT - MB }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
 function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
