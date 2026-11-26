@@ -1,0 +1,62 @@
+{
+ "codigo": "LLY",
+ "fuente": "Fuentes: índice de vínculos (titular, fecha y enlace; sin cuerpos) recuperado de la salida archivada del Data API de GuruFocus para LLY (respuesta del 26-nov-2026, página 1 de 192 declaradas en 60 días). Del material archivado se recuperaron 4 enlaces completos verificables; el resto del lote quedó sin enlace recuperable y no se carga. Publicación por decisión expresa del dueño (26-nov-2026); sin nuevas consultas a GuruFocus.",
+ "noticias": [
+  {
+   "fecha_texto": "25 nov",
+   "orden": "2026-11-25T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "Eli Lilly (LLY) -- Strong Earnings and AI-Driven Innovations | Janus Henderson Balanced Fund Q4 2026",
+   "enlace": "https://www.gurufocus.com/news/9220570/eli-lilly-lly-strong-earnings-and-aidriven-innovations-janus-henderson-balanced-fund-q4-2026",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-25 11:00:34 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para LLY (26-nov-2026 ~00:38 UTC-4, página 1 de 192); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "24 nov",
+   "orden": "2026-11-24T16:00:01.000Z",
+   "medio": "GuruFocus",
+   "titular": "Eli Lilly and Co (LLY) Stock Up 3.1% and Still Undervalued -- GF Score: 98/100",
+   "enlace": "https://www.gurufocus.com/news/9218487/eli-lilly-and-co-lly-stock-up-31-and-still-undervalued-gf-score-98100",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-24 16:00:46 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para LLY (26-nov-2026 ~00:38 UTC-4, página 1 de 192); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "24 nov",
+   "orden": "2026-11-24T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "Eli Lilly (LLY) Accelerates Oncology Focus with $20B Acquisitions Amid Growth Strategy",
+   "enlace": "https://www.gurufocus.com/news/9217101/eli-lilly-lly-accelerates-oncology-focus-with-20b-acquisitions-amid-growth-strategy",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-24 07:57:50 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para LLY (26-nov-2026 ~00:38 UTC-4, página 1 de 192); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "23 nov",
+   "orden": "2026-11-23T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "Lilly to host Innovation Day 2026",
+   "enlace": "https://www.gurufocus.com/news/9215223/lilly-to-host-innovation-day-2026",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-23 10:00:02 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para LLY (26-nov-2026 ~00:38 UTC-4, página 1 de 192); enlace y fecha de esa respuesta, sin nuevas consultas."
+  }
+ ]
+}

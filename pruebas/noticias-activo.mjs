@@ -35,22 +35,25 @@ test('la página solo muestra la ventana de 30 días y conserva el resto en el a
   assert.ok(!h.includes('>Vieja<') && h.includes('>Nueva<'));
   assert.ok(h.includes('1 noticias de la campaña de 30 días') && h.includes('guarda 2 en total'));
 });
-test('el año verificado se muestra y el inferido no; notas y enlaces extra aparecen', () => {
+test('el año verificado se muestra y el inferido no; la nota queda en los datos y los enlaces extra aparecen', () => {
   const verif = { fecha_texto: '24 nov · 10:00', orden: '2026-11-24T14:00:00.000Z', medio: 'M', titular: 'Con año', enlace: 'https://e.com/a', lote: '', anio: 2026, anio_estado: 'verificado', anio_fuente: 'https://e.com/f', enlaces_extra: [{ etiqueta: 'GuruFocus', url: 'https://www.gurufocus.com/news/1/x' }] };
   const inf = normalizar(f('Sin año', '25 nov · 10:00', 'https://e.com/b'), hoy);
   const ever = { fecha_texto: '8 nov · 11:52', orden: '2026-11-08T15:52:00.000Z', medio: 'CNN', titular: 'Cotización', enlace: 'https://e.com/c', lote: '', anio_estado: 'sin_fecha', nota_fecha: 'Página de cotización sin fecha de publicación.' };
   const h = pagina('GME', 'Fuente: x.', [verif, inf, ever], hoy);
   assert.ok(h.includes('24 nov 2026 · 10:00'));
   assert.ok(h.includes('>25 nov · 10:00<') && !h.includes('25 nov 2026'));
-  assert.ok(!h.includes('>8 nov 2026') && h.includes('sin fecha de publicación'));
+  assert.ok(!h.includes('>8 nov 2026') && h.includes('>8 nov · 11:52<'));
+  assert.ok(!h.includes('sin fecha de publicación'), 'la nota de fecha queda en los datos, no se muestra (ruido, 26-nov-2026)');
   assert.ok(h.includes('GuruFocus ↗') && h.includes('https://www.gurufocus.com/news/1/x'));
 });
-test('GME: ficha enlazada y archivo sin duplicados ni filas inválidas', () => {
-  assert.ok(/CON_NOTICIAS = new Set\(\['GME'\]\)/.test(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
-  const d = JSON.parse(fs.readFileSync(new URL('../registros/noticias/GME.json', import.meta.url), 'utf8')).noticias;
-  assert.equal(new Set(d.map((n) => n.enlace)).size, d.length);
-  assert.ok(d.every((n) => n.titular && n.orden));
-  assert.ok(d.every((n, i) => i === 0 || d[i - 1].orden >= n.orden));
+test('fichas enlazadas y archivos sin duplicados ni filas inválidas', () => {
+  assert.ok(/CON_NOTICIAS = new Set\(\['GME', 'LLY', 'WDC'\]\)/.test(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
+  for (const cod of ['GME', 'LLY', 'WDC']) {
+    const d = JSON.parse(fs.readFileSync(new URL(`../registros/noticias/${cod}.json`, import.meta.url), 'utf8')).noticias;
+    assert.equal(new Set(d.map((n) => n.enlace)).size, d.length, cod);
+    assert.ok(d.every((n) => n.titular && n.orden), cod);
+    assert.ok(d.every((n, i) => i === 0 || d[i - 1].orden >= n.orden), cod);
+  }
 });
 test('las filas de GuruFocus se retienen salvo permiso expreso', () => {
   const g = [{ ...f('G1', '25 nov · 10:00', 'https://e.com/g1'), fuente: 'gurufocus' }, f('G2', '25 nov · 11:00', 'https://www.gurufocus.com/news/1/x')];

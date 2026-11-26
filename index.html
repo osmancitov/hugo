@@ -440,7 +440,7 @@ for (const e of STOCKS) TODOS.push(e);
 // TradingView con su ticker bursátil (BRKB se escribe BRK.B; TradingView resuelve la plaza) y en
 // Binance con su par bStock CODIGO + B + USDT, el mismo que registra Hugo.
 // La web oficial (solo empresas; los fondos no llevan enlace Oficial) sale del campo web del catálogo.
-const CON_NOTICIAS = new Set(['GME']); // activos con página noticias/<CODIGO>.html
+const CON_NOTICIAS = new Set(['GME', 'LLY', 'WDC']); // activos con página noticias/<CODIGO>.html
 function fichasExternas(e) {
   const enlaces = [];
   if (e.ficha) {
@@ -2814,6 +2814,13 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
   pintarFicha();
+  // Entrar a Mercado con un activo en la ruta (el retorno «← Mercado · COD» de las páginas de noticias,
+  // 26-nov-2026, pedido del dueño): lleva al título de su ficha, al final de la página, y lo sostiene
+  // mientras cargan los bloques de arriba, que la empujan. La ficha sale del catálogo: no depende de la lista VIP.
+  if(sel){const tA0=performance.now();let anclajeFicha=true;const finAnclajeFicha=()=>{anclajeFicha=false;};
+    for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,finAnclajeFicha,{once:true,passive:true});
+    const sostenerFicha=()=>{if(!anclajeFicha||performance.now()-tA0>3000)return;const t=cFicha.querySelector('h2');if(t){const d=t.getBoundingClientRect().top;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});}setTimeout(sostenerFicha,16);};
+    setTimeout(sostenerFicha,16);}
   // Relieve del día entre las barras y la ficha del activo (26-nov-2026, audio): se recorren los activos en la 3D y la información con sus enlaces queda justo debajo.
 }
 async function ruta() {
@@ -2832,6 +2839,7 @@ async function ruta() {
   if(muG&&muG[1]&&muG[1]!=='30'){location.replace('#/unificada/30d'+(muG[2]?'/'+muG[2]:''));return;}
   if(muG&&!muG[1]&&muG[2]){location.replace('#/unificada/30d/'+muG[2]);return;}
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
+  if(m){location.replace('#/unificada/30d/'+grupoMercadoDe(m[1]+':'+decodeURIComponent(m[2]))+'/'+m[1]+'/'+m[2]);return;} // compatibilidad (26-nov-2026, pedido del dueño): la ficha antigua #/a/… abre la vista integrada del activo, que no depende de la lista VIP
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
@@ -2868,7 +2876,6 @@ async function ruta() {
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
-  if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
   if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}

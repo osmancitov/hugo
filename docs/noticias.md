@@ -1,6 +1,8 @@
 # Noticias archivadas de un activo
 
-Página `noticias/<CODIGO>.html` (hoy solo GME), enlazada como «Noticias ↗» en la ficha del activo (`CON_NOTICIAS` en `index.html`).
+Página `noticias/<CODIGO>.html` (hoy GME, LLY y WDC), enlazada como «Noticias ↗» en la ficha del activo (`CON_NOTICIAS` en `index.html`).
+
+El retorno «← Mercado · COD» abre la vista integrada `#/unificada/30d/<mercado>/<COD>` y baja al título de la ficha del activo. La ficha sale del catálogo, no de la lista VIP: el enlace sigue funcionando cuando el activo sale de los VIP (26-nov-2026, pedido del dueño). La ruta antigua `#/a/<mercado>/<COD>` abre esa misma vista integrada, para los enlaces ya publicados (p. ej. `cuenta/estado-de-cuenta.md`).
 
 ## Qué se muestra: campaña de 30 días
 
@@ -14,6 +16,7 @@ Diferencia con la Campaña del visor: allá la ventana de N días es `[fin−(N�
 
 - Los titulares que Inter publicó en el hilo GME de Slack (canal del dueño, hilo 1795668606.797819), recuperados el 26-nov-2026: 83 titulares válidos. Sus enlaces pasan por Google News (no son la URL final del medio).
 - Los enlaces de la página pública de GuruFocus para GME (`https://www.gurufocus.com/stock/GME/article`), recogidos el 26-nov-2026 sin sesión ni API: 5 noticias nuevas y 1 enlace directo sumado a una noticia que ya estaba (`enlaces_extra`). Ver la sección GuruFocus abajo.
+- LLY y WDC: índice de vínculos (titular, fecha y enlace; sin cuerpos) recuperado del archivo de la respuesta del Data API de GuruFocus del 26-nov-2026 ~00:38 UTC-4 (página 1 de 192 declaradas para LLY, de 73 para WDC). Del archivo sobrevivieron 4 enlaces completos por símbolo en el registro de la conversación; el resto del lote quedó sin enlace recuperable y no se carga (no se reconstruyen slugs). Decisión expresa del dueño (26-nov-2026, hilo «Candidatos» 1795665962.658339, mensaje 1795726350.699059): hacer las páginas solo con ese material, como índice de vínculos. Sin nuevas consultas a GuruFocus. Cada fila guarda en `origen` y `fecha_fuente_original` la procedencia exacta, y el año va `verificado` contra el `publish_time` declarado por la propia fuente en esa respuesta.
 
 ## Qué guarda cada noticia (`registros/noticias/GME.json`)
 
@@ -61,7 +64,7 @@ No hay automatismo ni lectura de red: la página solo cambia cuando se ejecuta e
 Dos orígenes distintos, tratados distinto:
 
 - **Enlaces de su página pública** (`/stock/GME/article`): el dueño pidió sumarlos como vínculos normales (26-nov-2026). Se incorporaron 6 ese día (5 altas + 1 enlace directo en una ya existente), recogidos sin sesión y sin tocar la API. Sus horas se omiten: la página las muestra con rótulo ET, pero la zona no está verificada por artículo; se guarda el texto original en `fecha_fuente_original`. Para futuras altas por esta vía, `--agregar` las retiene por defecto y se suman con `--permitir-gurufocus`, decisión ya tomada por el dueño para estos enlaces.
-- **Salida de su Data API**: su acuerdo (cuadro «I agree to the Data API Agreement» en https://www.gurufocus.com/data-api/pricing, leído el 26-nov-2026) licencia uso «internal» y restringe publicar la salida bruta; este repositorio es público. No se publican datos de la API.
+- **Salida de su Data API**: su acuerdo (cuadro «I agree to the Data API Agreement» en https://www.gurufocus.com/data-api/pricing, leído el 26-nov-2026) licencia uso «internal» y restringe publicar la salida bruta; este repositorio es público. No se publican cuerpos ni datos de la API. Excepción anotada: los índices de vínculos de LLY y WDC (26-nov-2026, arriba), titulares+fecha+enlace sin cuerpos, por decisión expresa del dueño sobre el material ya obtenido.
 
 Regla expresa del dueño (26-nov-2026, hilo 1795722192.426879): **no volver a consultar GuruFocus; las consultas se usan solo al elegir un nuevo candidato.** Para GME se usa solo lo ya recogido; no hay sondeos ni seguimiento de su página.
 

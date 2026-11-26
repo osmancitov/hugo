@@ -1,0 +1,62 @@
+{
+ "codigo": "WDC",
+ "fuente": "Fuentes: índice de vínculos (titular, fecha y enlace; sin cuerpos) recuperado de la salida archivada del Data API de GuruFocus para WDC (respuesta del 26-nov-2026, página 1 de 73 declaradas en 60 días). Del material archivado se recuperaron 4 enlaces completos verificables; el resto del lote quedó sin enlace recuperable y no se carga. Publicación por decisión expresa del dueño (26-nov-2026); sin nuevas consultas a GuruFocus.",
+ "noticias": [
+  {
+   "fecha_texto": "25 nov",
+   "orden": "2026-11-25T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "Western Digital Stocks Sink 7.42%, Trading 139% Above GF Value",
+   "enlace": "https://www.gurufocus.com/news/9220436/western-digital-stocks-sink-742-trading-139-above-gf-value",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-25 11:22:58 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para WDC (26-nov-2026 ~00:38 UTC-4, página 1 de 73); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "24 nov",
+   "orden": "2026-11-24T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "WDC Maintained by Evercore ISI Group -- Price Target Lowered to $400",
+   "enlace": "https://www.gurufocus.com/news/9217248/wdc-maintained-by-evercore-isi-group-price-target-lowered-to-400",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-24 08:44:38 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para WDC (26-nov-2026 ~00:38 UTC-4, página 1 de 73); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "23 nov",
+   "orden": "2026-11-23T16:00:01.000Z",
+   "medio": "GuruFocus",
+   "titular": "Western Digital Corp (WDC) Shares Surge 13.8% -- What GF Score of 68 Tells Investors",
+   "enlace": "https://www.gurufocus.com/news/9215908/western-digital-corp-wdc-shares-surge-138-what-gf-score-of-68-tells-investors",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-23 17:00:17 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para WDC (26-nov-2026 ~00:38 UTC-4, página 1 de 73); enlace y fecha de esa respuesta, sin nuevas consultas."
+  },
+  {
+   "fecha_texto": "23 nov",
+   "orden": "2026-11-23T16:00:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "WDC Maintained by Rosenblatt -- Price Target Held at $650",
+   "enlace": "https://www.gurufocus.com/news/9214810/wdc-maintained-by-rosenblatt-price-target-held-at-650",
+   "lote": "",
+   "anio": 2026,
+   "anio_estado": "verificado",
+   "anio_fuente": "publish_time declarado por GuruFocus en la respuesta archivada del Data API (26-nov-2026)",
+   "nota_fecha": "Solo día comprobado; se omite la hora porque la zona horaria no está verificada por artículo.",
+   "fecha_fuente_original": "2026-11-23 07:07:50 (publish_time declarado por GuruFocus en la salida del Data API, zona horaria no verificada)",
+   "origen": "Salida archivada del Data API de GuruFocus para WDC (26-nov-2026 ~00:38 UTC-4, página 1 de 73); enlace y fecha de esa respuesta, sin nuevas consultas."
+  }
+ ]
+}

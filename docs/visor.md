@@ -29,7 +29,7 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 | Ruta | Vista |
 |---|---|
 | `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion` o `indicadores` | Listas por mercado. Los enlaces a `persistencia` llevan a `variacion`. |
-| `#/a/<stock\|cripto>/<código>` | Ficha del activo (nombre, lectura y significado si los hay, enlaces, radiografía). |
+| `#/a/<stock\|cripto>/<código>` | Ruta antigua (26-nov-2026): abre la vista integrada del activo en Mercado (`#/unificada/30d/<grupo>/<mercado>/<código>`) y baja al título de su ficha. La ficha sale del catálogo: no depende de la lista VIP. |
 | `#/i/iceberg-stock/barra-dia`, `barra-24h`, `barra-movimiento` | Indicadores de barra del iceberg de stocks. |
 | `#/i/iceberg-stock/superficie` | Superficie 3D (solo dibuja stocks). Filtros de grupo y ventana. |
 | `#/campana`, `#/campana/<90\|60\|30>d`, `#/campana/<90\|60\|30>d/<clase>/<código>` | Campaña de la ventana, con el activo elegido. |
