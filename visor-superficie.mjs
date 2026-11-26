@@ -169,7 +169,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   }
   function dibujar() {
     if (!viva) return;
-    const ancho = Math.max(280, caja.clientWidth), alto = crestas ? (ancho < 600 ? Math.round(ancho * 1.05) : 560) : (ancho < 600 ? 560 : 640), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const ancho = Math.max(280, caja.clientWidth), alto = crestas ? (ancho < 600 ? Math.round(ancho * .92) : 560) : (ancho < 600 ? 560 : 640), dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = ancho * dpr; canvas.height = alto * dpr;
     canvas.style.height = `${alto}px`;
     const c = canvas.getContext('2d'); c.scale(dpr, dpr);
@@ -179,7 +179,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const esquinas = [-1.04, 1.04].flatMap((x) => [-.7, .7].flatMap((y) => [-1, 1].map((z) => crudo(x, y, z))));
     const minX = Math.min(...esquinas.map((p) => p.u)), maxX = Math.max(...esquinas.map((p) => p.u));
     const minY = Math.min(...esquinas.map((p) => p.v)), maxY = Math.max(...esquinas.map((p) => p.v));
-    const izq = ancho < 600 ? 54 : 82, der = ancho < 600 ? 26 : 95, arriba = 38, abajo = 67;
+    const izq = ancho < 600 ? 54 : 82, der = ancho < 600 ? 26 : 95, arriba = crestas && ancho < 600 ? 30 : 38, abajo = crestas && ancho < 600 ? 50 : 67;
     const escalaX0 = (ancho - izq - der) / (maxX - minX), escalaY0 = (alto - arriba - abajo) / (maxY - minY), uni = crestas ? Math.min(escalaX0, escalaY0) : null; // Mercado: misma escala en horizontal y vertical, sin estirar
     const escalaX = zoom * (uni ?? escalaX0), escalaY = zoom * (uni ?? escalaY0);
     const centroX = izq + (ancho - izq - der) / 2, centroY = arriba + (alto - arriba - abajo) / 2;
