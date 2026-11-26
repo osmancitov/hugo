@@ -440,6 +440,7 @@ for (const e of STOCKS) TODOS.push(e);
 // TradingView con su ticker bursátil (BRKB se escribe BRK.B; TradingView resuelve la plaza) y en
 // Binance con su par bStock CODIGO + B + USDT, el mismo que registra Hugo.
 // La web oficial (solo empresas; los fondos no llevan enlace Oficial) sale del campo web del catálogo.
+const CON_NOTICIAS = new Set(['GME']); // activos con página noticias/<CODIGO>.html
 function fichasExternas(e) {
   const enlaces = [];
   if (e.ficha) {
@@ -2153,6 +2154,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
     // luego Stock Analysis, TipRanks, TradingView y Binance, y Oficial de último (su web).
     if (e.edgar) enlacesMeta.push(['Gobierno ↗', e.edgar]);
     for (const par of fichasExternas(e)) enlacesMeta.push(par);
+    if (CON_NOTICIAS.has(e.codigo)) enlacesMeta.push(['Noticias ↗', `noticias/${e.codigo}.html`]); // página de noticias del activo (26-nov-2026, pedido del dueño); se generan con app/generar-noticias.mjs
     if (e.web) enlacesMeta.push(['Oficial ↗', e.web]);
     for (const [rotulo, destino] of enlacesMeta) {
       const a = document.createElement('a');
