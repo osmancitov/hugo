@@ -48,10 +48,11 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   const grupo = crear('span', 'superficie-pasos' + (clase ? ' ' + clase : ''));
   const anterior = crear('button', 'superficie-flecha');
   const siguiente = crear('button', 'superficie-flecha');
-  // vertical: el mismo símbolo girado 90° (arriba = anterior, abajo = siguiente), para que el eje del tiempo se distinga del eje del activo (audio 26-nov-2026)
+  // vertical: el mismo símbolo girado 90°, para que el eje del tiempo se distinga del eje del activo. Sentido del tiempo pedido por el dueño (audio 26-nov-2026): la flecha de arriba avanza en el tiempo (desde la última lectura vuelve a la primera y sigue avanzando) y la de abajo recorre el sentido contrario.
   for (const [b, s] of [[anterior, simbolos[0]], [siguiente, simbolos[1]]]) { if (vertical) b.append(crear('span', 'flecha-girada', s)); else b.textContent = s; }
+  const movimientos = vertical ? [[anterior, 1, 'siguiente'], [siguiente, -1, 'anterior']] : [[anterior, -1, 'anterior'], [siguiente, 1, 'siguiente']];
   if (ocultarSelector) selector.hidden = true;
-  for (const [boton, direccion] of [[anterior, 'anterior'], [siguiente, 'siguiente']]) {
+  for (const [boton, , direccion] of movimientos) {
     boton.type = 'button';
     boton.setAttribute('aria-label', `${nombre} ${direccion}`);
     boton.title = `${nombre} ${direccion}`;
@@ -59,8 +60,8 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   let temporizador = null, pulsado = null, vivo = true;
   const detener = () => { cancelar(temporizador); temporizador = null; pulsado = null; };
   const actualizar = () => {
-    anterior.disabled = selector.options.length < 2 || (!ciclar && selector.selectedIndex <= 0);
-    siguiente.disabled = selector.options.length < 2 || (!ciclar && selector.selectedIndex >= selector.options.length - 1);
+    const n = selector.options.length;
+    for (const [boton, delta] of movimientos) boton.disabled = n < 2 || (!ciclar && (delta < 0 ? selector.selectedIndex <= 0 : selector.selectedIndex >= n - 1));
     if (pulsado?.disabled) detener();
   };
   const paso = (delta) => {
@@ -70,7 +71,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
     const indice = ciclar ? (selector.selectedIndex + delta + n) % n : selector.selectedIndex + delta;
     if (indice >= 0 && indice < selector.options.length) mover(indice);
   };
-  for (const [boton, delta] of [[anterior, -1], [siguiente, 1]]) {
+  for (const [boton, delta] of movimientos) {
     boton.onclick = (e) => { if (vivo && (!repetir || !e?.detail)) paso(delta); };
     if (!repetir) continue;
     boton.style && (boton.style.touchAction = 'none');

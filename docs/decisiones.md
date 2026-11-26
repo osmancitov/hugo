@@ -27,11 +27,14 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 - **Textos fuera**: «escala logarítmica» en las curvas P y C (1795614302.908419); conteos, fórmula y color de cada campaña (1795615151.124609); párrafo explicativo del campo (1795615394.222839).
 - **Espaguetis**: grises más tenues y el elegido en blanco, no en colores de categoría (1795615176.458859, 1795615335.901129, 1795615874.644629).
 
+## Visor
+- **Sentido de las flechas del tiempo del Relieve** (audio del dueño, 26-nov-2026, Slack ts 1795709023.745469): la flecha de arriba avanza en el tiempo (después de la última lectura vuelve a la vista completa del día y de ahí a la primera lectura, y sigue avanzando) y la de abajo recorre el sentido contrario.
+
 ## Nombres
 - **Activos en caracteres chinos** llevan lectura latina y significado breve entre paréntesis, en todo el Observatorio y su ficha (1795614378.152739, 1795614410.613859, 1795614503.994839). Los significados son traducciones literales, no oficiales.
 
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
-- Antes de publicar se corre la suite completa; todas deben pasar (415); cualquier prueba roja debe investigarse.
+- Antes de publicar se corre la suite completa; todas deben pasar (416); cualquier prueba roja debe investigarse.
 - La primera diaria tras un cambio en el cálculo de las categorías se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.

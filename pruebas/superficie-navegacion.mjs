@@ -150,6 +150,25 @@ test('gris representa igualdad exacta y no comparación ausente ni redondeo', as
 });
 
 
+test('vertical: la flecha de arriba avanza en el tiempo y la de abajo retrocede, con ciclo', () => {
+ const antes=global.document;global.document={createElement:tag=>new Elemento(tag)};
+ try{
+  const selector={selectedIndex:0,options:Array(4)};let pasos;
+  pasos=montarPasos(selector,'Lectura',i=>{selector.selectedIndex=i;pasos.actualizar();},{ciclar:true,vertical:true});
+  const [arriba,,abajo]=pasos.grupo.hijos;
+  assert.equal(arriba.atributos['aria-label'],'Lectura siguiente');
+  assert.equal(abajo.atributos['aria-label'],'Lectura anterior');
+  assert.equal(arriba.hijos[0].className,'flecha-girada');
+  assert.equal(abajo.hijos[0].className,'flecha-girada');
+  arriba.onclick();assert.equal(selector.selectedIndex,1); // desde el inicio, arriba avanza a la primera lectura
+  selector.selectedIndex=3;pasos.actualizar();
+  arriba.onclick();assert.equal(selector.selectedIndex,0); // desde la última lectura, arriba vuelve al inicio
+  abajo.onclick();assert.equal(selector.selectedIndex,3); // abajo recorre el sentido contrario
+  abajo.onclick();assert.equal(selector.selectedIndex,2);
+  pasos.desmontar();
+ }finally{global.document=antes;}
+});
+
 test('flechas permiten elegir explícitamente desde un selector sin selección inicial', () => {
  const b=banco(113,-1);
  assert.equal(b.selector.selectedIndex,-1);
