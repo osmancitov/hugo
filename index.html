@@ -1633,13 +1633,9 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
       sinDescarga: limpio,
     });
     if (limpio) { // prototipo unificada (25-nov-2026): sin descarga; solo el conjunto y su denominador, visibles
-      if (ndias && e.iceberg) {
+      if (ndias && e.iceberg && !bal) { // Mercado: sin el párrafo explicativo del conjunto bajo el Balance diario (usuario, Slack 1795662379.778449); solo queda el aviso de que aún no hay balance
         const nota = Object.assign(document.createElement('p'), { className: 'camp-sub' });
-        if (bal) {
-          const b = bal.balance, tot = bal.puntos.map((q) => q[1] + q[2] + q[3]);
-          const rango = Math.min(...tot) === Math.max(...tot) ? `${tot[0]}` : `${Math.min(...tot)} a ${Math.max(...tot)}`;
-          nota.textContent = `Conjunto: ${b.cohorte.total} clasificados del cierre del ${b.ventana.fin} en la campaña de ${b.ventana.cantidad} días (${b.cohorte.stock} acciones y fondos, ${b.cohorte.cripto} cripto), sin Rezagados. Activos con vela cada día: ${rango}. Sube, baja o queda igual; un activo sin vela no cuenta.`;
-        } else nota.textContent = 'Todavía no hay balance del conjunto clasificado para este período: se calcula en el próximo cierre diario. Mientras tanto se muestra el conteo anterior de las 113 acciones.';
+        nota.textContent = 'Todavía no hay balance del conjunto clasificado para este período: se calcula en el próximo cierre diario. Mientras tanto se muestra el conteo anterior de las 113 acciones.';
         pie.append(nota);
       }
       return;
