@@ -289,12 +289,13 @@ a.tit-link:hover { text-decoration: none; }
   .superficie-pasos .superficie-flecha { min-width: 2.5rem; min-height: 2.5rem; }
   .superficie-pasos select { width: 7.5rem; }
 }
-.superficie-compacta { flex-wrap: nowrap; gap: .4rem; margin: .4rem 0; justify-content: flex-start; }
+.superficie-compacta { flex-wrap: nowrap; gap: .4rem .9rem; margin: .4rem 0; justify-content: flex-start; }
 .superficie-compacta label { flex: 0 0 auto !important; display: flex; gap: 0; }
 .superficie-compacta .superficie-pasos { gap: .2rem; }
 .superficie-compacta .superficie-pasos .superficie-flecha { min-width: 1.9rem; min-height: 1.9rem; padding: .1rem; line-height: 1; }
 .superficie-compacta .superficie-pasos select { min-width: 0; width: 7rem; max-width: 40vw; padding: .25rem .3rem; min-height: 1.9rem; }
-.superficie-compacta .pasos-tiempo .superficie-flecha { color: #7fb2e5; border-color: #3d5a78; font-size: 1.5rem; }
+.superficie-compacta .superficie-pasos .superficie-flecha { color: #7fb2e5; border-color: #3d5a78; font-size: 1.5rem; } /* los dos pares comparten el formato azul (audio 26-nov-2026) */
+.superficie-compacta .pasos-tiempo .superficie-flecha .flecha-girada { display: inline-block; transform: rotate(90deg); }
 .superficie-canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
 .superficie-canvas:active { cursor: grabbing; }
 .superficie-pasos button.hundido { background: var(--borde); color: var(--texto); box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
@@ -1113,7 +1114,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   if (!en) app.replaceChildren();
   const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/stock', textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
-  const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D' }); // en Mercado: nombre propuesto, pendiente del usuario (25-nov-2026)
+  const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D', ...(en ? { className: 'camp-tit' } : {}) }); // en Mercado: título breve dorado como el de las demás gráficas (26-nov-2026)
   if (en) ficha.classList.add('ficha-relieve');
   ficha.append(titulo);
   const reloj = montarRelojObservatorio(ficha);
@@ -2309,7 +2310,8 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
     const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
-  caja.replaceChildren(svg);
+  const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Campaña'; // título breve por gráfica (26-nov-2026, audio)
+  caja.replaceChildren(titE,svg);
   // Trazado de entrada: una sola vez, cuando la gráfica entra en pantalla (1 s, como el resto). Reelegir un activo no lo repite.
   if(!caja.dataset.trazado&&!movimientoReducido()&&typeof IntersectionObserver!=='undefined'){
     const lins=[...svg.querySelectorAll('.camp-lin')];
@@ -2331,7 +2333,8 @@ function graficaActivosCampana(caja,s,grupos,seleccion=null){
   for(const [id] of activos){const serie=s.activos[id]||[],seleccionado=id===seleccion;for(const [k,cls] of [[1,'camp-pot'],[2,'camp-con']])svg.append(svgEl('path',{d:trazoConHuecos(serie.map((p,i)=>p?[x(i),y(p[k])]:null)),class:`camp-curva ${cls}`,opacity:seleccionado?'.95':'.5','stroke-width':seleccionado?'3':'1.5','data-id':id}));}
   for(const i of [0,N-1]){const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':i?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);}
   const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia';
-  caja.replaceChildren(svg,ley);
+  const titA=document.createElement('h3');titA.className='camp-tit';titA.textContent='Potencia y constancia'; // título breve por gráfica (26-nov-2026, audio)
+  caja.replaceChildren(titA,svg,ley);
 }
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
@@ -2433,7 +2436,8 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
   }else{const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';d.textContent='Toca un punto para ver qué activo es.';cab.append(d);}
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){if(limpio&&g==='rezagados')continue;const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
-  envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley);
+  envol.append(svg,sel2);
+  if (limpio) { const titC = document.createElement('h3'); titC.className = 'camp-tit'; titC.textContent = 'El campo'; caja.replaceChildren(titC, cab, envol, ley); } else caja.replaceChildren(cab,envol,ley); // título breve por gráfica (26-nov-2026, audio)
 }
 // Espagueti de la variación diaria (audio del usuario, Slack 1795664817.359699): la gráfica de variación
 // de Mercado pasa de un solo activo a una curva por activo VIP de la campaña elegida, para verlas juntas.
@@ -2518,7 +2522,7 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
     const ti = svgEl('title'); ti.textContent = etiquetaActivo(id); hit.append(ti); g.append(hit);
   }
   svg.addEventListener('click', (ev) => { const id = ev.target.dataset && ev.target.dataset.id; if (id) alElegir(id); });
-  const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = `Variación diaria · ${N} días`;
+  const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = 'Variación diaria'; // sin el período: las fechas de inicio y fin ya se ven en la gráfica (26-nov-2026, audio)
   caja.replaceChildren(tit, svg);
 }
 // Triple play (audios del usuario 1795665496.261559 y 1795665712.382679): Mercado se pica en tres vistas por
@@ -2536,7 +2540,7 @@ function grupoMercadoDe(id) {
 function vistaBalanceGrupo(en, ndias, g2) {
   const e = INDICADORES.find((x) => x.codigo === 'iceberg-stock');
   const ficha = document.createElement('div'); ficha.className = 'ficha';
-  const h = document.createElement('h2'); h.textContent = 'Balance diario'; ficha.append(h);
+  const h = document.createElement('h2'); h.className = 'camp-tit'; h.textContent = 'Balance diario'; ficha.append(h);
   const caja = document.createElement('div'); caja.className = 'lienzo-caja';
   const estado = document.createElement('p'); estado.className = 'estado'; estado.textContent = 'Trayendo los registros…';
   const pie = document.createElement('div'); pie.className = 'pie-grafica';
@@ -2686,7 +2690,7 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
 function vistaFearGreedJunto(en, ndias = 90, solo = null) {
   const ANCHO_FG = () => (innerWidth < 600 ? 520 : LW), ALTO_FG = () => Math.round(ANCHO_FG() * 5 / 8); // proporción 8 de ancho por 5 de alto (audio Slack 1795697318.173719): antes 320 de alto, quedaba aplanada
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
-  const h = Object.assign(document.createElement('h2'), { textContent: 'Miedo y codicia' });
+  const h = Object.assign(document.createElement('h2'), { className: 'camp-tit', textContent: 'Miedo y codicia' }); // mismo estilo de título breve en cada gráfica (26-nov-2026, audio)
   ficha.append(h);
   const caja = Object.assign(document.createElement('div'), { className: 'lienzo-caja' });
   const estado = Object.assign(document.createElement('p'), { className: 'estado', textContent: 'Trayendo los registros…' });
@@ -2773,8 +2777,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
   pintarFicha();
-  // Relieve del día, con su aviso, queda abajo de todo en Mercado.
-  app.append(cSup,aviso2);
+  // Relieve del día entre las barras y la ficha del activo (26-nov-2026, audio): se recorren los activos en la 3D y la información con sus enlaces queda justo debajo.
 }
 async function ruta() {
   await rotulosListos;

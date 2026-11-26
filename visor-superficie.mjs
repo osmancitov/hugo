@@ -42,10 +42,12 @@ export function montarRelojObservatorio(contenedor, { ahora = Date.now, programa
 const crear = (tag, clase, texto) => Object.assign(document.createElement(tag), { className: clase || '', ...(texto === undefined ? {} : { textContent: texto }) });
 
 // Misma navegación para activos y lecturas, con repetición y ciclo opcionales.
-export function montarPasos(selector, nombre, mover, { repetir = false, ciclar = false, programar = setTimeout, cancelar = clearTimeout, simbolos = ['←', '→'], clase = '', ocultarSelector = false } = {}) {
+export function montarPasos(selector, nombre, mover, { repetir = false, ciclar = false, programar = setTimeout, cancelar = clearTimeout, simbolos = ['←', '→'], clase = '', ocultarSelector = false, vertical = false } = {}) {
   const grupo = crear('span', 'superficie-pasos' + (clase ? ' ' + clase : ''));
-  const anterior = crear('button', 'superficie-flecha', simbolos[0]);
-  const siguiente = crear('button', 'superficie-flecha', simbolos[1]);
+  const anterior = crear('button', 'superficie-flecha');
+  const siguiente = crear('button', 'superficie-flecha');
+  // vertical: el mismo símbolo girado 90° (arriba = anterior, abajo = siguiente), para que el eje del tiempo se distinga del eje del activo (audio 26-nov-2026)
+  for (const [b, s] of [[anterior, simbolos[0]], [siguiente, simbolos[1]]]) { if (vertical) b.append(crear('span', 'flecha-girada', s)); else b.textContent = s; }
   if (ocultarSelector) selector.hidden = true;
   for (const [boton, direccion] of [[anterior, 'anterior'], [siguiente, 'siguiente']]) {
     boton.type = 'button';
@@ -119,7 +121,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const elegirTodas = crear('option', '', 'Elegir'); elegirTodas.value = -1; elegirLectura.append(elegirTodas);
   barras.forEach((b, i) => { const o = crear('option', '', `${horaVista(b.generada)} UTC`); o.value = i; elegirLectura.append(o); });
   elegirLectura.selectedIndex = 0;
-  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i - 1, activo), { repetir: true, ciclar: true, ...(crestas ? { simbolos: ['‹', '›'], clase: 'pasos-tiempo', ocultarSelector: true } : {}) });
+  const pasosLectura = montarPasos(elegirLectura, 'Lectura', (i) => seleccionar(i - 1, activo), { repetir: true, ciclar: true, ...(crestas ? { simbolos: ['‹', '›'], clase: 'pasos-tiempo', ocultarSelector: true, vertical: true } : {}) });
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', crestas ? '' : 'Activo '), elegirActivo = crear('select'); elegirActivo.setAttribute('aria-label', 'Activo');
   const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
@@ -127,7 +129,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const ordenLista = codigos.map((c, i) => i); if (ids) ordenLista.sort((a, b) => (String(codigos[a]).startsWith('cripto:') ? 1 : 0) - (String(codigos[b]).startsWith('cripto:') ? 1 : 0) || a - b);
   ordenLista.forEach((i) => { const o = crear('option', '', crestas ? etq(codigos[i]) : nom(codigos[i])); o.value = i; elegirActivo.append(o); });
   elegirActivo.selectedIndex = 0;
-  const pasosActivo = montarPasos(elegirActivo, 'Activo', (p) => seleccionar(ultima, p < 1 ? -1 : ordenLista[p - 1]), { repetir: true, ciclar: true, ...(crestas ? { clase: 'pasos-activo' } : {}) });
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (p) => seleccionar(ultima, p < 1 ? -1 : ordenLista[p - 1]), { repetir: true, ciclar: true, ...(crestas ? { clase: 'pasos-activo', simbolos: ['‹', '›'], ocultarSelector: true } : {}) }); // Mercado: el selector del activo tampoco se ve (audio 26-nov-2026); quedan dos pares de flechas iguales
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
@@ -151,11 +153,12 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'Superficie de variación contra la primera lectura real del día. Los selectores permiten leer cada punto. Arrastra para girar sin tope de giro; Zoom acerca y los botones Oblicua, Cascada y Telar llevan a vistas fijas.');
   const detalle = crear('p', 'superficie-detalle'); detalle.setAttribute('aria-live', 'polite');
-  if (tituloArriba) detalle.classList.add('superficie-titulo'); // en la vista unificada el nombre y los datos del activo van como título, encima de la superficie (25-nov-2026)
-  caja.append(...(tituloArriba ? [controles, detalle, canvas] : [controles, canvas, detalle]));
+  // Mercado (26-nov-2026, audio): sin título del activo junto a la superficie; el punto elegido se identifica dentro de la gráfica
+  caja.append(...(tituloArriba ? [controles, canvas] : [controles, canvas, detalle]));
   contenedor.append(caja);
   function describir() {
-    if (tituloArriba) detalle.style.visibility = activo < 0 ? 'hidden' : ''; else detalle.hidden = activo < 0; // con el título arriba se conserva su alto: elegir un activo no empuja la superficie
+    if (tituloArriba) return; // Mercado: no hay elemento de título que actualizar (26-nov-2026)
+    detalle.hidden = activo < 0;
     if (activo < 0) { detalle.textContent = ''; return; }
     const p = puntos[ultima]?.[activo];
     const fecha = barras[ultima] ? `${horaVista(barras[ultima].generada)}` : 'sin lectura';
@@ -194,8 +197,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const linea = (a, b, color, grosor = 1) => { c.strokeStyle = color; c.lineWidth = grosor; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); };
     const texto = (p, s, color = '#9aa0ac', align = 'left') => { c.font = '11px Georgia'; c.fillStyle = color; c.textAlign = align; c.fillText(s, p.x, p.y); };
     // Plano cero y ejes. Los límites porcentuales son simétricos y no se recortan picos.
+    // Mercado (26-nov-2026, audio): sin planos de referencia; las curvas flotan y la medida se infiere eligiendo puntos.
+    if (!crestas) {
     for (const y of [-.7, -.35, 0, .35, .7]) linea(proyectar(-1, y, 0), proyectar(1, y, 0), '#2a2922');
     for (const x of [-1, -.5, 0, .5, 1]) linea(proyectar(x, -.7, 0), proyectar(x, .7, 0), '#2a2922');
+    }
     if (!crestas) {
     linea(proyectar(-1, -.7, -1), proyectar(-1, -.7, 1), '#786b4c');
     for (const z of [-1, -.5, 0, .5, 1]) {
@@ -206,23 +212,10 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const malla = puntos.map((fila, j) => fila.map((p, i) => p ? { ...proyectar(px(i), py(j), crestas ? zc(p.altura) : p.altura / maximo), p, i, j } : null));
     proyecciones = malla.flat().filter(Boolean);
     if (crestas) {
-      // Crestas (25-nov-2026, prototipo): una línea por activo, altura = recorrido desde la partida del día,
-      // pared de fondo con grilla y plano cero dorado. El color de cada tramo es sube/baja contra la lectura anterior;
+      // Crestas (25-nov-2026, prototipo): una línea por activo, altura = recorrido desde la partida del día.
+      // El color de cada tramo es sube/baja contra la lectura anterior;
       // gris si no hay cambio, es la primera lectura o hay un hueco de más de 1,5 h entre lecturas.
-      const lados = [{ d: -sin, f: (u, z) => proyectar(-1, u * .7, z) }, { d: sin, f: (u, z) => proyectar(1, u * .7, z) }, { d: -.7 * cos, f: (u, z) => proyectar(u, -.7, z) }, { d: .7 * cos, f: (u, z) => proyectar(u, .7, z) }];
-      const pared = lados.reduce((m, l) => l.d < m.d ? l : m);
-      c.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, z], k) => { const q = pared.f(u, z); k ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.closePath(); c.fillStyle = 'rgba(40,44,56,.35)'; c.fill();
-      // Marcas fijas cada 5 puntos porcentuales (0, ±5, ±10…) en la pared de atrás (pedido del usuario, 25-nov-2026, Slack 1795662524.835189), sin derivarlas del máximo; el alto de la pared sí sigue al máximo y las curvas no se recortan. Las de múltiplos de 10 van un poco más marcadas.
-      const salto = vHi - vLo >= 10 ? 5 : vHi - vLo >= 4 ? 2 : 1, marcas = []; for (let v = Math.ceil(vLo / salto) * salto; v <= vHi + 1e-9; v += salto) marcas.push(v);
-      for (const v of marcas) linea(pared.f(-1, zc(v)), pared.f(1, zc(v)), v === 0 ? ORO : (v % 10 === 0 ? '#5c5c52' : '#45453d'), v === 0 ? 1.6 : (v % 10 === 0 ? .9 : .6));
-      for (const u of [-1, -.5, 0, .5, 1]) linea(pared.f(u, -1), pared.f(u, 1), '#3a3a34', .7);
-      // El plano cero también se ve en el suelo (contorno dorado) y el eje porcentual va en el borde izquierdo de la pared.
-      const suelo = [[-1, -.7], [1, -.7], [1, .7], [-1, .7], [-1, -.7]].map(([x, y]) => proyectar(x, y, z0));
-      for (let k = 1; k < suelo.length; k++) linea(suelo[k - 1], suelo[k], '#8a7440', 1);
-      const izqU = pared.f(-1, 0).x <= pared.f(1, 0).x ? -1 : 1;
-      linea(pared.f(izqU, -1), pared.f(izqU, 1), '#786b4c');
-      const paso5 = Math.abs(pared.f(izqU, zc(vLo + salto)).y - pared.f(izqU, zc(vLo)).y); // rótulo en cada marca de 5 si caben (>= 12 px); si no, solo los múltiplos de 10
-      for (const v of marcas) { if (paso5 < 12 && v % 10 !== 0 && v % (salto * 2) !== 0) continue; const q = pared.f(izqU, zc(v)); texto({ x: q.x - 5, y: q.y + 4 }, pct(v), v === 0 ? ORO : '#9aa0ac', 'right'); }
+      // Sin planos de referencia ni regla de medir (26-nov-2026, audio): la gráfica flota en el espacio; la medida se infiere eligiendo puntos.
       // Telas entre cada curva y el cero: antes 0,09 por tela; ahora 0,03 y, con muchos activos, se reparte (1/n) para que la suma no tape el fondo al mirar de lado.
       const alfaTela = Math.min(.03, 1 / Math.max(1, codigos.length)).toFixed(4);
       const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
@@ -267,8 +260,9 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     if (!crestas) for (let i = 1; i < fila.length; i++) if (fila[i - 1] && fila[i]) linea(fila[i - 1], fila[i], barras.length === 1 ? GRIS : '#ded0a4', 1.2);
     if (barras.length === 1) for (const p of fila.filter(Boolean)) { c.fillStyle = GRIS; c.fillRect(p.x - 1, p.y - 1, 2, 2); }
     if (crestas && barras.length) {
-      const paso = Math.max(1, Math.ceil(barras.length / (ancho < 600 ? 5 : 8)));
-      for (let j = 0; j < barras.length; j += paso) { const q = proyectar(1.04, py(j), -1); texto(q, horaVista(barras[j].generada), '#d9cfae'); linea(proyectar(1, py(j), -1), proyectar(1.03, py(j), -1), '#786b4c'); }
+      // Una sola etiqueta de hora: la de la lectura elegida, en la zona del eje del tiempo, separada del punto (26-nov-2026, audio)
+      linea(proyectar(1, py(ultima), -1), proyectar(1.03, py(ultima), -1), '#786b4c');
+      texto(proyectar(1.04, py(ultima), -1), horaVista(barras[ultima].generada), '#d9cfae');
       texto({ x: ancho - 10, y: 26 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)} UTC`, '#bbb39e', 'right');
     } else if (ancho < 600 && barras.length) {
       texto({ x: ancho - 10, y: 43 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)}`, '#bbb39e', 'right');

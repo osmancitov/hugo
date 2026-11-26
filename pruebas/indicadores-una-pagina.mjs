@@ -4,12 +4,12 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
-test('la vista Mercado mantiene el orden de componentes y el Relieve del día al final', () => {
+test('la vista Mercado mantiene el orden de componentes, con el Relieve entre las barras y la ficha del activo (26-nov-2026)', () => {
   const f = unif();
-  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
+  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
-  assert.ok(f.indexOf('app.append(cSup,aviso2)') > orden.at(-1));
+  assert.ok(!f.includes('app.append(cSup,aviso2)'));
 });
 test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
   assert.match(html, /if\(hash==='#\/i\/iceberg-stock\/superficie'\)\{vistaSuperficie\(\);return;\}/);
@@ -24,8 +24,8 @@ test('el activo elegido se refleja entre superficie, Campaña y ficha', () => {
   assert.match(f, /puente\.elegirSup\(/); assert.match(f, /puente\.elegirCamp\(/); assert.match(f, /pintarFicha\(\)/);
   assert.match(sup, /elegirActivo: elegirDesdeFuera/);
 });
-test('en la vista unificada el nombre del activo va encima de la superficie; en la página de siempre queda debajo', () => {
-  assert.match(sup, /tituloArriba \? \[controles, detalle, canvas\] : \[controles, canvas, detalle\]/);
+test('en la vista unificada no hay título del activo junto a la superficie: el punto elegido se identifica dentro de la gráfica (26-nov-2026)', () => {
+  assert.match(sup, /tituloArriba \? \[controles, canvas\] : \[controles, canvas, detalle\]/);
 });
 
 test('la superficie elige acciones; la Campaña también puede elegir cripto (sin lectura horaria se avisa); botones sin opción previa', () => {
@@ -45,7 +45,20 @@ test('las crestas 3D solo se activan en la vista unificada; la superficie origin
   assert.match(sup, /crestas = false/);
   assert.equal(html.match(/crestas: Boolean\(en\)/g)?.length, 1);
   assert.match(sup, /if \(crestas\) \{/);
-  assert.match(sup, /pared\.f\(-1, zc\(v\)\)/); // eje vertical desde el mínimo hasta el máximo de los datos, no simétrico
+});
+test('el Relieve flota sin planos de referencia ni regla; una sola etiqueta de hora, la de la lectura elegida, en la zona del eje del tiempo (26-nov-2026)', () => {
+  assert.doesNotMatch(sup, /pared/);
+  assert.match(sup, /proyectar\(1\.04, py\(ultima\), -1\)/);
+});
+test('Mercado: dos pares de flechas azules (activo en horizontal, tiempo en vertical), sin selectores a la vista (26-nov-2026)', () => {
+  assert.match(sup, /crestas \? \{ clase: 'pasos-activo', simbolos: \['‹', '›'\], ocultarSelector: true \}/);
+  assert.match(sup, /crestas \? \{ simbolos: \['‹', '›'\], clase: 'pasos-tiempo', ocultarSelector: true, vertical: true \}/);
+  assert.match(html, /\.superficie-compacta \.superficie-pasos \.superficie-flecha \{ color: #7fb2e5/);
+  assert.match(html, /flecha-girada \{ display: inline-block; transform: rotate\(90deg\); \}/);
+});
+test('cada gráfica de Mercado tiene su título breve en el mismo estilo, sin repetir lo que ya muestran sus datos (26-nov-2026)', () => {
+  for (const t of ["'El campo'", "'Potencia y constancia'", "'Campaña'", "'Variación diaria'", "'Miedo y codicia'", "'Balance diario'", "'Relieve del día'"]) assert.ok(html.includes(t), t);
+  assert.ok(!html.includes('Variación diaria · ${N}'));
 });
 test('la escala de altura de las crestas es fija (no depende del máximo de la pantalla) y satura en ±15 %', async () => {
   const { colorAltura, ESCALA_ALTURA } = await import('../visor-superficie.mjs');
