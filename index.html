@@ -2715,7 +2715,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  cFicha.style.minHeight='640px'; // espacio estable de ficha para que la selección 3D no empuje el campo ni la gráfica
+  cFicha.style.minHeight=innerWidth<700?'520px':'640px'; // reserva el espacio de ficha para evitar salto al elegir en la 3D
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,grupo2:()=>grupo2,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
