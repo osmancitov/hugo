@@ -125,7 +125,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
   // Mercado (ids): en la lista, empresas y fondos primero y cripto después (pedido del usuario, 25-nov-2026, Slack 1795662652.152099); el valor sigue siendo el índice original, así que el terreno y la elección no cambian.
   const ordenLista = codigos.map((c, i) => i); if (ids) ordenLista.sort((a, b) => (String(codigos[a]).startsWith('cripto:') ? 1 : 0) - (String(codigos[b]).startsWith('cripto:') ? 1 : 0) || a - b);
-  ordenLista.forEach((i) => { const o = crear('option', '', nom(codigos[i])); o.value = i; elegirActivo.append(o); });
+  ordenLista.forEach((i) => { const o = crear('option', '', crestas ? etq(codigos[i]) : nom(codigos[i])); o.value = i; elegirActivo.append(o); });
   elegirActivo.selectedIndex = 0;
   const pasosActivo = montarPasos(elegirActivo, 'Activo', (p) => seleccionar(ultima, p < 1 ? -1 : ordenLista[p - 1]), { repetir: true, ciclar: true, ...(crestas ? { clase: 'pasos-activo' } : {}) });
   etiquetaActivo.append(pasosActivo.grupo);
