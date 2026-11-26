@@ -76,7 +76,7 @@ export function pagina(codigo, fuente, items, hoy = new Date()) {
   const vis = items.filter((n) => n.orden >= desde.toISOString());
   const filas = vis.map((n) => {
     const extra = (n.enlaces_extra || []).map((e) => ` · <a class="alt" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.etiqueta)} ↗</a>`).join('');
-    const nota = n.nota_fecha ? `<small class="nf">${esc(n.nota_fecha)}</small>` : '';
+    const nota = ''; // la nota de fecha (nota_fecha) queda en los datos, no se muestra (ruido, 26-nov-2026)
     return `<li><time datetime="${esc(n.orden)}">${esc(fechaVisible(n))}</time><a href="${esc(n.enlace)}" target="_blank" rel="noopener">${esc(n.titular)}</a><span>${esc(n.medio)} ↗${extra}</span>${nota}</li>`;
   }).join('\n');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#080604"><title>Noticias archivadas de ${esc(codigo)} · Observatorio Bursátil</title>
