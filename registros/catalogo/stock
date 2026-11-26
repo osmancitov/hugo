@@ -1,6 +1,6 @@
 {
  "mercado": "stock",
- "generado": "2026-11-24",
+ "generado": "2026-11-26",
  "activos": [
   {
    "codigo": "AAOI",
@@ -189,6 +189,13 @@
     "2608",
     "2609",
     "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "ARTY",
+   "nombre": "iShares Future AI & Tech ETF",
+   "meses": [
     "2611"
    ]
   },
@@ -655,6 +662,13 @@
    ]
   },
   {
+   "codigo": "FRHC",
+   "nombre": "Freedom Holding Corp",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
    "codigo": "FWDI",
    "nombre": "Forward Industries",
    "tipo": "empresa",
@@ -819,6 +833,13 @@
    ]
   },
   {
+   "codigo": "IBIT",
+   "nombre": "iShares Bitcoin Trust",
+   "meses": [
+    "2611"
+   ]
+  },
+  {
    "codigo": "IBM",
    "nombre": "IBM",
    "tipo": "empresa",
@@ -832,6 +853,13 @@
     "2608",
     "2609",
     "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "IGV",
+   "nombre": "iShares Expanded Tech-Software Sector ETF",
+   "meses": [
     "2611"
    ]
   },
@@ -1526,6 +1554,13 @@
     "2608",
     "2609",
     "2610",
+    "2611"
+   ]
+  },
+  {
+   "codigo": "SOXX",
+   "nombre": "iShares Semiconductor ETF",
+   "meses": [
     "2611"
    ]
   },
