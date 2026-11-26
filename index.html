@@ -193,6 +193,7 @@ canvas { display: block; width: 100%; height: auto; margin: 0 auto; }
 .barras-indicadores .barra-movil-graf span + span { border-left: 2px solid #000; box-sizing: border-box; }
 .barra-movil-nums { font-size: .85rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .barra-movil-periodo, .barra-movil-sec .barra-movil-nums { color: var(--tenue); font-size: .8rem; }
+.barra-movil-vacia .barra-movil-nums { font-style: italic; }
 .barra-movil-nota { color: var(--tenue); font-size: .8rem; font-style: italic; margin-top: .15rem; }
 .barra-movil-enlace { display: inline-block; font-size: .85rem; margin-top: .2rem; }
 button.boton {
@@ -303,7 +304,11 @@ a.tit-link:hover { text-decoration: none; }
 .camp-lista.solo-lectura .camp-fila { cursor: default; }
 .ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
 h2.tit-vip { font-size: 1.5rem; margin: 0; }
-.ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1rem; color: var(--tenue); font-weight: 400; }
+.ficha.ficha-balance { border-bottom: 0; padding-bottom: 0; }
+.ficha-unificada .ficha { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
+.ficha-unificada .ficha h2 { font-size: 2rem; border-bottom: 1px solid var(--oro); padding-bottom: .5rem; margin-bottom: .2rem; }
+.ficha-unificada { padding-bottom: 1.5rem; }
+.ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--tenue); font-weight: 400; }
 .superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
 .superficie-detalle.superficie-titulo { min-height: 2.7rem; padding: .25rem 0; }
 .ficha-relieve { padding-bottom: 0; margin-bottom: 0; }
@@ -906,6 +911,20 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
     }
     return sec;
   };
+  // Siempre las cuatro barras (26-nov-2026, audio): si la lectura aún no alcanza para una, su espacio queda reservado y marcado «sin datos» (barra vacía, sin valor inventado),
+  // para que explorar las primeras tomas del día no cambie el alto del bloque ni mueva lo de abajo.
+  const vacia = (tituloTxt, periodo) => {
+    const sec = document.createElement('div');
+    sec.className = 'barra-movil-sec barra-movil-vacia';
+    const t = Object.assign(document.createElement('div'), { className: 'barra-movil-titulo', textContent: tituloTxt });
+    const g = Object.assign(document.createElement('div'), { className: 'barra-movil-graf' });
+    const nums = Object.assign(document.createElement('div'), { className: 'barra-movil-nums', textContent: 'sin datos' });
+    const fechas = Object.assign(document.createElement('div'), { className: 'barra-movil-periodo', textContent: periodo });
+    const enlace = Object.assign(document.createElement('span'), { className: 'barra-movil-enlace', textContent: 'Ver tabla' });
+    enlace.style.visibility = 'hidden'; // reserva la línea del enlace
+    sec.append(t, g, nums, fechas, enlace);
+    return sec;
+  };
   // Orden de las barras (decisión del usuario, 25-nov-2026): primero 24 horas, luego la medida desde la referencia, al final la medida contra la lectura anterior.
   // Segunda barra: la posición en la ventana móvil de 24 h (cierre sobre apertura).
   // Sin ventana única: cada activo trae la suya y sus cierres difieren; se muestra el rango
@@ -930,7 +949,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       '#/i/iceberg-stock/barra-dia' + sufijo,
       periodoBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada, 'dia'), d.iguales
     ));
-  }
+  } else if (sinFuente) caja.append(vacia('Desde el inicio del día', 'aún sin lectura suficiente'));
   // Tercera barra: el movimiento del último precio de cada activo entre las dos últimas
   // consultas (decisión del usuario, 20-nov-2026: «quiero ver cuando la cuestión realmente
   // está aumentando, no cuando la referencia bajó»). El verde de la ventana es posición
@@ -951,7 +970,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       periodoBarra(m.comparadaCon, b.generada, 'horas'), m.iguales ?? 0
     );
     caja.append(sec);
-  }
+  } else if (sinFuente) caja.append(vacia('1 hora', 'aún sin lectura suficiente'));
   // Cuarta barra (Mercado, 25-nov-2026): movimiento contra la lectura de hace 15 minutos.
   const m15 = b.movimiento15;
   if (m15) {
@@ -962,7 +981,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       enlaceMov(m15),
       periodoBarra(m15.comparadaCon, b.generada, 'horas'), m15.iguales ?? 0
     ));
-  }
+  } else if (sinFuente) caja.append(vacia('15 min', 'aún sin lectura suficiente'));
   const fuente = document.createElement('div');
   fuente.className = 'barra-movil-nota';
   fuente.textContent = 'Fuente: Binance';
@@ -1114,7 +1133,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   if (!en) app.replaceChildren();
   const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/stock', textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
-  const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D', ...(en ? { className: 'camp-tit' } : {}) }); // en Mercado: título breve dorado como el de las demás gráficas (26-nov-2026)
+  const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D', ...(en ? { className: 'tit-vip' } : {}) }); // en Mercado: blanco y grande como «Activos VIP» y «Balance diario»; encabeza el resto de la página (26-nov-2026, audio)
   if (en) ficha.classList.add('ficha-relieve');
   ficha.append(titulo);
   const reloj = montarRelojObservatorio(ficha);
@@ -2110,11 +2129,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   h1.innerHTML = '<span class="cod"></span> <span class="nom"></span>';
   h1.querySelector('.cod').textContent = e.codigo;
   h1.querySelector('.nom').textContent = e.nombre;
-  if (en) { // prototipo: el tipo (empresa, fondo o cripto) va pegado al nombre
-    const t = clase === 'cripto' ? 'Cripto' : (e.tipo || 'Stock'), tt = /^fondo ETF/i.test(t) ? 'Fondo ETF' : t.charAt(0).toUpperCase() + t.slice(1);
-    h1.append(' ', Object.assign(document.createElement('span'), { className: 'tipo-activo', textContent: '· ' + tt }));
-    h1.querySelector('.tipo-activo').style.cssText = 'font-size:.55em;opacity:.85;white-space:nowrap';
-  }
+  // Mercado (26-nov-2026, audio): sin «· Empresa»; el tipo ya está elegido arriba.
   ficha.appendChild(h1);
   if (e.lectura) {
     const p = document.createElement('p');
@@ -2310,7 +2325,7 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
     const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
-  const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Campaña'; // título breve por gráfica (26-nov-2026, audio)
+  const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Evolución'; // título breve por gráfica (26-nov-2026, audio)
   caja.replaceChildren(titE,svg);
   // Trazado de entrada: una sola vez, cuando la gráfica entra en pantalla (1 s, como el resto). Reelegir un activo no lo repite.
   if(!caja.dataset.trazado&&!movimientoReducido()&&typeof IntersectionObserver!=='undefined'){
@@ -2437,7 +2452,7 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
   const ley=document.createElement('div');ley.className='camp-ley camp-cuad-ley';
   for(const [g,nombre] of GRUPOS_CAMPANA){if(limpio&&g==='rezagados')continue;const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   envol.append(svg,sel2);
-  if (limpio) { const titC = document.createElement('h3'); titC.className = 'camp-tit'; titC.textContent = 'El campo'; caja.replaceChildren(titC, cab, envol, ley); } else caja.replaceChildren(cab,envol,ley); // título breve por gráfica (26-nov-2026, audio)
+  if (limpio) { const titC = document.createElement('h3'); titC.className = 'camp-tit'; titC.textContent = 'Campaña'; caja.replaceChildren(titC, cab, envol, ley); } else caja.replaceChildren(cab,envol,ley); // título breve por gráfica (26-nov-2026, audio)
 }
 // Espagueti de la variación diaria (audio del usuario, Slack 1795664817.359699): la gráfica de variación
 // de Mercado pasa de un solo activo a una curva por activo VIP de la campaña elegida, para verlas juntas.
@@ -2539,8 +2554,9 @@ function grupoMercadoDe(id) {
 // trae el espagueti de variación. El cierre diario y sus archivos no se tocan.
 function vistaBalanceGrupo(en, ndias, g2) {
   const e = INDICADORES.find((x) => x.codigo === 'iceberg-stock');
-  const ficha = document.createElement('div'); ficha.className = 'ficha';
-  const h = document.createElement('h2'); h.className = 'camp-tit'; h.textContent = 'Balance diario'; ficha.append(h);
+  const ficha = document.createElement('div'); ficha.className = 'ficha ficha-balance';
+  const h = document.createElement('h2'); h.className = 'tit-vip'; h.textContent = 'Balance diario'; // blanco y grande como «Activos VIP» (26-nov-2026, audio)
+  ficha.append(h);
   const caja = document.createElement('div'); caja.className = 'lienzo-caja';
   const estado = document.createElement('p'); estado.className = 'estado'; estado.textContent = 'Trayendo los registros…';
   const pie = document.createElement('div'); pie.className = 'pie-grafica';
@@ -2718,13 +2734,13 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   const cReloj=sec('mercado-reloj');
   // Triple play: Miedo y codicia del mercado del grupo (Bolsa para empresas y fondos, Cripto para cripto),
   // luego la lista de los VIP del grupo y su balance; después barras, ficha, Campaña y, al final, Relieve del día.
-  vistaFearGreedJunto(sec(),dias,grupo2==='cripto'?'cripto':'bolsa');
+  // Miedo y codicia se retiró de Mercado (26-nov-2026, audio): es un ánimo general y aquí se analiza un candidato VIP. La función y sus registros se conservan.
   const cLista=sec('mercado-lista');
   const tituloVIP=Object.assign(document.createElement('h2'),{className:'tit-vip',textContent:'Activos VIP'});cLista.append(tituloVIP);
   vistaBalanceGrupo(sec(),dias,grupo2);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   // El reloj de entrada se inicializa una sola vez, fuera de esta vista.
-  const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec('mercado-camp');
+  const cSup=sec(),cCamp=sec('mercado-camp'),cFicha=sec('ficha-unificada'); // la ficha del activo va al final de la página (26-nov-2026, audio): aparece y desaparece sin empujar nada, y el relieve y Campaña quedan juntos
   // Reserva de altura: los bloques de arriba se rellenan después de pintar y empujaban el Relieve (737 px en móvil, medido 25-nov-2026). Se reserva la última altura
   // medida (o, la primera vez en pantalla angosta, una proporción medida del ancho) y se libera cuando el bloque ya cargó. Solo afecta a Mercado.
   {const wv=Math.round(app.clientWidth||innerWidth),clave='mercado-alturas-'+wv,guard=(()=>{try{return JSON.parse(sessionStorage.getItem(clave)||'null');}catch(e){return null;}})();
@@ -2732,7 +2748,6 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  {const anc=()=>cFicha.nextElementSibling;let t0=anc()?anc().getBoundingClientRect().top:0;const fija=()=>{const n=anc();if(!n)return;const t=n.getBoundingClientRect().top,d=t-t0;if(d&&cFicha.getBoundingClientRect().bottom<=0)window.scrollBy({top:d,behavior:'instant'});const n2=anc();t0=n2?n2.getBoundingClientRect().top:0;};addEventListener('scroll',()=>{const n=anc();if(n)t0=n.getBoundingClientRect().top;},{passive:true});new MutationObserver(fija).observe(cFicha,{childList:true,subtree:true,attributes:true});new MutationObserver(fija).observe(app,{childList:true,subtree:true});} // ancla por la posición en pantalla del bloque bajo la ficha: si la ficha o un bloque de arriba (barras de ventanas) crecen o se encogen por encima de lo que se ve, el scroll compensa y nada se mueve; al fondo de la página (scroll limitado) no se compensa dos veces
    // reserva solo lo que mide la ficha (101 px en móvil, 67 en ancho) para que elegir en la 3D no empuje nada ni deje huecos
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,grupo2:()=>grupo2,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.

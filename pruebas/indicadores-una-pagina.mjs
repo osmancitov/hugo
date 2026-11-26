@@ -4,9 +4,9 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
-test('la vista Mercado mantiene el orden de componentes, con el Relieve entre las barras y la ficha del activo (26-nov-2026)', () => {
+test('la vista Mercado mantiene el orden de componentes, con el Relieve tras las barras y la ficha del activo al final (26-nov-2026)', () => {
   const f = unif();
-  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
+  const orden = ["cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', "cCamp=sec('mercado-camp')", "cFicha=sec('ficha-unificada')"].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
   assert.ok(!f.includes('app.append(cSup,aviso2)'));
@@ -35,11 +35,11 @@ test('la superficie elige acciones; la Campaña también puede elegir cripto (si
   assert.match(html, /'Campaña'/);
 });
 
-test('la vista unificada muestra al principio Fear & Greed de Bolsa y de Cripto, identificados', () => {
+test('la función Fear & Greed conserva Bolsa y Cripto identificados, pero Mercado ya no la muestra', () => {
   const f = unif();
   const j = html.slice(html.indexOf('function vistaFearGreedJunto'), html.indexOf('function vistaUnificada'));
   assert.ok(j.includes("cargarIndicador('feargreedchart-bolsa')") && j.includes("cargarIndicador('alternative-fear-greed')") && j.includes("'Bolsa'") && j.includes("'Cripto'"));
-  assert.ok(f.indexOf('vistaFearGreedJunto(sec()') < f.indexOf('vistaBalanceGrupo(sec()'));
+  assert.ok(!f.includes('vistaFearGreedJunto(sec()')); // retirado de Mercado (26-nov-2026)
 });
 test('las crestas 3D solo se activan en la vista unificada; la superficie original conserva su dibujo', () => {
   assert.match(sup, /crestas = false/);
@@ -57,8 +57,13 @@ test('Mercado: dos pares de flechas azules (activo en horizontal, tiempo en vert
   assert.match(html, /flecha-girada \{ display: inline-block; transform: rotate\(90deg\); \}/);
 });
 test('cada gráfica de Mercado tiene su título breve en el mismo estilo, sin repetir lo que ya muestran sus datos (26-nov-2026)', () => {
-  for (const t of ["'El campo'", "'Potencia y constancia'", "'Campaña'", "'Variación diaria'", "'Miedo y codicia'", "'Balance diario'", "'Relieve del día'"]) assert.ok(html.includes(t), t);
+  for (const t of ["'Evolución'", "'Potencia y constancia'", "'Campaña'", "'Variación diaria'", "'Balance diario'", "'Relieve del día'"]) assert.ok(html.includes(t), t);
   assert.ok(!html.includes('Variación diaria · ${N}'));
+  assert.ok(!html.includes("'El campo'"));
+});
+test('la ficha del activo no repite el tipo y su línea amarilla queda bajo código y nombre (26-nov-2026)', () => {
+  assert.ok(!html.includes('tipo-activo'));
+  assert.match(html, /\.ficha-unificada \.ficha h2 \{ font-size: 2rem; border-bottom: 1px solid var\(--oro\)/);
 });
 test('la escala de altura de las crestas es fija (no depende del máximo de la pantalla) y satura en ±15 %', async () => {
   const { colorAltura, ESCALA_ALTURA } = await import('../visor-superficie.mjs');
@@ -76,4 +81,8 @@ test('Mercado: grupo VIP y período fijo de 30 días', () => {
   assert.ok(html.includes("'#/unificada/30d/'+g[0]"));
   assert.ok(html.includes("vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta)"));
   assert.ok(html.includes("if(muG&&muG[1]&&muG[1]!=='30')"));
+});
+test('Mercado siempre reserva las cuatro barras: la que falta queda marcada «sin datos» (26-nov-2026)', () => {
+  assert.ok(html.includes("barra-movil-vacia") && html.includes("'sin datos'"));
+  assert.equal(html.match(/else if \(sinFuente\) caja\.append\(vacia\(/g)?.length, 3);
 });
