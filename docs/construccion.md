@@ -66,7 +66,7 @@ Documentos de consulta del mismo repositorio: [datos.md](datos.md) (cada carpeta
 **La pregunta.** Cada día, sobre un mercado de cientos de activos: ¿cuáles vienen rindiendo mejor y con qué consistencia? Mirar el precio de hoy no basta. Un activo que subió 40 % un solo día y cayó el resto no es lo mismo que otro que sube un poco casi todos los días.
 
 **Qué mira.** Dos mercados que Binance ofrece contra USDT:
-- `stock`: acciones y fondos tokenizados (Binance los etiqueta "bStocks"). Son unos 113 a 118 en el catálogo; la lectura horaria, desde el 25-nov-2026, toma solo los VIP.
+- `stock`: acciones y fondos tokenizados (Binance los etiqueta "bStocks"). Son unos 113 a 118 en el catálogo; la lectura intradiaria toma solo los VIP.
 - `cripto`: criptomonedas. Son unas 400 y pico.
 
 **Qué produce.** A partir de una vela diaria por activo y por día:
@@ -144,6 +144,7 @@ Reglas, en orden:
 **Protecciones contra respuestas malas** (`registro-universo.mjs`, función `prepararUniverso`). Aquí se decide qué se descarga. Por qué importa: una lista parcial de Binance parecería que muchos activos "se dieron de baja".
 - Si la lista de un mercado viene vacía, o tiene más de 500 activos, se detiene.
 - Antes de darle de baja a un activo se confirma: si su par sigue en `TRADING`, error. Si no aparece en la lista, se pregunta por ese par solo y Binance debe contestar con el código `-1121` (símbolo inexistente). Si no, error.
+- Si el listado de Binance o la lista de productos trae menos de 100 símbolos o no es una lista, se detiene con «Catalogo vacio o incompleto» y no interpreta ninguna baja (`universo-binance.mjs`).
 - Si hay 10 o más activos previos y las bajas superan el mayor entre 3 y el 20 % de los previos, error ("baja masiva inesperada").
 - Un activo dado de baja no pierde su historial: sus velas siguen en su carpeta.
 - Qué activos conoce el sistema se guarda en un archivo local de trabajo (`universo.json`, en una carpeta temporal de la corrida). No sube al repositorio.
@@ -367,11 +368,11 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 - Cada lectura es una "barra móvil de 24 h": para cada VIP, la variación entre el precio de apertura de las últimas 24 horas y el último precio. Se pide a Binance `/api/v3/ticker?windowSize=1d`, con un máximo de 100 símbolos por petición, y el universo se parte en tandas estables. Esa ventana móvil **no es** el día cerrado del iceberg.
 - Regla de la barra: cierre >= apertura cuenta como "sube" (la misma regla verde/rojo que el iceberg).
 - Se elige el host leyendo `/api/v3/time` primero en `data-api.binance.vision` y, si no responde, en `api.binance.com`.
-- El instante real de consulta se guarda con la foto; **nunca se fuerza ni se arrastra un intervalo distinto**. La corrida empieza unos minutos antes (hasta 13 minutos de espera máxima) para absorber la demora de GitHub.
+- El instante real de consulta se guarda con la foto; **nunca se fuerza ni se arrastra un intervalo distinto**. La corrida empieza unos minutos antes del cuarto de hora y espera hasta 7 minutos (`ESPERA_MAX_MS`) para absorber la demora de GitHub; si ya va más tarde, toma la lectura de inmediato.
 - Si Binance responde 429 o 418, se guarda una **pausa** con el plazo de `Retry-After` y no se consulta hasta que pase (`intradia-fuente.mjs`). Si no hay plazo válido, se detiene hasta revisión.
 - Si no se puede publicar, la foto queda en una **cola** en la caché de Actions (`.estado-intradia`) y se reintenta; la cola se recombina contra `origin/main` antes de cada intento (hasta 5).
 - Formato: `registros/intradia/<mercado>/<AAAA-MM-DD>.json` = `{version: 1, dia, lecturas: [{generada, texto}]}`. El `texto` es la foto en líneas (`generada:`, `suben:`, `bajan:`, `dia_ref:` y por activo su último precio y cierre de referencia). `indice.json` = `{version, dias, ultima}`.
-- Commit: "Guardar lectura horaria de las HH:MM UTC desde Actions" (y "de cripto" para cripto). Pages **no** se republica por estos commits (`paths-ignore` en `pages.yml`).
+- Commit: "Guardar lectura horaria de las HH:MM UTC desde Actions" (y "de cripto" para cripto). Los commits de stock en `registros/intradia/stock/` no republican Pages (`paths-ignore` en `pages.yml`); `pages.yml` no ignora `registros/intradia/cripto/`, de modo que esa ruta sí lo dispara.
 
 **El registro canónico del día cerrado.** Al cerrar cada día se reconstruye desde cero, para los VIP, el día UTC completo: 97 puntos de 00:00 a 24:00 con velas de 15 minutos de Binance (`ritmo_min: 15`; un canónico sin `ritmo_min` es de 60 minutos y 25 puntos y sigue siendo válido). Se guarda aparte en `registros/intradia/<mercado>/canonico/`. Mercado usa el canónico para un día cerrado si existe, y el registro vivo si no.
 

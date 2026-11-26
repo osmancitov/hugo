@@ -31,7 +31,7 @@ Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión
 |---|---|---|---|---|
 | `velas-24h/<mercado>/<COD>/` | `<AAMM>_<COD>` | Velas diarias cerradas de Binance, un mes por archivo. Cada vela es el arreglo de 12 campos de Binance (apertura en ms, abrir, máx, mín, cerrar, volumen, cierre en ms, ...). | ingesta diaria (`velas`, `registro-motor`) | visor, iceberg, persistencia, campaña |
 | `catalogo/` | `stock`, `cripto` | `{mercado, generado, activos:[{codigo, nombre, tipo, cap, cap_sub, edgar, web, ficha, lectura, traduccion, meses}]}`. Lista quién participa en vistas y cálculos. | pasada de sincronización (`catalogo.mjs`), con la capa curada `app/modulos/activos-curados.json` | visor y cálculos |
-| `iceberg-<mercado>/` | `<AAMM>` | Serie diaria `[día, activos en alza, activos a la baja]`, del módulo viejo `iceberg.mjs` (no cuenta la vela plana). **Congelada desde el 20-nov-2026; el visor ya no la lee** (usa `pre-calculado/.../iceberg-90d`). | ninguno hoy | ninguno |
+| `iceberg-<mercado>/` | `<AAMM>` | Serie diaria `[día, activos en alza, activos a la baja]`, del módulo viejo `iceberg.mjs` (no cuenta la vela plana). **Serie congelada; el visor no la lee** (usa `pre-calculado/.../iceberg-90d`). | ninguno hoy | ninguno |
 | `alternative-fear-greed/` | `<AAMM>` | Miedo y codicia de cripto: `[día, valor 0-100]`. | pasada (`indicadores.mjs`) | visor |
 | `feargreedchart-bolsa/` | `<AAMM>` | Miedo y codicia de bolsa, mismo formato. | pasada | visor |
 | `ranking-24h/<mercado>/` | `<AAMMDD>_ranking-24h` | Ranking de la jornada: `[código, variación %]`, de la mayor caída a la mayor subida (orden creciente). | pasada (`pre-calculado.mjs`) | visor |
