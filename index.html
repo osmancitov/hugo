@@ -2684,7 +2684,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   const sec=(clase='')=>{const x=document.createElement('section');x.className=(clase+' mercado-bloque').trim();app.appendChild(x);return x;};
   const cReloj=sec('mercado-reloj'); // reloj UTC compacto arriba (25-nov-2026)
   // Triple play: Miedo y codicia del mercado del grupo (Bolsa para empresas y fondos, Cripto para cripto),
-  // luego la lista de los VIP del grupo y su balance; después barras, relieve, ficha y Campaña, todo del grupo.
+  // luego la lista de los VIP del grupo y su balance; después barras, ficha, Campaña y, al final, Relieve del día.
   vistaFearGreedJunto(sec(),dias,grupo2==='cripto'?'cripto':'bolsa');
   const cLista=sec('mercado-lista');
   vistaBalanceGrupo(sec(),dias,grupo2);
@@ -2740,6 +2740,8 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
   pintarFicha();
+  // Relieve del día, con su aviso, queda abajo de todo en Mercado.
+  app.append(cSup,aviso2);
 }
 async function ruta() {
   await rotulosListos;

@@ -4,11 +4,12 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
-test('vista unificada Triple play: Fear & Greed del grupo, lista, balance del grupo, barras, superficie, ficha y Campaña, en ese orden', () => {
+test('vista unificada Triple play: Fear & Greed del grupo, lista, balance del grupo, barras, ficha, Campaña y Relieve del día al final', () => {
   const f = unif();
-  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', 'cFicha=sec'].map((t) => f.indexOf(t));
+  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
+  assert.ok(f.indexOf('app.append(cSup,aviso2)') > orden.at(-1), 'Relieve del día se añade después de la Campaña');
 });
 test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
   assert.match(html, /if\(hash==='#\/i\/iceberg-stock\/superficie'\)\{vistaSuperficie\(\);return;\}/);
