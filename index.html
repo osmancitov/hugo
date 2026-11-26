@@ -289,6 +289,12 @@ a.tit-link:hover { text-decoration: none; }
   .superficie-pasos .superficie-flecha { min-width: 2.5rem; min-height: 2.5rem; }
   .superficie-pasos select { width: 7.5rem; }
 }
+.superficie-compacta { flex-wrap: nowrap; gap: .4rem; margin: .4rem 0; justify-content: flex-start; }
+.superficie-compacta label { flex: 0 0 auto !important; display: flex; gap: 0; }
+.superficie-compacta .superficie-pasos { gap: .2rem; }
+.superficie-compacta .superficie-pasos .superficie-flecha { min-width: 1.9rem; min-height: 1.9rem; padding: .1rem; line-height: 1; }
+.superficie-compacta .superficie-pasos select { min-width: 0; width: 7rem; max-width: 40vw; padding: .25rem .3rem; min-height: 1.9rem; }
+.superficie-compacta .pasos-tiempo .superficie-flecha { color: #7fb2e5; border-color: #3d5a78; font-size: 1.5rem; }
 .superficie-canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
 .superficie-canvas:active { cursor: grabbing; }
 .superficie-pasos button.hundido { background: var(--borde); color: var(--texto); box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
@@ -2619,22 +2625,22 @@ async function vistaCampana(n,inicial,en=null,puente=null){
 const COLOR_FG_BOLSA = '#0092BC', COLOR_FG_CRIPTO = '#F7931A'; // decisión del usuario (audio Slack 1795638015.713969): naranja Bitcoin (#F7931A) para cripto, azul Nasdaq (#0092BC) para bolsa; el azul de Constantes se revisa después
 function graficoFearGreedJunto(ctx, geo, hasta, S) {
   const { series, dias } = S, n = dias.length, k = hasta === undefined ? n : Math.min(hasta, n);
-  const V = Boolean(geo.vertical), w = V ? 700 : LW, alto = geo.alto;
-  const l = V ? 88 : ML, r = V ? 612 : LW - MR, t = V ? 116 : MT + 14, b = V ? alto - 110 : MT + (geo.ph ?? PH); // geo.ph: altura de trazado para el modo compacto del Triple play (sin recortar datos, solo la caja)
+  const V = Boolean(geo.vertical), w = V ? 700 : (geo.ancho || LW), alto = geo.alto, F = V ? 1 : Math.max(1, Math.min(2.4, LW / w * 0.62)); // F: en pantalla angosta el lienzo es más chico y los rótulos se agrandan para leerse (~11-12 px reales)
+  const l = V ? 88 : ML * (F > 1 ? F * 0.75 : 1), r = V ? 612 : w - MR * (F > 1 ? F * 0.6 : 1), t = V ? 116 : (F > 1 ? 54 * F * 0.6 : MT + 14), b = V ? alto - 110 : alto - (F > 1 ? 44 * F * 0.6 : MB + 0); // sin ph: la altura de trazado sale del alto del lienzo // geo.ph: altura de trazado para el modo compacto del Triple play (sin recortar datos, solo la caja)
   const P = (i, v) => V ? [l + (v / 100) * (r - l), t + (n === 1 ? 0 : (i / (n - 1)) * (b - t))] : [l + (n === 1 ? (r - l) / 2 : (i / (n - 1)) * (r - l)), b - (v / 100) * (b - t)];
   ctx.fillStyle = BG; ctx.fillRect(0, 0, w, alto);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14) + 'px ' + FUENTE; ctx.fillText('Fear and greed', w / 2, V ? 26 : 15);
+  ctx.fillStyle = '#e8eaed'; ctx.font = (V ? 26 : 14 * F) + 'px ' + FUENTE; ctx.fillText('Fear and greed', w / 2, V ? 26 : 15 * F);
   // leyenda: cada curva con su color
-  let lx = w / 2 - (V ? 150 : 150);
+  let lx = w / 2 - (V ? 150 : 150 * Math.min(F, 1.6) * (F > 1 ? 0.7 : 1));
   ctx.textAlign = 'left';
   for (const se of series) {
-    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3; ctx.beginPath(); ctx.moveTo(lx, V ? 66 : 38); ctx.lineTo(lx + (V ? 36 : 28), V ? 66 : 38); ctx.stroke();
-    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36), V ? 66 : 38);
-    lx += V ? 190 : 150;
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 4 : 3 * Math.min(F, 1.6); ctx.beginPath(); ctx.moveTo(lx, V ? 66 : 38 * F * (F > 1 ? .8 : 1)); ctx.lineTo(lx + (V ? 36 : 28 * F), V ? 66 : 38 * F * (F > 1 ? .8 : 1)); ctx.stroke();
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 12 * F) + 'px ' + FUENTE; ctx.fillText(se.nombre, lx + (V ? 46 : 36 * F), V ? 66 : 38 * F * (F > 1 ? .8 : 1));
+    lx += V ? 190 : 150 * F * (F > 1 ? .8 : 1);
   }
   // rejilla por fecha (1 y 15) y por valor
-  ctx.font = (V ? 20 : 10.5) + 'px ' + FUENTE;
+  ctx.font = (V ? 20 : 10.5 * F) + 'px ' + FUENTE;
   for (let i = 0; i < n; i++) {
     const f = new Date(dias[i]), dia = f.getUTCDate();
     if (dia !== 1 && dia !== 15) continue;
@@ -2643,37 +2649,37 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(V ? r : x2, V ? y2 : t); ctx.stroke();
     ctx.fillStyle = TICK;
     if (V) { ctx.textAlign = 'right'; ctx.fillText(String(dia).padStart(2, '0') + ' ' + MESES_ES[f.getUTCMonth()], l - 14, y); }
-    else { ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_EN[f.getUTCMonth()]}`, x, b + 8); ctx.textBaseline = 'middle'; }
+    else { ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(`${String(dia).padStart(2, '0')} ${MESES_EN[f.getUTCMonth()]}`, x, b + 8 * F); ctx.textBaseline = 'middle'; }
   }
   for (const v of [0, 25, 50, 75, 100]) {
     const [x, y] = P(0, v), [x2, y2] = P(n - 1, v);
     ctx.strokeStyle = v === 0 || v === 100 ? MARCO : GRID_D; ctx.lineWidth = v === 0 || v === 100 ? 1.5 : 1;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(V ? x : x2, V ? b : y2); ctx.stroke();
-    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 10.5) + 'px ' + FUENTE;
+    ctx.fillStyle = TICK; ctx.font = (V ? 20 : 10.5 * F) + 'px ' + FUENTE;
     if (V) { ctx.textAlign = 'center'; ctx.fillText(String(v), x, t - 23); ctx.fillText(String(v), x, b + 26); }
-    else { ctx.textAlign = 'right'; ctx.fillText(String(v), l - 8, y); }
+    else { ctx.textAlign = 'right'; ctx.fillText(String(v), l - 8 * F, y); }
   }
   ctx.strokeStyle = MARCO; ctx.lineWidth = 1.5; ctx.strokeRect(l, t, r - l, b - t);
   ctx.save(); ctx.beginPath(); ctx.rect(l, t, r - l, b - t); ctx.clip();
   for (const se of series) {
     const pts = se.puntos.filter((p) => p.i < k);
-    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 3 : 2; ctx.lineJoin = 'round';
+    ctx.strokeStyle = se.color; ctx.lineWidth = V ? 3 : 2 * Math.min(F, 1.6); ctx.lineJoin = 'round';
     ctx.beginPath(); pts.forEach((p, j) => { const [x, y] = P(p.i, p.v); if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
-    ctx.fillStyle = se.color; for (const p of pts) { const [x, y] = P(p.i, p.v); ctx.beginPath(); ctx.arc(x, y, V ? 3 : 2.2, 0, 7); ctx.fill(); }
+    ctx.fillStyle = se.color; for (const p of pts) { const [x, y] = P(p.i, p.v); ctx.beginPath(); ctx.arc(x, y, V ? 3 : 2.2 * Math.min(F, 1.6), 0, 7); ctx.fill(); }
   }
   ctx.restore();
   if (k >= n) for (const se of series) {
     const u = se.puntos[se.puntos.length - 1], [x, y] = P(u.i, u.v);
-    ctx.font = 'bold ' + (V ? 20 : 13) + 'px ' + FUENTE; ctx.fillStyle = se.color; ctx.textAlign = V ? (x > (l + r) / 2 ? 'right' : 'left') : 'right'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + (V ? 20 : 13 * F) + 'px ' + FUENTE; ctx.fillStyle = se.color; ctx.textAlign = V ? (x > (l + r) / 2 ? 'right' : 'left') : 'right'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 5; ctx.strokeStyle = BG;
-    const tx = V ? (x > (l + r) / 2 ? Math.min(x - 14, r - 8) : Math.max(x + 14, l + 8)) : Math.min(x - 10, r), ty = V ? Math.max(y - 22 + (se.nombre === 'Cripto' ? 22 : 0), t + 14) : Math.max(y - 14, t + 8);
+    const tx = V ? (x > (l + r) / 2 ? Math.min(x - 14, r - 8) : Math.max(x + 14, l + 8)) : Math.min(x - 10, r), ty = V ? Math.max(y - 22 + (se.nombre === 'Cripto' ? 22 : 0), t + 14) : Math.max(y - 14 * F, t + 8 * F);
     const txt = `${se.nombre} ${u.v}`; ctx.strokeText(txt, tx, ty); ctx.fillText(txt, tx, ty);
   }
-  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11) + 'px ' + FUENTE;
-  ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - (V ? 13 : 13));
+  ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11 * F) + 'px ' + FUENTE;
+  ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - 13 * (V ? 1 : F * (F > 1 ? .6 : 1)));
 }
 function vistaFearGreedJunto(en, ndias = 90, solo = null) {
-  const ALTO_FG = Math.round(LW * 5 / 8); // proporción 8 de ancho por 5 de alto (audio Slack 1795697318.173719): antes 320 de alto, quedaba aplanada
+  const ANCHO_FG = () => (innerWidth < 600 ? 520 : LW), ALTO_FG = () => Math.round(ANCHO_FG() * 5 / 8); // proporción 8 de ancho por 5 de alto (audio Slack 1795697318.173719): antes 320 de alto, quedaba aplanada
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const h = Object.assign(document.createElement('h2'), { textContent: 'Miedo y codicia' });
   ficha.append(h);
@@ -2692,7 +2698,7 @@ function vistaFearGreedJunto(en, ndias = 90, solo = null) {
     const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length && (!solo || x.nombre.toLowerCase() === solo)) };
     const uf = new Date(t1);
     // Triple play (audio 1795665712.382679): chiquito y horizontal como los fideos, también en pantalla vertical; un solo índice por vista.
-    graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: LW, alto: ALTO_FG }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: LW, alto: ALTO_FG, ph: ALTO_FG - MT - MB }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
+    graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: ANCHO_FG(), alto: ALTO_FG() }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: ANCHO_FG(), alto: ALTO_FG(), ph: undefined }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
 function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
