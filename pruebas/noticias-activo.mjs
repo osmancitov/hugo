@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ordenDe, normalizar, sumar, pagina, esGuruFocus } from '../app/generar-noticias.mjs';
+import { ordenDe, normalizar, sumar, pagina, esGuruFocus, inicioVentana } from '../app/generar-noticias.mjs';
 const hoy = new Date('2026-11-26T20:00:00Z');
 const f = (t, d, u) => ({ medio: 'M', 'fecha_local_utc-4': d, titular: t, url: u });
 test('la fecha sin año toma la más reciente no futura y pasa de UTC-4 a UTC', () => {
@@ -10,16 +10,40 @@ test('la fecha sin año toma la más reciente no futura y pasa de UTC-4 a UTC', 
   assert.equal(ordenDe('23 dic · 04:00', hoy), '2025-12-23T08:00:00.000Z');
   assert.equal(ordenDe('', hoy), null);
 });
+test('la ventana visible es la campaña de 30 días desde el 27-oct-2026 para hoy 26-nov', () => {
+  assert.equal(inicioVentana(hoy).toISOString(), '2026-10-27T04:00:00.000Z');
+});
 test('descarta filas inválidas y repetidas, conserva lo anterior y ordena de reciente a antigua', () => {
   const a = sumar([], [f('Uno', '24 nov · 10:00', 'https://e.com/a'), f('', '', 'http://investing.com/'), f('Dos', '25 nov · 10:00', 'https://e.com/b')], hoy);
   assert.deepEqual(a.todas.map((n) => n.titular), ['Dos', 'Uno']); assert.equal(a.descartadas.invalidas, 1);
   const b = sumar(a.todas, [f('Uno', '24 nov · 10:00', 'https://e.com/otro'), f('Dos otra vez', '25 nov · 10:00', 'https://e.com/b'), f('Tres', '26 nov · 09:00', 'https://e.com/c')], hoy);
   assert.deepEqual(b.todas.map((n) => n.titular), ['Tres', 'Dos', 'Uno']); assert.equal(b.agregadas, 1); assert.equal(b.descartadas.repetidas, 2);
 });
+test('las filas nuevas quedan con año inferido', () => {
+  const n = normalizar(f('X', '25 nov · 18:35', 'https://e.com/a'), hoy);
+  assert.equal(n.anio, 2026); assert.equal(n.anio_estado, 'inferido');
+});
 test('la página escapa el texto, rotula UTC-4 y enlaza al recuperado', () => {
   const n = normalizar(f('<b>x</b>', '25 nov · 18:35', 'https://e.com/a'), hoy);
-  const h = pagina('GME', 'Fuente: x.', [n]);
+  const h = pagina('GME', 'Fuente: x.', [n], hoy);
   assert.ok(h.includes('&lt;b&gt;x&lt;/b&gt;') && h.includes('href="https://e.com/a"') && h.includes('UTC-4'));
+});
+test('la página solo muestra la ventana de 30 días y conserva el resto en el archivo', () => {
+  const vieja = { fecha_texto: '28 ene · 04:00', orden: '2021-01-28T08:00:00.000Z', medio: 'BBC', titular: 'Vieja', enlace: 'https://e.com/v', lote: '', anio: 2021, anio_estado: 'verificado', anio_fuente: 'https://e.com/f' };
+  const nueva = normalizar(f('Nueva', '25 nov · 10:00', 'https://e.com/n'), hoy);
+  const h = pagina('GME', 'Fuente: x.', [vieja, nueva], hoy);
+  assert.ok(!h.includes('>Vieja<') && h.includes('>Nueva<'));
+  assert.ok(h.includes('1 noticias de la campaña de 30 días') && h.includes('guarda 2 en total'));
+});
+test('el año verificado se muestra y el inferido no; notas y enlaces extra aparecen', () => {
+  const verif = { fecha_texto: '24 nov · 10:00', orden: '2026-11-24T14:00:00.000Z', medio: 'M', titular: 'Con año', enlace: 'https://e.com/a', lote: '', anio: 2026, anio_estado: 'verificado', anio_fuente: 'https://e.com/f', enlaces_extra: [{ etiqueta: 'GuruFocus', url: 'https://www.gurufocus.com/news/1/x' }] };
+  const inf = normalizar(f('Sin año', '25 nov · 10:00', 'https://e.com/b'), hoy);
+  const ever = { fecha_texto: '8 nov · 11:52', orden: '2026-11-08T15:52:00.000Z', medio: 'CNN', titular: 'Cotización', enlace: 'https://e.com/c', lote: '', anio_estado: 'sin_fecha', nota_fecha: 'Página de cotización sin fecha de publicación.' };
+  const h = pagina('GME', 'Fuente: x.', [verif, inf, ever], hoy);
+  assert.ok(h.includes('24 nov 2026 · 10:00'));
+  assert.ok(h.includes('>25 nov · 10:00<') && !h.includes('25 nov 2026'));
+  assert.ok(!h.includes('>8 nov 2026') && h.includes('sin fecha de publicación'));
+  assert.ok(h.includes('GuruFocus ↗') && h.includes('https://www.gurufocus.com/news/1/x'));
 });
 test('GME: ficha enlazada y archivo sin duplicados ni filas inválidas', () => {
   assert.ok(/CON_NOTICIAS = new Set\(\['GME'\]\)/.test(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
