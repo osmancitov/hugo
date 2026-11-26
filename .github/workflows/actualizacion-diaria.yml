@@ -37,6 +37,8 @@ jobs:
         run: node .github/actualizacion-diaria.mjs
       - name: Registrar la carrera 90d de la Campaña
         run: node .github/campana-diaria.mjs
+      - name: Reconstruir el día cerrado de los VIP (registro horario canónico)
+        run: node .github/canonico-diario.mjs
       - name: Publicar el visor con los registros actualizados
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

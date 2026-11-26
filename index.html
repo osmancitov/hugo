@@ -344,6 +344,7 @@ import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifr
 import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=10'; // la versión en la URL fuerza la copia nueva en cada publicación (Pages cachea 10 min)
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=31';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
+import { leerCanonico } from './app/modulos/canonico-lectura.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
 
@@ -722,11 +723,26 @@ async function cargarDiaObservatorio(diaElegido = null, mercado = 'stock') {
 }
 // Mercado (prototipo): stock y cripto juntos. El texto de cada lectura lleva el de cripto de la misma hora tras un separador; los activos se identifican como 'stock:XXX' o 'cripto:XXX'.
 const SEP_CRIPTO='\n#CRIPTO\n';
+// Registro VIP canónico del día cerrado: 25 puntos (00:00 a 24:00 UTC) reconstruidos desde cero con velas de 1 h. Convive con
+// el registro vivo, que no se toca; si el canónico existe para un día cerrado, Mercado lo usa. Sin él, usa el vivo.
+async function cargarCanonico(mercado,dia){
+  try{
+    const r=await fetch(`${BASE_INTRADIA_WEB.replace(/\/stock$/,'/'+mercado)}/canonico/${dia}.json?t=${Math.floor(Date.now()/60000)}`);
+    if(!r.ok)return null;
+    return leerCanonico(await r.text(),dia);
+  }catch(e){return null;}
+}
 async function cargarDiaMixto(diaElegido=null){
-  const s=await cargarDiaObservatorio(diaElegido,'stock');
-  if(!s)return null;
+  const s0=await cargarDiaObservatorio(diaElegido,'stock');
+  if(!s0)return null;
+  let s=s0;
+  const cerrado=diaUTC(Date.parse(s0.indice.ultima))>s0.dia.dia;
+  let cs=null,cc=null;
+  if(cerrado){[cs,cc]=await Promise.all([cargarCanonico('stock',s0.dia.dia),cargarCanonico('cripto',s0.dia.dia)]);}
+  if(cs)s={...s0,dia:{...s0.dia,lecturas:cs.lecturas}};
   let c=null;
-  try{c=await cargarDiaObservatorio(s.dia.dia,'cripto');}catch(e){c=null;} // el registro de cripto empieza el 26-nov UTC: antes no hay lecturas que unir
+  if(cc)c={dia:{dia:s0.dia.dia,lecturas:cc.lecturas}};
+  else try{c=await cargarDiaObservatorio(s.dia.dia,'cripto');}catch(e){c=null;} // el registro de cripto empieza el 26-nov UTC: antes no hay lecturas que unir
   const hora=(ms)=>Math.floor(Date.parse(ms)/3600000);
   const porHora=new Map((c&&c.dia.dia===s.dia.dia?c.dia.lecturas:[]).map(l=>[hora(l.generada),l]));
   const lecturas=s.dia.lecturas.map(l=>{const k=porHora.get(hora(l.generada));return k?{...l,texto:l.texto+SEP_CRIPTO+k.texto}:l;});
@@ -1166,7 +1182,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       manual=true;
       const este = ++turno;
       try {
-        const r = await cargarDiaObservatorio(elegirDia.value, mercado);
+        const r = en ? await cargarDiaMixto(elegirDia.value) : await cargarDiaObservatorio(elegirDia.value, mercado);
         if (este === turno && cuerpo.isConnected) await mostrar(r);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };
