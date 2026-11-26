@@ -80,3 +80,16 @@ test('ritmo VIP: 15 min, cubeta por intervalo (00:00 y 00:14 comparten, 00:15 no
   assert.notEqual(cubeta(t), cubeta(t + 15 * 60000));
   assert.equal(cubeta(t + 60 * 60000) - cubeta(t), 3600000);
 });
+
+test('referencia fija: si la primera lectura del día trae un dia_cierre distinto de su último, la lectura siguiente lo conserva y se guarda', async () => {
+  const raiz = arbol(), universo = admitidosCripto(raiz);
+  const opts = { dirVelas: path.join(raiz, 'velas-24h'), host: 'https://x', universo, simbolo: simboloCripto, sufijo: 'USDT' };
+  const r1 = await generarBarra({ ...opts, fetchImpl: falso([]), ahora: Date.parse('2026-11-26T00:00:03Z') });
+  const texto1 = r1.texto.replace(/^BNB dia_cierre: .*$/m, 'BNB dia_cierre: 1.00000000');
+  assert.notEqual(texto1, r1.texto);
+  guardarLecturaCripto(raiz, texto1);
+  const est = estadoDiaCripto(raiz, Date.parse('2026-11-26T02:00:03Z'));
+  const r2 = await generarBarra({ ...opts, fetchImpl: falso([]), anteriorTexto: est.anteriorTexto, inicialTexto: est.inicialTexto, ahora: Date.parse('2026-11-26T02:00:03Z') });
+  assert.match(r2.texto, /^BNB dia_cierre: 1\.00000000$/m);
+  assert.equal(guardarLecturaCripto(raiz, r2.texto).lecturas, 2);
+});

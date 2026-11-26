@@ -370,8 +370,12 @@ export async function generarBarra({ dirVelas, fetchImpl = fetch, host = HOST_PO
   const base = inicial?.activos ?? new Map(barra.activos.map(a=>[a.codigo,a]));
   let suben=0,bajan=0,iguales=0,sinDato=0;
   for(const a of barra.activos){
-    const ref=base.get(a.codigo),n=Number(ref?.ultimo);
-    a.diaCierreTexto=ref?.ultimoTexto??(ref?String(ref.ultimo):'sin dato');
+    const ref=base.get(a.codigo);
+    // Referencia fija del día: la que ya trae la primera lectura (su dia_cierre); si no la trae, su último precio.
+    // Así una lectura nueva nunca contradice la referencia guardada del día (el guard de referencia fija sigue intacto).
+    const fija=inicial?.activos.get(a.codigo)?.dia_cierre,usaFija=fija!==undefined&&fija!=='sin dato'&&Number(fija)>0;
+    const n=usaFija?Number(fija):Number(ref?.ultimo);
+    a.diaCierreTexto=usaFija?fija:(ref?.ultimoTexto??(ref?String(ref.ultimo):'sin dato'));
     if(!Number.isFinite(n)||n<=0)sinDato++;else if(a.ultimo>=n){suben++;if(a.ultimo===n)iguales++;}else bajan++;
   }
   sinDato+=universo.length-barra.activos.length;
