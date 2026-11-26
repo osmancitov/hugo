@@ -3,6 +3,7 @@
 Referencia técnica de consulta. El porqué de cada pieza está en [construccion.md](construccion.md).
 
 ## Términos de este documento
+
 - **UTC**: hora universal, sin cambio de horario; cada día de velas va de las 00:00 a las 23:59 UTC.
 - **Vela diaria**: los precios de apertura, máximo, mínimo y cierre de un activo en un día, más su volumen.
 - **Binance**: plataforma que lista activos y publica sus precios.
@@ -37,7 +38,7 @@ Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión
 | `pre-calculado/<mercado>/lectura-dia-90d/` | `<AAMMDD>_lectura-dia` | Lectura del día sobre la ventana de 90 días: por activo, dirección, acumulado, variación, razón G/P, límites. | pasada | visor |
 | `pre-calculado/<mercado>/iceberg-90d/` | `<inicio>-<fin>_iceberg` | Iceberg de la ventana de 90 días, `[día, alza, baja]`. | pasada | visor |
 | `inventario/` | `stock`, `cripto`, `README.md` | Días registrados acumulados por activo desde el piso. Formato y reglas en su README. | pasada (`inventario-dias.mjs`) | uso de admisión por días |
-| `intradia/<mercado>/canonico/` | `<AAAA-MM-DD>.json` | Registro VIP canónico del día cerrado: `{version, canonico: true, dia, mercado, lecturas:[{generada, texto}]}` con 25 puntos (00:00 a 24:00 UTC), reconstruidos al cierre con velas de 1 h de Binance para la unión VIP 30/60/90. Convive con los vivos, que no se tocan. | cierre diario (`canonico-diario.mjs`) | visor (Mercado, día cerrado) |
+| `intradia/<mercado>/canonico/` | `<AAAA-MM-DD>.json` | Registro VIP canónico del día cerrado (97 puntos de 15 min con `ritmo_min: 15`; sin ese campo, 25 puntos de 60 min): `{version, canonico: true, dia, mercado, lecturas:[{generada, texto}]}` con 25 puntos (00:00 a 24:00 UTC), reconstruidos al cierre con velas de 1 h de Binance para la unión VIP 30/60/90. Convive con los vivos, que no se tocan. | cierre diario (`canonico-diario.mjs`) | visor (Mercado, día cerrado) |
 | `intradia/stock/` | `<AAAA-MM-DD>.json`, `indice.json` | Fotos de la barra móvil de 24 h: `{version, dia, lecturas:[{generada, texto, ...}]}`. `indice.json`: `{version, dias, ultima}`. | lectura horaria | visor (barra móvil) |
 | `categorias/` | `<inicio>-<fin>_carrera-<N>d` | Un día de la Campaña para la ventana N (90, 60 o 30). Contiene `carrera` (encabezado con reglas), `clasificados` (puesto, `promedio`, `potencia`, `constancia`, `grupo`) y `no_clasificados`. Un archivo por día cerrado; no se reescribe si existe. | `.github/campana-diaria.mjs` (`campana-carrera.mjs`) | visor |
 | `categorias/` | `serie_carrera-<N>d` | La serie compacta de las ventanas: fechas y, por activo, `[puesto, potencia, constancia]` por día (`null` si no clasificó). No lleva el campo `grupo`. | `campana-serie.mjs` | visor |

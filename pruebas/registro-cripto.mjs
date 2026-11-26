@@ -1,4 +1,5 @@
 // Registro horario de cripto: universo de admitidos, símbolos, lecturas válidas y aislamiento de stocks.
+import { cubeta, RITMO_MIN } from '../app/modulos/ritmo-vip.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -40,7 +41,7 @@ test('lectura de cripto: símbolo USDT, BNB conserva su código y la lectura val
   const reg = guardarLecturaCripto(raiz, r.texto);
   assert.equal(reg.lecturas, 1);
   const est = estadoDiaCripto(raiz, ahora);
-  assert.ok(est.horas.has(Math.floor(ahora / 3600000)));
+  assert.ok(est.horas.has(cubeta(ahora)));
   const ahora2 = Date.parse('2026-11-26T01:00:02Z');
   const r2 = await generarBarra({ dirVelas: path.join(raiz, 'velas-24h'), fetchImpl: falso([]), host: 'https://x', universo, simbolo: simboloCripto, sufijo: 'USDT', anteriorTexto: est.anteriorTexto, inicialTexto: est.inicialTexto, ahora: ahora2 });
   assert.equal(guardarLecturaCripto(raiz, r2.texto).lecturas, 2);
@@ -70,4 +71,12 @@ test('las tablas de las barras de cripto enlazan a cripto y leen su registro', (
   assert.ok(html.includes("&mercado=cripto"));
   assert.ok(html.includes("'#/a/' + mercadoTabla + '/'"));
   assert.ok(html.includes('cargarDiaObservatorio(parametros.get(\'dia\')??diaUTC(ms), mercadoTabla)'));
+});
+
+test('ritmo VIP: 15 min, cubeta por intervalo (00:00 y 00:14 comparten, 00:15 no)', () => {
+  assert.equal(RITMO_MIN, 15);
+  const t = Date.parse('2026-11-26T00:00:00Z');
+  assert.equal(cubeta(t), cubeta(t + 14 * 60000));
+  assert.notEqual(cubeta(t), cubeta(t + 15 * 60000));
+  assert.equal(cubeta(t + 60 * 60000) - cubeta(t), 3600000);
 });

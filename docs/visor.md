@@ -58,7 +58,7 @@ Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛�
 - **Iceberg**: por día cerrado UTC, activos en alza y a la baja (barra verde y roja). Ventana de 90 días en `registros/pre-calculado/<mercado>/iceberg-90d` (la vela plana cuenta como verde). Las carpetas `registros/iceberg-*` son una serie vieja congelada.
 - **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). Ya no tiene vista propia (retirada el 25-nov-2026); el cálculo lo usa la Campaña. Los enlaces antiguos `#/…/persistencia` llevan a Variación.
 - **Variación y rachas**: razón G/P y racha por activo desde sus velas diarias (`visor-rachas-datos.mjs`).
-- **Día cerrado en Mercado**: si el día visible ya cerró, el Relieve y las barras usan el registro VIP canónico (25 puntos, 00:00 a 24:00 UTC) cuando existe; si no, el vivo. Mercado no tiene selector de día, así que el canónico se ve en la ventana 00:00-01:00 UTC (hasta la segunda lectura del día nuevo). Cada período (30, 60, 90) muestra solo sus VIP (44, 30, 82 al cierre del 25-nov) aunque el canónico guarde la unión de 105.
+- **Día cerrado en Mercado**: si el día visible ya cerró, el Relieve y las barras usan el registro VIP canónico (97 puntos de 15 min, o 25 si es heredado, 00:00 a 24:00 UTC) cuando existe; si no, el vivo. Mercado no tiene selector de día, así que el canónico se ve en la ventana 00:00-01:00 UTC (hasta la segunda lectura del día nuevo). Cada período (30, 60, 90) muestra solo sus VIP (44, 30, 82 al cierre del 25-nov) aunque el canónico guarde la unión de 105.
 - **Barra móvil de 24 h**: foto intradiaria de los stocks (ventana móvil de 24 h, no el día cerrado del iceberg).
 - **Capitalización**: lista por capitalización con fichas curadas.
 
@@ -82,3 +82,5 @@ Ruta `#/unificada` (solo los botones 30/60/90) y `#/unificada/(30|60|90)d[/merca
 
 ## Pruebas
 `node --test pruebas/*.mjs` (unos 75 s, sin red). A 25-nov-2026 pasan las 399. Cualquier prueba roja es nueva.
+
+- **Barras de Mercado**: 24 h, día, 1 hora y 15 min. «1 hora» y «15 min» solo aparecen si hay una lectura real de ese intervalo (unos 60 y 15 min antes); la de 15 min no tiene «Ver tabla».

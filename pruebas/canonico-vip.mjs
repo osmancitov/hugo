@@ -31,7 +31,8 @@ const klines = ({ sin = {}, antes = () => {} } = {}) => async (url) => {
   const u = new URL(url), sym = u.searchParams.get('symbol'), a = Number(u.searchParams.get('startTime')), b = Number(u.searchParams.get('endTime'));
   const base = 1 + (sym.charCodeAt(0) % 7);
   const filas = [];
-  for (let t = a; t <= b; t += H) if (!(sin[sym] || []).includes(t)) filas.push([t, String(base + ((t / H) % 24) / 100), '0', '0', '0', '0']);
+  const paso = u.searchParams.get('interval') === '15m' ? H / 4 : H;
+  for (let t = a; t <= b; t += paso) if (!(sin[sym] || []).includes(t)) filas.push([t, String(base + ((t / H) % 24) / 100), '0', '0', '0', '0']);
   return { ok: true, json: async () => filas };
 };
 
@@ -41,29 +42,29 @@ test('vipAdmitidos: unión 30/60/90, sin Rezagados, solo vigentes, por mercado',
   assert.deepEqual(v.cripto, ['XXX', 'YYY']);
 });
 
-test('construirCanonico: 25 puntos 00:00 a 24:00 UTC, todos los VIP, validable', async () => {
+test('construirCanonico: 97 puntos (15 min) 00:00 a 24:00 UTC, todos los VIP, validable', async () => {
   const raiz = fixture();
   const r = await construirCanonico({ raiz, mercado: 'stock', dia: DIA, vip: ['AAA', 'BBB'], ahora: AHORA, fetchImpl: klines() });
-  assert.equal(r.estado, 'creado'); assert.equal(r.puntos, 25); assert.deepEqual(r.sinVela, []);
+  assert.equal(r.estado, 'creado'); assert.equal(r.puntos, 97); assert.deepEqual(r.sinVela, []);
   const j = leerCanonico(fs.readFileSync(rutaCanonico(raiz, 'stock', DIA), 'utf8'), DIA);
-  assert.equal(j.lecturas.length, 25);
+  assert.equal(j.lecturas.length, 97); assert.equal(j.ritmo_min, 15);
   assert.equal(j.lecturas[0].generada, '2026-11-25T00:00:00.000Z');
-  assert.equal(j.lecturas[24].generada, '2026-11-26T00:00:00.000Z');
+  assert.equal(j.lecturas[96].generada, '2026-11-26T00:00:00.000Z');
   for (const l of j.lecturas) assert.equal(leerBarra(l.texto).activos.size, 2);
-  const b = leerBarra(j.lecturas[3].texto);
+  const b = leerBarra(j.lecturas[12].texto);
   assert.equal(b.activos.get('AAA').dia_cierre, '1.5'); // cierre de la vela diaria del día anterior
-  assert.match(j.lecturas[3].texto, /^# Origen tecnico: registro canonico/m); // trazabilidad técnica
+  assert.match(j.lecturas[12].texto, /^# Origen tecnico: registro canonico/m); // trazabilidad técnica
 });
 
 test('un activo sin vela queda sin dato en esa hora: no se rellena ni se inventa', async () => {
   const raiz = fixture();
   const sym = 'AAABUSDT';
   const r = await construirCanonico({ raiz, mercado: 'stock', dia: DIA, vip: ['AAA', 'BBB'], ahora: AHORA, fetchImpl: klines({ sin: { [sym]: [T0 + 5 * H] } }) });
-  assert.deepEqual(r.sinVela, ['AAA@05']);
+  assert.deepEqual(r.sinVela, ['AAA@05:00']);
   const j = JSON.parse(fs.readFileSync(rutaCanonico(raiz, 'stock', DIA), 'utf8'));
-  assert.equal(leerBarra(j.lecturas[5].texto).activos.has('AAA'), false);
-  assert.equal(leerBarra(j.lecturas[5].texto).activos.has('BBB'), true);
-  assert.equal(leerBarra(j.lecturas[6].texto).activos.has('AAA'), true);
+  assert.equal(leerBarra(j.lecturas[20].texto).activos.has('AAA'), false);
+  assert.equal(leerBarra(j.lecturas[20].texto).activos.has('BBB'), true);
+  assert.equal(leerBarra(j.lecturas[21].texto).activos.has('AAA'), true);
 });
 
 test('no se construye un día que no ha cerrado, ni con VIP vacío; un canónico existente no se reescribe', async () => {
@@ -136,4 +137,12 @@ test('lectura horaria de stocks: con universo VIP solo lee los VIP, y compara co
   assert.deepEqual(pedidos.map((s) => s.replace('BUSDT', '')).sort(), ['AAA']);
   assert.equal(leerBarra(vip.texto).activos.size, 1);
   assert.equal(leerBarra(ancha.texto).activos.size, 3);
+});
+
+test('canónico heredado de 25 puntos (ritmo ausente = 60) sigue siendo válido y ritmo 60 reconstruye 25', async () => {
+  const raiz = fixture();
+  const r = await construirCanonico({ raiz, mercado: 'stock', dia: DIA, vip: ['AAA', 'BBB'], ahora: AHORA, fetchImpl: klines(), ritmo: 60 });
+  assert.equal(r.puntos, 25);
+  const j = leerCanonico(fs.readFileSync(rutaCanonico(raiz, 'stock', DIA), 'utf8'), DIA);
+  assert.equal(j.lecturas.length, 25);
 });

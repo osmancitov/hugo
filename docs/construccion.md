@@ -358,6 +358,8 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 
 ## 9. La foto horaria de los stocks
 
+**Cambio del 25-nov-2026 (ritmo de 15 min).** Los VIP se leen cada 15 minutos; el flujo lo despacha el reloj de Google (a hito menos unos 5 min; el reloj se cambia después de publicar el código y hasta entonces sigue despachando cada hora) y la lectura guarda su instante real, agrupado por intervalo de 15 min (`cubeta`). Ya no hay espera de la Debian: si el repositorio ya cubre el intervalo, la corrida no toma otra. El canónico del cierre tiene 97 puntos con velas de 15 min (`ritmo_min: 15`); sin `ritmo_min` vale 60 (25 puntos).
+
 **Cambio del 25-nov-2026 (relanzamiento VIP).** La lectura horaria ya no cubre todo el catálogo de stocks: lee solo los VIP de la unión de las campañas 30, 60 y 90 del último cierre (hoy 27 stocks y 78 cripto). Las diarias de todos los activos siguen completas. Al cerrar cada día se reconstruye desde cero, para esos VIP, un registro canónico de 25 puntos (00:00 a 24:00 UTC) con velas de 1 h de Binance, guardado aparte en `registros/intradia/<mercado>/canonico/`. El visor (Mercado) usa el canónico para un día cerrado si existe. Los vivos y los días anteriores quedan intactos. El resto de esta sección describe la toma horaria; donde habla de 113 stocks, vale para los días anteriores al cambio.
 
 **El problema.** El iceberg y las velas son diarios. Se quiere ver también cómo se mueve el mercado de stocks **durante** el día.

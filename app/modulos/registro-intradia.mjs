@@ -1,3 +1,4 @@
+import { cubeta } from './ritmo-vip.mjs';
 import {recuperarCiclo} from './intradia-reintentos.mjs';
 // Registro intradiario: conserva lecturas reales, sin reconstruir precios anteriores.
 // Reutiliza la toma de barra y el transporte de sincronizar-registros. Sin frecuencia por defecto.
@@ -120,8 +121,8 @@ export function guardarLectura(raiz, texto) {
   encolar(raiz, archivos);
   return { rel, lecturas: leerDia(registro, validar).lecturas.length, rutas: Object.keys(archivos) };
 }
-// Prioridad por hora frente a otro escritor (la corrida horaria de Actions o la
-// propia Debian): si el remoto ya cubre la hora de una lectura pendiente, la
+// Prioridad por intervalo de 15 min (ritmo-vip.mjs) frente a otro escritor (la corrida horaria de Actions o la
+// propia Debian): si el remoto ya cubre el intervalo de una lectura pendiente, la
 // pendiente se retira en vez de sumar otra del mismo tramo. Manda la primera
 // publicación de cada hora; la lectura retirada no se pierde sin más: solo se
 // descarta cuando el remoto ya publicó esa hora.
@@ -129,9 +130,9 @@ export function combinarIntradiaPorHora(rel, local, remoto) {
   if (rel === RUTA_INDICE || rel === RUTA_BARRA || remoto === null) return { texto: combinarArchivoIntradia(rel, local, remoto), retiradas: [] };
   const diaLocal = validarArchivoIntradia(rel, local);
   const diaRemoto = validarArchivoIntradia(rel, remoto);
-  const horas = new Set(diaRemoto.lecturas.map((l) => Math.floor(Date.parse(l.generada) / 3600000)));
-  const restantes = diaLocal.lecturas.filter((l) => !horas.has(Math.floor(Date.parse(l.generada) / 3600000)));
-  const retiradas = diaLocal.lecturas.filter((l) => horas.has(Math.floor(Date.parse(l.generada) / 3600000))).map((l) => l.generada);
+  const horas = new Set(diaRemoto.lecturas.map((l) => cubeta(Date.parse(l.generada))));
+  const restantes = diaLocal.lecturas.filter((l) => !horas.has(cubeta(Date.parse(l.generada))));
+  const retiradas = diaLocal.lecturas.filter((l) => horas.has(cubeta(Date.parse(l.generada)))).map((l) => l.generada);
   if (!restantes.length) return { texto: remoto, retiradas };
   const texto = unirDias(JSON.stringify({ version: 1, dia: diaLocal.dia, lecturas: restantes }) + '\n', remoto, validar);
   return { texto, retiradas };

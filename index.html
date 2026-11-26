@@ -345,6 +345,7 @@ import { montarRachas, ventanaDelDia } from './visor-rachas.mjs?v=10'; // la ver
 import { montarSuperficie, montarRelojObservatorio } from './visor-superficie.mjs?v=31';
 import { leerDia, leerIndice, rutaDia, diaUTC, contextualizarBarra, lecturasConFrontera, diaVisible } from './app/modulos/intradia-datos.mjs';
 import { leerCanonico } from './app/modulos/canonico-lectura.mjs';
+import { cubeta } from './app/modulos/ritmo-vip.mjs';
 /* Visualizador de Hugo: árbol de activos + radiografía trazada en vivo desde los registros. */
 'use strict';
 
@@ -743,7 +744,7 @@ async function cargarDiaMixto(diaElegido=null){
   let c=null;
   if(cc)c={dia:{dia:s0.dia.dia,lecturas:cc.lecturas}};
   else try{c=await cargarDiaObservatorio(s.dia.dia,'cripto');}catch(e){c=null;} // el registro de cripto empieza el 26-nov UTC: antes no hay lecturas que unir
-  const hora=(ms)=>Math.floor(Date.parse(ms)/3600000);
+  const hora=(ms)=>cubeta(Date.parse(ms)); // intervalo de 15 min: stock y cripto se emparejan por la lectura del mismo intervalo (los días horarios antiguos siguen emparejando por su hora)
   const porHora=new Map((c&&c.dia.dia===s.dia.dia?c.dia.lecturas:[]).map(l=>[hora(l.generada),l]));
   const lecturas=s.dia.lecturas.map(l=>{const k=porHora.get(hora(l.generada));return k?{...l,texto:l.texto+SEP_CRIPTO+k.texto}:l;});
   const conCripto=lecturas.filter(l=>l.texto.includes(SEP_CRIPTO)).length;
@@ -759,9 +760,17 @@ function parsearFusion(t,ids=null){
   for(const a of activos.values()){if(a.aperturaN===null||a.aperturaN===undefined)continue;if(a.ultimoN>=a.aperturaN)suben++;else bajan++;}
   return {...bs,activos,suben,bajan,conDato:suben+bajan,consultados:activos.size};
 }
+// Barras de movimiento de Mercado: «1 hora» compara contra la lectura de hace 60 min reales (tolerancia 8 min) y «15 min» contra la de hace 15 (tolerancia 6 min). Nunca se compara una hora contra una lectura de 15 min: si no existe la lectura de ese intervalo, la barra no se dibuja.
 function barraMixta(registro,i,ids){
-  const f=registro.dia.lecturas;
-  return contextualizarBarra(parsearFusion(f[i].texto,ids),parsearFusion(f[0].texto,ids),parsearFusion(f[Math.max(0,i-1)].texto,ids));
+  const f=registro.dia.lecturas,g=(j)=>Date.parse(f[j].generada);
+  const hace=(ms,tol)=>{let mejor=null;for(let j=0;j<i;j++){const e=Math.abs(g(i)-g(j)-ms);if(e<=tol&&(mejor===null||e<Math.abs(g(i)-g(mejor)-ms)))mejor=j;}return mejor;};
+  const act=parsearFusion(f[i].texto,ids),ini=parsearFusion(f[0].texto,ids);
+  const con=(j)=>contextualizarBarra(act,ini,j===null?ini:parsearFusion(f[j].texto,ids));
+  const j60=hace(3600000,8*60000),j15=hace(900000,6*60000);
+  const b=con(j60);
+  if(j60===null)delete b.movimiento;else if(j60!==i-1&&b.movimiento)b.movimiento.sinTabla=true;
+  if(j15!==null){const m15=con(j15).movimiento;if(m15){m15.sinTabla=j15!==i-1;b.movimiento15=m15;}}
+  return b;
 }
 function barraContextual(registro,i=registro.dia.lecturas.length-1){
   const fotos=registro.dia.lecturas;
@@ -924,10 +933,21 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       duracionBarra(m.comparadaCon, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       m.suben, m.bajan, m.suben + m.bajan,
       '',
-      '#/i/iceberg-stock/barra-movimiento' + sufijo,
+      m.sinTabla ? '' : '#/i/iceberg-stock/barra-movimiento' + sufijo,
       periodoBarra(m.comparadaCon, b.generada, 'horas'), m.iguales ?? 0
     );
     caja.append(sec);
+  }
+  // Cuarta barra (Mercado, 25-nov-2026): movimiento contra la lectura de hace 15 minutos.
+  const m15 = b.movimiento15;
+  if (m15) {
+    caja.append(seccion(
+      duracionBarra(m15.comparadaCon, b.generada),
+      m15.suben, m15.bajan, m15.suben + m15.bajan,
+      '',
+      m15.sinTabla ? '' : '#/i/iceberg-stock/barra-movimiento' + sufijo,
+      periodoBarra(m15.comparadaCon, b.generada, 'horas'), m15.iguales ?? 0
+    ));
   }
   const fuente = document.createElement('div');
   fuente.className = 'barra-movil-nota';

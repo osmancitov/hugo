@@ -1,4 +1,4 @@
-# Lectura horaria de Hugo mientras la Debian está apagada. Gratuita en este
+# Lectura de los VIP cada 15 min (antes horaria). Gratuita en este
 # repositorio público (ejecutores estándar). GitHub puede demorar o descartar
 # una corrida programada; la lectura guarda su hora real, nunca una forzada.
 # Frontera con la Debian: si el repositorio ya trae una lectura de esa hora, la

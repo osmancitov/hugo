@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { generarBarra, leerBarra } from '../app/modulos/barra-movil.mjs';
 import { vipAdmitidos } from '../app/modulos/completar-vip.mjs';
+import { RITMO_MIN, ESPERA_MAX_MS as ESPERA_RITMO_MS, cubeta } from '../app/modulos/ritmo-vip.mjs';
 import { fetchConPausa } from '../app/modulos/intradia-fuente.mjs';
 import { guardarLectura, siguienteHitoUTC, intervaloIntradia, ultimaLecturaLocal, primeraLecturaDelDia } from '../app/modulos/registro-intradia.mjs';
 import { RUTA_INDICE, diaUTC } from '../app/modulos/intradia-datos.mjs';
@@ -23,12 +24,7 @@ import { RAIZ, COLA, COLA_JSON, salida, dormir, traerRemoto, ultimaRemota, mater
 const DIR_VELAS = path.join(RAIZ, 'velas-24h');
 // La corrida empieza unos minutos antes del minuto 00; si GitHub la retrasa más de
 // esta espera, toma la lectura ya, con su hora real, en vez de esperar a la siguiente.
-const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || 13 * 60000);
-// Tras tomar la foto, margen para que la Debian publique la suya si está viva. Cubre
-// su ciclo completo de reintentos de captura (5 intentos separados 1 minuto) más la
-// publicación: si al cumplirse el margen el remoto ya tiene lectura de esta hora, la
-// nuestra se descarta antes de publicar.
-const ESPERA_PUBLICACION_MS = Number(process.env.HUGO_HORARIA_ESPERA_PUBLICACION_MS || 8 * 60000);
+const ESPERA_MAX_MS = Number(process.env.HUGO_HORARIA_ESPERA_MAX_MS || ESPERA_RITMO_MS);
 const ahora = () => Date.now();
 // Corrida manual autorizada (workflow_dispatch con intrahora): toma la lectura ya,
 // con su instante real, aunque la hora ya esté cubierta, y la publica sin esperas.
@@ -56,15 +52,15 @@ const fetchPausa = fetchConPausa(RAIZ, fetch, ahora);
 
 // ¿De qué hora es la lectura de esta corrida? La próxima hora en punto si falta
 // poco; si la corrida llegó tarde (GitHub la demoró), la hora que ya empezó.
-const inicioHora = Math.floor(ahora() / 3600000) * 3600000;
-const siguiente = siguienteHitoUTC(ahora(), intervaloIntradia('60'));
+const inicioHora = cubeta(ahora());
+const siguiente = siguienteHitoUTC(ahora(), intervaloIntradia(String(RITMO_MIN)));
 const objetivo = siguiente - ahora() <= ESPERA_MAX_MS ? siguiente : inicioHora;
-console.log(`Hora objetivo de la lectura: ${new Date(objetivo).toISOString()}.`);
+console.log(`Intervalo objetivo de la lectura: ${new Date(objetivo).toISOString()}.`);
 
 await traerRemoto();
 const ultima = await ultimaRemota();
 if (!MANUAL && ultima !== null && ultima >= objetivo) {
-  console.log(`El remoto ya tiene lectura de esta hora (${new Date(ultima).toISOString()}); no duplico.`);
+  console.log(`El remoto ya tiene lectura de este intervalo (${new Date(ultima).toISOString()}); no duplico.`);
   const p = await materializarCola();
   salida('cambios', Object.keys(p).length ? 'si' : 'no');
   process.exit(0);
@@ -74,7 +70,7 @@ const espera = objetivo - ahora();
 if (!MANUAL && espera > 0) { console.log(`Esperando al minuto 00 (${Math.ceil(espera / 1000)} s).`); await dormir(espera); }
 await traerRemoto();
 if (!MANUAL && (await ultimaRemota()) >= objetivo) {
-  console.log('La Debian publicó la lectura de esta hora mientras esperaba; no tomo otra.');
+  console.log('El remoto ya cubre este intervalo; no tomo otra.');
   const p = await materializarCola();
   salida('cambios', Object.keys(p).length ? 'si' : 'no');
   process.exit(0);
@@ -93,18 +89,6 @@ const r = await generarBarra({ dirVelas: DIR_VELAS, host, fetchImpl: fetchPausa,
 const reg = guardarLectura(RAIZ, r.texto);
 console.log(`Lectura ${new Date(r.generada).toISOString()} guardada localmente: ${reg.lecturas} lectura(s) del día.`);
 
-// Margen de cortesía: cubre el ciclo de reintentos de la Debian. Si ella estaba
-// viva y publica la lectura de esta hora, la suya queda; la mía se retira de la
-// cola y del disco, y no se publica.
-if (!MANUAL) await dormir(ESPERA_PUBLICACION_MS);
-await traerRemoto();
-if (!MANUAL && (await ultimaRemota()) >= objetivo) {
-  guardarEstado(COLA_JSON, { version: 1, archivos: respaldoCola });
-  for (const [rel, texto] of Object.entries(respaldoCola)) guardarEstado(path.join(RAIZ, rel.slice('registros/'.length)), JSON.parse(texto));
-  console.log('La Debian publicó la lectura de esta hora en el margen; descarto la mía y conservo la cola anterior combinada.');
-  salida('cambios', Object.keys(respaldoCola).length ? 'si' : 'no');
-  process.exit(0);
-}
 console.log(`Rutas por publicar: ${reg.rutas.join(', ')}.`);
 salida('cambios', 'si');
 salida('generada', new Date(r.generada).toISOString());

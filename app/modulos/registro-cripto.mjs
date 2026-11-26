@@ -3,6 +3,7 @@
 // Rezagados en alguna de las tres campañas (30, 60 o 90 días), cada activo una sola vez.
 // Es independiente del registro de stocks: carpeta, índice, script y commit propios.
 // No toca el cálculo de las cuatro categorías: solo lee lo que el cierre diario ya publicó.
+import { cubeta } from './ritmo-vip.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { leerBarra } from './barra-movil.mjs';
@@ -44,7 +45,7 @@ export function estadoDiaCripto(raiz, ahora) {
   const t = leerOpc(path.join(raiz, '..', rutaDiaCripto(diaUTC(ahora))));
   if (t === null) return { inicialTexto: null, anteriorTexto: null, horas: new Set() };
   const l = leerDia(t, validar).lecturas;
-  return { inicialTexto: l[0].texto, anteriorTexto: l.at(-1).texto, horas: new Set(l.map((x) => Math.floor(Date.parse(x.generada) / 3600000))) };
+  return { inicialTexto: l[0].texto, anteriorTexto: l.at(-1).texto, horas: new Set(l.map((x) => cubeta(Date.parse(x.generada)))) };
 }
 
 // Escribe la lectura en el árbol de trabajo (día e índice). No usa la cola de stocks.
