@@ -5,6 +5,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>{
  assert.match(html,/contraerNavegacion\(navMerc,mercado\|\|esBusqueda\|\|esCampana\|\|Boolean\(mu\),'#\/',Boolean\(mu\)\)/);
  assert.match(html,/document\.querySelector\('\.mercados'\)\.after\(relojEntrada\)/);
+  assert.match(html,/relojEntrada\.hidden=true;/); // la hora solo aparece en la página del grupo
  assert.match(html,/contraerNavegacion\(navCat,/);
  assert.match(html,/contraerNavegacion\(navV,ranking,/);
  assert.match(html,/a.hidden=!a.classList.contains\('actual'\)&&!\(conservarMercado&&a.id==='mercado-unificada'\)/);

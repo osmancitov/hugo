@@ -295,6 +295,7 @@ a.tit-link:hover { text-decoration: none; }
 .superficie-pasos button:disabled { opacity: .35; cursor: default; }
 .camp-lista.solo-lectura .camp-fila { cursor: default; }
 .ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.mercado-lista > h2.tit-vip { font-size: 1.5rem; margin: 0 0 .6rem; }
 .ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1rem; color: var(--tenue); font-weight: 400; }
 .superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
 .superficie-detalle.superficie-titulo { min-height: 5.3rem; } /* reserva el alto del título: al elegir un activo no empuja la superficie ni lo de abajo */
@@ -2703,7 +2704,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   // luego la lista de los VIP del grupo y su balance; después barras, ficha, Campaña y, al final, Relieve del día.
   vistaFearGreedJunto(sec(),dias,grupo2==='cripto'?'cripto':'bolsa');
   const cLista=sec('mercado-lista');
-  const tituloVIP=Object.assign(document.createElement('h2'),{className:'camp-tit',textContent:'Activos VIP'});cLista.append(tituloVIP);
+  const tituloVIP=Object.assign(document.createElement('h2'),{className:'tit-vip',textContent:'Activos VIP'});cLista.append(tituloVIP);
   vistaBalanceGrupo(sec(),dias,grupo2);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   // El reloj de entrada se inicializa una sola vez, fuera de esta vista.
@@ -2797,7 +2798,7 @@ async function ruta() {
   document.getElementById('mercado-unificada').href='#/unificada/30d';
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.querySelector('.mercados').after(relojEntrada);
-  relojEntrada.hidden=!(hash==='#/'||(mu&&elegirGrupo));
+  relojEntrada.hidden=true; // la hora solo aparece en la página del grupo (reloj de la vista), no en la portada ni en la elección
   if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],'#/unificada/30d/'+g[0],!elegirGrupo&&g[0]===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
