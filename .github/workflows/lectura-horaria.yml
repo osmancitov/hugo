@@ -1,7 +1,7 @@
 # Lectura de los VIP cada 15 min (antes horaria). Gratuita en este
 # repositorio público (ejecutores estándar). GitHub puede demorar o descartar
 # una corrida programada; la lectura guarda su hora real, nunca una forzada.
-# Frontera con la Debian: si el repositorio ya trae una lectura de esa hora, la
+# Si el repositorio ya trae una lectura de ese intervalo, la
 # corrida no toma otra. El reloj de Google despacha este workflow; no hay cron
 # de respaldo en GitHub. Se conserva siempre el instante real de la lectura.
 name: Lectura horaria de Hugo
@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Node 22, como la Debian
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -92,7 +92,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Node 22, como la Debian
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -121,8 +121,7 @@ export function guardarLectura(raiz, texto) {
   encolar(raiz, archivos);
   return { rel, lecturas: leerDia(registro, validar).lecturas.length, rutas: Object.keys(archivos) };
 }
-// Prioridad por intervalo de 15 min (ritmo-vip.mjs) frente a otro escritor (la corrida horaria de Actions o la
-// propia Debian): si el remoto ya cubre el intervalo de una lectura pendiente, la
+// Prioridad por intervalo de 15 min (ritmo-vip.mjs) frente a otro escritor (la corrida horaria de Actions): si el remoto ya cubre el intervalo de una lectura pendiente, la
 // pendiente se retira en vez de sumar otra del mismo tramo. Manda la primera
 // publicación de cada hora; la lectura retirada no se pierde sin más: solo se
 // descarta cuando el remoto ya publicó esa hora.

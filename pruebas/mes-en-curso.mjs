@@ -66,7 +66,7 @@ test('piso ago-2026: un 2607 solo en GitHub NO baja',async()=>{
  assert.equal(r.local,null,'no se descarga nada anterior al piso');
  assert.equal(r.resultado.error,undefined);
 });
-test('piso ago-2026: un 2607 solo en la Debian NO sube',async()=>{
+test('piso ago-2026: un 2607 solo en la copia local NO sube',async()=>{
  const r=await syncCaso({local:jul(31),rel:'registros/velas-24h/stock/AA/2607_AA'});
  assert.equal(r.remoto,null,'no se republica nada anterior al piso');
  assert.deepEqual(r.local,jul(31),'el archivo local queda donde estaba');

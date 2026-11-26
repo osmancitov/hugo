@@ -1,15 +1,14 @@
-// Lectura horaria de Hugo desde GitHub Actions, pensada para las horas en que la
-// Debian está apagada. Reutiliza la toma de barra y el registro intradiario del
-// bot, sin Slack. Reglas del dueño:
+// Lectura horaria de Hugo desde GitHub Actions, que despacha el reloj de Google.
+// Reutiliza la toma de barra y el registro intradiario, sin Slack. Reglas del dueño:
 // - La lectura se toma a la hora en punto UTC (minuto 00) y guarda su instante
 //   real de consulta; nunca se fuerza ni se arrastra una hora distinta.
-// - La Debian manda cuando está viva: una hora que ella ya publicó nunca se
+// - Lo publicado manda: un intervalo que el remoto ya cubre nunca se
 //   duplica. La corrida empieza unos minutos antes del minuto 00 para absorber
 //   la demora de GitHub; si aun así llega tarde, toma la lectura en cuanto
 //   puede, con su hora real.
 // - La cola se publica recombinada contra origin/main antes de cada intento, con
 //   prioridad del remoto por hora (cola-horaria.mjs): nunca se pisa ni se
-//   duplica lo que la Debian subió mientras una corrida no lograba publicar.
+//   duplica lo que otra corrida publicó mientras esta no lograba publicar.
 import fs from 'node:fs';
 import path from 'node:path';
 import { generarBarra, leerBarra } from '../app/modulos/barra-movil.mjs';
@@ -78,7 +77,7 @@ if (!MANUAL && (await ultimaRemota()) >= objetivo) {
 
 const respaldoCola = await materializarCola();
 // La foto se toma en cuanto llega el minuto 00; el instante guardado es el real.
-// Misma toma que el ticker de la Debian: referencia diaria de la primera lectura
+// Referencia diaria de la primera lectura
 // del día y comparación con la lectura previa, sin depender de la ingesta diaria.
 const instante = ahora();
 const inicialTexto = primeraLecturaDelDia(RAIZ, instante);

@@ -1,11 +1,9 @@
 # Puesta al día diaria de Hugo desde la nube (decisión del usuario, 22-nov-2026): Google Apps
 # Script disparará el flujo entre las 00:05 y las 00:14 UTC, con la vela diaria ya cerrada y
-# asentada. Mientras la diaria automática de la Debian siga activa, el flujo SOLO corre a mano
-# (workflow_dispatch): sin cron, para no duplicar responsabilidad. Al confirmar la pausa de la
-# Debian se activa el disparo de Google y, si se quiere, un cron de respaldo. Idempotente por
-# contenido: si el día ya está cubierto y publicado, la corrida no cambia nada; si hubo noches
-# sin correr, la corrida alcanza los días pendientes. El aviso de inicio y resultado llega a
-# Slack por la app oficial de GitHub. No toca la lectura horaria ni el bot de la Debian.
+# asentada. El flujo corre solo por despacho (workflow_dispatch), sin cron propio: lo despacha el
+# reloj de Google. Idempotente por contenido: si el día ya está cubierto y publicado, la corrida
+# no cambia nada; si hubo noches sin correr, la corrida alcanza los días pendientes. El aviso de
+# inicio y resultado llega a Slack por la app oficial de GitHub. No toca la lectura horaria.
 name: Puesta al día diaria de Hugo
 
 on:
@@ -26,7 +24,7 @@ jobs:
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
-      - name: Node 22, como la Debian
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22

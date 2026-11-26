@@ -1,6 +1,5 @@
 // Puesta al día diaria de Hugo desde GitHub Actions (decisión del usuario, 22-nov-2026):
-// la misma vía de «pon al día» con origen diaria y después la pasada de publicación,
-// sin la Debian. Disparo: Google Apps Script entre las 00:05 y las 00:14 UTC (margen
+// la misma vía de «pon al día» con origen diaria y después la pasada de publicación. Disparo: Google Apps Script entre las 00:05 y las 00:14 UTC (margen
 // del cierre diario); el cron del flujo queda de respaldo hacia la 01:00 UTC.
 // Idempotente por contenido: un día ya cubierto y publicado no produce cambios ni
 // commit, y una corrida alcanza los días pendientes si hubo noches sin correr.
@@ -19,7 +18,7 @@ import { ultimoCerrado } from '../app/modulos/ciclo-diario.mjs';
 import { fetchDatosPublicos } from './datos-publicos-diaria.mjs';
 import { eventoDiaria } from './contexto-diaria.mjs';
 
-// Solo esta entrada de Actions cambia de host público. La Debian queda intacta.
+// Solo esta entrada de Actions cambia de host público.
 globalThis.fetch = fetchDatosPublicos(globalThis.fetch);
 
 const DIA = 86400000;

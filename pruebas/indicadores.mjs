@@ -244,7 +244,7 @@ test('sincronizacion: si una fuente falla, la otra serie y las velas siguen y el
   } finally { b.restaurar(); }
 });
 
-test('sincronizacion: un archivo de indicador nuevo en el remoto baja a la Debian', async () => {
+test('sincronizacion: un archivo de indicador nuevo en el remoto baja a la copia local', async () => {
   const root = tmp('hugo-ind-baja-');
   const velas = path.join(root, 'velas');
   const puntos = [[Date.UTC(2026, 10, 17), 30], [Date.UTC(2026, 10, 18), 12]];

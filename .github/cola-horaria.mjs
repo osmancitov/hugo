@@ -1,9 +1,9 @@
 // Cola intradiaria de las corridas de Actions, compartida por la toma
 // (lectura-horaria.mjs) y la publicación (recombinar-horaria.mjs).
-// Regla de coexistencia con la Debian: el remoto manda por hora. Al combinar la
+// Regla de prioridad: el remoto manda por hora. Al combinar la
 // cola con origin/main recién traído, una lectura pendiente cuya hora el remoto
 // ya cubre se retira de la cola; nunca se pisa lo publicado. La cola y la pausa
-// 429 viajan en la caché de Actions (.estado-intradia), como en la Debian en disco.
+// 429 viajan en la caché de Actions (.estado-intradia), y se restauran al inicio de la siguiente corrida.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';

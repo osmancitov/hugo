@@ -1,7 +1,7 @@
-// Modulo sincronizar-registros: "@hugo sincroniza registros" copia el registro de velas entre la
-// Debian y el repositorio publico de GitHub (HUGO_GITHUB), en los DOS sentidos y SIN PISAR contenido
+// Modulo sincronizar-registros: copia el registro de velas entre la carpeta de trabajo (la corrida de Actions)
+// copia local y el repositorio publico de GitHub (HUGO_GITHUB), en los DOS sentidos y SIN PISAR contenido
 // distinto. Los registros son publicos y van al repo por decision del usuario (15-nov-2026).
-// Sentidos: lo que solo esta en la Debian sube en UN commit (autor y committer con el correo del
+// Sentidos: lo que solo esta en la copia local sube en UN commit (autor y committer con el correo del
 // usuario); lo que solo esta en GitHub baja sin pisar (tmp + enlace duro, como el registro). Lo que
 // esta en los dos lados con contenido DISTINTO que no sea una ampliacion estricta es un conflicto: se reporta y no se toca en ningun
 // lado. La comparacion es por contenido (la huella sha de blob de git), nunca por nombre ni fecha.
@@ -12,9 +12,9 @@
 // ~/.local/share/hugo/repo-sync): fetch + reset a origin/main, comparacion y lectura de blobs en
 // local, y la subida como UN add + commit + push sin force. Si GitHub avanza entre el fetch y el
 // push, el push sale rechazado (non-fast-forward): se re-lee, se rearma la subida sobre lo ultimo
-// y se reintenta, acotado; nunca se pisa lo ajeno. Requiere git instalado en la Debian; sin git la
+// y se reintenta, acotado; nunca se pisa lo ajeno. Requiere git instalado; sin git la
 // pasada avisa claro y no toca nada.
-// Credencial: keys/.github-key, un token de GitHub que el usuario ya tiene en la Debian. Hugo lo lee
+// Credencial: keys/.github-key, un token de GitHub que la corrida recibe por entorno (HUGO_GH_KEY). Hugo lo lee
 // solo aqui y NUNCA lo imprime ni lo escribe en disco: va por variable de entorno a un script
 // GIT_ASKPASS propio cuando git pide credenciales; la URL del remoto no lleva clave. Sin el archivo
 // o sin escritura, la bajada funciona igual (el repo es publico) y la subida queda pendiente, avisando.
@@ -27,7 +27,7 @@
 // (nunca se pisa, en ningun sentido). El historial intradiario tiene su publicador propio.
 // Piso fijo del registro (decision del usuario, 18-nov-2026): nada anterior al 1-ago-2026 se
 // sincroniza en NINGUN sentido — los archivos AAMM anteriores ni bajan del repo ni suben de
-// la Debian; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
+// la copia local; no entran en la comparacion, igual que los activos excluidos. Asi una pasada
 // planeada con un arbol viejo tampoco puede reintroducirlos.
 // Recuperacion: el clon es duradero por construccion. Una pasada interrumpida deja copias sin
 // publicar en el clon; la siguiente empieza con fetch + reset --hard a origin/main y rearma la
@@ -326,7 +326,7 @@ export function registrar(ctx) {
   }
 
   // Renombra en el repo lo heredado a la ruta con clase, en UN commit, sin subir contenido: el blob es el mismo (misma huella),
-  // asi que el contenido movido es identico por construccion. Solo mueve lo que la Debian ya tiene identico en la ruta nueva;
+  // asi que el contenido movido es identico por construccion. Solo mueve lo que la copia local ya tiene identico en la ruta nueva;
   // si el destino remoto existe con otro contenido, o no hay copia local identica, no lo toca y lo reporta.
   async function mudarRemotoHeredado(token) {
     const { blobs, heredados } = await remotos();
@@ -342,7 +342,7 @@ export function registrar(ctx) {
       try { shaLocal = shaBlob(fs.readFileSync(local)); } catch { /* sin copia local */ }
       const shaViejo = blobs.get(viejo);
       const shaNuevo = blobs.get(nuevo);
-      if (shaLocal !== shaViejo) { pendientes.push(`${corto}: la Debian no tiene una copia id\u00e9ntica en ${CLASE_HEREDADA}/`); continue; }
+      if (shaLocal !== shaViejo) { pendientes.push(`${corto}: la copia local no tiene una copia id\u00e9ntica en ${CLASE_HEREDADA}/`); continue; }
       if (shaNuevo !== undefined && shaNuevo !== shaViejo) { pendientes.push(`${corto}: ya existe en ${CLASE_HEREDADA}/ con otro contenido`); continue; }
       if (shaNuevo === undefined) await git(['mv', viejo, nuevo]);
       else await git(['rm', '--quiet', viejo]); // el destino ya existe identico: basta quitar la ruta vieja
@@ -407,7 +407,7 @@ export function registrar(ctx) {
           if (esPre) { if (!previo.equals(buf)) throw Error('Hay un pre-cálculo local distinto; no lo piso.'); continue; }
           const modo = esInd ? relacionIndicador(leerIndicador(previo), leerIndicador(buf)) : relacion(previo, buf, b.rel);
           if (modo === 'ampliar') { if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf, previo); }
-          else continue; // iguales o la Debian tiene una extension mayor: nunca recortar
+          else continue; // iguales o la copia local tiene una extension mayor: nunca recortar
         } else if (esPre) { fs.mkdirSync(path.dirname(destino), { recursive: true }); fs.writeFileSync(destino, buf); }
         else if (esInd) escribirIndicador(destino, leerIndicador(buf)); else publicarSerie(destino, buf);
         hechos.push(b.rel);
@@ -594,7 +594,7 @@ export function registrar(ctx) {
     const marcaParada = parada.n;
     const verificar = () => { if (parada.n !== marcaParada) { const e = new Error('a pedido (stop o restart)'); e.detenida = true; throw e; } };
     const token = ctx.leerClave('.github-key');
-    // Mudanza de lo heredado (ver la cabecera): primero la Debian, luego el repo. Idempotente: sin heredados no hace nada.
+    // Mudanza de lo heredado (ver la cabecera): primero la copia local, luego el repo. Idempotente: sin heredados no hace nada.
     // Informe (decisión del usuario, 20-nov-2026): resumen breve y ordenado — solo lo que cambió y
     // los problemas; los «igual» y la lista corrida técnica no se muestran. Las escrituras locales
     // de pre-cálculos y catálogo son candidatas: cambian de verdad solo si la comparación las sube.
@@ -657,7 +657,7 @@ export function registrar(ctx) {
     }
     candidatos.push(...candCat); problemas.push(...probCat);
     const mud = mudarLocalHeredado();
-    if (mud.movidos.length) { mudo = true; novedades.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la Debian (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
+    if (mud.movidos.length) { mudo = true; novedades.push(`copi\u00e9 ${mud.movidos.length} registro(s) heredados a ${CLASE_HEREDADA}/ en la copia local (${mud.movidos.join(', ')}), verificados por contenido; los originales siguen hasta ver GitHub`); }
     if (mud.conflictos.length) problemas.push(`heredados sin mover (el destino existe con otro contenido): ${mud.conflictos.join(', ')}`);
     if (mud.fallos.length) problemas.push(`no pude mudar: ${mud.fallos.join('; ')}`);
     let plan;
@@ -675,7 +675,7 @@ export function registrar(ctx) {
         } else problemas.push(`hay ${plan.heredados.length} registro(s) heredados en GitHub por mudar, pero falta keys/.github-key`);
       }
       const ret = retirarLocalHeredado(plan.visto, plan.heredados);
-      if (ret.retirados.length) { mudo = true; novedades.push(`quit\u00e9 los originales de la ruta anterior en la Debian (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
+      if (ret.retirados.length) { mudo = true; novedades.push(`quit\u00e9 los originales de la ruta anterior en la copia local (${ret.retirados.join(', ')}) tras releer GitHub: ruta nueva id\u00e9ntica y ruta vieja ausente`); }
       if (ret.conservados.length) problemas.push(`originales conservados (GitHub aun no confirma la ruta nueva): ${ret.conservados.join(', ')}`);
       verificar();
     } catch (e) {

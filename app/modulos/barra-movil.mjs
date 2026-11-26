@@ -47,8 +47,8 @@ export const RUTA_BARRA = 'registros/pre-calculado/stock/barra-24h/actual_barra'
 
 // Ruta oficial de la consulta publica. El documento de Binance (rest-api.md) pide usar
 // https://data-api.binance.vision para las APIs que SOLO leen datos publicos de mercado, como
-// esta; api.binance.com responde 451 (ubicacion restringida) desde algunas redes. La Debian
-// puede seguir con api.binance.com si alli responde: se cambia con HUGO_BARRA_HOST, sin tocar codigo.
+// esta; api.binance.com responde 451 (ubicacion restringida) desde algunas redes. El
+// host se cambia con HUGO_BARRA_HOST, sin tocar codigo.
 const HOST_POR_DEFECTO = 'https://api.binance.com';
 const MAX_SIMBOLOS = 100; // tope documentado del endpoint; la particion en dos ya queda muy por debajo.
 
