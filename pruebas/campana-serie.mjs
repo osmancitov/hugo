@@ -79,9 +79,9 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
 
 test('Campañas: el campo de béisbol va bajo espaguetis y curvas, con selección compartida', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /function graficaCampo\(caja,u,seleccion,alElegir(,limpio=false)?\)/);
-  assert.match(h, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\),cCuad,cEsp,cAct,\.\.\.\(puente&&puente\.cVar\?\[puente\.cVar\]:\[\]\),lista\)/);
-  assert.match(h, /graficaCampo\(cCuad,u,sel,elegir(,Boolean\(puente\))?\)/);
+  assert.match(h, /function graficaCampo\(caja,u,seleccion,alElegir,limpio=false,g2=null\)/);
+  assert.match(h, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\),cCuad,cEsp,cAct,\.\.\.\(puente&&puente\.cVar\?\[puente\.cVar\]:\[\]\),\.\.\.\(puente&&puente\.listaEn\?\[\]:\[lista\]\)\)/);
+  assert.match(h, /graficaCampo\(cCuad,u,sel,elegir,Boolean\(puente\),g2\)/);
   assert.doesNotMatch(h, /graficaCuadrantes/);
 });
 

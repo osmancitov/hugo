@@ -60,9 +60,11 @@ test('Mercado: Balance sin títulos internos ni fuente, cifras con su significad
   assert.match(html, /'en baja'/); assert.match(html, /'en alta'/); assert.match(html, /sinFuente: Boolean\(en\)/);
 });
 
-test('Mercado: nota del Relieve del día = total VIP, desglose y fecha corta', () => {
+test('Mercado: sin el resumen bajo el Relieve del día (Triple play); el filtro de grupo solo recorta códigos', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /activos VIP · \$\{conteoG\} · \$\{df\} \$\{MESES_ES\[mf - 1\]\}/);
+  assert.match(html, /filtro = \{ codigos, nota: null \}/);
+  assert.match(html, /if \(filtro && filtro\.nota\)/);
+  assert.doesNotMatch(html, /activos VIP · \$\{conteoG\}/);
 });
 
 test('Mercado: cabecera única del activo (matriz dentro de la ficha, sin títulos repetidos ni descarga)', () => {
@@ -81,8 +83,8 @@ test('Mercado: sin título "Campaña de N días" ni nota "Trazada en vivo" repet
 
 test('Mercado: el espagueti pasa a evolución de Campaña de los VIP, eje log común y referencia 1; campo y leyenda sin Rezagados', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /function graficaEvolucionCampana\(caja,s,u,seleccion,alElegir\)/);
-  assert.match(html, /if\(puente\)graficaEvolucionCampana\(cEsp,sv,u,sel,elegir\);else graficaEspaguetis\(cEsp,sv,sel,elegir,false\)/);
-  assert.match(html, /a\.grupo!=='rezagados'\):u\.clasificados/);
+  assert.match(html, /function graficaEvolucionCampana\(caja,s,u,seleccion,alElegir,g2=null\)/);
+  assert.match(html, /if\(puente\)graficaEvolucionCampana\(cEsp,sv,u,sel,elegir,g2\);else graficaEspaguetis\(cEsp,sv,sel,elegir,false\)/);
+  assert.match(html, /!limpio\|\|a\.grupo!=='rezagados'/);
   assert.match(html, /if\(limpio&&g==='rezagados'\)continue/);
 });

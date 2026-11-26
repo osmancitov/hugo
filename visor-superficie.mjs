@@ -9,9 +9,9 @@ const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
 const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '#00c470', [COLORES_LECTURA.gris]: '#a5abb5', transparent: 'transparent' };
 const ORO = '#c2a15a';
 // Escala fija de altura desde la partida (% desde la primera lectura del día), igual todos los días: no se ajusta al máximo ni al mínimo de la pantalla.
-export const colorAltura = (a) => { const t = Math.min(1, Math.abs(a) / 15), v = Math.round(255 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; };
+export const colorAltura = (a) => { const t = Math.min(1, Math.abs(a) / 15), v = a === 0 ? 0 : Math.round(56 + 199 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; }; // cero negro; desde ±0,5 % ya se ve color (audio 1795665930.632649)
 export const ESCALA_ALTURA = [[-15, '≤ -15'], [-10, '-10'], [-6, '-6'], [-2.5, '-2,5'], [-.5, '-0,5'], [0, '0'], [.5, '0,5'], [2.5, '2,5'], [6, '6'], [10, '10'], [15, '≥ 15']].map(([v, et]) => [v, colorAltura(v), et]);
-// Degradé continuo: negro en 0, rojo hasta (255,0,0) en -15 %, verde hasta (0,255,0) en +15 %; la altura de la línea nunca se recorta.
+// Degradé continuo: negro solo en 0 exacto; cualquier movimiento arranca en 56/255 (±0,5 % ya se distingue) y llega a (255,0,0)/(0,255,0) en ±15 %; la altura de la línea nunca se recorta.
 
 export const horaSuperficie = (ms) => new Date(ms).toISOString().slice(11, 16);
 export const porcentajeSuperficie = (n) => {
@@ -157,7 +157,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const enlace = crear('a', 'barra-activo-enlace', nom(codigo));
     enlace.href = ids ? '#/a/' + codigo.split(':')[0] + '/' + encodeURIComponent(codigo.split(':')[1]) : '#/a/stock/' + encodeURIComponent(codigo);
     detalle.textContent = '';
-    detalle.append(enlace, document.createTextNode(p ? (crestas ? ` · ${fecha} · Total ${pct(p.altura)} · Parcial ${pct(p.movimiento)} · Actual ${p.precio} · Inicio ${p.referencia}` : ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}`) : ` · ${fecha} · sin cierre diario o sin precio comparable`));
+    if (crestas && p) detalle.append(enlace); // sin fecha/Total/Parcial/Actual/Inicio bajo el relieve (audio 1795665712.382679); el título del activo queda y los datos van dentro de la gráfica
+    else detalle.append(enlace, document.createTextNode(p ? ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}` : ` · ${fecha} · sin cierre diario o sin precio comparable`));
   }
   function dibujar() {
     if (!viva) return;

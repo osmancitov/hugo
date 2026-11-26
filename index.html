@@ -1116,7 +1116,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren(); registroActual=registro;
     const lecturas = registro.dia.lecturas;
-    if (filtro) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: filtro.nota }));
+    if (filtro && filtro.nota) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: filtro.nota }));
     if (en && registro.mixto) { // cobertura real del día, sin rellenar ni contar los huecos como cero
       const ids = filtro ? filtro.codigos : null, tiene = lecturas.map((l) => new Set(parsearFusion(l.texto, ids)?.activos.keys() || []));
       const hh = (j) => new Date(lecturas[j].generada).toISOString().slice(11, 16);
@@ -1169,9 +1169,8 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
           // Prototipo (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
           const codigos = new Set(); let fechaFin = ''; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
           for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id); } }
-          const conteoG = `Premium ${porG.premium.size} · Potentes ${porG.potentes.size} · Constantes ${porG.constantes.size}`;
-          const [, mf, df] = fechaFin.split('-').map(Number);
-          filtro = { codigos, nota: `${codigos.size} activos VIP · ${conteoG} · ${df} ${MESES_ES[mf - 1]}` }; // audios 1795642038.435379 y 1795642241.641729 (fecha corta, sin año)
+          const g2 = puente?.grupo2?.(); if (g2) for (const id of [...codigos]) if (grupoMercadoDe(id) !== g2) codigos.delete(id); // Triple play: solo el grupo elegido
+          filtro = { codigos, nota: null }; // sin el resumen bajo el relieve (audio 1795665712.382679: es redundante)
         } else if (g === 'todos') filtro = null;
         else {
           const n = ventanaVal, { u } = await cargarCampana(n);
@@ -2272,11 +2271,11 @@ function graficaEspaguetis(caja,s,seleccion,alElegir,limpio=false){
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
   caja.replaceChildren(...(limpio?[svg]:[svg,ej]));
 }
-function graficaEvolucionCampana(caja,s,u,seleccion,alElegir){
+function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
   // Mercado (aprobado por el usuario, Slack 1795644099.837059): evolución del indicador Campaña, raíz((P²+C²)/2) de la ventana que termina cada día,
   // solo para los VIP (sin Rezagados) del último cierre de la campaña elegida, en un eje logarítmico común con la referencia 1. Sin relleno: donde falta dato, la línea se corta.
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
-  const grupo=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados').map(a=>[a.id,a.grupo]));
+  const grupo=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
   const COL={premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'};
   const camp=p=>Math.sqrt((p[1]*p[1]+p[2]*p[2])/2),lg=v=>Math.log2(Math.max(v,1e-3));
   const ids=Object.keys(grupo).filter(id=>s.activos[id]);
@@ -2338,8 +2337,8 @@ function graficaActivoCampana(caja,s,id,limpio=false){
 // El campo de béisbol (pedido por el usuario, Slack 1795611217.847959) sustituye a los cuatro cuadrantes. Home en el 0,0, distancia r = Campaña
 // normalizada, dirección = balance entre P y C. La cerca es r = 1. No cambia clasificación ni cortes.
 let campoUltimaBola=null;
-function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
-  const W=560,cl=limpio?u.clasificados.filter(a=>a.grupo!=='rezagados'):u.clasificados,rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
+function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
+  const W=560,cl=u.clasificados.filter(a=>(!limpio||a.grupo!=='rezagados')&&(!g2||grupoMercadoDe(a.id)===g2)),rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
   // Escala fiel: el radio visible abarca al activo más lejano (nunca se recorta ni se acerca un punto).
   // Radio híbrido y continuo: lineal de 0 a 0,5 (home sigue siendo el 0) y logarítmico desde 0,5, con la misma
   // pendiente en el empalme. Así 0,5, 1 y 2 quedan a igual distancia unos de otros (no es logaritmo puro).
@@ -2428,12 +2427,12 @@ async function cargarRegistrosMes(e, mes) {
   return promesa;
 }
 const cacheVarEspagueti = new Map();
-async function cargarVariacionCampana(n, u, fechas) {
-  const clave = n + '|' + u.carrera.ventana.fin;
+async function cargarVariacionCampana(n, u, fechas, g2 = null) {
+  const clave = n + '|' + (g2 || 'todos') + '|' + u.carrera.ventana.fin;
   if (cacheVarEspagueti.has(clave)) return cacheVarEspagueti.get(clave);
   const promesa = (async () => {
     const meses = [...new Set(fechas.map((f) => f.slice(2, 4) + f.slice(5, 7)))].filter((m) => m >= PISO_VISOR);
-    const ids = u.clasificados.filter((a) => a.grupo !== 'rezagados').map((a) => a.id);
+    const ids = u.clasificados.filter((a) => a.grupo !== 'rezagados' && (!g2 || grupoMercadoDe(a.id) === g2)).map((a) => a.id);
     const series = {};
     await Promise.all(ids.map(async (id) => {
       const e = entradaCampana(id);
@@ -2451,7 +2450,13 @@ async function cargarVariacionCampana(n, u, fechas) {
         series[id] = fechas.map((f) => (porDia.has(f) ? porDia.get(f) : null));
       } catch { /* un activo sin su mes no frena a los demás */ }
     }));
-    return { fechas, series };
+    // El mismo conteo del balance del cierre: suben (cierre > apertura), bajan (<) e iguales (=); sin vela no cuenta.
+    const puntos = fechas.map((f, i) => {
+      let sub = 0, baj = 0, ig = 0;
+      for (const id in series) { const v = series[id][i]; if (v === null) continue; if (v > 0) sub++; else if (v < 0) baj++; else ig++; }
+      return [Date.parse(f + 'T00:00:00Z'), sub, baj, ig];
+    });
+    return { fechas, series, puntos };
   })();
   cacheVarEspagueti.set(clave, promesa);
   return promesa;
@@ -2491,19 +2496,58 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
   const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = `Variación diaria · ${N} días`;
   caja.replaceChildren(tit, svg);
 }
+// Triple play (audios del usuario 1795665496.261559 y 1795665712.382679): Mercado se pica en tres vistas por
+// grupo —empresas, fondos y cripto— con el mismo diseño; cada vista filtra todas sus gráficas a su grupo.
+// Solo cambia qué se dibuja: la clasificación, los registros y el cierre diario no se tocan.
+const GRUPOS_MERCADO = [['empresas', 'Empresas'], ['fondos', 'Fondos'], ['cripto', 'Cripto']];
+function grupoMercadoDe(id) {
+  if (id.startsWith('cripto:')) return 'cripto';
+  const e = entradaCampana(id);
+  return e && e.tipo === 'empresa' ? 'empresas' : 'fondos';
+}
+// Balance diario del grupo elegido (Triple play): el mismo conteo del precálculo (suben/bajan/iguales por día,
+// cierre contra apertura; sin vela no cuenta), calculado en la página con la misma regla sobre las velas que ya
+// trae el espagueti de variación. El cierre diario y sus archivos no se tocan.
+function vistaBalanceGrupo(en, ndias, g2) {
+  const e = INDICADORES.find((x) => x.codigo === 'iceberg-stock');
+  const ficha = document.createElement('div'); ficha.className = 'ficha';
+  const h = document.createElement('h2'); h.textContent = 'Balance diario'; ficha.append(h);
+  const caja = document.createElement('div'); caja.className = 'lienzo-caja';
+  const estado = document.createElement('p'); estado.className = 'estado'; estado.textContent = 'Trayendo los registros…';
+  const pie = document.createElement('div'); pie.className = 'pie-grafica';
+  en.append(ficha, caja, pie); caja.append(estado);
+  (async () => {
+    const { s, u } = await cargarCampana(ndias);
+    const datos = await cargarVariacionCampana(ndias, u, recortarSerie(s, ndias).fechas, g2);
+    return datos.puntos;
+  })().then((puntos) => {
+    estado.remove();
+    if (!caja.isConnected) return;
+    if (puntos.length < 2) { caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>'; return; }
+    const uf = new Date(puntos[puntos.length - 1][0]);
+    graficador(caja, pie, {
+      total: () => puntos.length,
+      dibujar: (ctx, geometria, hasta) => { if (geometria.vertical) graficoIcebergVertical(ctx, puntos, { ...e, limpio: true }, geometria.alto, hasta); else graficoIceberg(ctx, puntos, { ...e, limpio: true }, hasta); },
+      codigo: 'balance-diario-' + (g2 || 'todos'),
+      fecha: () => uf,
+      sinDescarga: true,
+    });
+  }).catch((err) => { estado.textContent = 'No pude traer los registros del balance (' + err.message + ').'; });
+}
 async function vistaCampana(n,inicial,en=null,puente=null){
   const destino=en||app;
   destino.replaceChildren();
   const cab=document.createElement('p');cab.className='camp-sub';cab.textContent='Cargando la Campaña…';destino.append(cab);
   let datos;try{datos=await cargarCampana(n);}catch(err){cab.textContent=err.message;return;}
   const {s,u}=datos,N=s.fechas.length;
+  const g2=puente&&puente.grupo2?puente.grupo2():null;
   const raiz=document.createElement('section');raiz.className='campana';
   const t=document.createElement('h2');t.className='camp-tit';t.textContent=`Campaña de ${n} días`;
   const sub=document.createElement('p');sub.className='camp-sub';
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
-  const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
+  const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),lista);destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
+  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
@@ -2512,17 +2556,17 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const pintarVar=()=>{if(puente&&puente.cVar&&datosVar&&puente.cVar.isConnected)graficaVariacionEspagueti(puente.cVar,datosVar,gruposVar,sel,elegir);};
   let gruposVar={};
   if(puente&&puente.cVar){
-    gruposVar=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados').map(a=>[a.id,a.grupo]));
+    gruposVar=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
     const cajaV=puente.cVar,sv0=recortarSerie(s,n);
     cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
-    cargarVariacionCampana(n,u,sv0.fechas).then(d=>{datosVar=d;pintarVar();})
+    cargarVariacionCampana(n,u,sv0.fechas,g2).then(d=>{datosVar=d;pintarVar();})
       .catch(()=>{if(cajaV.isConnected)cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de la variación diaria.'}));});
   }
   const pintarSel=(irA)=>{
     const sv=puente?recortarSerie(s,n):s;
-    if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
+    if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir,g2);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
     pintarVar();
-    graficaCampo(cCuad,u,sel,elegir,Boolean(puente));
+    graficaCampo(cCuad,u,sel,elegir,Boolean(puente),g2);
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
@@ -2535,7 +2579,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   }
   lista.className='camp-lista';
   {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña']]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
-  for(const a of ordenarCampana(u.clasificados).filter(a=>!puente||!puente.grupo||(puente.grupo()==='todos'?a.grupo!=='rezagados':a.grupo===puente.grupo()))){
+  for(const a of ordenarCampana(u.clasificados).filter(a=>(!puente||!puente.grupo||(puente.grupo()==='todos'?a.grupo!=='rezagados':a.grupo===puente.grupo()))&&(!g2||grupoMercadoDe(a.id)===g2))){
     const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
     f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
     f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
@@ -2612,7 +2656,7 @@ function graficoFearGreedJunto(ctx, geo, hasta, S) {
   ctx.fillStyle = TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = (V ? 16 : 11) + 'px ' + FUENTE;
   ctx.fillText('Fuentes: FearGreedChart.com (Bolsa) · Alternative.me (Cripto)', w / 2, alto - (V ? 13 : 13));
 }
-function vistaFearGreedJunto(en, ndias = 90) {
+function vistaFearGreedJunto(en, ndias = 90, solo = null) {
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const h = Object.assign(document.createElement('h2'), { textContent: 'Miedo y codicia' });
   ficha.append(h);
@@ -2628,29 +2672,32 @@ function vistaFearGreedJunto(en, ndias = 90) {
     const t0 = Math.min(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[0][0]))), t1 = Math.max(...[bolsa, cripto].filter((s) => s.length).map((s) => dia(s[s.length - 1][0])));
     const dias = []; for (let t = Math.max(t0, t1 - (ndias - 1) * D); t <= t1; t += D) dias.push(t); // el período elegido arriba (30, 60 o 90 días)
     const desde = Math.max(t0, t1 - (ndias - 1) * D), conv = (s, nombre, color) => ({ nombre, color, puntos: s.filter(([ms]) => dia(ms) >= desde).map(([ms, v]) => ({ i: Math.round((dia(ms) - desde) / D), v })) });
-    const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length) };
+    const S = { dias, series: [conv(bolsa, 'Bolsa', COLOR_FG_BOLSA), conv(cripto, 'Cripto', COLOR_FG_CRIPTO)].filter((x) => x.puntos.length && (!solo || x.nombre.toLowerCase() === solo)) };
     const uf = new Date(t1);
-    graficador(caja, pie, { total: () => dias.length, dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, geo, hasta, S), codigo: 'fear-greed-bolsa-cripto', fecha: () => uf, sinDescarga: true });
+    // Triple play (audio 1795665712.382679): chiquito y horizontal como los fideos, también en pantalla vertical; un solo índice por vista.
+    graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: LW, alto: 320 }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: LW, alto: 320 }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
-function vistaUnificada(inicial=null,dias=90){
+function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=(clase+' mercado-bloque').trim();app.appendChild(x);return x;};
   const cReloj=sec('mercado-reloj'); // reloj UTC compacto arriba (25-nov-2026)
-  // Las dos gráficas de Fear & Greed al principio, identificadas, sin depender del activo elegido (25-nov-2026).
-  vistaFearGreedJunto(sec(),dias);
-  vistaIndicador('iceberg-stock',sec(),null,true,dias);
+  // Triple play: Miedo y codicia del mercado del grupo (Bolsa para empresas y fondos, Cripto para cripto),
+  // luego la lista de los VIP del grupo y su balance; después barras, relieve, ficha y Campaña, todo del grupo.
+  vistaFearGreedJunto(sec(),dias,grupo2==='cripto'?'cripto':'bolsa');
+  const cLista=sec('mercado-lista');
+  vistaBalanceGrupo(sec(),dias,grupo2);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec('mercado-camp');
   // Reserva de altura: los bloques de arriba se rellenan después de pintar y empujaban el Relieve (737 px en móvil, medido 25-nov-2026). Se reserva la última altura
   // medida (o, la primera vez en pantalla angosta, una proporción medida del ancho) y se libera cuando el bloque ya cargó. Solo afecta a Mercado.
   {const wv=Math.round(app.clientWidth||innerWidth),clave='mercado-alturas-'+wv,guard=(()=>{try{return JSON.parse(sessionStorage.getItem(clave)||'null');}catch(e){return null;}})();
-   const bloques=[...app.children].slice(1,4),prop=[2.13,2.33,0.8];
+   const bloques=[1,3,4].map(i=>app.children[i]).filter(Boolean),prop=[0.9,2.33,0.8];
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
+  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,grupo2:()=>grupo2,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
   const avisoSup=(id)=>{const falta=Boolean(id)&&!(codigosSupAct&&codigosSupAct.has(id));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?'Cripto: '+n+' no tiene lectura horaria guardada todavía en este día (el registro cubre a los admitidos en alguna campaña y cada cierre amplía el universo en la lectura siguiente), así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.':n+' no tiene lecturas horarias, así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.';}};
@@ -2673,7 +2720,7 @@ function vistaUnificada(inicial=null,dias=90){
     }).catch(()=>{});
     const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{sinGrafica:true});}};
   const elegido=(id,origen)=>{
-    sel=id;history.replaceState(null,'','#/unificada/'+dias+'d'+(id?'/'+id.replace(':','/'):''));
+    sel=id;history.replaceState(null,'','#/unificada/'+dias+'d/'+grupo2+(id?'/'+id.replace(':','/'):''));
     pintarFicha();
     // La ficha (con su gráfica de variación) se carga después y cambia de alto; si el usuario eligió desde la lista de Campaña (debajo de la ficha),
     // se mantiene fija en pantalla la zona de Campaña mientras eso ocurre y hasta que el usuario vuelva a mover la página.
@@ -2688,7 +2735,7 @@ function vistaUnificada(inicial=null,dias=90){
     })();
   };
   const puenteSup={...puente,alElegir:(c)=>elegido(c||null,'sup'),set cambiarMercado(f){cambiarMercadoF=f;},get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
-  const puenteCamp={cVar,grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
+  const puenteCamp={cVar,listaEn:cLista,grupo:()=>grupo,grupo2:()=>grupo2,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
@@ -2701,9 +2748,13 @@ async function ruta() {
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
-  const mu=hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/);
+  const muA=hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/(cripto|stock)\/(.+)$/);
+  const muG=muA?null:hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/?$/);
+  const mu=muA||muG; // Triple play: el grupo va en la ruta; con activo y sin grupo, el grupo se deduce del activo
+  const g2Ruta=mu?(mu[2]||(muA?grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])):'empresas')):null;
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
-  if(mu&&!mu[1]&&mu[2]){location.replace('#/unificada/90d/'+mu[2]+'/'+mu[3]);return;} // enlaces antiguos sin período
+  if(muA&&!muA[1]){location.replace('#/unificada/90d'+(muA[2]?'/'+muA[2]:'')+'/'+muA[3]+'/'+muA[4]);return;} // enlaces antiguos sin período
+  if(muG&&!muG[1]&&muG[2]){location.replace('#/unificada/90d/'+muG[2]);return;}
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
@@ -2725,7 +2776,7 @@ async function ruta() {
   document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
   document.getElementById('mercado-campana').href='#/campana';
   document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
-  if(mu){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/unificada/'+v+'d',mu[1]===String(v));}
+  if(mu){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/unificada/'+v+'d/'+g2Ruta,mu[1]===String(v));navV.hidden=false;for(const [g,t] of GRUPOS_MERCADO)botonNav(navV,t,'#/unificada/'+(mu[1]||'90')+'d/'+g,g===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
@@ -2742,8 +2793,8 @@ async function ruta() {
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
-  if(mu){if(!mu[1]){app.replaceChildren();return;} // «Mercado» solo muestra los tres botones de período; el usuario elige
-    vistaUnificada(mu[2]?mu[2]+':'+decodeURIComponent(mu[3]):null,Number(mu[1]));return;}
+  if(mu){if(!mu[1]){app.replaceChildren();return;} // «Mercado» solo muestra los botones de período y grupo; el usuario elige
+    vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,Number(mu[1]),g2Ruta);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}

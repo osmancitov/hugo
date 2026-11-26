@@ -4,9 +4,9 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
-test('vista unificada de prueba: Fear & Greed, Iceberg 2D, barras, superficie, ficha y Campaña de 30 días, en ese orden', () => {
+test('vista unificada Triple play: Fear & Greed del grupo, lista, balance del grupo, barras, superficie, ficha y Campaña, en ese orden', () => {
   const f = unif();
-  const orden = ["vistaFearGreedJunto(sec(),dias)", "'iceberg-stock'", 'cajaBarras=sec', 'cSup=sec()', 'cFicha=sec'].map((t) => f.indexOf(t));
+  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', 'cFicha=sec'].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
 });
@@ -38,7 +38,7 @@ test('la vista unificada muestra al principio Fear & Greed de Bolsa y de Cripto,
   const f = unif();
   const j = html.slice(html.indexOf('function vistaFearGreedJunto'), html.indexOf('function vistaUnificada'));
   assert.ok(j.includes("cargarIndicador('feargreedchart-bolsa')") && j.includes("cargarIndicador('alternative-fear-greed')") && j.includes("'Bolsa'") && j.includes("'Cripto'"));
-  assert.ok(f.indexOf('vistaFearGreedJunto(sec())') < f.indexOf("'iceberg-stock'"));
+  assert.ok(f.indexOf('vistaFearGreedJunto(sec()') < f.indexOf('vistaBalanceGrupo(sec()'));
 });
 test('las crestas 3D solo se activan en la vista unificada; la superficie original conserva su dibujo', () => {
   assert.match(sup, /crestas = false/);
@@ -57,9 +57,11 @@ test('la escala de altura de las crestas es fija (no depende del máximo de la p
   assert.equal(colorAltura(-15), '#ff0000');
 });
 
-test('Mercado: el período 30/60/90 se elige primero y manda sobre F&G, Campaña y ficha; la superficie sigue diaria', () => {
-  assert.ok(html.includes("const mu=hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?"));
+test('Mercado: el período 30/60/90 y el grupo (empresas, fondos, cripto) se eligen primero y mandan sobre F&G, lista, balance, Campaña y ficha; la superficie sigue diaria', () => {
+  assert.ok(html.includes("const muA=hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?"));
+  assert.ok(html.includes("const muG=muA?null:hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?"));
   assert.ok(html.includes('Number(mu[1])'));
+  assert.ok(html.includes('GRUPOS_MERCADO'));
   assert.ok(html.includes('cFicha,ventana||90'));
   assert.ok(html.includes('recortarSerie(s,n)'));
 });
