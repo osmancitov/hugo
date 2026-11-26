@@ -295,7 +295,6 @@ a.tit-link:hover { text-decoration: none; }
 .superficie-pasos button:disabled { opacity: .35; cursor: default; }
 .camp-lista.solo-lectura .camp-fila { cursor: default; }
 .ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
-.ficha-unificada .ficha h2 { border-bottom: 1px solid var(--oro); padding-bottom: .5rem; margin-bottom: .9rem; } /* línea amarilla bajo el título del activo, encima de enlaces y matriz (pedido del usuario, audio 19:26 del 25-nov) */
 .ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1rem; color: var(--tenue); font-weight: 400; }
 .superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
 .superficie-detalle.superficie-titulo { min-height: 5.3rem; } /* reserva el alto del título: al elegir un activo no empuja la superficie ni lo de abajo */
@@ -2137,10 +2136,13 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   const pie = document.createElement('div');
   pie.className = 'pie-grafica';
 
-  if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
+  if (en && extra.destino) { en.append(ficha); extra.destino.replaceChildren(caja, pie); } // Mercado: la variación diaria va más abajo, tras Potencia y Constancia
+  else if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
 
-  cargarRegistros(e).then((filas) => {
+  // Mercado (destino): la caja puede no estar aún en la página cuando llegan los registros (la Campaña la inserta al terminar); se espera a que se conecte, hasta 10 s, en vez de abandonar el dibujo.
+  const esperarCaja = (filas) => !extra.destino ? filas : new Promise((ok) => { const t0 = Date.now(), v = () => (caja.isConnected || Date.now() - t0 > 10000) ? ok(filas) : setTimeout(v, 100); v(); });
+  cargarRegistros(e).then(esperarCaja).then((filas) => {
     estado.remove();
     if (filas.length < 2) {
       caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>';
@@ -2157,7 +2159,7 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
     let d, subtitulo, uf, fecha, pieDatos, notaBase;
     const usar = (elegidas, completo) => {
       d = preparar(elegidas);
-      subtitulo = en ? `Variación diaria · Grosor = volumen/precio · ${d.rs.length} días` : `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
+      subtitulo = en ? `Variación diaria · ${d.rs.length} días` : `${info ? info + ' · ' : ''}Grosor = volumen/precio · ${d.rs.length} días`;
       uf = new Date(d.ultima);
       fecha = `${uf.getUTCDate()} ${MESES_ES[uf.getUTCMonth()]} ${uf.getUTCFullYear()}`;
       pieDatos = `Datos al ${fecha} (UTC) · escala ±`;
@@ -2422,7 +2424,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,lista);destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
+  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),lista);destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   const pintarSel=(irA)=>{
@@ -2556,7 +2558,7 @@ function vistaUnificada(inicial=null,dias=90){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
+  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
   const avisoSup=(id)=>{const falta=Boolean(id)&&!(codigosSupAct&&codigosSupAct.has(id));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?'Cripto: '+n+' no tiene lectura horaria guardada todavía en este día (el registro cubre a los admitidos en alguna campaña y cada cierre amplía el universo en la lectura siguiente), así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.':n+' no tiene lecturas horarias, así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.';}};
@@ -2566,7 +2568,7 @@ function vistaUnificada(inicial=null,dias=90){
   const anclarCamp=()=>{cCamp._fin?.();setTimeout(()=>{const y0=cCamp.getBoundingClientRect().top,t0=performance.now();let activo=true;const fin=()=>{activo=false;};cCamp._fin=fin;
     const sostener=()=>{if(!activo||performance.now()-t0>3000)return;const d=cCamp.getBoundingClientRect().top-y0;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});setTimeout(sostener,16);};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,fin,{once:true,passive:true});setTimeout(sostener,16);},0);};
-  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
+  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();cVar.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
     mx.style.cssText='display:inline-grid;grid-template-columns:auto repeat(3,2.6rem);gap:.55rem .5rem;align-items:center;margin:.5rem 0 1rem;font-size:.85em';
     const celda=(t,css='')=>{const e=Object.assign(document.createElement('span'),{textContent:t});e.style.cssText=css;mx.append(e);return e;};
     celda('');for(const n of [30,60,90])celda(n+' d','text-align:center;opacity:.8');
@@ -2577,7 +2579,7 @@ function vistaUnificada(inicial=null,dias=90){
       mx.setAttribute('aria-label','Categorías del activo por campaña: '+(lit.join(', ')||'ninguna (sin Premium, Potentes ni Constantes)'));
       if(!lit.length)mx.title='Sin Premium, Potentes ni Constantes en 30, 60 o 90 días';
     }).catch(()=>{});
-    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{matriz:mx});}};
+    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{destino:cVar});}};
   const elegido=(id,origen)=>{
     sel=id;history.replaceState(null,'','#/unificada/'+dias+'d'+(id?'/'+id.replace(':','/'):''));
     pintarFicha();
@@ -2594,7 +2596,7 @@ function vistaUnificada(inicial=null,dias=90){
     })();
   };
   const puenteSup={...puente,alElegir:(c)=>elegido(c||null,'sup'),set cambiarMercado(f){cambiarMercadoF=f;},get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
-  const puenteCamp={grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
+  const puenteCamp={cVar,grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
   puente.alCampana(dias);
