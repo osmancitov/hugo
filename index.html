@@ -2129,6 +2129,8 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   ficha.appendChild(meta);
   if (en && extra.matriz) ficha.appendChild(extra.matriz); // Mercado: la matriz de categorías va dentro de la ficha, bajo el título único
 
+  if (en && extra.sinGrafica) { en.append(ficha); return; } // Mercado: la variación diaria es el espagueti de todos los VIP (audio Slack 1795664817.359699); la ficha no la repite
+
   const caja = document.createElement('div');
   caja.className = 'lienzo-caja';
   const estado = document.createElement('p');
@@ -2136,13 +2138,10 @@ function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   const pie = document.createElement('div');
   pie.className = 'pie-grafica';
 
-  if (en && extra.destino) { en.append(ficha); extra.destino.replaceChildren(caja, pie); } // Mercado: la variación diaria va más abajo, tras Potencia y Constancia
-  else if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
+  if (en) en.append(ficha, caja, pie); else app.append(volver, ficha, caja, pie);
   caja.appendChild(estado);
 
-  // Mercado (destino): la caja puede no estar aún en la página cuando llegan los registros (la Campaña la inserta al terminar); se espera a que se conecte, hasta 10 s, en vez de abandonar el dibujo.
-  const esperarCaja = (filas) => !extra.destino ? filas : new Promise((ok) => { const t0 = Date.now(), v = () => (caja.isConnected || Date.now() - t0 > 10000) ? ok(filas) : setTimeout(v, 100); v(); });
-  cargarRegistros(e).then(esperarCaja).then((filas) => {
+  cargarRegistros(e).then((filas) => {
     estado.remove();
     if (filas.length < 2) {
       caja.innerHTML = '<p class="estado">Todavía no hay suficientes días registrados para dibujar.</p>';
@@ -2412,6 +2411,86 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false){
   for(const [g,nombre] of GRUPOS_CAMPANA){if(limpio&&g==='rezagados')continue;const n=cl.filter(a=>a.grupo===g).length;const sp=document.createElement('span');sp.innerHTML='<i class="camp-cuad-k camp-g-'+g+'"></i>'+nombre+' '+n;ley.append(sp);}
   envol.append(svg,sel2);caja.replaceChildren(cab,envol,ley);
 }
+// Espagueti de la variación diaria (audio del usuario, Slack 1795664817.359699): la gráfica de variación
+// de Mercado pasa de un solo activo a una curva por activo VIP de la campaña elegida, para verlas juntas.
+// Solo se piden los meses de la ventana (no toda la historia del activo); la variación es la misma de la
+// gráfica individual: (cierre/apertura - 1) de cada vela diaria. Donde un activo no tiene vela, la línea se corta.
+const cacheRegistrosMes = new Map();
+async function cargarRegistrosMes(e, mes) {
+  const clave = e.clase + '/' + e.codigo + '/' + mes;
+  if (cacheRegistrosMes.has(clave)) return cacheRegistrosMes.get(clave);
+  const cod = encodeURIComponent(e.codigo);
+  const promesa = fetch(`${RAW}/${e.clase}/${cod}/${mes}_${cod}`).then((r) => {
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' en ' + mes);
+    return r.json();
+  });
+  cacheRegistrosMes.set(clave, promesa);
+  return promesa;
+}
+const cacheVarEspagueti = new Map();
+async function cargarVariacionCampana(n, u, fechas) {
+  const clave = n + '|' + u.carrera.ventana.fin;
+  if (cacheVarEspagueti.has(clave)) return cacheVarEspagueti.get(clave);
+  const promesa = (async () => {
+    const meses = [...new Set(fechas.map((f) => f.slice(2, 4) + f.slice(5, 7)))].filter((m) => m >= PISO_VISOR);
+    const ids = u.clasificados.filter((a) => a.grupo !== 'rezagados').map((a) => a.id);
+    const series = {};
+    await Promise.all(ids.map(async (id) => {
+      const e = entradaCampana(id);
+      if (!e || !e.meses) return;
+      const propios = meses.filter((m) => e.meses.includes(m));
+      if (!propios.length) return;
+      try {
+        const filas = (await Promise.all(propios.map((m) => cargarRegistrosMes(e, m)))).flat();
+        const porDia = new Map();
+        for (const r of filas) {
+          const f = new Date(r[0]);
+          const d = f.getUTCFullYear() + '-' + String(f.getUTCMonth() + 1).padStart(2, '0') + '-' + String(f.getUTCDate()).padStart(2, '0');
+          porDia.set(d, (+r[4] / +r[1] - 1) * 100);
+        }
+        series[id] = fechas.map((f) => (porDia.has(f) ? porDia.get(f) : null));
+      } catch { /* un activo sin su mes no frena a los demás */ }
+    }));
+    return { fechas, series };
+  })();
+  cacheVarEspagueti.set(clave, promesa);
+  return promesa;
+}
+function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
+  const { fechas, series } = datos, N = fechas.length;
+  const W = 720, H = 420, L = 44, R = 10, T = 10, B = 28;
+  // Escala fiel y simétrica: el marco abarca al valor más lejano, sin recortar ninguna curva; el cero queda al centro.
+  let m = 5;
+  for (const id in series) for (const v of series[id]) if (v !== null && Math.abs(v) > m) m = Math.abs(v);
+  m = Math.ceil(m / 5) * 5;
+  const x = (i) => L + (N > 1 ? (i * (W - L - R)) / (N - 1) : (W - L - R) / 2);
+  const y = (v) => T + ((m - v) / (2 * m)) * (H - T - B);
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'camp-svg', role: 'img', 'aria-label': 'Variación diaria de cada activo de la campaña en cada jornada' });
+  // Regla cada 5 %, como en el plano de atrás del relieve; el cero va con la línea marcada.
+  for (let v = -m; v <= m; v += 5) {
+    svg.append(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v === 0 ? 'camp-uno' : 'camp-rej' }));
+    const t = svgEl('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'camp-eje' });
+    t.textContent = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + ' %';
+    svg.append(t);
+  }
+  [0, N - 1].forEach((i, k) => { if (k && i === 0) return; const t = svgEl('text', { x: x(i), y: H - 8, 'text-anchor': k ? 'end' : 'start', class: 'camp-eje' }); t.textContent = fechaLegibleUTC(fechas[i]); svg.append(t); });
+  const COL = { premium: '#6fbf8a', potentes: '#e3b341', constantes: '#7fb2e5' };
+  const capa = svgEl('g'), cima = svgEl('g'); svg.append(capa, cima);
+  for (const id of Object.keys(series)) {
+    const d = trazoConHuecos(series[id].map((v, i) => (v === null ? null : [x(i), y(v)])));
+    if (!d) continue;
+    const sel = id === seleccion, g = sel ? cima : capa;
+    const lin = svgEl('path', { d, class: sel ? 'camp-lin camp-sel' : 'camp-lin', 'data-id': id });
+    const col = COL[grupos[id]];
+    if (col) { lin.style.stroke = col; lin.style.strokeOpacity = sel ? '1' : '.32'; lin.style.strokeWidth = sel ? '2.6' : '1'; }
+    g.append(lin);
+    const hit = svgEl('path', { d, class: 'camp-hit', 'data-id': id });
+    const ti = svgEl('title'); ti.textContent = etiquetaActivo(id); hit.append(ti); g.append(hit);
+  }
+  svg.addEventListener('click', (ev) => { const id = ev.target.dataset && ev.target.dataset.id; if (id) alElegir(id); });
+  const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = `Variación diaria · ${N} días`;
+  caja.replaceChildren(tit, svg);
+}
 async function vistaCampana(n,inicial,en=null,puente=null){
   const destino=en||app;
   destino.replaceChildren();
@@ -2427,9 +2506,22 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),lista);destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
+  // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
+  // los datos se traen una vez por campaña y solo se repinta la selección.
+  let datosVar=null;
+  const pintarVar=()=>{if(puente&&puente.cVar&&datosVar&&puente.cVar.isConnected)graficaVariacionEspagueti(puente.cVar,datosVar,gruposVar,sel,elegir);};
+  let gruposVar={};
+  if(puente&&puente.cVar){
+    gruposVar=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados').map(a=>[a.id,a.grupo]));
+    const cajaV=puente.cVar,sv0=recortarSerie(s,n);
+    cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
+    cargarVariacionCampana(n,u,sv0.fechas).then(d=>{datosVar=d;pintarVar();})
+      .catch(()=>{if(cajaV.isConnected)cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de la variación diaria.'}));});
+  }
   const pintarSel=(irA)=>{
     const sv=puente?recortarSerie(s,n):s;
     if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
+    pintarVar();
     graficaCampo(cCuad,u,sel,elegir,Boolean(puente));
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
     cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
@@ -2568,7 +2660,7 @@ function vistaUnificada(inicial=null,dias=90){
   const anclarCamp=()=>{cCamp._fin?.();setTimeout(()=>{const y0=cCamp.getBoundingClientRect().top,t0=performance.now();let activo=true;const fin=()=>{activo=false;};cCamp._fin=fin;
     const sostener=()=>{if(!activo||performance.now()-t0>3000)return;const d=cCamp.getBoundingClientRect().top-y0;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});setTimeout(sostener,16);};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,fin,{once:true,passive:true});setTimeout(sostener,16);},0);};
-  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();cVar.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
+  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
     mx.style.cssText='display:inline-grid;grid-template-columns:auto repeat(3,2.6rem);gap:.55rem .5rem;align-items:center;margin:.5rem 0 1rem;font-size:.85em';
     const celda=(t,css='')=>{const e=Object.assign(document.createElement('span'),{textContent:t});e.style.cssText=css;mx.append(e);return e;};
     celda('');for(const n of [30,60,90])celda(n+' d','text-align:center;opacity:.8');
@@ -2579,7 +2671,7 @@ function vistaUnificada(inicial=null,dias=90){
       mx.setAttribute('aria-label','Categorías del activo por campaña: '+(lit.join(', ')||'ninguna (sin Premium, Potentes ni Constantes)'));
       if(!lit.length)mx.title='Sin Premium, Potentes ni Constantes en 30, 60 o 90 días';
     }).catch(()=>{});
-    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{destino:cVar});}};
+    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{sinGrafica:true});}};
   const elegido=(id,origen)=>{
     sel=id;history.replaceState(null,'','#/unificada/'+dias+'d'+(id?'/'+id.replace(':','/'):''));
     pintarFicha();
