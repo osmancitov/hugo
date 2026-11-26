@@ -1,180 +1,670 @@
 {
  "codigo": "GME",
- "actualizado": "2026-11-26T19:47:26.408Z",
+ "fuente": "Fuente: titulares que Inter publicó en el hilo GME de Slack.",
  "noticias": [
   {
-   "titulo": "GameStop Corp. Reports Dismissal of Stockholder Class Action and Settlement Agreement",
-   "enlace": "https://www.nasdaq.com/articles/gamestop-corp-reports-dismissal-stockholder-class-action-and-settlement-agreement",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-26T01:49:42.000Z"
+   "fecha_texto": "26 nov · 12:50",
+   "orden": "2026-11-26T16:50:00.000Z",
+   "medio": "TradingView",
+   "titular": "YieldMax GME Option Income Strategy ETF declares $0.2095 dividend",
+   "enlace": "https://news.google.com/rss/articles/CBMixgFBVV95cUxPZENmdm4wY2c3V1pmRk53ZkVXVUJlX2w0MHd2TU53TkdtNGI3VHBQNTgza1dFYWlQWmxPd3JDenZyV2UyMlRpWjk2ZElvaS0wWEl1VldtSlhBLWRnbmpldV9JVWhYZUhEN1JYWHFHajQwTzAwdXZ4Mzc5NHdac0FoSGVjcUtEUVJTSjZWanJkemVsVFlTYlNZMUh0aGNKUDNxVEhtOVN0ZFEwek1aN1BOaF9uUFRTekhURHpHUzczWWtYekFnSmc?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "Roaring Kitty Redux",
-   "enlace": "https://finance.yahoo.com/m/fe028813-b94f-3e63-915d-77db54e5b655/roaring-kitty-redux.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T23:11:00.000Z"
+   "fecha_texto": "26 nov · 12:14",
+   "orden": "2026-11-26T16:14:00.000Z",
+   "medio": "Foreign Policy Journal",
+   "titular": "Keith Gill's Social Media Return Meets \"Grand Theft Auto VI\" Launch As Take-Two Interactive (NASDAQ: TTWO) Surges And GameStop (NYSE: GME) Slides",
+   "enlace": "https://news.google.com/rss/articles/CBMikwJBVV95cUxNMjNpU3YwLXpLMVVZeEdXZ1A4cWR3OXVEOUdmTUdhRl9oY0VENWpHWVljcmtUS05KNUFuUHM1TjVWZHpfaEFfUXBXcTI5VmFzLW5LeDFXdE5zNndDUExscDhWeXpaZkgzbmtGM1JfQzJMWUVoSlJtQjhNOXRRNGRLTEVTVV92YlBNbkR3djVkRkUxV2tXNUFEaXhXbk1BanEzV1c4anZ4VUd4UldXNHZwcnRTY0VsY3d1SUt2YzV5QkdWcHZTWmwzcjdycjR4SlV4NzZBLW11dW5LTXp1cFp4eW9NWTBBZHFkSE1FdW9LQWdrZm1WY1MxV2QyR05GSUZvRUtvZEhSeEk4U09JbjdadXVpdw?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "GameStop (GME) Dips More Than Broader Market: What You Should Know",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/gamestop-gme-dips-more-broader-214502231.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T21:45:02.000Z"
+   "fecha_texto": "26 nov · 09:30",
+   "orden": "2026-11-26T13:30:00.000Z",
+   "medio": "GameFragger.com",
+   "titular": "Call Of Duty: Modern Warfare 4 Is $59.49 On Steam, With GameStop Listing Modern Warfare II And III At $41.99",
+   "enlace": "https://news.google.com/rss/articles/CBMijgJBVV95cUxOSnNnQmJQZFh1Q0xyQ0lTU09fU3JEb2NrOFBMUThmNXFlQzBKX29ZVV9mSjNhZXBvVHRyMXkxSE1HNlgtM0JtNkFEcWp5OE1ZT3JfbEtNUlIzaUoxTjNsVnVOcWJBRUQ3cU4zcVBaZkpzbmdWeXpwQjkwbndCSFBLaTBkTVNNU1o5Q1RaeWY4VDBMUEhVYm94dFVtQkdXV2hwcFNSMjJSU0NKdGtGM20xNVJPUENUN2VHbWxtM3lpd2taeFJyS0lqdXUtSXRGS1dKZlNaRTlzbU9KUW4wejdfZ19RMlhDUWZlS3RiNXpJSTVnNEFDcjA5Mm9JTk8wQ0VjZnRvUFRYS0hiZ05Ic0E?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Does GameStop (GME) Stock Look Cheap For Its Cash Flow?",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/does-gamestop-gme-stock-look-151232465.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T15:12:32.000Z"
+   "fecha_texto": "26 nov · 03:13",
+   "orden": "2026-11-26T07:13:00.000Z",
+   "medio": "JournalArta",
+   "titular": "GameStop (GME) Stock Drops to $26.97 Despite Needham Buy Rating",
+   "enlace": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNXzZoTVFsODFqU0I1TmRWSUV5cWlhWnZxR1dGay1sem9rSGRLVHNCTUlKNnNjWTZBTmxiS2FQTnNUVk5fMzM2RWFyTEFIWW5yZmFqTDJnWEZIR1ZLX3FMOWtTdXJqV0FEbDNPSHBhSlM4b2x0OHB4bTVVelBNR1hXa2k3UlVQblBfVzRKNWNzd0RIQ04wemc?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Will Buy Coverage Change GameStop Stock Narrative",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/buy-coverage-change-gamestop-stock-140940994.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T14:09:40.000Z"
+   "fecha_texto": "25 nov · 20:45",
+   "orden": "2026-11-26T00:45:00.000Z",
+   "medio": "GameFragger.com",
+   "titular": "GameStop's Black Friday 2026 Deals Page Is Live, With Select Games At $19.99 Or Less",
+   "enlace": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOaUI3TDY1TExoN2pGUHB0YlpFN1Y5eWxJX3RMcEhNRTYtRU83UkNodlBGVzBlSW1OZU1BTWt1MUM4bE1JWXB1TTVWNjVjVG9DNXlJdERFdUlnd1g0Vm1DNkZQVDBXVHpYeTh5TzRnSFlGZnRCY1VRLXNDa000SGJJczhCaWpHY2dFYkxCOS1fMjZueHZJM2w4ZlFSOWVLb0NiMk1YaDd6TVlKclRjMnBhM3dqeDNyTzlC?oc=5",
+   "lote": "1795721536.600109"
   },
   {
-   "titulo": "GameStop Tops Amazon in Stock Ratings Ahead of Holiday Season",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/gamestop-tops-amazon-stock-ratings-125429295.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T12:54:29.000Z"
+   "fecha_texto": "25 nov · 20:17",
+   "orden": "2026-11-26T00:17:00.000Z",
+   "medio": "Investing.com",
+   "titular": "GameStop resolves shareholder lawsuit with $3.5 million fee payment",
+   "enlace": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPSHpJTV9nRTZvd2dvMTc1Nml1WHBBQjhUWUoxLWxleVFqY2ZFQ0xWN0V4ZHhoek5QU0xwYnE3VzVvUkRBNkwtTjJJRThDUlB0eVBwazlkcmc5ci1TM05XVE1zdlRmTlFoMFNwRGd1cFhZcFB2OFU4a3Q4XzloMTdXNERnRHZrQk5MZ1J4SXcwVG1WTDFYd0VTSFBIeXNSY0pMMmljZExiTk1tNzQxSllqclgxMGZzLVJvYmZqT19n?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "Jim Cramer Says GameStop’s Turnaround Plan “Actually Works.” Should You Buy?",
-   "enlace": "https://247wallst.com/investing/2026/11/24/jim-cramer-says-gamestops-turnaround-plan-actually-works-should-you-buy/",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-25T00:07:50.000Z"
+   "fecha_texto": "25 nov · 19:23",
+   "orden": "2026-11-25T23:23:00.000Z",
+   "medio": "MLQ.ai",
+   "titular": "GameStop pays $3.5 million to end suit over Ryan Cohen's pulled pay award",
+   "enlace": "https://news.google.com/rss/articles/CBMilgFBVV95cUxOczFKYi1QN3owaTNfTW05WUJ4ZTJac1cwaDU0VlA3VldSSl94U3lWaHh5aW9WOEVTY1M1dEV0c0Z2c0VQdm9od0N3dTI1T19naXhQb1NKdUtFUHM4UEZBMzhTMmxEYW9hazhFbVR1LWtwNnRXZk5XbjcxSndqbmpGcVYtZnFscklFbEkwXzd6N3lFOTN5M2c?oc=5",
+   "lote": "1795721167.897409"
   },
   {
-   "titulo": "Needham Says GameStop Is More Than a Meme Stock Now—and Sees 20% Upside",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/needham-says-gamestop-more-meme-224812161.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T22:48:12.000Z"
+   "fecha_texto": "25 nov · 18:35",
+   "orden": "2026-11-25T22:35:00.000Z",
+   "medio": "Australian Defence Magazine",
+   "titular": "GME talks cyber security at MiLCIS",
+   "enlace": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOODg1QVNUQlkzVkhPX0dCN3A3RW80RzVyUGNjQTFOeFZHQk1IMzlhY3lXU1FMZ3hwcFFqaGw3bU5CYURBa3pDSC16a0lJZTR1RllvdVZoeFJaNE5PendzdmtYTmtLSGZOUVBzVjJJd0tKaHZlbEd5YjA3bzBhSmhLYlB1N0V5bjBM?oc=5",
+   "lote": "1795721658.485699"
   },
   {
-   "titulo": "GameStop Stock (GME) Has 4 Reasons to Rally Beyond Its Meme-Stock Fame",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/gamestop-stock-gme-4-reasons-212400878.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T21:24:00.000Z"
+   "fecha_texto": "25 nov · 17:26",
+   "orden": "2026-11-25T21:26:00.000Z",
+   "medio": "Investing.com Canada",
+   "titular": "Form 8K GameStop Corp For: 25 November By Investing.com",
+   "enlace": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNQU1KZWg0THNiT1FnS2Rpc3F4cmRXY0t2UlZJZjdjNlVKNXdfakhja2RkOTZaUlQ3eThJZkxRU0g0YUZmOVVia3VsQUxuN2NGdnpBZ2xJTndKdk1xZ3Y5bDBIMThRV05UdEZZck1jYnlTby1VR0diMTd4eUc3clZPbm90eDZFMl8xV1ZxNldCTndzdjlTZWl2M3NwLVNERkk?oc=5",
+   "lote": "1795721658.485699"
   },
   {
-   "titulo": "GME Stock Alert: GameStop Just Scored a New 'Buy' Rating",
-   "enlace": "https://www.barchart.com/story/news/8991092/gme-stock-alert-gamestop-just-scored-a-new-buy-rating",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T19:58:07.000Z"
+   "fecha_texto": "25 nov · 17:25",
+   "orden": "2026-11-25T21:25:00.000Z",
+   "medio": "StreetInsider",
+   "titular": "GameStop agrees to $3.5M fee settlement in stockholder lawsuit",
+   "enlace": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxQNVFjdWYyNDVTYTUtTTlQYy1mVlYzQ0NpOVBmQVBoTlZDT3ZkZlAxOG9TVjJzeUpEQm8yN2JFMEFKRW1UczNCeHJRYm9ua1VncFVCSlBDZk1ObE1LR3pNdzFZcmJiSFZjZjV3UGs0Y1lZeHN2YkJoNlpnY3A4VXlHVEpfaG5oOWh5TlZlTERlMkp6UmZ6QVBSbGVDY3NoSHczZ2FYY3VsV1N5aWJzRzZCSmVQV21ScVN2ZmVSVUNSQ3g?oc=5",
+   "lote": "1795721234.227219"
   },
   {
-   "titulo": "Needham Starts GameStop at Buy, Says It's More Than a Meme Stock",
-   "enlace": "https://www.cryptoprowl.com/releases/needham-starts-gamestop-at-buy-says-its-more-than-a-meme-stock-8051",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T15:10:00.000Z"
+   "fecha_texto": "25 nov · 17:23",
+   "orden": "2026-11-25T21:23:00.000Z",
+   "medio": "TradingView",
+   "titular": "GameStop Agrees to Pay $3.5 Million to Resolve Shareholder Lawsuit",
+   "enlace": "https://news.google.com/rss/articles/CBMixgFBVV95cUxNLXVBOFR6Ul9YbVNzNHFxblFRb0owRXFPOTVySjBLTVZvVl92bnktR3ZIVGg5dnRZb29qeXdtUU5MeVZPMlZwTkhEVXFyYzJWNldEN3ZBUGYwaHNPeWg2TnN6eUpQc1VEYmtSWGxTNG9oZ0dMbHNwRWQ5RGtWeHdWaDdGeXNWUXllLXR2dWwxX1NzdUFaUVVSS2k5a0VJbUg2RFZKUXo5eXJ4UU1LVXN0NmRMb2tKU0ExLVY1UGtQVFl5UG9QSWc?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "Micron downgraded, GameStop initiated: Wall Street's top analyst calls",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/snap-upgraded-pinterest-downgrade-wall-135144855.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T14:48:15.000Z"
+   "fecha_texto": "25 nov · 12:29",
+   "orden": "2026-11-25T16:29:00.000Z",
+   "medio": "Traders Union",
+   "titular": "What's behind GameStop's latest 4.6% stock pullback?",
+   "enlace": "https://news.google.com/rss/articles/CBMijAFBVV95cUxNSUF6emM2MUdqbENITXhsTERVcmoxZUVaNXRYSnlnTkI5bHYxczhvSlk3OW9pa0xDYllaOUgzbW93dVBSYXg1YktSd0pEVXh4aTZhQ1VxeUZOTDEwamNSR2s0Rk5adkhQMFgtbkkySFJ3MHNrQXBCN0owbEM2T2RvREhhejlzaG1lT3E4WA?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "Needham Initiates GameStop At ‘Buy’ — Says Collectibles Push And Improved Profitability Could Unlock Upside For GME",
-   "enlace": "https://stocktwits.com/news-articles/markets/equity/needham-initiates-game-stop-at-buy-says-collectibles-push-and-improved-profitability-could-unlock-upside-for-gme/cNbsIUDR9k0",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-24T12:29:17.000Z"
+   "fecha_texto": "25 nov · 11:23",
+   "orden": "2026-11-25T15:23:00.000Z",
+   "medio": "JournalArta",
+   "titular": "GameStop stock falls to $26.76 as broader market drops",
+   "enlace": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPSk5zMXNMRjNaNnVkZnU4WnUwZEVDRTNmTHB6cEl3WFlxRVZDYVh3c3dZbFIxZU5BejBWX092LTBlMHVQcjhLam9fNFpQZHVmek42VldkbDdiUGdmZjVuSTZBSGFpOU1SaEZmQ1RlR1FRNHd4eDdMS09oTlhjVTVSUWhmMXBZT2E0WUpWWi1nN25pVjhDNHdR?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Central Garden (CENTA) Reports Q4 Loss, Lags Revenue Estimates",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/central-garden-centa-reports-q4-231002162.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-23T23:10:02.000Z"
+   "fecha_texto": "25 nov · 11:16",
+   "orden": "2026-11-25T15:16:00.000Z",
+   "medio": "International Business Times Australia",
+   "titular": "GameStop Stock Slips Over 2% As Wall Street Sell-Off Snaps Win Streak Despite New Buy Rating From Needham",
+   "enlace": "https://news.google.com/rss/articles/CBMijAFBVV95cUxOSl9sOFVYZllUS0ZJQ1ZyeVdrYWtNLUwyOG9IS21pR196dDZPcXFhNENhRDM0aGlzbDFRSmlCUWhZSTRIOE9kR2ZQaF9VX1RFM1N1TDlnWTJKdzdPQ28xMVVzTl9NbUU5V1ZUSnVfczlwUUNJMkdhZXRGc05BQ3h4dmxpSG1oVmxxNzdTdg?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Wall Street Analysts See GameStop (GME) as a Buy: Should You Invest?",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/wall-street-analysts-see-gamestop-133002287.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-23T13:30:02.000Z"
+   "fecha_texto": "25 nov · 07:45",
+   "orden": "2026-11-25T11:45:00.000Z",
+   "medio": "Foreign Policy Journal",
+   "titular": "GameStop's (NYSE: GME) Meme-Stock Stigma Is Masking A Real Business Transformation, Needham Says In New 'Buy' Call",
+   "enlace": "https://news.google.com/rss/articles/CBMi7AFBVV95cUxPcmVYbTF3YmRWYmx2TDlkd0wzZm1KRk1FOGU4TkR3ZzhPdU5oVm1KR0ZkcDdXLVJZRHd3MWRIRHJkdmlWeXBzblNFSmJPbFBsbGtBX3JhbjNnZU1WMUNOS2pHRDZhT3dvaEZjTHdFb0gzOHNvVUlzSTBuWExWUjhVY3k5dHpQZ2J1aGVydW9WZlZhUW1uUEpLck1aaHcyTjRISFlqZHJEbzhaeFY0WWVxckd0Q2NaWVpjWWNNZVFxM0dKVVBqVEh4c2I2TXNwVkVYMS1JajU4OG93SDM5ZV96bDQ0c1EtV3ZzUlBDSg?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "GME Stock Heads For A Green Month: Wall Street Reportedly Sees A New Growth Story Beyond The Meme-Stock Hype",
-   "enlace": "https://stocktwits.com/news-articles/markets/equity/gme-stock-wall-street-collectible-gta-sales-meme-stock-hype/cNbYpBxR9SB",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-23T05:17:44.000Z"
+   "fecha_texto": "25 nov · 04:52",
+   "orden": "2026-11-25T08:52:00.000Z",
+   "medio": "Blockchain News",
+   "titular": "GameStop (GME) Stock Price Prediction: Needham’s fresh buy call meets a stretched near-term setup",
+   "enlace": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPRWhjU1JiS09BUG5Qel9oZXVpdmJ4QWtDSGdvc1dCQzg1ZlJpWmMyQm9sRzFHRnNzOHdJc1hIOWpwLTM1bjBEUVV1OEFvQl9MRldzNGp6a3hxemR2b09qbFF2b0hFT2RjR0UyYk9YZEtxYWlOd01VVWc5NDZKQjgxNXlROTVPTXo1ZmFMaEhJQmRqZXVs?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Nasdaq, Dow, S&P 500 Futures Jump Nearly 2% After Brutal Tech Selloff Last Week: GME, JNJ, ALNY, GAP In Focus",
-   "enlace": "https://stocktwits.com/news-articles/markets/equity/stock-market-today-nasdaq-dow-futures-rise-ai-selloff-gme-jnj-stocks/cNbYVFiR9ST",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-23T03:01:39.000Z"
+   "fecha_texto": "24 nov · 22:17",
+   "orden": "2026-11-25T02:17:00.000Z",
+   "medio": "Stocktwits",
+   "titular": "Needham Initiates GameStop At ‘Buy’ — Says Collectibles Push And Improved Profitability Could Unlock Upside For GME",
+   "enlace": "https://news.google.com/rss/articles/CBMihwJBVV95cUxOeVFWOFNiZmsxVGI1NUo5TVRmMmV5c3hkM2oxMXRCZWV2S21nTWYzX3VwZm9ZekliMXQ0OXo2VWlXZnZOcDhFYnFrRS1sR0RpMG9yTmUtZ3o4MUJsck9HNi1qcHBYbjlaQk9EYm9uekR1N2pqMDlnSnZ3UkpwazhZd0d6X0FIMkxkRlRjS1pmRFRUQzY4aUNMTkZBRnVpYjNybmNxOXVuSzdSRHVqNl9JZ2lRQXZXWEFDUVVCZnppVmV2aEN1Si1qSXVxcC0tQkFWVU9ZMzlCOWNvLVZzb0VnQnhnRDVnSUxuNzRqTVZyRUUtTXloRWZYSDZKcTFrTVdfWDFzMTk3QQ?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "S&P 500, Nasdaq, Dow End Lower As Anthropic Trading Debut Fails To Provide Adequate Confidence — ANT, META, AAPL, GME In Focus",
-   "enlace": "https://stocktwits.com/news-articles/markets/equity/s-and-p-500-nasdaq-dow-end-lower-as-anthropic-trading-debut-fails-to-provide-adequate-confidence/cNbio2mR90v",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-19T23:01:05.000Z"
+   "fecha_texto": "24 nov · 20:07",
+   "orden": "2026-11-25T00:07:00.000Z",
+   "medio": "24/7 Wall St.",
+   "titular": "Jim Cramer Says GameStop’s Turnaround Plan “Actually Works.” Should You Buy?",
+   "enlace": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQSGU3RHlyYi1PSVQ5ejlHVXItYlNfdUxwTU81bkNUT012Tk45VzRiQnI2VGhoXzd1NlB3ZW1WMF95Q3lEMHFZSU5BbV9GVlZGUzMzRWRvTWI5STFfZ0NnVzhOdVBrbGZpZndpX2VkeHNTQy1wcXZrSXlhTzBUa1U3RmdDLUhjVm1VSFE2S1VkMHhTNFFiTDRXNG5qb2Jfc0h5cjU4b3k5NUlQMW5td01rbFpXQlFQUQ?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "GameStop (GME) Rises As Market Takes a Dip: Key Facts",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/gamestop-gme-rises-market-takes-214503694.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-19T21:45:03.000Z"
+   "fecha_texto": "24 nov · 16:57",
+   "orden": "2026-11-24T20:57:00.000Z",
+   "medio": "GuruFocus",
+   "titular": "GameStop (GME) Edges Higher Amid Bullish Options Sentiment Ahead of Earnings",
+   "enlace": "https://news.google.com/rss/articles/CBMiswFBVV95cUxPd3RWeGI2QmljbVZfekpJWTkwSnBuNkFRSlY2bzRqcmx2OXdrYUNKZ0NEX1Ntb3pVb0JGdmxHaS1mMnR2b2F3bGZleUxVOXVuY0V4ZHFQbmJNQkdhZnZkczNiNDlfZlA5OExSeDNuSEY4OVZWN3BDUE54bHBJcDZ6a0RxUWxTNlRtdER1Q2YtWmYxM29mRnpZYnp1V002NkhES3d0bnRMWWhKbTBrcnJ0YTA0Zw?oc=5",
+   "lote": "1795721422.098919"
   },
   {
-   "titulo": "Grandstand Limited (GRSD) Q3 Earnings and Revenues Miss Estimates",
-   "enlace": "https://finance.yahoo.com/markets/stocks/articles/grandstand-limited-grsd-q3-earnings-212002768.html",
-   "medio": "Yahoo Finance",
-   "fecha": "2026-11-19T21:20:02.000Z"
+   "fecha_texto": "24 nov · 15:58",
+   "orden": "2026-11-24T19:58:00.000Z",
+   "medio": "Barchart.com",
+   "titular": "GME Stock Alert: GameStop Just Scored a New 'Buy' Rating",
+   "enlace": "https://news.google.com/rss/articles/CBMingFBVV95cUxNR3hIYk0yQWdRYkJPR2pDVmg0SVY5MjViMW1jVGVkZG5fSkJEbFpVNXdtNk53bWpSMTdKdFpKTVI4cGtoY0I0Q0NZajJZd2RsWkdXMHdmdlNBV0djRlhKNktObkFSdUJOdjVjZ2lxUjBUV3FQTXdEay16T040ZFZ3bk9WSkJIdHZQM2dFbG82akRjTjNTdG9mNFJEZEU0dw?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "Booking Holdings vs. GameStop: Which Consumer Stock Is a Better Buy for 2027?",
-   "enlace": "https://www.nasdaq.com/articles/booking-holdings-vs-gamestop-which-consumer-stock-better-buy-2027",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-14T00:32:02.000Z"
+   "fecha_texto": "24 nov · 12:09",
+   "orden": "2026-11-24T16:09:00.000Z",
+   "medio": "Benzinga",
+   "titular": "GameStop Stock Hovers Near Flatline: What's Going On?",
+   "enlace": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPUUVoYUg4dUozN1Z6MFQ1bllyd2hnRnUwSU1Bcms4Z2Fra2tma0w5NnZjVUIzMEZQRWJmUXlpeXE1WFlVa2Q1cnpOdml2ZGoyTU9rVVhfX2ZtcVM1aTkwMzMyRE5ONGgyMTBOUXc1aHhianRjMEQ5V2hoVUJVR3kybzhZT2lmbUpSM3I3SGZjTnAzc2Q5UnF3blcwdjBldGstM1F1OFJlUksweTBrVkVaMQ?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "Five Below vs. GameStop: Which Retailer Stock Is a Better Buy for 2027?",
-   "enlace": "https://www.nasdaq.com/articles/five-below-vs-gamestop-which-retailer-stock-better-buy-2027",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-11T22:50:02.000Z"
+   "fecha_texto": "24 nov · 12:07",
+   "orden": "2026-11-24T16:07:00.000Z",
+   "medio": "StreetInsider",
+   "titular": "Needham Starts GameStop (GME) at Buy, 'Underappreciated Story'",
+   "enlace": "https://news.google.com/rss/articles/CBMixgFBVV95cUxOSjhJWXlleVB3RUdENWJUb2RVUmpjNEZ4UXg3U3o0QjRVY0Y4bTFma1NUeUNZZWRpQ0hsTjB4RF9mQ0M0MjI1SWRPRWhiSHA1cEJoLUFUZnFvTHRuZ0lQMjFpc0ItVFVtMGcwVHpOaUZIUkNQdWozWEl1RVJhQTg0VUFXY2JwVkdSMTdLbFF2eUZmRjFTLWpaczBwbnR4WkJzeTFZQm90YnRRbUd6UWd3T1JEU253T3dnN3RQQV9BYmN3Y0RmaFE?oc=5",
+   "lote": "1795721045.132109"
   },
   {
-   "titulo": "The Beachbody Company, Inc. (BODI) Surpasses Q3 Earnings Estimates",
-   "enlace": "https://www.nasdaq.com/articles/beachbody-company-inc-bodi-surpasses-q3-earnings-estimates",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-10T22:05:02.000Z"
+   "fecha_texto": "24 nov · 11:25",
+   "orden": "2026-11-24T15:25:00.000Z",
+   "medio": "BigGo Finance",
+   "titular": "GameStop Draws Fresh Wall Street Coverage as Collectibles Business Reshapes Earnings",
+   "enlace": "https://news.google.com/rss/articles/CBMidkFVX3lxTE9xTmJtTEN3eW90Qkx4bUNIMDN0dnFkWUhvbWtTdjFqMXBELWdFdy1yV1RNa1RnQ21tMEZwVnQ5dEtZV2tXT3RlMF9XVndOZ3M5MV92dXRwY05MREl2NmZGMWRWb0NLS2ZMcFpBUDRCUUhVT0NDY1E?oc=5",
+   "lote": "1795721234.227219"
   },
   {
-   "titulo": "Noteworthy Tuesday Option Activity: MSTR, VTOL, GME",
-   "enlace": "https://www.nasdaq.com/articles/noteworthy-tuesday-option-activity-mstr-vtol-gme",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-10T20:29:10.000Z"
+   "fecha_texto": "24 nov · 11:00",
+   "orden": "2026-11-24T15:00:00.000Z",
+   "medio": "CNBC",
+   "titular": "Cramer’s Stop Trading: GameStop",
+   "enlace": "https://news.google.com/rss/articles/CBMifkFVX3lxTE9ySjZ6V0wwU3JOeC15Wk5zNkJhT1dOdnJFV2ZrQXJHQTZudlR4aG82WmNKSVJsc1NjenBqMjI4SmJCRlpqajVPWVpYQWNDYzVybHd1NU5vcEVWT2NzdGhseHJURlJEZnVSYlVobjFqU0h3MGxmbGY3SHI5X0daZw?oc=5",
+   "lote": "1795721361.142679"
   },
   {
-   "titulo": "GameStop Consensus Price Target Raised 144.44% to $33.66",
-   "enlace": "https://www.nasdaq.com/articles/gamestop-consensus-price-target-raised-14444-3366",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-09T14:07:23.000Z"
+   "fecha_texto": "24 nov · 10:27",
+   "orden": "2026-11-24T14:27:00.000Z",
+   "medio": "Investing.com",
+   "titular": "Why is GameStop stock gaining today?",
+   "enlace": "https://news.google.com/rss/articles/CBMingFBVV95cUxNbmMtNFdjdjhXN2hzS3RZR0hmTHQxMlJwd3lsa2sxenFXUnhFNVJnVVVPa3Fic2dzWEpGaDZuVjVlRXN6dUhTajcyUURmTUk3Zkk3YWVoc3hDSjJmT0NNUFUtSFNrZW1LTk5SSU5aT0YtWXZwcDVQcUlGSzlPZTlKdDM0NUluTmRSTmxKd2FBcjZfbi05ZzZ1UGNTb1E1dw?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "Coupang vs. GameStop: Which Consumer Stock Is a Better Buy Going Into 2027?",
-   "enlace": "https://www.nasdaq.com/articles/coupang-vs-gamestop-which-consumer-stock-better-buy-going-2027",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-07T22:40:46.000Z"
+   "fecha_texto": "24 nov · 09:19",
+   "orden": "2026-11-24T13:19:00.000Z",
+   "medio": "MarketBeat",
+   "titular": "GameStop Corp. (NYSE:GME) Stock Has Average Target Price of $32.50 According to Brokerages",
+   "enlace": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxPdnNFNkN0bmJfWkNCNmdLTXdhVzZrbWxFU2c4SHRDZlZwdG9SaHhHYlVpcDJ4d3dFekhna1FzMzBJNlJ2RTFfZGRQRG40VjRhb3BGUkVtT01uV0o1RzJmR2hCT1JPUUw0U1BMeGpkNGIzM0JHcmdKWWM4YW9NcWV2SG0ycVJvNlJ3VHZ0bjNpUmNlV1BEQzlHUlY4a0labnk2LVBfdXFoRG9maXlqY0VCMlRqTENIZzFnVkhraFB5eThkcVJCcmlqTkJKU0pKbk5TeFQ3bGV5bzBMNWZ4Uzcyenc2SQ?oc=5",
+   "lote": "1795721597.644189"
   },
   {
-   "titulo": "Should You Invest in GameStop (GME) Based on Bullish Wall Street Views?",
-   "enlace": "https://www.nasdaq.com/articles/should-you-invest-gamestop-gme-based-bullish-wall-street-views",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-06T13:30:01.000Z"
+   "fecha_texto": "24 nov · 09:04",
+   "orden": "2026-11-24T13:04:00.000Z",
+   "medio": "Investing.com",
+   "titular": "Needham initiates GameStop stock with buy rating on business transformation",
+   "enlace": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxOZjN0ai13XzV1OEJxSzBaYjR0TXNrcVlyTGEteEZrSWhkZDFNYmd1WjloR3ZmcEg5bXBOVWVObkJvNVBwUFZyYkhkcXBiQUIxbGItUmQ0NXhsSDBxQ0FIUUpVQ2lURWUybi02VzZCMHU1MGxFMng4MFY2V0FJYWRuN2gxTjYzbXQ2TnNzTXRlX1p2OTg1X0N3RERnR1AwTGR6d3pvS3poZ3Zmb0FxSThFV3VsZUJFQzloaXNUM1liOHFrek00c0VPUjdBQ0o0UXJq?oc=5",
+   "lote": "1795721234.227219"
   },
   {
-   "titulo": "GameStop (GME) Stock Moves -3.86%: What You Should Know",
-   "enlace": "https://www.nasdaq.com/articles/gamestop-gme-stock-moves-386-what-you-should-know",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-05T21:45:04.000Z"
+   "fecha_texto": "24 nov · 08:25",
+   "orden": "2026-11-24T12:25:00.000Z",
+   "medio": "Barchart.com",
+   "titular": "Roaring Kitty Just Sent GameStop Stock Higher. Haven’t We Seen This Before?",
+   "enlace": "https://news.google.com/rss/articles/CBMitwFBVV95cUxPOWJRclhPT1FoUVlsVmtMcmtYbU4zb0NtQ0tuLV9VUzZyVkVtbW9fa0Q3QUFScEJLTGVSMEcyRGhubnZZVmphaUhsWUZtaHk4bXJkWlRtYi1ONnY5UzBjOWFOLU9xN3lNYjBzdDM1NWtyaFVfdGR1dHFnVWQ1SzNYbkFyb2VybUgtOHp3TXpzdVE4VFpqUlZTSG92bVUzbDIwejVteEV5UHNMNTlfelpsSE9ta2tjcjA?oc=5",
+   "lote": "1795721300.124819"
   },
   {
-   "titulo": "Chewy vs. GameStop: Which Consumer Stock Is a Better Buy for 2027?",
-   "enlace": "https://www.nasdaq.com/articles/chewy-vs-gamestop-which-consumer-stock-better-buy-2027",
-   "medio": "Nasdaq",
-   "fecha": "2026-11-05T16:55:02.000Z"
+   "fecha_texto": "24 nov · 08:20",
+   "orden": "2026-11-24T12:20:00.000Z",
+   "medio": "Quiver Quantitative",
+   "titular": "New Analyst Forecast: $GME Given $33 Price Target",
+   "enlace": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOREc0RGJlSTdCMkQ4S2VTS0Fxa0lVcWVsRDZJR0Z4NWVsUHhQZVhFUmpfVDdHS2dDZ2JqaXFncW1vMGVaeU9Zb1pQRFZCMTZsUHRCTldXaFZRaERRUlFTaEtoekc1aHVUcTZuWnVYVURmMlo3LTJkSGJWSU1NQVBCX3QyWVBpbUpXWHE4UktfUGxvZw?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "24 nov · 06:44",
+   "orden": "2026-11-24T10:44:00.000Z",
+   "medio": "TradingView",
+   "titular": "Needham initiates coverage of GameStop at Buy, sets price target at $33",
+   "enlace": "https://news.google.com/rss/articles/CBMiywFBVV95cUxNa21SUGpZM2RwaUpyWjNFZnVsanVRa3p4WmdwNGV6aW02WDlQbUhndWVDU3N2bUxMc2RqZE9uVG5OemRsMlZLQ1VzLVgtQTZieVdVZlRfRl9ySVlqY01EalNpWDhSeHRLNEJpcTlpNU9IQjlPaGNMMXhBc0hsMWR1T2UxeFVYM3ZUdGpicTVtQ2dqNWh5SVA4cFNZaGticWRBek16QW1qWDJLYkZWNk5rUUlMYzBhMEw4YXRCWW9ZRWx0S1JsczJuSTFzSQ?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "24 nov · 05:15",
+   "orden": "2026-11-24T09:15:00.000Z",
+   "medio": "BigGo Finance",
+   "titular": "GameStop Tests $27.68 Resistance as Thin Volume Clouds a 10% November Rally",
+   "enlace": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBzX3BlVjduRWo2ZlZBaFl4ekMzZ1hlOFRsZHhMN2ExWU95dG5vaVFVOXlNc0ZtOEtScExHbGs4aGV1Zmw5SnpfVUZGR3VHcUs5d1EzYlJLQjZxakR4elVXQlE2NHRFQmE3aWZvOFdUZE9sc0tDeEE?oc=5",
+   "lote": "1795721300.124819"
+  },
+  {
+   "fecha_texto": "24 nov · 04:45",
+   "orden": "2026-11-24T08:45:00.000Z",
+   "medio": "Blockchain News",
+   "titular": "GameStop (GME) Stock Price Prediction: Price is pressing resistance as bullish trend meets weak volume confirmation",
+   "enlace": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQdFRqZVZ5ZUY2SWFFcDdjNm03cXF2VW5QQ01fYU5Wcll3amkwdlhmRzlHUnVEWnEwaGJjVWhjaTZuVkF5X1lkOFg2Z2hpRzZwSHc4amxnUUp1MFd3bDFrMEt5NWRlQng3OXlZTTNUTmNuQm9yUlZLT3FiUURqRm5zbkI1b0dVcko1NkQ1NVV2TFFoUFlZTnJpbWRsUXJtUUROUVVzRmxNQQ?oc=5",
+   "lote": "1795721422.098919"
+  },
+  {
+   "fecha_texto": "24 nov · 01:00",
+   "orden": "2026-11-24T05:00:00.000Z",
+   "medio": "Martinsville Bulletin",
+   "titular": "Henry County deputies seek help in break-in, GameStop theft",
+   "enlace": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxOOVdnZlRTWHNPVV82LUxackJEZzZMdTIwb1RZcTVQZmFrZEhkMW80LUJ3S1l0MlBSempiT1RRY1FRVHNsdG9ROXFTT0QzejUwMVFXbVdTdFQ3Vjc4RnktQ3ZQV3g3LUVHdkl5OVVzbVRBRzFSWG56S3FEM2xieTJiQlRTT3RqZXRsRWNlXzNwT3VKMV9FMmNCcno5VEsteWg0cVJ1ODd4cElNUQ?oc=5",
+   "lote": "1795721658.485699"
+  },
+  {
+   "fecha_texto": "23 nov · 19:49",
+   "orden": "2026-11-23T23:49:00.000Z",
+   "medio": "Notebookcheck",
+   "titular": "GameStop CEO says digital-only games hurt consumers as GTA VI ships without a disc",
+   "enlace": "https://news.google.com/rss/articles/CBMixgFBVV95cUxPM19sSHZEemJIWUJHOVYxUTBrbmQwSzQxbFB6bnNkMXhZZkQyeTRfZjd0T1cySFQ5cmhoR09lWkNJYTZyTFM0cXFfTGZ1T1dEVEpDYWs4QWFtdlk3cDcwUVI1b2lDQ0RnbHN1dmk5MW40RUh1UnJyZWJ1U1hVWnU1UTF6YjZUZnNFX1h1enZlOVpDUFlMQ3IycDdQYkRJVmgzMEhJU19kcS1sS3RwRmdtZU1aMjM3Z2NsYjA3akRtRmNmSmJVZnc?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "23 nov · 17:02",
+   "orden": "2026-11-23T21:02:00.000Z",
+   "medio": "Insider Gaming",
+   "titular": "GameStop Black Friday 2026 Deals – Headsets, Games, Controllers, and More",
+   "enlace": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE5kYnJDNVg2LTd3eUdReUYtdEktcjBMQ0Vjc0Z5WFdnUzdYaDljSU9fTWRTaWRkcFpudkxHdWVtLUhveXE2RjRCdlZMcXVFeldlOGJzSk9WLWVQeHp4OWV1MTUzckI?oc=5",
+   "lote": "1795721361.142679"
+  },
+  {
+   "fecha_texto": "23 nov · 13:45",
+   "orden": "2026-11-23T17:45:00.000Z",
+   "medio": "Mashable",
+   "titular": "Roaring Kitty reveals massive GME position in GameStop stock gamble",
+   "enlace": "https://news.google.com/rss/articles/CBMiekFVX3lxTFB1aGZ1Wnh5Rk9oVzhHTUFqVW9MQVhjb3VqZjJnUzBJanNaY01lZUd0TTlkdHNjNE5IVGZKeWg0cWZQbTJaQ2hIN3FBYmF6LWQxMU1RU21SRUU1OVp4ejR6eC1ZcXhpMTIybjBGN3ZtelBhSy10d1JKNjFB?oc=5",
+   "lote": "1795721361.142679"
+  },
+  {
+   "fecha_texto": "23 nov · 12:10",
+   "orden": "2026-11-23T16:10:00.000Z",
+   "medio": "Game News Plus",
+   "titular": "GameStop CEO Criticizes GTA 6’s Physical Disc Decision",
+   "enlace": "https://news.google.com/rss/articles/CBMilAFBVV95cUxQYXRfcVVfSjVLMks5cl9QMUZmRjRiZk9DWHd1Wjg1b3pmNUlKdTBMYWJYN3ZoOUtET2JNSENtR3B0X2NTVDgtN1dwd3lab29tdnFDZU1pbnZMSkYxaWdQbFNaRnlaa3Jma00wVUU0SVc3SWt3R2tVUUxLdGFZcEhSZnEtUTRKVTIwME14X20xejk1MnlX?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "23 nov · 11:12",
+   "orden": "2026-11-23T15:12:00.000Z",
+   "medio": "cwibc.co.id",
+   "titular": "GameStop Gains 2% as Trump Buys Shares and Analysts Favor GME",
+   "enlace": "https://news.google.com/rss/articles/CBMid0FVX3lxTE5acVpDU3hKM3hibWxTYmZoY3NjVllGeFZIUkdyYnFZMERpZ2JVdWUzaVZUNGRlYXdibmZvQm0zY1hSRmhBUVo4MTlieHhiQzRKTUE2bXQ3ajI1WFdUTHZlUXMzeEpLd3JKM0hRaklTeVBUTVVGOHk0?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "23 nov · 11:09",
+   "orden": "2026-11-23T15:09:00.000Z",
+   "medio": "bsinews.id",
+   "titular": "GameStop Gains Attention as Analysts Favor Shares and Trump Buys Stock",
+   "enlace": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBGeUtpQ21zT3pvM1ZFV2VyQldUY3VTbXRIdk1iZGwzSVdTNjFqOWdHWWIycmlvTVA5M0ZFa1A1UVdJVHdWWmdWb0h0U3NUMmphN3M2YWJiaTNxQWZfN1FoTlc5OTl4anZ4ZmVMTHpn?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "23 nov · 10:33",
+   "orden": "2026-11-23T14:33:00.000Z",
+   "medio": "RamaOnHealthcare",
+   "titular": "NASEM report calls for doubling primary care spending and tying GME slots to primary care",
+   "enlace": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxNYmpzdkZhb19sNWdrLUZwMEE2enRlWW9uekFCWjNsXzNSajRTbXF6bTJOWWszeFVRTWhyQ2Q3ckp1d2hpb3c5elRIQjZMbGFGMm1lTFdET2Q4aEVwNzc4SHMySG93a0FiWGY1MG0xMDZDLV9jajl3aEdsMWNpWmo3bDJWRmQ2NGljUUpxdnZnTFdZcUNFcGRtMXVOWnlkcTVneU5sYjE3TnFQRzItbzZKSHpHbkxKMldJUy00?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "23 nov · 09:27",
+   "orden": "2026-11-23T13:27:00.000Z",
+   "medio": "Foreign Policy Journal",
+   "titular": "GameStop (NYSE: GME) Collectibles Revenue Surges 57% As Wall Street Bets On A Reinvented Business Model",
+   "enlace": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQM1RFbG5zTFgyTG5CSmdKbmsyOS1hUzNvY2NlMHRMY3NQczBVNlNkSFIzRlhoYXFBUTh0cFFRRXlFLXFCbGlhMGxaV3AxQnRwTEhFQXA2aW9WYnRTTDlHMWZVMVFHTHRlLXd4RVRzZU5QcEx6MVEwN2pQc041MC1pUWJEVGxabWtETVRIN0EtX2QxdFdoNVpISFZrUDBDQmpwaG5fZHByTl9kZzdGVjNTZWVSV3p4ZzNUOU9tOUpsd0dWRlBmaHNOTHNlc2ktZWFSSzEzRC1fUTBfLTJuNlRYSWtR?oc=5",
+   "lote": "1795721234.227219"
+  },
+  {
+   "fecha_texto": "23 nov · 08:30",
+   "orden": "2026-11-23T12:30:00.000Z",
+   "medio": "Wccftech",
+   "titular": "GameStop CEO Ryan Cohen Criticizes GTA 6 Skipping Physical Discs: ‘When Buying a Game, Players Should Be Able to Sell It, Trade It, or Lend It’",
+   "enlace": "https://news.google.com/rss/articles/CBMidEFVX3lxTE9TblNQOTExWFF0ckdUWnhtUEZUelZCX1Iyc3FmTVFNV1NDZzZIa0ZDVTg0bVZUU3RlWGRMa2JJOURvUThjWElETE9oSlJ1X0pvTmgzblBvYlg2Mm1OeDFkOFJYSWJvX2RRRWZPM1ZJc3J5VU9E0gF6QVVfeXFMUG8yTWNVMGt6MGo5U0VsZVUxZTVmRG4xVXpjQ3YyX0s5T3JrcnFULXZsYkRid1F5dFdWbWRNa2dGcTMxRjItdkFLTGZhSHFiSjRWR01OUkpVN0ZwQVN6M0JHZFBvajJEQVhfcDdLcTVQN1Z2TldXZHdLMVE?oc=5",
+   "lote": "1795721234.227219"
+  },
+  {
+   "fecha_texto": "23 nov · 00:44",
+   "orden": "2026-11-23T04:44:00.000Z",
+   "medio": "WJRT ABC12",
+   "titular": "Kochville Township GameStop targeted in PlayStation 5 smash-and-grab",
+   "enlace": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxNUnIyREM0S2lsaUJlNWxULW9DLXdiUTE4eG5MN0dtZTFQS2JTYW1GcUZhc2NoWE94eHd6Nkk3Nkx4bzAweUlieGxzcENWYVhTV1NyTWRIckV3em0yR01HZU5zMXQ4QlA4SUFlREZoc2hpVnJFZXVzM3dETzNNOS12UEF1UWRxS1dneG94OHJOdzZObDlrX0J0Uzd6OExjS2NtTWpLbjJObjZjVUdHck5nLWZ3cjN6NEJDUm9KWkFsY2R5TjUxQ0dpNEcwakhkV3JBcXJoclNIV1hkVEQx?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "22 nov · 11:31",
+   "orden": "2026-11-22T15:31:00.000Z",
+   "medio": "Martinsville Bulletin",
+   "titular": "GameStop incident",
+   "enlace": "https://news.google.com/rss/articles/CBMihwFBVV95cUxQS2tHeGtKLXpNb092a2d0bXRZLWdXaUl4Yk4zZWIyeHFYWGhYbjg0YnlIbi1OUjFZUTBVTzBtRTJnUFNJUWlVemxzeWVuZEkwZGZ4ZzFZUDVJSHphZFdNa2MyYkc0UENZNFlYeGdGMU83d2tvLWZOSGd6S1dmZkRKbWtSUVRVbzg?oc=5",
+   "lote": "1795721658.485699"
+  },
+  {
+   "fecha_texto": "21 nov · 05:33",
+   "orden": "2026-11-21T09:33:00.000Z",
+   "medio": "MIXED News",
+   "titular": "“When you buy a game”: GameStop’s CEO pushes back on digital-only releases",
+   "enlace": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOM2lWd0Y2d3RjWWRmMFFzUUFrdXlMTjM4NHFMVXBCUEpreURzMDRJZTA3RFVRTWpQaFhDbFhSU1lzMVJSLXZMbUhyV05odjZTRk94Q2hKanlOOFl1VzlDNXNsd0ZIZ2dsaWo5c2lmaHhaME1fUHNRQjY4SWp0QjJQQkpLNWptZlNVQnNPelIyYUMyZw?oc=5",
+   "lote": "1795721658.485699"
+  },
+  {
+   "fecha_texto": "21 nov · 04:11",
+   "orden": "2026-11-21T08:11:00.000Z",
+   "medio": "Simply Wall St",
+   "titular": "GameStop (GME) Seeks Turnaround Operator, Is The Stock Already Fully Valued?",
+   "enlace": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQR1Y5bUdWWUJPWVBJbkpXbUtQQ2FtRUU5Wm4xYmNTNkNDQ0V0dHVuaW9FZ2xCNG95NVctbHpnN1NFUmFVMzVDS1ZjMmxwUm5kNkw3ek1tM212bGJzbW5jWjZxZ0E4SENtZ2YxUExyT2hZVE9ObUw2QXN3VkJtQ2MyWnB2bXAybkE1Tm1FTHpkSUVSUkpFN2M2bW1pTmZOMlhGcHM1Q0FBYnUyajBFQkhESkFmeEVEN1hnRDB1clpn0gHDAUFVX3lxTE9OTVl1T3ZPRFM2MllEQXBxNFBXNEtCV3ZxVGZRT1hPczBKUkZ3blVWdWVaS0NDWHZ1dHh4NEQtM1FiQWxoeU51Vl9fU0tzQjlHWFZ5UnhHV2VDcTJBOTAtRWhsUHJ0ZS1RUEw4Y3RoYzJPZWc3cVM5Mm9HaGtJN3pRcXI1UHJBeGhGdkEzUW9Ha3VDVGpmQnZGMXYwQXJuVDJDcVRsa3RRWEdXM0lscFZwcXd2U1l4TWF2LVVHRlZJMXNwMA?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "20 nov · 12:45",
+   "orden": "2026-11-20T16:45:00.000Z",
+   "medio": "PC Gamer",
+   "titular": "GameStop boss calls for return of physical discs just as GTA 6 does digital gangbusters",
+   "enlace": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOaEYyUUlFbUcyYXBWLVRWc3FNZHBKaGFGNENBNWdzajlEU19EaHVFcm9MQ1JyS0Z2ZlhvVlJwQlF6MEpPcGl2QzBxMXhDMGJ3YXFpeDBLM1ZPNHJPbHI2SHJnd2lWTFp4WkU3YVk4dVowRzFVNFVHZm02OEgxanltV2hGTnJaREQ2enVxYXVsNmZuemZtU1EwT1NFNjhPc3U3QnowRUJjdWFBZ2I5MzRsOXZ5enhZcTNsbDJxV2tCdlA4b0RqVzlR?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "20 nov · 12:05",
+   "orden": "2026-11-20T16:05:00.000Z",
+   "medio": "Benzinga",
+   "titular": "GameStop Stock Wavers: What's Happening?",
+   "enlace": "https://news.google.com/rss/articles/CBMinwFBVV95cUxPUzZ3TTVNa0dGNllPeVpNdEQ5UGlhODhsbTQwbGlua3RKWjRnblBXS2hRaksxZzlmX1pjRmJFSUJieW5TNTlycGlNWllkYk5hNEx3RFFIYmRlX0FRYWIwdUdpN0JTRGU0cFphYXJ3cl9lcVNJVFBNMGhjQVBGX1gyZ2drcEU0a3JwTUxDVjQ2N3AxV0YtZGZJdmYyTVpmbnM?oc=5",
+   "lote": "1795721300.124819"
+  },
+  {
+   "fecha_texto": "20 nov · 10:15",
+   "orden": "2026-11-20T14:15:00.000Z",
+   "medio": "MarketWatch",
+   "titular": "GameStop has transformed from a meme stock into a ‘real company,’ analysts say",
+   "enlace": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPbWJTME1ZbnZ6cl9QQkl0bTZTTjN2X1ZGVjRPN0tmVGktb1hRS2Zsa3puMjJzSUI0MF92eVNwTWh6QW1tNWptVDVDcXRvdHM5S2Z4bkJBTWJZTHB0YmZkcTBmY3ZtMno3YUtQdnNQNzRmemdSUkpLSFplcDhzMEdRTlF5VUt1MGw5Z0l0b1VKYmtJYlJEMFQwdXNyQjZKQWktNFpuazJxOS1mRWd3cDdkUUYzd2FTMEpzaFE?oc=5",
+   "lote": "1795721234.227219"
+  },
+  {
+   "fecha_texto": "20 nov · 09:55",
+   "orden": "2026-11-20T13:55:00.000Z",
+   "medio": "Benzinga",
+   "titular": "GameStop Is ‘Not A Meme Stock,’ Says Analyst, Sees Over 22% Upside From Collectibles Push and GTA VI-Led Growth",
+   "enlace": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxNbnVVN0duTFZaam1zaWhTRGtHVnl5Rmp0VzZLNHY1alk4b2ZSMV9iMlBiSFN6TFBSZ2JWT1dqVm1JSXkwY1RPOWk0SDN4cGJzakxkVjg4X01tLUlyZWgwbXlvQm5JQ05GQkpYUEwzbE9KU21pb1VJdll5SjRLanIteFZNSUhDUklhdDF6Y1pkN1BldG9rVWxBN1c4WHVVNjFvWHhUUlJFNzY3MmMxMEpWdGNONDluUkZVOUk3YXc0UF9NSm9YNHY2XzBlR0JHWmZHM1lBa2hfeEozZXQwVjlHUUNqTGcxTk9wZm9JTUhDQ28?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "20 nov · 07:20",
+   "orden": "2026-11-20T11:20:00.000Z",
+   "medio": "80 Level",
+   "titular": "GameStop CEO Calls Out Digital-Only Releases Amid GTA 6 Hype",
+   "enlace": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxPbzhzVGdkVENzMi1fU21XQVNpTFQ2SU5JMG1nNUdkMndIMmtrbVNxMS1RbzZMcnMxQWtNYmNRSzdLakRsd1dndG54TEVLVHZFUWZEVzN4dGFQTzJ2N0RjVnViSFNCZlNYSTZXbDZxZ3VKazN6VklRSFN3OGR2a3VIcTk5OGozTjRMREtB?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "19 nov · 22:58",
+   "orden": "2026-11-20T02:58:00.000Z",
+   "medio": "WSET",
+   "titular": "Henry County authorities looking for three men accused of stealing consoles from GameStop",
+   "enlace": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxQVWRIVFNCRHNjeG5OS0lpbmJKaldVcl9TcUlhbllhMWZEbXRJMmliQTRlNS1JYVhCRXFUVGN4bHF1S3JoOWhZUUQzLVUyZVBmalFkNmJVb1Z1MmZXMEx4cUVPQkhOblRHeDBIU0w5UkJUb2p4TkZGd1ExaXc1bkJyOTVtdS14ZngzNndXTnhmSUZkWV9Ua1g0Qi04MGFmWGFnaGY0YTRFSGJFMzZjMEg5V2ZiaU1DSmdQ?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "19 nov · 17:14",
+   "orden": "2026-11-19T21:14:00.000Z",
+   "medio": "Barron's",
+   "titular": "Roaring Kitty Is Back. Can He Spark Another GameStop Stock Frenzy?",
+   "enlace": "https://news.google.com/rss/articles/CBMiekFVX3lxTFBYU2lLVU1MeUFBNnh4dmNRUm5TSGxIR1M1UnBOa01PNE9DNEJQX2t2SDJza09GbUdhWUkxQ3pNaVAyU09jTnlZRFFwZHE1Zzh5TFVEWklwNUtOUHhQWko4SGRQLUIwUDNTMzlpMFpxVU4xWWEyUEI2bnJn?oc=5",
+   "lote": "1795721361.142679"
+  },
+  {
+   "fecha_texto": "19 nov · 14:06",
+   "orden": "2026-11-19T18:06:00.000Z",
+   "medio": "Seeking Alpha",
+   "titular": "The return of Roaring Kitty sends Nintendo and GameStop higher (NTDOY:OTCMKTS)",
+   "enlace": "https://news.google.com/rss/articles/CBMiogFBVV95cUxNcmI0SkJxOGp4MzVpc0ZibDcxYk9JeldEMVF2TW5FQW5uaUJlak1qaDhwdmUybUlmeXdSZS10RTZaM19oZkFfNVR4aTZvVE1hNjRMWG83WV9RTjFOcGlNanoyT3VjdEY1MklET3VvQkU2VW4zZkFsODAzZGdrS1d4SEVCYUFmQkR5Nzc4QkhlZzVYMU1iN1BsWWNTaUV2NndxWmc?oc=5",
+   "lote": "1795721658.485699"
+  },
+  {
+   "fecha_texto": "19 nov · 14:06",
+   "orden": "2026-11-19T18:06:00.000Z",
+   "medio": "Benzinga",
+   "titular": "Roaring Kitty Returns: GameStop Tops List of Stocks Primed to Pop",
+   "enlace": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxPOWhUc1RjVjlVY1R5MUI2Y1ZVLTdwdnRwbnVzUFdoREw2Vmt4eC1qMVFVY1NFOWdpYkJ2dTVTamVaN0dVczhXSHBXWlBnejJDcDdaWjF5QnJzM2E5Rl9yVnpyWk1yLTBpd1Ryb2lCUlBKSmctdklINWhId1dfT3c1RFJ3WGdFYjVqb0VCZTFhQTdJLVp1N29MbXpYRDFOLXpCM3pSZU56c2g2dDBNT01WVjMzUmF3N1p2Rl9yemU4VFg?oc=5",
+   "lote": "1795721234.227219"
+  },
+  {
+   "fecha_texto": "19 nov · 09:03",
+   "orden": "2026-11-19T13:03:00.000Z",
+   "medio": "Eurogamer.net",
+   "titular": "\"When you buy a game, you should be able to sell it, trade it or lend it to a friend\" GameStop CEO slams 'code-in-a-box' games in the wake of GTA 6's discless release",
+   "enlace": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNZjRSUkFrSzQxelR1V2pwYUp2T3N3cGUySEt4U0xDZGFKME9VLVl4VndwdnNkQjV0VmlGdmZrQ0F4aW1Pbi1xa0Y0RUd2S05HU2JpQ0prVkxPYzRGRHJpbTFRRW5KSG9odmZ4cWQzamxRYjZaTG5vdUhzckxYcGc3aA?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "19 nov · 07:30",
+   "orden": "2026-11-19T11:30:00.000Z",
+   "medio": "Kotaku",
+   "titular": "GameStop CEO Criticizes Digital-Only Games As GTA 6 Releases Without A Disc",
+   "enlace": "https://news.google.com/rss/articles/CBMipAFBVV95cUxORV91cXJuV3VBZVhfek1kZ1VKbkJ0aFJwWF9SVjlINlhIMF8zMHVUTVMxUGw5QllOLTVxcDRnUXl0X3ZyckI1UnVsZ29CWG1adGNreklkMThsbXVuRThQZ2ZVWEFWd2d6WUlSMXZqdDZCS1J3MDdSU3FhMDdPQk9FOHVoOWJMUUhQbTAtZkpSRVpxTFJZUnBTbmZsUlo4Unp1N2o1Mg?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "19 nov · 07:15",
+   "orden": "2026-11-19T11:15:00.000Z",
+   "medio": "Decrypt",
+   "titular": "GameStop CEO Says Digital-Only Games Have ‘Hurt Consumers’ as GTA 6 Skips Discs",
+   "enlace": "https://news.google.com/rss/articles/CBMipgFBVV95cUxPbUhCSUcwaDBmWHJ1RFFCLTUxTjhPUHZfY1p3TUlrbDJkU3FBYmhTMHRfU1JWUDFuM09oSHZwcWNudVpOSG1iU1pVQ010SkhqZjVHTkZNdHVENlRBNGV1S29aRVZ0V0VoUF9yM3BpMWVGVlBYTTA3eElMOW9Lcy1wY1JMbFAxOURHallkOFJHajFWNjgwYk9sSTBjaElpWTJfWXpNaEpn?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "18 nov · 04:00",
+   "orden": "2026-11-18T08:00:00.000Z",
+   "medio": "Bloomberg",
+   "titular": "GameStop CEO Criticizes Digital Game Releases on ‘GTA VI’ Eve",
+   "enlace": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNSTROWEtyd05PWlgwcTlYbllSbVlwaVdHLUVQMGIxLVpPbm10ck5hZ3kxS3lKcnptRzBGMFZGNGlpZzc2WGJDZ1JITndieHFZMlI3QU9ZVHVrVXFjRDZyWTVRVmNRRE9IWkhHR19hcjZpbUlZek9ONWtmOGFkaXNMRW8xbDNPUHl4YV9JaENSUFFoMFR0c3JFcHVhQkVaQ2ttbkkxcFVyWVU2bUZoeGpB?oc=5",
+   "lote": "1795721300.124819"
+  },
+  {
+   "fecha_texto": "11 nov · 04:00",
+   "orden": "2026-11-11T08:00:00.000Z",
+   "medio": "Vanderbilt Health News",
+   "titular": "Megan Whitey receives GME Institutional Coordinator Excellence Award for role in graduate medical education",
+   "enlace": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxNMDNTZzV2ZTJ2RmQwZEFmdnVKYlV3SElvbW5kN2g3enV0MUZyLXVMaFk4cHJpRXpMTm9YQU45SmJYeXV1ZmRZRG9LT243NzZtQnVpX0k1b2hHRC1UMkhCS3JtRzF0QjhIVm9KY1M4UlZfTW9Nc3J2U1Y4YTAyZXFDTXBpb3VaNUxaR2lQalRRSUpzbHJSMFNTbWlTZkRxZEN4ejVIVC1QNmR5RkVmZGNIU0dzQmF5RUl0TVBoWEljaDZXbmpXVVlpOGdlRTlTQVNGSGhKTGNCMDM?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "11 nov · 04:00",
+   "orden": "2026-11-11T08:00:00.000Z",
+   "medio": "The Motley Fool",
+   "titular": "Five Below vs. GameStop: Which Retailer Stock Is a Better Buy for 2027?",
+   "enlace": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNdG5STUVDei1Gb3VOS1JzMGlQYUUyM3M2b0J5aWNIcEJSMUdTMWV2eUJ1N3JOd1FFNXNLblZhVnhoNGtza19OUjRfWXhFWlB6TGlFR0xDTUZjVFRweERJRkpWRWlmbFk3X1ZJVWFfNnlINXVSSnNSWTViRzI3QjlPM180ZTFQWkJISzAxWm83UnVoeXhBT3BTOFV2ZkJwMVRaWFRMOUJRTmRvR2liRUVjdXlFV0hYR1c1MnJqS3JR?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "9 nov · 04:00",
+   "orden": "2026-11-09T08:00:00.000Z",
+   "medio": "Barron's",
+   "titular": "GameStop Stock Has a Fan on Wall Street and It Comes Down to Card Collecting",
+   "enlace": "https://news.google.com/rss/articles/CBMie0FVX3lxTE81a0R3N1g0bTNIYWUtckF2UFZsRVNIM0haeUdwOFdGcmh2aXNlUEtfQnBiNTFsbnFOUHZleWtXcFY5R2JTYl9vMHJqRUlYOU80NU9kZHg1RVZQTG1xUERzTFI3cVU1aFZqRnVwcDhFME90UHFKc1ZqVGM3Zw?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "8 nov · 11:52",
+   "orden": "2026-11-08T15:52:00.000Z",
+   "medio": "CNN",
+   "titular": "GME Stock Quote Price and Forecast",
+   "enlace": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE9JWDk1Sk1jckU1R2JpbndFZjJoUlJJd0FrSHI1MzFhcE1keGowSG5PX0JCc0R6YWVINHZLRmV1ZG1GNkkwYjFIWWpqNjZmVk0?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "7 nov · 04:00",
+   "orden": "2026-11-07T08:00:00.000Z",
+   "medio": "The Motley Fool",
+   "titular": "Coupang vs. GameStop: Which Consumer Stock Is a Better Buy Going Into 2027?",
+   "enlace": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxOTXhMSGoxai1qR2Zpb1NuTWdWQU5fS1hCRERmOEpfNC1TMTlmSTh2ekFyLXB5NkY3RDVKVl9UWjRCMFRHSjUwTUd3TnVncHZNbER2T0JYWTFPOXNQeXNBZHFkTWtOVG02QTc0dllNeEJZajNsNUgxdDJVZ09TdDZocjc3eGF2MF8wSlg4aUtKT1MtYUg4aE5sN3ZLYnY0Q3NZV012QVlGYUlyQjEwUDRmUEZDOThaclZzS2p5NlJmRTUtYjQ?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "6 nov · 17:14",
+   "orden": "2026-11-06T21:14:00.000Z",
+   "medio": "Digital Commerce 360",
+   "titular": "GME acquires regional rival Commercial Supply Co.",
+   "enlace": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQTlctNXJDY3BuVUxfNTFGNVNtei1KM2tkZWVqbXNGN3lxbi1yODlWMmlMamRCeDJSdnlVVV9BV2tBalpkeDJaTUhWSFc5U1gzcXJsOVdMd2lTVGJRa0E2ZWlNVE9IOU1tWEM0cXRjZWFPWGM2VXlyOUN0TjlmWDdrNkx4WVRnZncxUkhLWmJycVQ0VFVRb1ZONEZqZ9IBoAFBVV95cUxQdmdRZnRfOEpiMFVnNXlMR3FrRlhHVS16TU9WVU4tSE84WkRKSVNUZDJhblRqSGo4WGFQSmdQd2oydnVOU2Vkd29JRmRnOGNsLVFWa1VvUWFWYkF4MWNJWlNFLWVlYVhRQmstSWZJVUR5blB6SV9fb1JhS2xKT2JFMFFmTFM2V3V4dnhfYWRodnI4WlItSWs0RUUxdlhNRUZZ?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "4 nov · 04:00",
+   "orden": "2026-11-04T08:00:00.000Z",
+   "medio": "American Medical Association ｜ AMA",
+   "titular": "Low on GME interviews? Preliminary positions, SOAP offer paths",
+   "enlace": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxNMDE4Skwzb281Rm02SV95SjNXNmhEbGh2YlRYb1VCOXI1R3d3YVlVVFJtc0Rub2pXdTlSSmhiRDd4LVVMdWxxZEtram02ZDhXYktZX2kwUmVUbmYzYW5TZVZ5dllLTGIxeVg2Ylh4ZWozVXViZEs2REFZZ0NoOHRTM0Z0RXdMcUc3TFp3STV3anJLOUtCZFpCT29Sc095RUk1R0NqSlR4VGViVndiYUpHbnhWTmpDYmVrbDlr?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "14 oct · 03:00",
+   "orden": "2026-10-14T07:00:00.000Z",
+   "medio": "American Medical Association ｜ AMA",
+   "titular": "GME interviews: What current residents want to hear from applicants",
+   "enlace": "https://news.google.com/rss/articles/CBMivAFBVV95cUxQOTNjdFBHNnlNZmZrQ1AwbF8zb3J0aDVxVmREd1hQS2JkR1F2NGJyV01mTEx3dFJDc0g3VVdXRzM3cWU0QnhlNmVGRHctb01wTWhSN19Dd1BxNE8wWmxCdnBxQWlpUXg3TlNFUUxTQUY5OEhoOFhWcWpBVlNvMmx6X0F6eUVqYzJ5SldLU2NsWkhrRlBEZnZwb2pmdU50ZTNmNHFsWktiMGhBN3hhUDNESFdlNHdVNzhQLUsxVA?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "13 oct · 03:00",
+   "orden": "2026-10-13T07:00:00.000Z",
+   "medio": "Reuters",
+   "titular": "GameStop CEO Cohen buys shares worth nearly $23 million",
+   "enlace": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOSnhFNnJhb2gyVGhsVFVCdkFCVG5ScXZ1Z2prQzlWb2p5U3lHbDVady15YldLYzU0eUJxcm1fQnd3MjBreTZPTHRXTUs1ekozeW1BcnRIWElEM1RSV0htZDU0djlPbkVHdEVqU3FpbGQ0OE0yMlp1d3ctYW84OEhoYTNTNzJzdkdvZVBvcU9LRVhzZ2FMS3lOZUlZVVFFaHRhdjdIWHItTkVnajA?oc=5",
+   "lote": "1795721234.227219"
+  },
+  {
+   "fecha_texto": "13 oct · 03:00",
+   "orden": "2026-10-13T07:00:00.000Z",
+   "medio": "Bloomberg Law News",
+   "titular": "GameStop Sued for Alleged Anti-Gay Harassment, Retaliation",
+   "enlace": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxOc3NMQm5KZFJlY010aWE3c011RkNWUlBSaE9DcjBmOUxkaHF4d3Y3aGlWYjRUamt1OXJkQXVjNzlsVGNFZ1RKeWdudXlZVFJ6VXVKQ1dkYnhQWHIyZVRZMl9pQ3doZm9XUy1CczZBVC1Ub2RyVjNXaXo4NW9hWFNObHlGQjhaclJNdk90VkZ6NWthQW1nRW5HNzZnN182SDFpdWVqVks2dHktUQ?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "21 sep · 03:00",
+   "orden": "2026-09-21T07:00:00.000Z",
+   "medio": "ECU Health",
+   "titular": "Celebrating 50 Years of GME: Dr. Anthony Smith witness to growth, impact of care",
+   "enlace": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQU2YtRnRScjVNUkU1VHZxWllKMnhXUFlGZDY3dkNHSXdIN1BBSTJnb1l1VnhUWVZSRXF4SlV5Nng2WEx5TDBkMHlHel9Zb24zSVB6ZlhVS2lrNmxZTDg4cGI4Z09PWU9TXzVzUG5wUUdkZ0RtU2gxYUdRek9XcWJ2Y2ZKdTY1U2VLRlBJVkZHdDZqTnpkX0xac25ZRDByMk9ESDhLdHo1RQ?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "22 ago · 03:00",
+   "orden": "2026-08-22T07:00:00.000Z",
+   "medio": "SmartAsset",
+   "titular": "GameStop Stock Price Spike: Understanding Reddit’s WallStreetBets Short Squeeze",
+   "enlace": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxNbFo3UDBySnh0eG9ZeEpiY3EtYnBDUjEtT3JJWkhXeXpoM0xUYnJKVHZZTG95djNXc0FQQXgtUUhyZVNZQWhkZTk2Xzh4ay1xMUQ2azZ1MzV2dXRyaTZVbUZvWEcyUzN5eWFCZTZaQ2txc3VJZmJQNkFLUjRURFNxZ3pvb2JhYW5Hd3dv?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "17 jul · 03:00",
+   "orden": "2026-07-17T07:00:00.000Z",
+   "medio": "Reuters",
+   "titular": "GameStop owns nearly 10% of eBay, SEC filing shows",
+   "enlace": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQVXdDS1FEendUOG1hQnlkMXZaNHNUUkxmRTJwUWYyMHByZ2VFdjR2Q2VUdEQzQTdzTXhrejdLTWVZNU03d3poeVZIZWViSkJZbUpBeW8tZFlBQUszYlJsSHU2b3psZV9GTC01VEdSOGtuMXpSWF9ERjROQTlMNVFUdXlaUk1mcjBRRHJqby1STFd0UHJiMlRn?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "23 jun · 03:00",
+   "orden": "2026-06-23T07:00:00.000Z",
+   "medio": "American Medical Association ｜ AMA",
+   "titular": "“Promotion in Place” could be the biggest change to GME in years",
+   "enlace": "https://news.google.com/rss/articles/CBMinAFBVV95cUxQdWktaE1mYy1YQXlLaVYxdUNZZnNDU0Y5cVZpM1hqdW80aVk3aXNoYU9nVUVIRXh6SHFwU0tlVHhadU01V25mLUtHbUd6UTR5RGhBQ1RidHNHcDh1Z2VoSDRfWHo3eWZjeG1hOVVRVVJOaGE1akdYX2dOREhjUUwya3dnU3FZSkYwODJDSHBMTTBUdk0tbm5kUmlacEc?oc=5",
+   "lote": "1795721167.897409"
+  },
+  {
+   "fecha_texto": "17 jun · 03:00",
+   "orden": "2026-06-17T07:00:00.000Z",
+   "medio": "Niskanen Center",
+   "titular": "More doctors where they’re needed: Reforming Medicare’s GME formula",
+   "enlace": "https://news.google.com/rss/articles/CBMinAFBVV95cUxPVzVwdlQtcmlnN180Q2J3NE9jQlB0d3RTY1ZFb0ZMbzZMSV81bmJkZ0ZfLXcyVm1MUktpeVFyYUdDSGRtdXVtRjdZSUhnN1dBRXZmWktUcllkMWMxNDEtZUVjcXgwendSTzZoOU55R2hBTXNqLTd0YjNpd19yZEtyQ3JJSzZxVWFXZTJPVmxPM3BtWlhlMHdMLXROMHI?oc=5",
+   "lote": "1795721105.992839"
+  },
+  {
+   "fecha_texto": "2 jun · 03:00",
+   "orden": "2026-06-02T07:00:00.000Z",
+   "medio": "Reuters",
+   "titular": "GameStop reports 14% rise in quarterly revenue, unveils $2 billion share buyback",
+   "enlace": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNRUcyTFlvSzA3X0QzLVI1WFdqeUtiVHRseVdzVEZyODRCYU1oZkxEcUxWVUpDVlRiYWxqNkhsVDJKSF9DUEZHc0pBcThlMTdhR1h0NGxSenlONzUzZGVITVNmWjF5TUxZR3hEZ2g1UGJuWlBJWVdCUjVtbHZGQkJHNXpuY0tPdGlmZm1iSjZZTUNUZ3Jqdkc1V21WVzNjbVBaUWdRMEVCUjdEakMtd3J2M1NWWVdXUlFqRDB0TGRB?oc=5",
+   "lote": "1795721045.132109"
+  },
+  {
+   "fecha_texto": "26 may · 10:19",
+   "orden": "2026-05-26T14:19:00.000Z",
+   "medio": "Finviz",
+   "titular": "GME - Gamestop Corp Stock Price and Quote",
+   "enlace": "https://news.google.com/rss/articles/CBMiREFVX3lxTE51TlFsZGtQTmd6aWZzbzIxRzI5MEZrMVFXUGcxc1ZFOWRWRUtkcDB1MDctZlFpclIxTWVmRmZuMkNOS3Bf?oc=5",
+   "lote": "1795721597.644189"
+  },
+  {
+   "fecha_texto": "29 mar · 03:00",
+   "orden": "2026-03-29T07:00:00.000Z",
+   "medio": "International Banker",
+   "titular": "GameStop: What Happened, and What It Means",
+   "enlace": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOTXl3VkJMRkVZMktvT0kwN0JNRFp2RlhaRVl3T29peDBOYlEwd19la25UZmlxT1JwUUZTbHBiT2owQ2QtbUQ3ckhfOGdQdVMxWlZPd19QcTRJdDh4SEl0cWdPYWdSYlQ0R0F3bEgtYXd1QjExQlctbUVaa0pmd200ZkFyakdGeEViWklB?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "3 feb · 04:00",
+   "orden": "2026-02-03T08:00:00.000Z",
+   "medio": "Nature",
+   "titular": "The dynamics of the Reddit collective action leading to the GameStop short squeeze | npj Complexity",
+   "enlace": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5Cdy1OQ3ZpRHpPNkZSbUNESnFPVzFJQ2VFelV1cDk0TmstM0hwa0lqRERsdUpRdEgtUFNnZHU0UlViWHlLODRpemdmTFFGVlZwRkNSTjRabzQ4dWM3cU9z?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "28 ene · 04:00",
+   "orden": "2026-01-28T08:00:00.000Z",
+   "medio": "BBC",
+   "titular": "GameStop: What is it and why is it trending?",
+   "enlace": "https://news.google.com/rss/articles/CBMiVEFVX3lxTFBsdks1bGw3N3Vsa0RRQmFEUG5JRnIzYXdVSG5rcmxSdmJyX3N4SVlNYTEtNVdvaFZCeXVHQjFjYkREQmx4YXFDR0hZUFk2ZzFFd0I3Sg?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "27 ene · 04:00",
+   "orden": "2026-01-27T08:00:00.000Z",
+   "medio": "WSJ",
+   "titular": "The GameStop Short Squeeze Shows an Ugly Side of the Investing World",
+   "enlace": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNbXRkUlFyalZ4UjNPcmxrZHZqN1VNTElfSnFOTzRvVy13OUtmWW5UeS1rd29CLW4yUVItV2o4WFFpaHEzYmpFdjg1QUREOGxEdEZxZzE3STd2NmdZcFhKNDVrTlhoMi1EMS1SWW1obklCVDM4aXZMNE5MX1MwNG5yNVdsMlZnZE5EWUo1Qk93?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "27 ene · 04:00",
+   "orden": "2026-01-27T08:00:00.000Z",
+   "medio": "CNN",
+   "titular": "Everything you need to know about how a Reddit group blew up GameStop’s stock | CNN Business",
+   "enlace": "https://news.google.com/rss/articles/CBMib0FVX3lxTE8wN2wzZEVLVHFjVFVwaW1ucGF5aW1sSnQ2eFFjbVAtTnZKY0k1UW5NRTFxYjRqTzktTTJ3dGhpcXdnZzhRczZPTnp3dlZWMGgtREFOWmstVXUwMDEtLVppY0UxQWtGRGhaem5aVmRINA?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "25 ene · 04:00",
+   "orden": "2026-01-25T08:00:00.000Z",
+   "medio": "Time Magazine",
+   "titular": "So, Uh, What's Up With GameStop's Stock?",
+   "enlace": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE9Bb2Z2R2RHeGg3OTNNWUdiOEQ4bXZNdzFmNWdiaXBVWmpHUkJoUzEwT3pTVXMzQ3lfcDBNMC1hcHhLbWdKamlBMVpCMTY0eEJoOWZXbDROMA?oc=5",
+   "lote": "1795721536.600109"
+  },
+  {
+   "fecha_texto": "23 dic · 04:00",
+   "orden": "2025-12-23T08:00:00.000Z",
+   "medio": "AAMC",
+   "titular": "Congress Passes Historic GME Expansion",
+   "enlace": "https://news.google.com/rss/articles/CBMingFBVV95cUxOVjVPWjRLVWhsTkFpcGM0cmtlUWdmZ0FVQnM4RmRON1ptN1NRaEw1WHotMjNLZWszQnprY2pCU1NXNlRNQVFBSWJRSHVRTE40NVlHSHZfWWxUeWstOGlWTWlmNVU3cVUtRlFpMHp0ZXA5TkE2Q0ZzTllQUkE1OENYZlVJVVNsbndJR3c4aE83d1NnMDdfeHNIT0ZIOC03dw?oc=5",
+   "lote": "1795721536.600109"
   }
  ]
 }
