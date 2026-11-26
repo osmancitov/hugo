@@ -28,4 +28,4 @@ Visor público de mercado (Pages), con sus registros, la lectura horaria y la pu
 Claves, `node_modules/` y cualquier dato local. Nunca se publican.
 
 ## Pruebas sin red
-`node --test pruebas/*.mjs` (416 pruebas, todas deben pasar).
+`node --test pruebas/*.mjs` (417 pruebas, todas deben pasar).

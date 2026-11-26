@@ -413,7 +413,7 @@ Hecho: los flujos diario y horario **no** tienen `schedule` (horario propio), so
 2. Hay un commit con las velas del último día cerrado y el de "Campaña 90d: ..." tras las 00:05 UTC.
 3. La última corrida de `pages.yml` está en `success`.
 4. Abrir el sitio con `?v=<sha de 7 cifras del último commit>` y mirar el último día cerrado.
-5. `node --test pruebas/*.mjs` desde la raíz (sin red; unos 65 a 75 segundos).  Las 416 pruebas deben pasar; cualquier prueba roja debe investigarse.
+5. `node --test pruebas/*.mjs` desde la raíz (sin red; unos 65 a 75 segundos).  Las 417 pruebas deben pasar; cualquier prueba roja debe investigarse.
 
 **Recorrido de reconstrucción ejecutado el 25-nov-2026, sin tocar producción y sin llamar a Binance.** Se trabajó en una copia en `/tmp` de los datos publicados (velas, catálogo) y se regeneró con el código del repositorio:
 - **Pre-cálculos:** con las velas y el catálogo publicados y la fecha de corte del 25-nov a las 00:10 UTC, `actualizarPreCalculos` produjo la lectura del día, el iceberg de 90 días y el ranking de los dos mercados. Los seis archivos resultaron **idénticos byte a byte** a los publicados.

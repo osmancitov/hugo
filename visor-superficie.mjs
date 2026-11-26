@@ -111,7 +111,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const etq = (c) => (ids ? String(c).split(':')[1] : c), nom = (c) => (ids && nombreId ? nombreId(c) : etq(c)); // ids (solo Mercado): los códigos son 'stock:XXX' o 'cripto:XXX' para no mezclar mercados
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
   const datos = terrenoDia(lecturas, parsear, { refPropia: ids }), { codigos, barras, puntos } = datos;
-  let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
+  let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = crestas ? 2 : 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
   // Mercado (crestas): el eje vertical va desde el mínimo hasta el máximo de los datos (con el cero incluido y un margen), sin simetría forzada ni el cero al centro.
@@ -141,7 +141,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
   etiquetaAltura.append(relieve);
   const etiquetaZoom = crear('label', '', 'Zoom '), acercar = crear('input');
-  acercar.type = 'range'; acercar.min = '0.6'; acercar.max = '2'; acercar.step = '.05'; acercar.value = '1'; acercar.setAttribute('aria-label', 'Acercar o alejar la superficie');
+  acercar.type = 'range'; acercar.min = '0.6'; acercar.max = '2'; acercar.step = '.05'; acercar.value = crestas ? '2' : '1'; acercar.setAttribute('aria-label', 'Acercar o alejar la superficie');
   acercar.oninput = () => { zoom = Number(acercar.value); dibujar(); };
   etiquetaZoom.append(acercar);
   // Tres vistas con nombre: la inicial oblicua, afinada isometrica a pedido del usuario (22-nov-2026), y las dos perspectivas que pidio (cascada y telar intactas).

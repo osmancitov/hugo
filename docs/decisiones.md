@@ -29,12 +29,13 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 
 ## Visor
 - **Sentido de las flechas del tiempo del Relieve** (audio del dueño, 26-nov-2026, Slack ts 1795709023.745469): la flecha de arriba avanza en el tiempo (desde la última lectura vuelve directamente a la primera y sigue avanzando) y la de abajo recorre el sentido contrario; el ciclo recorre solo lecturas y la vista completa del día, la vista al entrar, queda fuera de ese ciclo.
+- **Trazado de Balance del día y zoom inicial del Relieve** (audio del dueño, 26-nov-2026, Slack ts 1795710919.236659): la animación del Balance del día arranca al entrar en pantalla (solo esa gráfica por ahora); el Relieve de Mercado abre con el zoom máximo, aunque la etiqueta de la hora quede momentáneamente fuera. Se conservan la lectura más reciente seleccionada y el cálculo de las cuatro barras.
 
 ## Nombres
 - **Activos en caracteres chinos** llevan lectura latina y significado breve entre paréntesis, en todo el Observatorio y su ficha (1795614378.152739, 1795614410.613859, 1795614503.994839). Los significados son traducciones literales, no oficiales.
 
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
-- Antes de publicar se corre la suite completa; todas deben pasar (416); cualquier prueba roja debe investigarse.
+- Antes de publicar se corre la suite completa; todas deben pasar (417); cualquier prueba roja debe investigarse.
 - La primera diaria tras un cambio en el cálculo de las categorías se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.

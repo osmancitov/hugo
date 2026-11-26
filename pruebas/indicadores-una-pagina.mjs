@@ -95,3 +95,10 @@ test('Mercado siempre reserva las cuatro barras: la que falta queda marcada «si
   assert.ok(html.includes("barra-movil-vacia") && html.includes("'sin datos'"));
   assert.equal(html.match(/else if \(sinFuente\) caja\.append\(vacia\(/g)?.length, 3);
 });
+test('Balance del día traza al entrar en pantalla y el Relieve de Mercado abre con zoom máximo (audio 26-nov-2026 12:35)', () => {
+  assert.match(html, /alEntrar: Boolean\(limpio && e\.iceberg\)/);
+  assert.match(html, /alEntrar: true,\n/);
+  assert.match(html, /cfg\.alEntrar && !movimientoReducido\(\)/);
+  assert.match(sup, /zoom = crestas \? 2 : 1/);
+  assert.match(sup, /acercar\.value = crestas \? '2' : '1'/);
+});
