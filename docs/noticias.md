@@ -7,7 +7,7 @@ Los titulares son los que Inter publicó en el hilo GME de Slack (canal del due�
 
 ## Qué guarda cada noticia (`registros/noticias/GME.json`)
 `fecha_texto` tal como la mostró Inter (`25 nov · 18:35`, hora UTC-4, sin año), `orden` (fecha ISO usada solo para ordenar), `medio`, `titular`, `enlace`, `lote` (id del mensaje de Slack).
-La fuente no da el año. Para ordenar se toma la fecha más reciente que no sea futura (un «23 dic» queda en 2025). La página no muestra año.
+La fuente no da el año. Verificación parcial (26-nov-2026): 27 de las 83 coinciden en día y año 2026 con la fecha de publicación del feed de Google News para GME; las otras 56 no se pudieron comprobar (no aparecen en ese feed, que cubre ~30 días). Para ordenar se toma la fecha más reciente que no sea futura (un «23 dic» queda en 2025). La página no muestra año.
 
 ## Sumar noticias
 1. Reunir las nuevas en un archivo JSON con la misma forma que usa la recuperación: lista de `{medio, "fecha_local_utc-4", titular, url, mensaje_ts}`.

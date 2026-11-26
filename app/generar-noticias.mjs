@@ -55,7 +55,7 @@ export function pagina(codigo, fuente, items) {
 <style>*{box-sizing:border-box}html{background:#080604;color:#e8eaed;font-family:Lora,Georgia,serif}body{margin:0 auto;max-width:760px;padding:24px 24px 44px}a{color:#c2a15a;text-decoration:none}a:hover{text-decoration:underline}h1{font-family:Cinzel,Georgia,serif;font-weight:600;font-size:clamp(1.5rem,5vw,2.2rem);margin:22px 0 6px}header{border-bottom:1px solid #c2a15a;padding-bottom:14px}.nota{color:#9aa0ac;font-size:.78rem;line-height:1.6;margin:0 0 26px}ul{list-style:none;padding:0;margin:0}li{padding:16px 0;border-top:1px solid #2a3140;display:flex;flex-direction:column;gap:6px}li time,li span{font-size:.75rem;color:#9aa0ac}li a{font-size:1.02rem;line-height:1.45}footer{border-top:1px solid #2a3140;padding-top:18px;margin-top:10px;color:#9aa0ac;font-size:.75rem;line-height:1.6}</style></head><body>
 <header><a href="../#/a/stock/${esc(codigo)}">← Observatorio Bursátil · ${esc(codigo)}</a></header>
 <h1>Noticias archivadas de ${esc(codigo)}</h1>
-<p class="nota">${items.length} noticias, de la más reciente a la más antigua por la fecha de la noticia. Horas en UTC-4; la fuente no indica el año. ${esc(fuente)} Los enlaces son los que Inter publicó (pasan por Google News).</p>
+<p class="nota">${items.length} noticias, de la más reciente a la más antigua por la fecha de la noticia. Horas en UTC-4. La fuente no indica el año: para ordenar se supone el año más reciente que no dé una fecha futura (inferencia, no verificada con la fuente); el año no se muestra. ${esc(fuente)} Los enlaces son los que Inter publicó (pasan por Google News).</p>
 <ul>
 ${filas}
 </ul>
