@@ -1182,7 +1182,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       manual=true;
       const este = ++turno;
       try {
-        const r = en ? await cargarDiaMixto(elegirDia.value) : await cargarDiaObservatorio(elegirDia.value, mercado);
+        const r = await cargarDiaObservatorio(elegirDia.value, mercado);
         if (este === turno && cuerpo.isConnected) await mostrar(r);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };

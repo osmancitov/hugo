@@ -66,7 +66,7 @@ Documentos de consulta del mismo repositorio: [datos.md](datos.md) (cada carpeta
 **La pregunta.** Cada día, sobre un mercado de cientos de activos: ¿cuáles vienen rindiendo mejor y con qué consistencia? Mirar el precio de hoy no basta. Un activo que subió 40 % un solo día y cayó el resto no es lo mismo que otro que sube un poco casi todos los días.
 
 **Qué mira.** Dos mercados que Binance ofrece contra USDT:
-- `stock`: acciones y fondos tokenizados (Binance los etiqueta "bStocks"). Son unos 113.
+- `stock`: acciones y fondos tokenizados (Binance los etiqueta "bStocks"). Son unos 113 a 118 en el catálogo; la lectura horaria, desde el 25-nov-2026, toma solo los VIP.
 - `cripto`: criptomonedas. Son unas 400 y pico.
 
 **Qué produce.** A partir de una vela diaria por activo y por día:
@@ -357,6 +357,8 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 ---
 
 ## 9. La foto horaria de los stocks
+
+**Cambio del 25-nov-2026 (relanzamiento VIP).** La lectura horaria ya no cubre todo el catálogo de stocks: lee solo los VIP de la unión de las campañas 30, 60 y 90 del último cierre (hoy 27 stocks y 78 cripto). Las diarias de todos los activos siguen completas. Al cerrar cada día se reconstruye desde cero, para esos VIP, un registro canónico de 25 puntos (00:00 a 24:00 UTC) con velas de 1 h de Binance, guardado aparte en `registros/intradia/<mercado>/canonico/`. El visor (Mercado) usa el canónico para un día cerrado si existe. Los vivos y los días anteriores quedan intactos. El resto de esta sección describe la toma horaria; donde habla de 113 stocks, vale para los días anteriores al cambio.
 
 **El problema.** El iceberg y las velas son diarios. Se quiere ver también cómo se mueve el mercado de stocks **durante** el día.
 

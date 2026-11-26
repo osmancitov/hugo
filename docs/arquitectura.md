@@ -42,7 +42,7 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 
 ## Flujo de punta a punta
 1. **Disparo.** Los flujos diario y horario se lanzan con `workflow_dispatch`: una llamada a GitHub, a mano desde su página o por programa mediante la API. No hay `cron` en los flujos (comprobado en los tres archivos de `.github/workflows/`). Quién hace hoy esas llamadas no está comprobado: el repositorio menciona un script de Google Apps Script que no está aquí. Ver `flujos-github.md`.
-2. **Lectura horaria** (`lectura-horaria.yml`): toma una foto intradiaria de los stocks a la hora en punto UTC y la guarda en `registros/intradia/stock/`.
+2. **Lectura horaria** (`lectura-horaria.yml`): toma una foto intradiaria a la hora en punto UTC y la guarda en `registros/intradia/<mercado>/`. Desde el 25-nov-2026 lee **solo los VIP** (unión de las campañas 30, 60 y 90 del último cierre, sin Rezagados): stocks por este flujo, cripto por su propio trabajo. El día cerrado se reconstruye en el cierre diario (`registros/intradia/<mercado>/canonico/`).
 3. **Puesta al día diaria** (`actualizacion-diaria.yml`), pensada para las 00:05 a 00:14 UTC, con la vela diaria cerrada:
    - `actualizacion-diaria.mjs`: ingesta de velas diarias de Binance (solo lo que falta) y «pasada de publicación»: indicadores (miedo y codicia), catálogo, pre-cálculos (iceberg, lectura del día, ranking), inventario de días. Un commit.
    - `campana-diaria.mjs`: genera los días que faltan de la carrera de Campaña en las tres ventanas (90, 60 y 30 días) y la serie de cada ventana. Otro commit.
@@ -77,7 +77,7 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 | `persistencia`, `visor-rachas-datos` | Persistencia (promedio de puestos) y cálculos de velas diarias para rachas. |
 | `campana-carrera`, `campana-serie`, `campana-orden` | Campaña: carrera diaria, series y orden. Ver `visor.md`. |
 | `inventario-dias` | Días registrados por activo (`registros/inventario/`). |
-| `registro-intradia`, `intradia-datos`, `intradia-fuente`, `intradia-cierre`, `intradia-reintentos`, `barra-movil` | Lectura intradiaria y la «barra móvil» de 24 h. |
+| `completar-vip`, `canonico-lectura`, `registro-intradia`, `intradia-datos`, `intradia-fuente`, `intradia-cierre`, `intradia-reintentos`, `barra-movil` | Lectura intradiaria y la «barra móvil» de 24 h. |
 | `navegacion-observatorio`, `fechas-visor` | Utilidades del visor. |
 | `reporte`, `fechas-aviso` | Restos del bot de Slack. Siguen solo porque `pruebas/caja.mjs` los importa. No intervienen en la nube. |
 

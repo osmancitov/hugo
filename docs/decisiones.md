@@ -16,6 +16,9 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 - **Autoría**: norma vigente (Núcleo, commit 7d8d778 del 24-nov-2026): el autor del commit es Osmancito; el committer puede ser otro. Configuración actual de los flujos: autor y committer con la identidad de git del dueño (el correo no se publica aquí).
 - **Vocabulario**: «caballo» e «hipódromo» no aparecen en la interfaz. (Indicación del dueño; el mensaje original no se recuperó al escribir esto.)
 
+## Registro horario VIP
+- **Relanzamiento del 25-nov-2026** (audios del dueño de las 21:03, 21:08, 21:11 y 21:15 en el hilo del canal C0CAF12V656): la lectura horaria masiva de stocks se retira. Solo se leen los VIP (unión 30/60/90 del cierre, ambos mercados, sin ampliar cripto al catálogo de 403). Al cierre se reconstruye desde cero el día cerrado de esos VIP con velas de 1 h (25 puntos, 00:00 a 24:00 UTC), como registro nuevo y aparte del vivo. Las diarias de todos los activos siguen completas. Los valores históricos de velas se aceptan como equivalentes, con trazabilidad técnica en el texto y sin distintivo visual.
+
 ## Campaña
 - **Regla de categorías** (aplica a todo el Observatorio y reemplaza las anteriores): Campaña = raíz((P²+C²)/2); gris (Rezagados) solo si Campaña < 1; desde 1, Premium con P ≥ 1 y C ≥ 1, Potentes solo P ≥ 1, Constantes solo C ≥ 1. (Mensajes 1795613335.682769, 1795613347.123219, 1795613370.142599, 1795613425.124449 y la corrección 1795614764.016559, que cambió «≤ 1» por «< 1».)
 - **Campo de béisbol** en lugar de los cuadrantes: el home es el origen de la pelota, el radio es logarítmico desde la Campaña 0,1 y la cerca es la Campaña 1 (hilo 1795571592.838359 y 1795611644.429549).

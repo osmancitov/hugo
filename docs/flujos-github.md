@@ -41,6 +41,7 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
 - Restaura de la caché de Actions la cola y la pausa (`.estado-intradia`), corre `.github/lectura-horaria.mjs`, publica y guarda de nuevo la caché (siempre).
 - Toma la lectura a la hora en punto UTC y guarda su instante real, nunca uno forzado. Si el repositorio ya tiene lectura de esa hora, no toma otra. Entrada manual `intrahora` (verdadero): toma la lectura ya; es una prueba manual, solo con permiso del dueño.
 - Publicación (solo si hubo cambios): hasta 5 intentos de `fetch`, `reset --hard origin/main`, `recombinar-horaria.mjs`, commit y `push`. Mensaje: "Guardar lectura horaria de las HH:MM UTC desde Actions". Autor y committer: la identidad de git configurada en el flujo (nombre Osmancito y el correo del dueño, que no se publica en estas páginas). Si el push no cabe, la cola queda en la caché y se reintenta en la siguiente corrida; `confirmar-horaria.mjs` marca como enviada solo la versión exacta que se publicó.
+- Universo (desde el 25-nov-2026): solo los VIP de la unión 30/60/90 del último cierre (`vipAdmitidos` en `completar-vip.mjs`, pasado como `universo` a `generarBarra`). Los días guardados antes del cambio conservan los 113 a 118 stocks.
 - Salida: `registros/intradia/stock/`. Una pausa por límite de la fuente (429) viaja en la caché y se respeta.
 
 ## 2. Puesta al día diaria (`actualizacion-diaria.yml`)
@@ -51,6 +52,7 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
   3. `node .github/publicar-visor.mjs`: pide `pages.yml`, espera su conclusión y, si falla o se atasca, pide una corrida nueva. Pages solo publica lo que ya está en `main`.
 - Idempotente: un día ya cubierto no produce cambios ni commit. Si hubo noches sin correr, alcanza los pendientes.
 - Los avisos de inicio y resultado llegan a Slack por la app oficial de GitHub (no por un bot propio). No verificado aquí: configuración de esa app.
+- Paso «Reconstruir el día cerrado de los VIP» (`.github/canonico-diario.mjs`), después de la campaña y antes de publicar el visor: reconstruye desde cero el día UTC recién cerrado de la unión VIP 30/60/90 de stock y cripto con velas de 1 h (25 puntos, 00:00 a 24:00) y lo guarda en `registros/intradia/<mercado>/canonico/<día>.json`. Idempotente: si el archivo ya existe y valida no hace nada. Escribe solo esos archivos (nunca los vivos de la lectura horaria), así no choca con ella; si la punta de `main` se movió, rebasa y reintenta (hasta 5 veces). Sin vela, el activo queda sin dato en esa hora.
 
 ## 3. Visor (`pages.yml`)
 - Disparo: `push` a `main` salvo cambios solo en `registros/intradia/stock/**` o en `registros/pre-calculado/stock/barra-24h/actual_barra`, y `workflow_dispatch`. Permisos: `contents: read`, `pages: write`, `id-token: write`. Concurrencia `pages` sin cancelar.
