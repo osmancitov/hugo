@@ -2560,8 +2560,9 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const sub=document.createElement('p');sub.className='camp-sub';
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
-  cEsp.className='camp-caja';cAct.className='camp-caja camp-vip-series';cAct.style.minHeight=puente?'410px':'';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
+  cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
+  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,...(puente?[cAct]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica fija de Potencia y Constancia todos los VIP (pedido 1795668506.350929)
+  if(puente){cAct.style.minHeight='410px';cAct.classList.add('camp-vip-series');}
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
@@ -2761,12 +2762,6 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   // Relieve del día, con su aviso, queda abajo de todo en Mercado.
   app.append(cSup,aviso2);
 }
-const relojEntrada=document.getElementById('reloj-entrada');
-const tituloReloj=Object.assign(document.createElement('p'),{className:'superficie-reloj-titulo'});
-const horaEntrada=document.createElement('time');horaEntrada.title='Hora local del usuario';
-tituloReloj.append(document.createTextNode('Hora actual '),horaEntrada);relojEntrada.replaceChildren(tituloReloj);
-const actualizarRelojEntrada=()=>{const d=new Date();horaEntrada.textContent=new Intl.DateTimeFormat('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);horaEntrada.dateTime=d.toISOString();setTimeout(actualizarRelojEntrada,60000-(d.getTime()%60000));};actualizarRelojEntrada();
-
 async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
@@ -2791,7 +2786,7 @@ async function ruta() {
   }
   const mercado=r?.[1]||null,categoria=r?.[2]||null,ranking=r?.[3]||null;
   if(r&&((mercado==='cripto'&&categoria)||(mercado==='stock'&&ranking&&ranking!=='indicadores'&&!categoria))){location.replace('#/'+mercado);return;}
-  const relojEntrada=document.getElementById('reloj-entrada');
+    const relojEntrada=document.getElementById('reloj-entrada');
   const tituloReloj=Object.assign(document.createElement('p'),{className:'superficie-reloj-titulo'});
   const horaEntrada=document.createElement('time');horaEntrada.title='Hora local del usuario';
   tituloReloj.append(document.createTextNode('Hora actual '),horaEntrada);relojEntrada.replaceChildren(tituloReloj);
