@@ -60,6 +60,9 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
 - Pasos: `node cuenta/generar.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`; configura Pages; empaqueta la raíz del repositorio (`path: '.'`); despliega, con un reintento tras 20 s si falla. Los pasos de despliegue usan acciones de GitHub en las versiones del archivo.
 - Por eso lo que esté en la raíz (incluido `manual/` y `docs/`) queda público.
 
+## Protección de la rama `main`
+`main` está protegida contra force-push y contra borrado. No exige pull request ni comprobaciones, y no se aplica a administradores (`enforce_admins` falso). El push normal está permitido, y los flujos y los cambios directos siguen funcionando igual.
+
 ## Comprobar que todo corrió
 - Hora: en `git log`, un commit por hora "Guardar lectura horaria de las HH:MM UTC desde Actions" que toca solo `registros/intradia/stock/`.
 - Diaria: commit de la puesta al día después de las 00:05 UTC, día nuevo en `registros/velas-24h`, commit de campaña con los archivos `*_carrera-*d` del día, y una corrida de `pages.yml` en `success`.

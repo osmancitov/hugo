@@ -300,7 +300,6 @@ Archivo: `registros/pre-calculado/<mercado>/lectura-dia-90d/<AAMMDD>_lectura-dia
 **Cómo funciona** (`persistencia.mjs`). Cada fecha UTC con velas cerradas es una **carrera**. En cada carrera se ordenan **todos los activos con vela ese día, de los dos mercados juntos** (una competencia global, hecho: `prepararPersistenciaGlobal`), por variación de mayor a menor; un empate exacto, por código. El **puesto** es la posición en esa lista (1 = la mejor variación). La **persistencia** de un activo es el **promedio simple de sus puestos** en las carreras en que participó. Sin vela no hay participación. No hay pesos ni umbrales.
 - Menor promedio = mejor.
 - La ventana es de 90 días, igual que el resto.
-- Desde el 25-nov-2026 la vista «Promedio» y su archivo derivado `persistencia-90d.json` ya no existen (retirados por decisión del usuario). El cálculo (`app/modulos/persistencia.mjs`) se conserva porque la Campaña lo usa para decidir qué activos entran y su puesto diario.
 
 ### 7.6 La Campaña
 **El problema.** Combinar dos ideas: que un activo gane más de lo que pierde (potencia) y que gane más días de los que pierde (constancia), y clasificarlo en grupos fáciles de entender.
@@ -356,30 +355,31 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 
 ---
 
-## 9. La foto horaria de los stocks
+## 9. La lectura intradiaria de los VIP
 
-**Cambio del 25-nov-2026 (ritmo de 15 min).** Los VIP se leen cada 15 minutos; el flujo lo despacha el reloj de Google (a hito menos unos 5 min; el reloj de Google ya despacha cada cuarto de hora desde las 22:20 de Caracas del 25-nov) y la lectura guarda su instante real, agrupado por intervalo de 15 min (`cubeta`). Ya no hay espera de la Debian: si el repositorio ya cubre el intervalo, la corrida no toma otra. El canónico del cierre tiene 97 puntos con velas de 15 min (`ritmo_min: 15`); sin `ritmo_min` vale 60 (25 puntos).
+**El problema.** El iceberg y las velas son diarios. Se quiere ver también cómo se mueven los activos que importan **durante** el día.
 
-**Cambio del 25-nov-2026 (relanzamiento VIP).** La lectura horaria ya no cubre todo el catálogo de stocks: lee solo los VIP de la unión de las campañas 30, 60 y 90 del último cierre (hoy 27 stocks y 78 cripto). Las diarias de todos los activos siguen completas. Al cerrar cada día se reconstruye desde cero, para esos VIP, un registro canónico de 25 puntos (00:00 a 24:00 UTC) con velas de 1 h de Binance, guardado aparte en `registros/intradia/<mercado>/canonico/`. El visor (Mercado) usa el canónico para un día cerrado si existe. Los vivos y los días anteriores quedan intactos. El resto de esta sección describe la toma horaria; donde habla de 113 stocks, vale para los días anteriores al cambio.
+**Qué se lee.** Solo los VIP: la unión de las campañas de 30, 60 y 90 días del último cierre, en stocks y en cripto (el 25-nov-2026 eran 27 stocks y 78 cripto). Las velas diarias de todos los activos siguen completas; esta lectura es aparte.
 
-**El problema.** El iceberg y las velas son diarios. Se quiere ver también cómo se mueve el mercado de stocks **durante** el día.
+**Cuándo.** Cada 15 minutos. El flujo lo despacha el reloj de Google unos 5 minutos antes de cada cuarto de hora, y cada lectura guarda su instante real de consulta, agrupado por intervalo de 15 minutos (`cubeta`, `app/modulos/ritmo-vip.mjs`). Si el repositorio ya cubre el intervalo, la corrida no toma otra.
 
-**Cómo funciona** (`.github/workflows/lectura-horaria.yml`, `.github/lectura-horaria.mjs`, `app/modulos/barra-movil.mjs`, `registro-intradia.mjs`, `intradia-*.mjs`).
-- Cada hora en punto UTC se toma una "barra móvil de 24 h": para cada stock, la variación entre el precio de apertura de las últimas 24 horas y el último precio. Se pide a Binance `/api/v3/ticker?windowSize=1d` (según el encabezado del módulo: máximo 100 símbolos por petición, por eso el universo se parte en dos tandas estables, 57 + 56 con 113 activos). Esa ventana móvil **no es** el día cerrado del iceberg.
+**Cómo funciona** (`.github/workflows/lectura-horaria.yml`, `.github/lectura-horaria.mjs`, `.github/lectura-horaria-cripto.mjs`, `app/modulos/barra-movil.mjs`, `registro-intradia.mjs`, `intradia-*.mjs`).
+- Cada lectura es una "barra móvil de 24 h": para cada VIP, la variación entre el precio de apertura de las últimas 24 horas y el último precio. Se pide a Binance `/api/v3/ticker?windowSize=1d`, con un máximo de 100 símbolos por petición, y el universo se parte en tandas estables. Esa ventana móvil **no es** el día cerrado del iceberg.
 - Regla de la barra: cierre >= apertura cuenta como "sube" (la misma regla verde/rojo que el iceberg).
 - Se elige el host leyendo `/api/v3/time` primero en `data-api.binance.vision` y, si no responde, en `api.binance.com`.
-- La lectura se toma en el minuto 00. El instante real de consulta se guarda con la foto; **nunca se fuerza ni se arrastra una hora distinta**. La corrida empieza unos minutos antes (hasta 13 minutos de espera máxima) para absorber la demora de GitHub.
-- **Una hora no se duplica:** si el repositorio ya tiene lectura de esa hora, la corrida no toma otra.
+- El instante real de consulta se guarda con la foto; **nunca se fuerza ni se arrastra un intervalo distinto**. La corrida empieza unos minutos antes (hasta 13 minutos de espera máxima) para absorber la demora de GitHub.
 - Si Binance responde 429 o 418, se guarda una **pausa** con el plazo de `Retry-After` y no se consulta hasta que pase (`intradia-fuente.mjs`). Si no hay plazo válido, se detiene hasta revisión.
 - Si no se puede publicar, la foto queda en una **cola** en la caché de Actions (`.estado-intradia`) y se reintenta; la cola se recombina contra `origin/main` antes de cada intento (hasta 5).
-- Formato: `registros/intradia/stock/<AAAA-MM-DD>.json` = `{version: 1, dia, lecturas: [{generada, texto}]}`. El `texto` es la foto en líneas (`generada:`, `suben:`, `bajan:`, `dia_ref:` y por activo su último precio y cierre de referencia). `indice.json` = `{version, dias, ultima}`.
-- Commit: "Guardar lectura horaria de las HH:MM UTC desde Actions". Pages **no** se republica por estos commits (`paths-ignore` en `pages.yml`).
+- Formato: `registros/intradia/<mercado>/<AAAA-MM-DD>.json` = `{version: 1, dia, lecturas: [{generada, texto}]}`. El `texto` es la foto en líneas (`generada:`, `suben:`, `bajan:`, `dia_ref:` y por activo su último precio y cierre de referencia). `indice.json` = `{version, dias, ultima}`.
+- Commit: "Guardar lectura horaria de las HH:MM UTC desde Actions" (y "de cripto" para cripto). Pages **no** se republica por estos commits (`paths-ignore` en `pages.yml`).
+
+**El registro canónico del día cerrado.** Al cerrar cada día se reconstruye desde cero, para los VIP, el día UTC completo: 97 puntos de 00:00 a 24:00 con velas de 15 minutos de Binance (`ritmo_min: 15`; un canónico sin `ritmo_min` es de 60 minutos y 25 puntos y sigue siendo válido). Se guarda aparte en `registros/intradia/<mercado>/canonico/`. Mercado usa el canónico para un día cerrado si existe, y el registro vivo si no.
+
+**Cripto.** El registro horario de cripto empieza el 26-nov-2026 a las 00:00 UTC. Los VIP sin lectura guardada en una hora se completan con el precio histórico horario de Binance y se marcan como completados; no se inventa ningún valor.
 
 **Por qué así.** Guardar el instante real y rechazar duplicados evita series inventadas. La cola evita perder una foto si GitHub falla justo al publicar.
 
-**Hecho: comentarios heredados.** Los comentarios de la Debian (una máquina propia que también tomaba fotos) se retiraron del código y de los flujos el 25-nov-2026; su servicio de fotos se detuvo, se deshabilitó y se borró su unidad (mensajes de Slack del dueño 1795613907.404739 y 1795614085.044529). El código no depende de ella.
-
-**Cómo comprobarlo.** El archivo del día actual en `registros/intradia/stock/` tiene una lectura por hora en punto; `indice.json` tiene `ultima` reciente.
+**Cómo comprobarlo.** El archivo del día actual en `registros/intradia/stock/` tiene una lectura por cada cuarto de hora; `indice.json` tiene `ultima` reciente.
 
 ---
 
@@ -389,7 +389,7 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 `node cuenta/generar.mjs`, `node app/generar-colores-iceberg.mjs`, `node app/generar-pagina-superficie.mjs`, y empaqueta **toda la raíz del repositorio** y la publica. Si la publicación falla, espera 20 segundos y reintenta una vez. Los tres generadores escriben derivados que no son historia: `persistencia-90d.json`, `iceberg-colores.json` y `superficie.html` (con su vista previa propia). Ninguno existe en el repositorio.
 Después de la diaria, `.github/publicar-visor.mjs` pide explícitamente una corrida de Pages y espera su resultado (hasta 22 minutos). Si falla, pide **una** nueva; si falla otra vez, termina con error visible.
 
-**El visor.** `index.html` (HTML, estilos y el script principal) y los módulos `visor-rachas.mjs` y `visor-superficie.mjs`. Importa módulos de `app/modulos/` con `?v=N` en la URL: al cambiar un módulo hay que subir ese número, o los navegadores siguen usando el viejo. Dibuja listas por mercado, la ficha de cada activo, los indicadores, la superficie 3D, la persistencia y la Campaña con su campo de béisbol. Detalles de pantallas y de la regla visual: [visor.md](visor.md). Reglas de nombre: el título visible es "Observatorio Bursátil"; "hugo" solo queda en la URL y el nombre del repositorio. Los nombres en caracteres chinos se muestran con su lectura y traducción entre paréntesis, con una sola función (`app/modulos/lectura-latina.mjs`).
+**El visor.** `index.html` (HTML, estilos y el script principal) y los módulos `visor-rachas.mjs` y `visor-superficie.mjs`. Importa módulos de `app/modulos/` con `?v=N` en la URL: al cambiar un módulo hay que subir ese número, o los navegadores siguen usando el viejo. Dibuja Mercado (la página principal: VIP, balance, barras, relieve 3D, Campaña, evolución y ficha), las listas por mercado, la ficha de cada activo y los indicadores. Detalles de pantallas y de la regla visual: [visor.md](visor.md). Reglas de nombre: el título visible es "Observatorio Bursátil"; "hugo" solo queda en la URL y el nombre del repositorio. Los nombres en caracteres chinos se muestran con su lectura y traducción entre paréntesis, con una sola función (`app/modulos/lectura-latina.mjs`).
 
 **Aparte del Observatorio.** El repositorio también contiene `cuenta/` ("Proyecto Cimiento"): un registro de operaciones propias con su página. Comparte el repositorio y su publicación, pero no forma parte de los datos ni de los cálculos del Observatorio.
 
@@ -412,7 +412,7 @@ Hecho: los flujos diario y horario **no** tienen `schedule` (horario propio), so
 2. Hay un commit con las velas del último día cerrado y el de "Campaña 90d: ..." tras las 00:05 UTC.
 3. La última corrida de `pages.yml` está en `success`.
 4. Abrir el sitio con `?v=<sha de 7 cifras del último commit>` y mirar el último día cerrado.
-5. `node --test pruebas/*.mjs` desde la raíz (sin red; unos 65 a 75 segundos). Hoy fallan dos pruebas, conocidas desde antes de este documento: "superficie tiene entrada estática con metadatos propios antes de ejecutar JS" y "los rótulos visibles de los icebergs viven en la fuente única de rótulos". Al 25-nov-2026: 378 pasan y esas dos fallan. No se investigó su causa, así que no se conoce su efecto. Cualquier otra prueba roja es nueva.
+5. `node --test pruebas/*.mjs` desde la raíz (sin red; unos 65 a 75 segundos).  Las 415 pruebas deben pasar; cualquier prueba roja debe investigarse.
 
 **Recorrido de reconstrucción ejecutado el 25-nov-2026, sin tocar producción y sin llamar a Binance.** Se trabajó en una copia en `/tmp` de los datos publicados (velas, catálogo) y se regeneró con el código del repositorio:
 - **Pre-cálculos:** con las velas y el catálogo publicados y la fecha de corte del 25-nov a las 00:10 UTC, `actualizarPreCalculos` produjo la lectura del día, el iceberg de 90 días y el ranking de los dos mercados. Los seis archivos resultaron **idénticos byte a byte** a los publicados.
@@ -425,7 +425,7 @@ Lo que **no** se reconstruyó: la descarga real de velas y del universo desde Bi
 ## 13. Qué carga historia y qué haríamos distinto
 
 **Hechos (verificados en el código):**
-- Muchos módulos nacieron como órdenes de un bot de Slack, ya retirado. Conservan su forma: los flujos arman un `ctx` mínimo y llaman a `registrar(ctx)`. Funciona, pero los comentarios que hablan de "@hugo", de la Debian o de un cron de respaldo están desfasados.
+- Muchos módulos conservan la forma de una orden de bot: los flujos arman un `ctx` mínimo y llaman a `registrar(ctx)`. Funciona.
 - El encabezado de `actualizacion-diaria.yml` y de `actualizacion-diaria.mjs` dice que hay un cron de respaldo hacia la 01:00 UTC. **No existe:** el flujo solo tiene `workflow_dispatch`.
 - `reporte.mjs` y `fechas-aviso.mjs` son restos del bot que se mantienen porque `pruebas/caja.mjs` los importa.
 - El encabezado de `serie_carrera-<N>d` dice "sin las 90 velas ese día" incluso para las ventanas de 60 y 30. Es texto heredado; el dato es correcto por ventana. Del mismo modo, el comentario de `.github/campana-diaria.mjs` dice "90d" pero genera 90, 60 y 30.
@@ -436,5 +436,5 @@ Lo que **no** se reconstruyó: la descarga real de velas y del universo desde Bi
 - Alternativa a lo que hace el código hoy: catálogo explícito primero, y que el descargador de velas lea de él.
 - Sustituir la forma "orden de bot" (`ctx` y `registrar`) por funciones simples que reciban datos y devuelvan resultados.
 - Poner el reloj dentro del repositorio (apartado «El reloj»).
-- Limpiar los comentarios heredados y retirar el iceberg viejo.
+- Retirar el módulo `iceberg.mjs` y las carpetas `registros/iceberg-*`, que el visor no lee.
 - Decidir una sola forma de redondeo para el grupo de la Campaña (7.6).

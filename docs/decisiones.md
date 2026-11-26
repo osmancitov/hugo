@@ -12,12 +12,11 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 
 ## Identidad y publicación
 - **Nombre visible**: «Observatorio Bursátil». «hugo» queda solo en la URL y en el nombre del repositorio. No se renombran rutas internas. (Hilo del retiro del bot, 1795609617.859149.)
-- **Bot de Slack retirado**: el código del bot, sus módulos de Slack y su configuración de ejemplo se quitaron del repositorio; el servicio de la Debian se detuvo, deshabilitó y se borró su unidad. (Mensajes 1795611384.671009 y 1795611440.615829; salidas de la Debian 1795613907.404739 y 1795614085.044529.) `manual/manual-hugo.md` se conserva solo como histórico.
 - **Autoría**: norma vigente (Núcleo, commit 7d8d778 del 24-nov-2026): el autor del commit es Osmancito; el committer puede ser otro. Configuración actual de los flujos: autor y committer con la identidad de git del dueño (el correo no se publica aquí).
 - **Vocabulario**: «caballo» e «hipódromo» no aparecen en la interfaz. (Indicación del dueño; el mensaje original no se recuperó al escribir esto.)
 
 ## Registro horario VIP
-- **Ritmo de 15 minutos** (aprobación del dueño, Slack 25-nov 21:44, ts 1795657470.597949: «retira la espera heredada, y agrega una nueva barra de 15 minutos»): los VIP de stock y cripto se leen cada 15 minutos (`app/modulos/ritmo-vip.mjs`, `RITMO_MIN`). Se retira la espera de la Debian. El canónico del día cerrado tiene 97 puntos (velas de 15 min); los canónicos con `ritmo_min` ausente son de 60 min y 25 puntos y siguen válidos. Las barras de Mercado son cuatro: 24 h, día, 1 hora (lectura real de unos 60 min antes, tolerancia 8 min; si no existe, la barra se omite) y 15 min (lectura de unos 15 min antes, tolerancia 6 min). Nunca se compara 1 hora contra una lectura de 15 min. Los archivos horarios históricos no se tocan.
+- **Ritmo de 15 minutos** (aprobación del dueño, Slack 25-nov 21:44, ts 1795657470.597949: «retira la espera heredada, y agrega una nueva barra de 15 minutos»): los VIP de stock y cripto se leen cada 15 minutos (`app/modulos/ritmo-vip.mjs`, `RITMO_MIN`). El canónico del día cerrado tiene 97 puntos (velas de 15 min); los canónicos con `ritmo_min` ausente son de 60 min y 25 puntos y siguen válidos. Las barras de Mercado son cuatro: 24 h, día, 1 hora (lectura real de unos 60 min antes, tolerancia 8 min; si no existe, queda su espacio vacío «sin datos») y 15 min (lectura de unos 15 min antes, tolerancia 6 min). Nunca se compara 1 hora contra una lectura de 15 min. Los archivos horarios históricos no se tocan.
 - **Relanzamiento del 25-nov-2026** (audios del dueño de las 21:03, 21:08, 21:11 y 21:15 en el hilo del canal C0CAF12V656): la lectura horaria masiva de stocks se retira. Solo se leen los VIP (unión 30/60/90 del cierre, ambos mercados, sin ampliar cripto al catálogo de 403). Al cierre se reconstruye desde cero el día cerrado de esos VIP con velas de 1 h (25 puntos, 00:00 a 24:00 UTC), como registro nuevo y aparte del vivo. Las diarias de todos los activos siguen completas. Los valores históricos de velas se aceptan como equivalentes, con trazabilidad técnica en el texto y sin distintivo visual.
 
 ## Campaña
@@ -33,6 +32,6 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
-- Antes de publicar se corre la suite completa; hoy fallan dos pruebas conocidas (ver `visor.md`); cualquier otra roja es nueva.
+- Antes de publicar se corre la suite completa; todas deben pasar (415); cualquier prueba roja debe investigarse.
 - La primera diaria tras un cambio en el cálculo de las categorías se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.

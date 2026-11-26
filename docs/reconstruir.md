@@ -39,7 +39,7 @@ Guía para levantar uno nuevo, o recuperar este, sin depender de ninguna convers
 1. **Copia el repositorio** completo (incluida la carpeta `registros/`: es el historial publicado; las velas pasadas no se vuelven a pedir para los días que ya están).
 2. **Ajusta el nombre del repositorio**: `HUGO_GITHUB` en `actualizacion-diaria.yml` (`osmancitov/hugo`), las rutas `raw.githubusercontent.com/osmancitov/hugo/main/...` de `index.html` (constantes `RAW`, `RAW_IND`, `RAW_CAT` y las de las vistas) y los scripts de `.github/` que construyen URLs del repositorio.
 3. **Activa Pages** con fuente «GitHub Actions» y permite que Actions escriba en el repositorio (Settings). No verificado aquí.
-4. **Comprueba las pruebas** en local: `node --test pruebas/*.mjs`. Hoy fallan dos pruebas conocidas (ver `visor.md`); cualquier otra roja es nueva.
+4. **Comprueba las pruebas** en local: `node --test pruebas/*.mjs`. Las 415 deben pasar.
 5. **Primera publicación**: haz un push a `main`. `pages.yml` genera las entradas derivadas y publica. Abre `https://<usuario>.github.io/<repo>/?v=<sha7>` y comprueba el encabezado «Observatorio Bursátil».
 6. **Lectura horaria**: lanza `lectura-horaria.yml` a mano una vez (con permiso de quien administra) y comprueba que sube un commit "Guardar lectura horaria…" que toca solo `registros/intradia/stock/`.
 7. **Diaria**: lanza `actualizacion-diaria.yml`. Debe producir (a) un commit de la pasada con velas, indicadores, pre-cálculos, ranking, catálogo e inventario; (b) un commit de campaña con `*_carrera-90d`, `-60d` y `-30d` del día más sus series; (c) una corrida de `pages.yml` en `success`.

@@ -25,14 +25,15 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 ## Rutas (el enrutador está en `index.html`)
 | Ruta | Vista |
 |---|---|
-| `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion` o `indicadores` | Listas por mercado. Los enlaces viejos a `persistencia` llevan a `variacion`. |
+| `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion` o `indicadores` | Listas por mercado. Los enlaces a `persistencia` llevan a `variacion`. |
 | `#/a/<stock\|cripto>/<código>` | Ficha del activo (nombre, lectura y significado si los hay, enlaces, radiografía). |
 | `#/i/iceberg-stock/barra-dia`, `barra-24h`, `barra-movimiento` | Indicadores de barra del iceberg de stocks. |
 | `#/i/iceberg-stock/superficie` | Superficie 3D (solo dibuja stocks). Filtros de grupo y ventana. |
 | `#/campana`, `#/campana/<90\|60\|30>d`, `#/campana/<90\|60\|30>d/<clase>/<código>` | Campaña de la ventana, con el activo elegido. |
 | `#/buscar` | Búsqueda por código, nombre o lectura. |
+| `#/unificada/30d[/<empresas\|fondos\|cripto>[/<mercado>/<código>]]` | Mercado, la página principal (sección siguiente). |
 
-Menú principal, en este orden: Campaña, Stocks, Cripto, Cimiento, Buscar.
+Menú principal: Mercado y Cimiento.
 
 Variación (stocks empresas, fondos y cripto): el selector tiene cinco órdenes, G/P, Día, Oscilación, Rango diario y Variación acumulada, sin selector de dirección y sin cuadro de filtro propio (queda la búsqueda global). La racha se ve como columna de datos. Debajo del selector solo se lee «27 de agosto → 24 de noviembre • N de M activos» (sin año; N = activos comparables, M = todos los de la lista). Un aviso de fuente aparece únicamente si el archivo del día falta o está atrasado.
 
@@ -49,14 +50,14 @@ Cada día cerrado se clasifica a cada activo que tenga todas las velas de la ven
 - **Selección desde la lista**: la vista sube al título del activo (nombre con enlace a su ficha) justo sobre el campo. La subida usa `scrollTo`; el visor no usa `scrollIntoView` (un guard de las pruebas lo prohíbe).
 - **Espaguetis** (puestos de todos los activos por jornada): líneas grises tenues (opacidad .12); el activo elegido y el hover se resaltan en el blanco cálido `#fff3cf`, el mismo de la trayectoria del campo. Ningún color de categoría se usa para resaltar, porque un activo cambia de categoría con el tiempo.
 - **Curvas P y C** del activo elegido: tercera gráfica, sin leyenda de escala.
-- Los textos explicativos largos (conteos, fórmula, explicación del campo) se quitaron (mensajes de Slack 1795615151.124609 y 1795615394.222839 del dueño); queda solo «Último día cerrado…».
+- La Campaña no lleva textos explicativos; solo «Último día cerrado…».
 
 ## Nombres con lectura latina
 Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛来`. Se anotan en `app/modulos/activos-curados.json` con `lectura` (pinyin) y `traduccion` (traducción literal breve, no oficial), y la pasada de catálogo los copia a `registros/catalogo/cripto` (campos en `CAMPOS_CURADOS` de `catalogo.mjs`). El formato visible sale de una función, `parentesisLectura` en `app/modulos/lectura-latina.mjs`: «币安人生 (Bì'ān Rénshēng, Vida Binance)». Se usa en las listas, Campaña, Variación, Persistencia, títulos y ficha. En el punto elegido del campo va solo el código para que no se corte. Para añadir un nombre así: anotar `lectura` y `traduccion` en el JSON curado y regenerar el catálogo.
 
 ## Otras vistas
 - **Iceberg**: por día cerrado UTC, activos en alza y a la baja (barra verde y roja). Ventana de 90 días en `registros/pre-calculado/<mercado>/iceberg-90d` (la vela plana cuenta como verde). Las carpetas `registros/iceberg-*` son una serie vieja congelada.
-- **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). Ya no tiene vista propia (retirada el 25-nov-2026); el cálculo lo usa la Campaña. Los enlaces antiguos `#/…/persistencia` llevan a Variación.
+- **Persistencia**: promedio simple de los puestos de cada activo en las carreras donde participó (una carrera por fecha UTC con velas cerradas). No tiene vista propia; el cálculo lo usa la Campaña. Los enlaces `#/…/persistencia` llevan a Variación.
 - **Variación y rachas**: razón G/P y racha por activo desde sus velas diarias (`visor-rachas-datos.mjs`).
 - **Día cerrado en Mercado**: si el día visible ya cerró, el Relieve y las barras usan el registro VIP canónico (97 puntos de 15 min, o 25 si es heredado, 00:00 a 24:00 UTC) cuando existe; si no, el vivo. Mercado no tiene selector de día, así que el canónico se ve en la ventana 00:00-01:00 UTC (hasta la segunda lectura del día nuevo). Cada período (30, 60, 90) muestra solo sus VIP (44, 30, 82 al cierre del 25-nov) aunque el canónico guarde la unión de 105.
 - **Barra móvil de 24 h**: foto intradiaria de los stocks (ventana móvil de 24 h, no el día cerrado del iceberg).
@@ -65,22 +66,33 @@ Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛�
 ## Nombre visible
 «Observatorio Bursátil» en `<title>`, `og:title`, `<h1>` y el alt del avatar. El visor no usa las palabras «caballo» ni «hipódromo».
 
-## Mercado (página unificada, prototipo)
-Ruta `#/unificada` (solo los botones 30/60/90) y `#/unificada/(30|60|90)d[/mercado/codigo]`. Es una página aparte: las páginas originales, sus accesos y su comportamiento no cambian. El código compartido solo cambia de conducta cuando la página unificada le pasa `puente`, `limpio`, `en`, `crestas` o `dias`.
-- **Periodo global 30/60/90**: todo lo que se ve sigue al periodo; la Superficie 3D sigue siendo diaria. Sin selector de día ni botón Actualizar.
-- **Orden**: Miedo y codicia (cripto naranja `#F7931A`, bolsa azul `#0092BC`), Balance diario, tres barras, Relieve del día (3D), ficha general del activo, Campaña.
-- **VIP**: Premium + Potentes + Constantes del último cierre de la campaña elegida. Los Rezagados siguen en los registros pero quedan fuera de Mercado (barras, 3D, Balance, campo, leyenda y evolución).
-- **Frontera VIP**: la Campaña 1 (raíz((P²+C²)/2) = 1) es la frontera exacta entre VIP y Rezagados. Un activo es VIP si y solo si su Campaña es 1 o más. Esa línea no separa Premium de Potentes o Constantes: eso lo deciden P y C por separado (`grupoDe` en `campana-carrera.mjs`). Un activo puede tener P ≥ 1 o C ≥ 1 y ser Rezagado si su Campaña es menor que 1 (en el cierre del 24-nov, 55 de 503 en 30d). En el campo, la cerca (radio 1) es esa misma frontera.
-- **Balance diario**: cohorte = VIP del último cierre, seguida hacia atrás sus N días calendario cerrados, recalculada en cada cierre. Es el balance del conjunto VIP, no del mercado entero. La cobertura es variable (no todos tienen vela todos los días). Una vela sin cambio no cuenta como baja ni como alza. Pie: «N en baja · N igual(es) · N en alta». Se precalcula dentro del proceso diario existente (`app/modulos/campana-balance.mjs`, llamado desde `.github/campana-diaria.mjs`, archivo `registros/categorias/balance_carrera-{N}d`). Si el archivo no existe aún, el visor muestra el conteo anterior de las 113 acciones con un aviso temporal; el aviso desaparece cuando exista el primer balance VIP.
-- **Relieve del día**: nota «N activos VIP · Premium N · Potentes N · Constantes N · 24 nov». Crestas con pared, contorno dorado en cero, degradado negro/rojo/verde saturado en ±15 %, rotación a plano, marcas cada 10 puntos, zoom con pellizco y rueda.
-- **Evolución de Campaña** (sustituye en Mercado al espagueti de puestos): una línea por VIP, Campaña de la ventana que termina cada día, eje logarítmico común, referencia 1 punteada, líneas secundarias finas y transparentes con el color de su categoría actual, la elegida gruesa. Los huecos cortan la línea, sin relleno. Son los VIP de hoy vistos hacia atrás, no la cohorte real de cada día pasado: no sirve para decir quién competía entonces. Cruzar el 1 hacia atrás no demuestra que fuera buen momento de compra. Se traza una vez al entrar en pantalla (1 s, `movimientoReducido()` la desactiva). El promedio de puestos y cualquier ranking nuevo se descartaron. `#/campana` conserva su espagueti original.
-- **Datos que alimentan**: `serie_carrera-Nd` (P y C por día, ya precalculadas), `{stock,cripto}_carrera-Nd`, `pre-calculado/*/iceberg-90d`, `velas-24h`, `intradia`, `feargreedchart-bolsa`, `alternative-fear-greed`. Hora del Observatorio: UTC. El registro horario de cripto empieza el 26-nov-2026 00:00 UTC; stocks, 113 por hora.
-- **Miedo y codicia de bolsa**: va con ~2 días de retraso por diseño. La regla de resguardo (`indicadores.mjs`) guarda un día solo cuando su fecha ya pasó en Nueva York, y el cierre diario corre ~00:05 UTC. No es una falla ni se rellena a mano.
-- **Calendario NYSE**: 26-nov-2026 sin sesión; 27-nov cierre anticipado 13:00 ET. La ausencia de vela del 26 es legítima, sin imputar ceros. Fuente: https://www.nyse.com/trade/hours-calendars
-- **Universo del puesto antiguo**: ~516 activos con participación (30d 503+13, 60d 482+34, 90d 467+49: clasificados + no clasificados). Las categorías salen de P, C y Campaña, no de ese puesto.
-- **Rezagados en Mercado** y el espagueti de puestos solo existen ya en las páginas originales.
+## Mercado (la página principal)
+Es la entrada del visor. Ruta `#/unificada/30d`: muestra tres botones, Empresas, Fondos y Cripto. Elegir uno lleva a `#/unificada/30d/<grupo>`; con un activo elegido, `#/unificada/30d/<grupo>/<stock|cripto>/<código>`. El periodo es siempre 30 días. El menú principal tiene dos entradas: Mercado y Cimiento. Las demás rutas de este documento siguen funcionando por su dirección, pero no están en el menú.
+
+**Orden de la página**, de arriba abajo:
+1. Botones de grupo, y debajo el reloj: «Hora actual» en amarillo y la hora local de quien mira en blanco.
+2. **Activos VIP**: lista de los VIP del grupo elegido. Elegir uno de la lista lo marca en todas las vistas de abajo.
+3. **Balance del día**: cuántos VIP del grupo suben, bajan o quedan iguales, día por día.
+4. **Cuatro barras de movimiento**: 24 horas, día, 1 hora y 15 min. Siempre hay cuatro espacios; si una barra aún no tiene lectura suficiente, su espacio queda vacío con «sin datos» y nada se desplaza. «1 hora» y «15 min» necesitan una lectura real de unos 60 y 15 minutos antes, y las dos tienen «Ver tabla».
+5. **Relieve del día**: superficie 3D de los VIP.
+6. **Campaña**: campo de béisbol del activo elegido, con su nombre y enlace a su ficha.
+7. **Potencia y constancia**: curvas P y C del activo elegido.
+8. **Evolución**: Campaña de cada VIP, día por día.
+9. **Variación diaria**: variación de los VIP en la ventana.
+10. **Ficha del activo**, al final: código y nombre, una línea amarilla debajo, la matriz de categorías (Premium verde, Potentes amarillo, Constantes azul, en columnas de 30, 60 y 90 días; se enciende lo que le corresponde al activo) y los enlaces externos (por ejemplo Stock Analysis, TipRanks, TradingView, Gobierno y Oficial, según el activo). Aparece y desaparece sin empujar el resto de la página. Sin activo elegido no hay ficha.
+
+Los títulos «Activos VIP», «Balance del día» y «Relieve del día» van en blanco y grandes; «Campaña», «Potencia y constancia», «Evolución» y «Variación diaria» van en dorado y pequeños.
+
+- **VIP**: Premium, Potentes y Constantes del último cierre de la Campaña de 30 días, dentro del grupo elegido (empresas, fondos o cripto). Los Rezagados siguen en los registros pero no aparecen en Mercado.
+- **Frontera VIP**: Campaña 1 (raíz((P²+C²)/2) = 1). Un activo es VIP si y solo si su Campaña es 1 o más. Esa línea no separa Premium de Potentes o Constantes: eso lo deciden P y C por separado (`grupoDe` en `campana-carrera.mjs`). Un activo puede tener P ≥ 1 o C ≥ 1 y ser Rezagado si su Campaña es menor que 1. En el campo, la cerca (radio 1) es esa misma frontera.
+- **Balance del día**: la cohorte es el conjunto de VIP del último cierre, seguida hacia atrás durante los días cerrados de la ventana. No es el balance del mercado entero. Una vela sin cambio cuenta como «igual», ni alza ni baja. Cada día se cuenta cierre contra apertura con las velas diarias de los VIP del grupo (`vistaBalanceGrupo` en `index.html`; el archivo `registros/categorias/balance_carrera-{N}d` lo precalcula el proceso diario con `campana-balance.mjs`).
+- **Relieve del día**: crestas con pared, contorno dorado en cero, rotación libre con imán al plano, marcas fijas cada 10 puntos, zoom con pellizco y rueda. Sin selector de grupo, sin franja y sin leyenda de colores. Muestra la hora de la lectura junto al punto elegido, no un rango arriba. La altura de cada punto es su variación contra la primera lectura del día. **Color**: negro en cero, verde para positivos y rojo para negativos. El mayor valor absoluto del relieve (positivo o negativo) fija el brillo máximo en los dos signos, sin piso mínimo; el lado con menos recorrido queda más apagado. Se recalcula con cada lectura nueva (`topeAltura` y `colorAltura` en `visor-superficie.mjs`). Si todo el relieve vale cero, el tope es 1 para no dividir por cero. Elegir un punto elige el activo en toda la página, y tocar el vacío suelta la selección. Si un activo no tiene lectura horaria (por ejemplo, un cripto fuera del registro), un aviso lo dice y su ficha y su Campaña se consultan igual.
+- **Evolución**: una línea por VIP con la Campaña de la ventana que termina cada día, eje logarítmico común, referencia 1 punteada. Las líneas secundarias son finas y transparentes con el color de su categoría actual; la del activo elegido es gruesa. Los huecos cortan la línea, sin relleno. Son los VIP de hoy vistos hacia atrás, no la cohorte real de cada día pasado: no sirve para decir quién competía entonces, ni cruzar el 1 hacia atrás demuestra un buen momento de compra. Se traza una vez al entrar en pantalla (1 s; `movimientoReducido()` la desactiva).
+- **Datos que alimentan la página**: `serie_carrera-Nd` (P y C por día), `{stock,cripto}_carrera-Nd`, `velas-24h`, `intradia` y su canónico. La hora del Observatorio es UTC. El registro horario de cripto empieza el 26-nov-2026 a las 00:00 UTC.
+- **Estabilidad al cargar**: los bloques superiores reservan su alto (el último medido, o una proporción del ancho) para que el Relieve no salte mientras llegan los datos (`index.html`, `vistaUnificada`).
+- **Barras de movimiento**: «15 min» compara con la lectura anterior publicada; «1 hora» recalcula cada activo contra la lectura publicada de hace 60 min (enlace con `&base=`), nunca contra la de 15 min.
+- **Reloj**: el reloj de la página es la hora local de quien mira y solo aparece en la página del grupo, no en la portada ni en la elección de grupo.
+- **Calendario NYSE**: el 26-nov-2026 no hay sesión y el 27-nov cierra a las 13:00 ET. La ausencia de vela del 26 es legítima, sin imputar ceros. Fuente: https://www.nyse.com/trade/hours-calendars
 
 ## Pruebas
-`node --test pruebas/*.mjs` (unos 75 s, sin red). A 25-nov-2026 pasan las 399. Cualquier prueba roja es nueva.
-
-- **Barras de Mercado**: 24 h, día, 1 hora y 15 min. «1 hora» y «15 min» solo aparecen si hay una lectura real de ese intervalo (unos 60 y 15 min antes); las dos tienen «Ver tabla». La de 15 min compara con la lectura anterior publicada; la de 1 hora recalcula cada activo contra la lectura publicada de hace 60 min (enlace con `&base=`), nunca contra la de 15 min.
+`node --test pruebas/*.mjs` (unos 75 s, sin red). Cualquier prueba roja debe investigarse.
