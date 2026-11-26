@@ -48,7 +48,7 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   const grupo = crear('span', 'superficie-pasos' + (clase ? ' ' + clase : ''));
   const anterior = crear('button', 'superficie-flecha');
   const siguiente = crear('button', 'superficie-flecha');
-  // vertical: el mismo símbolo girado 90°, para que el eje del tiempo se distinga del eje del activo. Sentido del tiempo pedido por el dueño (audio 26-nov-2026): la flecha de arriba avanza en el tiempo (desde la última lectura vuelve a la primera y sigue avanzando) y la de abajo recorre el sentido contrario.
+  // vertical: el mismo símbolo girado 90°, para que el eje del tiempo se distinga del eje del activo. Sentido del tiempo pedido por el dueño (audio 26-nov-2026): la flecha de arriba avanza en el tiempo y la de abajo recorre el sentido contrario, y el ciclo recorre solo lecturas: desde la última vuelve directamente a la primera y desde la primera a la última, sin pasar por «Elegir»; la vista completa queda como vista inicial y fuera del ciclo de las flechas.
   for (const [b, s] of [[anterior, simbolos[0]], [siguiente, simbolos[1]]]) { if (vertical) b.append(crear('span', 'flecha-girada', s)); else b.textContent = s; }
   const movimientos = vertical ? [[anterior, 1, 'siguiente'], [siguiente, -1, 'anterior']] : [[anterior, -1, 'anterior'], [siguiente, 1, 'siguiente']];
   if (ocultarSelector) selector.hidden = true;
@@ -64,11 +64,13 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
     for (const [boton, delta] of movimientos) boton.disabled = n < 2 || (!ciclar && (delta < 0 ? selector.selectedIndex <= 0 : selector.selectedIndex >= n - 1));
     if (pulsado?.disabled) detener();
   };
+  const primero = vertical ? 1 : 0; // piso del ciclo: en vertical la opción 0 («Elegir», vista completa) no participa
   const paso = (delta) => {
     const n = selector.options.length;
     if (n < 2) return;
-    if (selector.selectedIndex < 0) { mover(delta > 0 ? 0 : n - 1); return; }
-    const indice = ciclar ? (selector.selectedIndex + delta + n) % n : selector.selectedIndex + delta;
+    if (selector.selectedIndex < 0) { mover(delta > 0 ? primero : n - 1); return; }
+    let indice = selector.selectedIndex + delta;
+    if (ciclar) { if (indice > n - 1) indice = primero; else if (indice < primero) indice = n - 1; }
     if (indice >= 0 && indice < selector.options.length) mover(indice);
   };
   for (const [boton, delta] of movimientos) {

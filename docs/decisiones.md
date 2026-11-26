@@ -28,7 +28,7 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 - **Espaguetis**: grises más tenues y el elegido en blanco, no en colores de categoría (1795615176.458859, 1795615335.901129, 1795615874.644629).
 
 ## Visor
-- **Sentido de las flechas del tiempo del Relieve** (audio del dueño, 26-nov-2026, Slack ts 1795709023.745469): la flecha de arriba avanza en el tiempo (después de la última lectura vuelve a la vista completa del día y de ahí a la primera lectura, y sigue avanzando) y la de abajo recorre el sentido contrario.
+- **Sentido de las flechas del tiempo del Relieve** (audio del dueño, 26-nov-2026, Slack ts 1795709023.745469): la flecha de arriba avanza en el tiempo (desde la última lectura vuelve directamente a la primera y sigue avanzando) y la de abajo recorre el sentido contrario; el ciclo recorre solo lecturas y la vista completa del día, la vista al entrar, queda fuera de ese ciclo.
 
 ## Nombres
 - **Activos en caracteres chinos** llevan lectura latina y significado breve entre paréntesis, en todo el Observatorio y su ficha (1795614378.152739, 1795614410.613859, 1795614503.994839). Los significados son traducciones literales, no oficiales.

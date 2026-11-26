@@ -150,21 +150,24 @@ test('gris representa igualdad exacta y no comparación ausente ni redondeo', as
 });
 
 
-test('vertical: la flecha de arriba avanza en el tiempo y la de abajo retrocede, con ciclo', () => {
+test('vertical: arriba avanza en el tiempo, abajo retrocede y el ciclo recorre solo lecturas', () => {
  const antes=global.document;global.document={createElement:tag=>new Elemento(tag)};
  try{
-  const selector={selectedIndex:0,options:Array(4)};let pasos;
+  const selector={selectedIndex:0,options:Array(4)};let pasos; // 0 = «Elegir» (vista completa), 1..3 = lecturas
   pasos=montarPasos(selector,'Lectura',i=>{selector.selectedIndex=i;pasos.actualizar();},{ciclar:true,vertical:true});
   const [arriba,,abajo]=pasos.grupo.hijos;
   assert.equal(arriba.atributos['aria-label'],'Lectura siguiente');
   assert.equal(abajo.atributos['aria-label'],'Lectura anterior');
   assert.equal(arriba.hijos[0].className,'flecha-girada');
   assert.equal(abajo.hijos[0].className,'flecha-girada');
-  arriba.onclick();assert.equal(selector.selectedIndex,1); // desde el inicio, arriba avanza a la primera lectura
+  arriba.onclick();assert.equal(selector.selectedIndex,1); // desde la vista inicial, arriba va a la primera lectura
+  arriba.onclick();assert.equal(selector.selectedIndex,2); // y sigue avanzando
   selector.selectedIndex=3;pasos.actualizar();
-  arriba.onclick();assert.equal(selector.selectedIndex,0); // desde la última lectura, arriba vuelve al inicio
-  abajo.onclick();assert.equal(selector.selectedIndex,3); // abajo recorre el sentido contrario
-  abajo.onclick();assert.equal(selector.selectedIndex,2);
+  arriba.onclick();assert.equal(selector.selectedIndex,1); // desde la última lectura, arriba vuelve directamente a la primera
+  abajo.onclick();assert.equal(selector.selectedIndex,3); // desde la primera, abajo vuelve directamente a la última
+  abajo.onclick();assert.equal(selector.selectedIndex,2); // y sigue en sentido contrario
+  selector.selectedIndex=0;pasos.actualizar();
+  abajo.onclick();assert.equal(selector.selectedIndex,3); // desde la vista completa, abajo entra por la última lectura
   pasos.desmontar();
  }finally{global.document=antes;}
 });
