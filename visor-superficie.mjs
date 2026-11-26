@@ -10,6 +10,8 @@ const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '
 const ORO = '#c2a15a';
 // Escala de color de la altura: simétrica y relativa (26-nov-2026, audio 1795707987.259809). El tope es el mayor valor absoluto del relieve (positivo o negativo) y marca el brillo máximo en ambos signos; sin dato, 15 % por defecto.
 export const colorAltura = (a, tope = 15) => { const t = Math.min(1, Math.abs(a) / tope), v = a === 0 ? 0 : Math.round(56 + 199 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; }; // cero negro; desde ±0,5 % ya se ve color (audio 1795665930.632649)
+// Tope de la escala: el mayor valor absoluto, sin piso (un día casi plano también alcanza el brillo máximo). Solo si todo es cero exacto se usa 1 para no dividir entre cero; el cero sigue negro.
+export const topeAltura = (alturas) => { const m = Math.max(0, ...alturas.map(Math.abs)); return m > 0 ? m : 1; };
 export const ESCALA_ALTURA = [[-15, '≤ -15'], [-10, '-10'], [-6, '-6'], [-2.5, '-2,5'], [-.5, '-0,5'], [0, '0'], [.5, '0,5'], [2.5, '2,5'], [6, '6'], [10, '10'], [15, '≥ 15']].map(([v, et]) => [v, colorAltura(v), et]);
 // Degradé continuo: negro solo en 0 exacto; cualquier movimiento arranca en 56/255 (±0,5 % ya se distingue) y llega a (255,0,0)/(0,255,0) en ±15 %; la altura de la línea nunca se recorta.
 
@@ -111,7 +113,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const maximo = Math.max(0.1, ...valores);
   // Mercado (crestas): el eje vertical va desde el mínimo hasta el máximo de los datos (con el cero incluido y un margen), sin simetría forzada ni el cero al centro.
   const alturas = puntos.flat().filter(Boolean).map((p) => p.altura);
-  const topeColor = Math.max(0.3, ...alturas.map(Math.abs)); // extremo absoluto del relieve: se recalcula con cada lectura nueva
+  const topeColor = topeAltura(alturas); // extremo absoluto del relieve: se recalcula con cada lectura nueva
   let vLo = -maximo, vHi = maximo;
   if (crestas && alturas.length) { const lo = Math.min(0, ...alturas), hi = Math.max(0, ...alturas), m = Math.max(0.3, (hi - lo) * 0.06); vLo = lo - m; vHi = hi + m; }
   const zc = (v) => (v - (vHi + vLo) / 2) / ((vHi - vLo) / 2), z0 = zc(0); // altura en % a coordenada vertical [-1, 1]; z0 = plano cero

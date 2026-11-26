@@ -74,6 +74,11 @@ test('la escala de altura de las crestas es simétrica y relativa al mayor valor
   assert.equal(colorAltura(0), '#00' + '00' + '00');
   assert.equal(colorAltura(15), '#00ff00');
   assert.equal(colorAltura(-15), '#ff0000');
+  const { topeAltura } = await import('../visor-superficie.mjs');
+  { const t = topeAltura([3, -1, 0.5]); assert.equal(t, 3); assert.equal(colorAltura(3, t), '#00ff00'); assert.notEqual(colorAltura(-1, t), '#ff0000'); }
+  { const t = topeAltura([2, -8, 1]); assert.equal(t, 8); assert.equal(colorAltura(-8, t), '#ff0000'); assert.notEqual(colorAltura(2, t), '#00ff00'); }
+  { const t = topeAltura([0.1, -0.04, 0.02]); assert.equal(t, 0.1); assert.equal(colorAltura(0.1, t), '#00ff00'); assert.ok(colorAltura(-0.04, t) !== colorAltura(0, t)); }
+  { const t = topeAltura([0, 0]); assert.equal(colorAltura(0, t), '#000000'); }
   assert.equal(colorAltura(4, 4), '#00ff00');
   assert.equal(colorAltura(-4, 4), '#ff0000');
   assert.equal(colorAltura(-2, 4), colorAltura(-2, 4));
