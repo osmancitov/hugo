@@ -2199,12 +2199,11 @@ function botonNav(nav, titulo, href, actual=false) {
   const a=document.createElement('a');a.textContent=titulo;a.href=href;
   a.classList.toggle('actual',actual);nav.append(a);return a;
 }
-function contraerNavegacion(nav, seleccion, volver) {
+function contraerNavegacion(nav, seleccion, volver, conservarMercado=false) {
   if(!seleccion)return;
   for(const a of [...nav.children]) {
-    a.hidden=!a.classList.contains('actual');
-    if(a.classList.contains('actual'))
-    { a.href=volver;a.title='Cambiar selección'; }
+    a.hidden=!a.classList.contains('actual')&&!(conservarMercado&&a.id==='mercado-unificada');
+    if(a.classList.contains('actual')){a.href=volver;a.title='Cambiar selección';}
   }
 }
 function vistaIndicadoresMercado(mercado) {
@@ -2561,7 +2560,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
   cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,...(puente?[cAct]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica fija de Potencia y Constancia todos los VIP (pedido 1795668506.350929)
+  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct]:[]),cEsp,...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
   if(puente){cAct.style.minHeight='410px';cAct.classList.add('camp-vip-series');}
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
@@ -2716,6 +2715,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
+  cFicha.style.minHeight='640px'; // espacio estable de ficha para que la selección 3D no empuje el campo ni la gráfica
   let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const cVar=document.createElement('div');cVar.className='mercado-var';const puente={cVar,mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,grupo2:()=>grupo2,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
@@ -2726,7 +2726,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   const anclarCamp=()=>{cCamp._fin?.();setTimeout(()=>{const y0=cCamp.getBoundingClientRect().top,t0=performance.now();let activo=true;const fin=()=>{activo=false;};cCamp._fin=fin;
     const sostener=()=>{if(!activo||performance.now()-t0>3000)return;const d=cCamp.getBoundingClientRect().top-y0;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});setTimeout(sostener,16);};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,fin,{once:true,passive:true});setTimeout(sostener,16);},0);};
-  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=alto?alto+'px':'';clearTimeout(cFicha._lib);cFicha._lib=setTimeout(()=>{cFicha.style.minHeight='';},2500);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
+  const pintarFicha=()=>{const alto=cFicha.offsetHeight;cFicha.style.minHeight=Math.max(alto,parseFloat(cFicha.style.minHeight)||0)+'px';clearTimeout(cFicha._lib);cFicha.replaceChildren();if(sel){const id=sel,mx=Object.assign(document.createElement('div'),{className:'matriz-categorias',role:'table'});
     mx.style.cssText='display:inline-grid;grid-template-columns:auto repeat(3,2.6rem);gap:.55rem .5rem;align-items:center;margin:.5rem 0 1rem;font-size:.85em';
     const celda=(t,css='')=>{const e=Object.assign(document.createElement('span'),{textContent:t});e.style.cssText=css;mx.append(e);return e;};
     celda('');for(const n of [30,60,90])celda(n+' d','text-align:center;opacity:.8');
@@ -2796,7 +2796,7 @@ async function ruta() {
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
   document.getElementById('mercado-unificada').href='#/unificada/30d';
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
-  if(!mu&&hash==='#/') document.getElementById('portada-observatorio').after(relojEntrada,navMerc);
+  document.querySelector('.mercados').after(relojEntrada);
   relojEntrada.hidden=!(hash==='#/'||(mu&&elegirGrupo));
   if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],'#/unificada/30d/'+g[0],!elegirGrupo&&g[0]===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
@@ -2808,7 +2808,7 @@ async function ruta() {
     for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación']])botonNav(navV,t,base+'/'+v,ranking===v);
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
-  contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/');
+  contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/',Boolean(mu));
   contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?'#/unificada':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
