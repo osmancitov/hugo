@@ -1619,7 +1619,7 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
   ficha.className = 'ficha';
   const h1 = document.createElement(en ? 'h2' : 'h1');
   h1.innerHTML = '<span class="cod"></span>';
-  h1.querySelector('.cod').textContent = limpio && e.iceberg ? 'Balance diario' : (rotulo ? e.nombre + ' · ' + rotulo : e.nombre); // Mercado: nombre propuesto, pendiente del usuario (25-nov-2026)
+  h1.querySelector('.cod').textContent = limpio && e.iceberg ? 'Balance del día' : (rotulo ? e.nombre + ' · ' + rotulo : e.nombre); // Mercado: nombre propuesto, pendiente del usuario (25-nov-2026)
   ficha.appendChild(h1);
   const meta = document.createElement('div');
   meta.className = 'meta';
@@ -2555,7 +2555,7 @@ function grupoMercadoDe(id) {
 function vistaBalanceGrupo(en, ndias, g2) {
   const e = INDICADORES.find((x) => x.codigo === 'iceberg-stock');
   const ficha = document.createElement('div'); ficha.className = 'ficha ficha-balance';
-  const h = document.createElement('h2'); h.className = 'tit-vip'; h.textContent = 'Balance diario'; // blanco y grande como «Activos VIP» (26-nov-2026, audio)
+  const h = document.createElement('h2'); h.className = 'tit-vip'; h.textContent = 'Balance del día'; // blanco y grande como «Activos VIP» (26-nov-2026, audio)
   ficha.append(h);
   const caja = document.createElement('div'); caja.className = 'lienzo-caja';
   const estado = document.createElement('p'); estado.className = 'estado'; estado.textContent = 'Trayendo los registros…';
