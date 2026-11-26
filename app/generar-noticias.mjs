@@ -79,15 +79,14 @@ export function pagina(codigo, fuente, items, hoy = new Date()) {
     const nota = ''; // la nota de fecha (nota_fecha) queda en los datos, no se muestra (ruido, 26-nov-2026)
     return `<li><time datetime="${esc(n.orden)}">${esc(fechaVisible(n))}</time><a href="${esc(n.enlace)}" target="_blank" rel="noopener">${esc(n.titular)}</a><span>${esc(n.medio)} ↗${extra}</span>${nota}</li>`;
   }).join('\n');
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#080604"><title>Noticias archivadas de ${esc(codigo)} · Observatorio Bursátil</title>
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#080604"><title>Noticias de ${esc(codigo)} · Observatorio Bursátil</title>
 <style>*{box-sizing:border-box}html{background:#080604;color:#e8eaed;font-family:Lora,Georgia,serif}body{margin:0 auto;max-width:760px;padding:24px 24px 44px}a{color:#c2a15a;text-decoration:none}a:hover{text-decoration:underline}li,li a{overflow-wrap:anywhere}h1{font-family:Cinzel,Georgia,serif;font-weight:600;font-size:clamp(1.5rem,5vw,2.2rem);margin:22px 0 6px}header{border-bottom:1px solid #c2a15a;padding-bottom:14px}.nota{color:#9aa0ac;font-size:.78rem;line-height:1.6;margin:0 0 26px}ul{list-style:none;padding:0;margin:0}li{padding:16px 0;border-top:1px solid #2a3140;display:flex;flex-direction:column;gap:6px}li time,li span,li small.nf{font-size:.75rem;color:#9aa0ac}li a{font-size:1.02rem;line-height:1.45}li span a.alt{font-size:.75rem}footer{border-top:1px solid #2a3140;padding-top:18px;margin-top:10px;color:#9aa0ac;font-size:.75rem;line-height:1.6}</style></head><body>
 <header><a href="../#/unificada/30d/stock/${esc(codigo)}">← Mercado · ${esc(codigo)}</a></header>
-<h1>Noticias archivadas de ${esc(codigo)}</h1>
-<p class="nota">${vis.length} noticias de la campaña de 30 días (ventana móvil: hoy desde el ${corta(desde)}; el archivo guarda ${items.length} en total y las anteriores no se muestran), de la más reciente a la más antigua por la fecha de la noticia. Horas en UTC-4; las filas sin hora solo tienen el día comprobado. El año, cuando aparece, está verificado contra la fuente original (lista en docs/noticias.md); donde no aparece, la fuente no lo indica y el orden supone el año más reciente que no dé una fecha futura (inferencia, no verificada). ${esc(fuente)}</p>
+<h1>Noticias de ${esc(codigo)}</h1>
 <ul>
 ${filas}
 </ul>
-<footer>El archivo crece al sumar noticias nuevas con <code>node app/generar-noticias.mjs ${esc(codigo)} --agregar nuevas.json</code>; no se actualiza solo. Ver docs/noticias.md.</footer></body></html>
+</body></html>
 `;
 }
 

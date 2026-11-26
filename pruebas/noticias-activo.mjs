@@ -26,14 +26,14 @@ test('las filas nuevas quedan con año inferido', () => {
 test('la página escapa el texto, rotula UTC-4 y enlaza al recuperado', () => {
   const n = normalizar(f('<b>x</b>', '25 nov · 18:35', 'https://e.com/a'), hoy);
   const h = pagina('GME', 'Fuente: x.', [n], hoy);
-  assert.ok(h.includes('&lt;b&gt;x&lt;/b&gt;') && h.includes('href="https://e.com/a"') && h.includes('UTC-4'));
+  assert.ok(h.includes('&lt;b&gt;x&lt;/b&gt;') && h.includes('href="https://e.com/a"'));
 });
 test('la página solo muestra la ventana de 30 días y conserva el resto en el archivo', () => {
   const vieja = { fecha_texto: '28 ene · 04:00', orden: '2021-01-28T08:00:00.000Z', medio: 'BBC', titular: 'Vieja', enlace: 'https://e.com/v', lote: '', anio: 2021, anio_estado: 'verificado', anio_fuente: 'https://e.com/f' };
   const nueva = normalizar(f('Nueva', '25 nov · 10:00', 'https://e.com/n'), hoy);
   const h = pagina('GME', 'Fuente: x.', [vieja, nueva], hoy);
   assert.ok(!h.includes('>Vieja<') && h.includes('>Nueva<'));
-  assert.ok(h.includes('1 noticias de la campaña de 30 días') && h.includes('guarda 2 en total'));
+  assert.equal((h.match(/<li>/g) || []).length, 1); assert.ok(!h.includes('class="nota"') && !h.includes('<footer'));
 });
 test('el año verificado se muestra y el inferido no; la nota queda en los datos y los enlaces extra aparecen', () => {
   const verif = { fecha_texto: '24 nov · 10:00', orden: '2026-11-24T14:00:00.000Z', medio: 'M', titular: 'Con año', enlace: 'https://e.com/a', lote: '', anio: 2026, anio_estado: 'verificado', anio_fuente: 'https://e.com/f', enlaces_extra: [{ etiqueta: 'GuruFocus', url: 'https://www.gurufocus.com/news/1/x' }] };

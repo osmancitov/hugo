@@ -2,7 +2,7 @@
 
 Página `noticias/<CODIGO>.html` (hoy GME, LLY y WDC), enlazada como «Noticias ↗» en la ficha del activo (`CON_NOTICIAS` en `index.html`).
 
-El retorno «← Mercado · COD» abre la vista integrada `#/unificada/30d/<mercado>/<COD>` y baja al título de la ficha del activo. La ficha sale del catálogo, no de la lista VIP: el enlace sigue funcionando cuando el activo sale de los VIP (26-nov-2026, pedido del dueño). La ruta antigua `#/a/<mercado>/<COD>` abre esa misma vista integrada, para los enlaces ya publicados (p. ej. `cuenta/estado-de-cuenta.md`).
+El retorno «← Mercado · COD» abre la vista integrada `#/unificada/30d/<mercado>/<COD>` y baja al encabezado «Activos VIP» de esa vista (activo marcado, compañeros a la vista) y lo sostiene 6 s o hasta que el usuario mueva la página; si no quedara estable, la alternativa pedida es volver a la entrada del Observatorio. Las páginas de noticias llevan solo el enlace de regreso, el título y las noticias; la procedencia y los límites de cada carga viven aquí y en `registros/noticias/`. La ficha sale del catálogo, no de la lista VIP: el enlace sigue funcionando cuando el activo sale de los VIP (26-nov-2026, pedido del dueño). La ruta antigua `#/a/<mercado>/<COD>` abre esa misma vista integrada, para los enlaces ya publicados (p. ej. `cuenta/estado-de-cuenta.md`).
 
 ## Qué se muestra: campaña de 30 días
 

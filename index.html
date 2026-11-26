@@ -2815,11 +2815,11 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   puente.alCampana(dias);
   pintarFicha();
   // Entrar a Mercado con un activo en la ruta (el retorno «← Mercado · COD» de las páginas de noticias,
-  // 26-nov-2026, pedido del dueño): lleva al título de su ficha, al final de la página, y lo sostiene
+  // 26-nov-2026, pedido del dueño): lleva al encabezado «Activos VIP» (con el activo marcado y sus compañeros a la vista; corrección del audio del 26-nov-2026: antes iba a la ficha, al final) y lo sostiene
   // mientras cargan los bloques de arriba, que la empujan. La ficha sale del catálogo: no depende de la lista VIP.
   if(sel){const tA0=performance.now();let anclajeFicha=true;const finAnclajeFicha=()=>{anclajeFicha=false;};
     for(const ev of ['wheel','touchstart','keydown'])window.addEventListener(ev,finAnclajeFicha,{once:true,passive:true});
-    const sostenerFicha=()=>{if(!anclajeFicha||performance.now()-tA0>3000)return;const t=cFicha.querySelector('h2');if(t){const d=t.getBoundingClientRect().top;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});}setTimeout(sostenerFicha,16);};
+    const sostenerFicha=()=>{if(!anclajeFicha||performance.now()-tA0>6000)return;const t=tituloVIP;if(t&&t.isConnected){const d=t.getBoundingClientRect().top-8;if(Math.abs(d)>1)window.scrollBy({top:d,behavior:'instant'});}setTimeout(sostenerFicha,16);};
     setTimeout(sostenerFicha,16);}
   // Relieve del día entre las barras y la ficha del activo (26-nov-2026, audio): se recorren los activos en la 3D y la información con sus enlaces queda justo debajo.
 }
