@@ -1849,7 +1849,7 @@ function graficador(caja, pie, deCaso) {
     }, 'image/png');
   }));
   pie.append(controles);
-  if (cfg.alEntrar !== false && !movimientoReducido() && typeof IntersectionObserver !== 'undefined') { // el trazado espera a que la gráfica entre en pantalla (usuario, audio 26-nov-2026 12:35); solo la usa Balance del día
+  if (cfg.alEntrar && !movimientoReducido() && typeof IntersectionObserver !== 'undefined') { // el trazado espera a que la gráfica entre en pantalla (usuario, audio 26-nov-2026 12:35); solo la usa Balance del día
     traza.cancelar(); dibujarEn(graf.ctx, 1);
     const io = new IntersectionObserver((es) => { if (!es.some((e) => e.isIntersecting)) return; io.disconnect(); if (caja.isConnected) traza.trazar(); }, { threshold: .3 });
     io.observe(caja);
