@@ -317,7 +317,8 @@ a.tit-link:hover { text-decoration: none; }
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
-<nav class="mercados" aria-label="Mercados"><a href="#/campana" id="mercado-campana">Campaña</a><a href="cuenta/">Cimiento</a><a href="#/unificada" id="mercado-unificada">Mercado</a><a href="#/stock" id="mercado-stock">Stocks</a><a href="#/cripto" id="mercado-cripto">Cripto</a><a href="#/buscar" id="mercado-buscar">Buscar</a></nav>
+<div id="reloj-entrada" class="superficie-reloj" hidden></div>
+<nav class="mercados" aria-label="Mercados"><a href="#/unificada" id="mercado-unificada">Mercado</a><a href="cuenta/">Cimiento</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -2308,6 +2309,19 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
     io.observe(svg);
   }
 }
+function graficaActivosCampana(caja,s,grupos,seleccion=null){
+  const W=720,H=360,L=40,R=10,T=14,B=28,N=s.fechas.length;
+  const activos=Object.entries(grupos).filter(([id])=>s.activos[id]);
+  const valores=activos.flatMap(([id])=>(s.activos[id]||[]).filter(Boolean).flatMap(p=>[p[1],p[2]]));
+  let lo=Math.log2(Math.max(.001,Math.min(1,...valores))),hi=Math.log2(Math.max(1,...valores));lo-=.08;hi+=.08;
+  const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2), y=v=>T+(hi-Math.log2(Math.max(v,.001)))/(hi-lo)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de todos los Activos VIP'});
+  for(const v of [.125,.25,.5,1,2,4,8,16]){if(Math.log2(v)<lo||Math.log2(v)>hi)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=v===.125?'⅛':v===.25?'¼':v===.5?'½':String(v);svg.append(t);}
+  for(const [id] of activos){const serie=s.activos[id]||[],seleccionado=id===seleccion;for(const [k,cls] of [[1,'camp-pot'],[2,'camp-con']])svg.append(svgEl('path',{d:trazoConHuecos(serie.map((p,i)=>p?[x(i),y(p[k])]:null)),class:`camp-curva ${cls}`,opacity:seleccionado?'.95':'.5','stroke-width':seleccionado?'3':'1.5','data-id':id}));}
+  for(const i of [0,N-1]){const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':i?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);}
+  const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia';
+  caja.replaceChildren(svg,ley);
+}
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
@@ -2546,7 +2560,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const sub=document.createElement('p');sub.className='camp-sub';
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
-  cEsp.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
+  cEsp.className='camp-caja';cAct.className='camp-caja camp-vip-series';cAct.style.minHeight=puente?'410px':'';cCuad.className='camp-caja';
   raiz.append(...(puente?[]:[t,sub]),cCuad,cEsp,cAct,...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado (puente): sin título ni explicación repetidos de la Campaña (audio 1795642694.105409)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
@@ -2567,8 +2581,9 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir,g2);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
     pintarVar();
     graficaCampo(cCuad,u,sel,elegir,Boolean(puente),g2);
-    if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}} // la categoría no se pierde en el blanco de la selección
-    cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,Boolean(puente));
+    if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}}
+    if(puente){const grupos=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));graficaActivosCampana(cAct,sv,grupos,sel);}
+    else {cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,false);}
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
     if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
   };
@@ -2682,13 +2697,16 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=(clase+' mercado-bloque').trim();app.appendChild(x);return x;};
-  const cReloj=sec('mercado-reloj'); // reloj UTC compacto arriba (25-nov-2026)
+  // El reloj de entrada está entre la portada y los botones; aquí se reserva el reloj UTC compacto de Mercado.
+  const cReloj=sec('mercado-reloj');
   // Triple play: Miedo y codicia del mercado del grupo (Bolsa para empresas y fondos, Cripto para cripto),
   // luego la lista de los VIP del grupo y su balance; después barras, ficha, Campaña y, al final, Relieve del día.
   vistaFearGreedJunto(sec(),dias,grupo2==='cripto'?'cripto':'bolsa');
   const cLista=sec('mercado-lista');
+  const tituloVIP=Object.assign(document.createElement('h2'),{className:'camp-tit',textContent:'Activos VIP'});cLista.append(tituloVIP);
   vistaBalanceGrupo(sec(),dias,grupo2);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
+  // El reloj de entrada se inicializa una sola vez, fuera de esta vista.
   const cSup=sec(),cFicha=sec('ficha-unificada'),cCamp=sec('mercado-camp');
   // Reserva de altura: los bloques de arriba se rellenan después de pintar y empujaban el Relieve (737 px en móvil, medido 25-nov-2026). Se reserva la última altura
   // medida (o, la primera vez en pantalla angosta, una proporción medida del ancho) y se libera cuando el bloque ya cargó. Solo afecta a Mercado.
@@ -2743,6 +2761,12 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   // Relieve del día, con su aviso, queda abajo de todo en Mercado.
   app.append(cSup,aviso2);
 }
+const relojEntrada=document.getElementById('reloj-entrada');
+const tituloReloj=Object.assign(document.createElement('p'),{className:'superficie-reloj-titulo'});
+const horaEntrada=document.createElement('time');horaEntrada.title='Hora local del usuario';
+tituloReloj.append(document.createTextNode('Hora actual '),horaEntrada);relojEntrada.replaceChildren(tituloReloj);
+const actualizarRelojEntrada=()=>{const d=new Date();horaEntrada.textContent=new Intl.DateTimeFormat('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);horaEntrada.dateTime=d.toISOString();setTimeout(actualizarRelojEntrada,60000-(d.getTime()%60000));};actualizarRelojEntrada();
+
 async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
@@ -2752,11 +2776,12 @@ async function ruta() {
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
   const muA=hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/(cripto|stock)\/(.+)$/);
   const muG=muA?null:hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/?$/);
-  const mu=muA||muG; // Triple play: el grupo va en la ruta; con activo y sin grupo, el grupo se deduce del activo
-  const g2Ruta=mu?(mu[2]||(muA?grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])):'empresas')):null;
+  const mu=muA||muG, elegirGrupo=Boolean(muG&&!mu[2]); // Mercado sin grupo muestra elección directa; ventana fija a 30 días
+  const g2Ruta=mu?(mu[2]||(muA?grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])):null)):null;
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
-  if(muA&&!muA[1]){location.replace('#/unificada/90d'+(muA[2]?'/'+muA[2]:'')+'/'+muA[3]+'/'+muA[4]);return;} // enlaces antiguos sin período
-  if(muG&&!muG[1]&&muG[2]){location.replace('#/unificada/90d/'+muG[2]);return;}
+  if(muA&&(!muA[1]||muA[1]!=='30')){location.replace('#/unificada/30d/'+(muA[2]||grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])))+'/'+muA[3]+'/'+muA[4]);return;} // enlaces antiguos, ventana única de 30 días
+  if(muG&&muG[1]&&muG[1]!=='30'){location.replace('#/unificada/30d'+(muG[2]?'/'+muG[2]:''));return;}
+  if(muG&&!muG[1]&&muG[2]){location.replace('#/unificada/30d/'+muG[2]);return;}
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
@@ -2766,19 +2791,19 @@ async function ruta() {
   }
   const mercado=r?.[1]||null,categoria=r?.[2]||null,ranking=r?.[3]||null;
   if(r&&((mercado==='cripto'&&categoria)||(mercado==='stock'&&ranking&&ranking!=='indicadores'&&!categoria))){location.replace('#/'+mercado);return;}
+  const relojEntrada=document.getElementById('reloj-entrada');
+  const tituloReloj=Object.assign(document.createElement('p'),{className:'superficie-reloj-titulo'});
+  const horaEntrada=document.createElement('time');horaEntrada.title='Hora local del usuario';
+  tituloReloj.append(document.createTextNode('Hora actual '),horaEntrada);relojEntrada.replaceChildren(tituloReloj);
+  const actualizarRelojEntrada=()=>{const d=new Date();horaEntrada.textContent=new Intl.DateTimeFormat('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);horaEntrada.dateTime=d.toISOString();setTimeout(actualizarRelojEntrada,60000-(d.getTime()%60000));};actualizarRelojEntrada();
   document.getElementById('portada-observatorio').hidden=Boolean(m||mi);
   document.getElementById('busqueda-global').hidden=!esBusqueda;
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
+  document.getElementById('mercado-unificada').href='#/unificada/30d';
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
-  document.getElementById('mercado-stock').href='#/stock';document.getElementById('mercado-cripto').href='#/cripto';
-  document.getElementById('mercado-stock').classList.toggle('actual',mercado==='stock');document.getElementById('mercado-cripto').classList.toggle('actual',mercado==='cripto');
-  document.getElementById('mercado-unificada').href='#/unificada';
-  document.getElementById('mercado-unificada').classList.toggle('actual',Boolean(mu));
-  document.getElementById('mercado-buscar').href='#/buscar';
-  document.getElementById('mercado-buscar').classList.toggle('actual',esBusqueda);
-  document.getElementById('mercado-campana').href='#/campana';
-  document.getElementById('mercado-campana').classList.toggle('actual',esCampana);
-  if(mu){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/unificada/'+v+'d/'+g2Ruta,mu[1]===String(v));navV.hidden=false;for(const [g,t] of GRUPOS_MERCADO)botonNav(navV,t,'#/unificada/'+(mu[1]||'90')+'d/'+g,g===g2Ruta);}
+  if(!mu&&hash==='#/') document.getElementById('portada-observatorio').after(relojEntrada,navMerc);
+  relojEntrada.hidden=!(hash==='#/'||(mu&&elegirGrupo));
+  if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],'#/unificada/30d/'+g[0],!elegirGrupo&&g[0]===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
@@ -2789,14 +2814,13 @@ async function ruta() {
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/');
-  contraerNavegacion(navCat,esCampana?mc[1]:mu?mu[1]:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?'#/unificada':'#/stock');
+  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?'#/unificada':'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
   if(m){vistaActivo(m[1],decodeURIComponent(m[2]));return;}
-  if(mu){if(!mu[1]){app.replaceChildren();return;} // «Mercado» solo muestra los botones de período y grupo; el usuario elige
-    vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,Number(mu[1]),g2Ruta);return;}
+  if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}

@@ -4,12 +4,12 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
 const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
-test('vista unificada Triple play: Fear & Greed del grupo, lista, balance del grupo, barras, ficha, Campaña y Relieve del día al final', () => {
+test('la vista Mercado mantiene el orden de componentes y el Relieve del día al final', () => {
   const f = unif();
-  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
+  const orden = ["vistaFearGreedJunto(sec(),dias", "cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', "cFicha=sec('ficha-unificada')", "cCamp=sec('mercado-camp')"].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
-  assert.ok(f.indexOf('app.append(cSup,aviso2)') > orden.at(-1), 'Relieve del día se añade después de la Campaña');
+  assert.ok(f.indexOf('app.append(cSup,aviso2)') > orden.at(-1));
 });
 test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
   assert.match(html, /if\(hash==='#\/i\/iceberg-stock\/superficie'\)\{vistaSuperficie\(\);return;\}/);
@@ -58,11 +58,9 @@ test('la escala de altura de las crestas es fija (no depende del máximo de la p
   assert.equal(colorAltura(-15), '#ff0000');
 });
 
-test('Mercado: el período 30/60/90 y el grupo (empresas, fondos, cripto) se eligen primero y mandan sobre F&G, lista, balance, Campaña y ficha; la superficie sigue diaria', () => {
-  assert.ok(html.includes("const muA=hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?"));
-  assert.ok(html.includes("const muG=muA?null:hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?"));
-  assert.ok(html.includes('Number(mu[1])'));
-  assert.ok(html.includes('GRUPOS_MERCADO'));
-  assert.ok(html.includes('cFicha,ventana||90'));
-  assert.ok(html.includes('recortarSerie(s,n)'));
+test('Mercado: grupo VIP y período fijo de 30 días', () => {
+  assert.ok(html.includes("const muG=muA?null:hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?(?:\\/(empresas|fondos|cripto))?\\/?$/)"));
+  assert.ok(html.includes("'#/unificada/30d/'+g[0]"));
+  assert.ok(html.includes("vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta)"));
+  assert.ok(html.includes("if(muG&&muG[1]&&muG[1]!=='30')"));
 });

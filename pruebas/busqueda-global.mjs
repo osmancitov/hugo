@@ -28,7 +28,7 @@ test('código exacto primero y catálogo original sin mutaciones',()=>{
 });
 test('localizador separado de filtros y rankings, tras la navegación',()=>{
   assert.ok(html.indexOf('<section id="busqueda-global"') > html.indexOf('<nav class="mercados"'));
-  assert.match(html, /id="mercado-buscar">Buscar<\/a>/);
+  assert.ok(html.includes("const esBusqueda=hash==='#/buscar'"));
   assert.match(html, /<section id="busqueda-global" hidden/);
   assert.match(html, /const esBusqueda=hash==='#\/buscar'/);
   assert.match(html, /!m&&!mi&&!r&&!esBusqueda/);

@@ -19,11 +19,13 @@ test('la serie ordena por fecha, deja null donde no hay punto y no inventa valor
   assert.deepEqual(s.activos['cripto:B'], [null, [1, 0.9, 1.3]]);
   assert.equal(s.ultimo, '260802-261030_carrera-90d');
 });
-test('el visor tiene el botón Campaña y la ruta #/campana, sin selector de fecha', () => {
-  const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /<nav class="mercados" aria-label="Mercados"><a href="#\/campana" id="mercado-campana">Campaña<\/a><a href="cuenta\/">Cimiento<\/a><a href="#\/unificada" id="mercado-unificada">Mercado<\/a><a href="#\/stock" id="mercado-stock">Stocks<\/a><a href="#\/cripto" id="mercado-cripto">Cripto<\/a><a href="#\/buscar" id="mercado-buscar">Buscar<\/a><\/nav>/);
-  assert.match(h, /\^#\\\/campana/);
-  assert.doesNotMatch(h.slice(h.indexOf('async function vistaCampana'), h.indexOf('async function ruta()')), /<select|type="date"/);
+test('el visor conserva las rutas de Campaña, Stocks, Cripto y Buscar aunque no aparezcan como botones de entrada',()=>{
+ const h=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(h,/\^#\\\/campana/);
+ assert.match(h,/const r=hash\.match\(\/\^#\\\/\(stock\|cripto\)/);
+ assert.ok(h.includes("const esBusqueda=hash==='#/buscar'"));
+ assert.ok(h.indexOf('id="portada-observatorio"') < h.indexOf('id="reloj-entrada"') && h.indexOf('id="reloj-entrada"') < h.indexOf('<nav class="mercados"'));
+ assert.match(h,/id="busqueda-global" hidden/);
 });
 test('la diaria registra la Campaña antes de pedir Pages', () => {
   const y = fs.readFileSync(new URL('../.github/workflows/actualizacion-diaria.yml', import.meta.url), 'utf8');
