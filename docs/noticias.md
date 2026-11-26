@@ -69,3 +69,9 @@ Dos orígenes distintos, tratados distinto:
 Regla expresa del dueño (26-nov-2026, hilo 1795722192.426879): **no volver a consultar GuruFocus; las consultas se usan solo al elegir un nuevo candidato.** Para GME se usa solo lo ya recogido; no hay sondeos ni seguimiento de su página.
 
 Esto registra las decisiones del dueño para estos enlaces concretos; no es una conclusión legal general sobre redistribuir titulares.
+
+## Procedimiento para próximos candidatos (decisión del dueño, 26-nov-2026)
+
+Al obtener una respuesta de noticias de una fuente (GuruFocus u otra), guardarla completa y tal cual, con todos sus enlaces, en `registros/noticias/` en ese mismo momento, antes de resumirla o de publicar nada. Así se puede publicar todo lo obtenido sin depender del historial de conversaciones. No hay monitor ni consulta nueva asociada a esta regla.
+
+Precedente: LLY y WDC se publicaron con 4 enlaces cada una porque la respuesta completa de la primera consulta no se guardó y solo sobrevivieron esos 4 enlaces. El dueño aceptó ese límite y no pidió reconstruirlo (26-nov-2026).
