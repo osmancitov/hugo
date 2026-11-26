@@ -117,9 +117,11 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
-  codigos.forEach((c, i) => { const o = crear('option', '', nom(c)); o.value = i; elegirActivo.append(o); });
+  // Mercado (ids): en la lista, empresas y fondos primero y cripto después (pedido del usuario, 25-nov-2026, Slack 1795662652.152099); el valor sigue siendo el índice original, así que el terreno y la elección no cambian.
+  const ordenLista = codigos.map((c, i) => i); if (ids) ordenLista.sort((a, b) => (String(codigos[a]).startsWith('cripto:') ? 1 : 0) - (String(codigos[b]).startsWith('cripto:') ? 1 : 0) || a - b);
+  ordenLista.forEach((i) => { const o = crear('option', '', nom(codigos[i])); o.value = i; elegirActivo.append(o); });
   elegirActivo.selectedIndex = 0;
-  const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i - 1), { repetir: true, ciclar: true });
+  const pasosActivo = montarPasos(elegirActivo, 'Activo', (p) => seleccionar(ultima, p < 1 ? -1 : ordenLista[p - 1]), { repetir: true, ciclar: true });
   etiquetaActivo.append(pasosActivo.grupo);
   const etiquetaAltura = crear('label', '', 'Relieve '), relieve = crear('input');
   relieve.type = 'range'; relieve.min = '0.35'; relieve.max = '2'; relieve.step = '.05'; relieve.value = '1'; relieve.setAttribute('aria-label', 'Ampliación visual del relieve');
@@ -201,16 +203,17 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       const lados = [{ d: -sin, f: (u, z) => proyectar(-1, u * .7, z) }, { d: sin, f: (u, z) => proyectar(1, u * .7, z) }, { d: -.7 * cos, f: (u, z) => proyectar(u, -.7, z) }, { d: .7 * cos, f: (u, z) => proyectar(u, .7, z) }];
       const pared = lados.reduce((m, l) => l.d < m.d ? l : m);
       c.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, z], k) => { const q = pared.f(u, z); k ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.closePath(); c.fillStyle = 'rgba(40,44,56,.35)'; c.fill();
-      // Marcas fijas cada 10 puntos porcentuales (0, ±10, ±20…), sin derivarlas del máximo; el alto de la pared sí sigue al máximo y las curvas no se recortan.
-      const marcas = []; for (let v = -Math.floor(maximo / 10) * 10; v <= maximo + 1e-9; v += 10) marcas.push(v);
-      for (const v of marcas) linea(pared.f(-1, v / maximo), pared.f(1, v / maximo), v === 0 ? ORO : '#3a3a34', v === 0 ? 1.6 : .7);
+      // Marcas fijas cada 5 puntos porcentuales (0, ±5, ±10…) en la pared de atrás (pedido del usuario, 25-nov-2026, Slack 1795662524.835189), sin derivarlas del máximo; el alto de la pared sí sigue al máximo y las curvas no se recortan. Las de múltiplos de 10 van un poco más marcadas.
+      const marcas = []; for (let v = -Math.floor(maximo / 5) * 5; v <= maximo + 1e-9; v += 5) marcas.push(v);
+      for (const v of marcas) linea(pared.f(-1, v / maximo), pared.f(1, v / maximo), v === 0 ? ORO : (v % 10 === 0 ? '#5c5c52' : '#45453d'), v === 0 ? 1.6 : (v % 10 === 0 ? .9 : .6));
       for (const u of [-1, -.5, 0, .5, 1]) linea(pared.f(u, -1), pared.f(u, 1), '#3a3a34', .7);
       // El plano cero también se ve en el suelo (contorno dorado) y el eje porcentual va en el borde izquierdo de la pared.
       const suelo = [[-1, -.7], [1, -.7], [1, .7], [-1, .7], [-1, -.7]].map(([x, y]) => proyectar(x, y, 0));
       for (let k = 1; k < suelo.length; k++) linea(suelo[k - 1], suelo[k], '#8a7440', 1);
       const izqU = pared.f(-1, 0).x <= pared.f(1, 0).x ? -1 : 1;
       linea(pared.f(izqU, -1), pared.f(izqU, 1), '#786b4c');
-      for (const v of marcas) { const q = pared.f(izqU, v / maximo); texto({ x: q.x - 5, y: q.y + 4 }, pct(v), v === 0 ? ORO : '#9aa0ac', 'right'); }
+      const paso5 = Math.abs(pared.f(izqU, 5 / maximo).y - pared.f(izqU, 0).y); // rótulo en cada marca de 5 si caben (>= 12 px); si no, solo los múltiplos de 10
+      for (const v of marcas) { if (paso5 < 12 && v % 10 !== 0) continue; const q = pared.f(izqU, v / maximo); texto({ x: q.x - 5, y: q.y + 4 }, pct(v), v === 0 ? ORO : '#9aa0ac', 'right'); }
       // Telas entre cada curva y el cero: antes 0,09 por tela; ahora 0,03 y, con muchos activos, se reparte (1/n) para que la suma no tape el fondo al mirar de lado.
       const alfaTela = Math.min(.03, 1 / Math.max(1, codigos.length)).toFixed(4);
       const orden = codigos.map((_, i) => i).sort((i, k) => px(i) * sin - px(k) * sin);
