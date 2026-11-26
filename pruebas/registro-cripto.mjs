@@ -81,15 +81,21 @@ test('ritmo VIP: 15 min, cubeta por intervalo (00:00 y 00:14 comparten, 00:15 no
   assert.equal(cubeta(t + 60 * 60000) - cubeta(t), 3600000);
 });
 
-test('referencia fija: si la primera lectura del día trae un dia_cierre distinto de su último, la lectura siguiente lo conserva y se guarda', async () => {
+test('referencia del día: la primera lectura usa su propio último (no las velas) y las siguientes la conservan; una referencia ajena se rechaza', async () => {
   const raiz = arbol(), universo = admitidosCripto(raiz);
   const opts = { dirVelas: path.join(raiz, 'velas-24h'), host: 'https://x', universo, simbolo: simboloCripto, sufijo: 'USDT' };
   const r1 = await generarBarra({ ...opts, fetchImpl: falso([]), ahora: Date.parse('2026-11-26T00:00:03Z') });
-  const texto1 = r1.texto.replace(/^BNB dia_cierre: .*$/m, 'BNB dia_cierre: 1.00000000');
-  assert.notEqual(texto1, r1.texto);
-  guardarLecturaCripto(raiz, texto1);
+  const ult = (t, k) => t.match(new RegExp(`^${k} ultimo: (.+)$`, 'm'))[1], dc = (t, k) => t.match(new RegExp(`^${k} dia_cierre: (.+)$`, 'm'))[1];
+  for (const k of ['BNB', 'ETH', 'SOL']) assert.equal(dc(r1.texto, k), ult(r1.texto, k));
+  guardarLecturaCripto(raiz, r1.texto);
   const est = estadoDiaCripto(raiz, Date.parse('2026-11-26T02:00:03Z'));
   const r2 = await generarBarra({ ...opts, fetchImpl: falso([]), anteriorTexto: est.anteriorTexto, inicialTexto: est.inicialTexto, ahora: Date.parse('2026-11-26T02:00:03Z') });
-  assert.match(r2.texto, /^BNB dia_cierre: 1\.00000000$/m);
+  for (const k of ['BNB', 'ETH', 'SOL']) assert.equal(dc(r2.texto, k), ult(r1.texto, k));
   assert.equal(guardarLecturaCripto(raiz, r2.texto).lecturas, 2);
+  // Una primera lectura con referencia ajena (cierre de otro día) hace que la siguiente se rechace en vez de mezclar referencias.
+  const raiz2 = arbol();
+  guardarLecturaCripto(raiz2, r1.texto.replace(/^BNB dia_cierre: .*$/m, 'BNB dia_cierre: 1.00000000'));
+  const est2 = estadoDiaCripto(raiz2, Date.parse('2026-11-26T02:00:03Z'));
+  const r3 = await generarBarra({ ...opts, fetchImpl: falso([]), anteriorTexto: est2.anteriorTexto, inicialTexto: est2.inicialTexto, ahora: Date.parse('2026-11-26T02:00:03Z') });
+  assert.throws(() => guardarLecturaCripto(raiz2, r3.texto), /referencia fija/);
 });
