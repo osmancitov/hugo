@@ -99,9 +99,10 @@ export function montarPasos(selector, nombre, mover, { repetir = false, ciclar =
   } };
 }
 
-export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {}, alElegirActivo = null, tituloArriba = false, crestas = false } = {}) {
+export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar = () => {}, alElegirActivo = null, tituloArriba = false, crestas = false, ids = false, nombreId = null } = {}) {
+  const etq = (c) => (ids ? String(c).split(':')[1] : c), nom = (c) => (ids && nombreId ? nombreId(c) : etq(c)); // ids (solo Mercado): los códigos son 'stock:XXX' o 'cripto:XXX' para no mezclar mercados
   const horaVista=(ms)=>ms>=Date.parse(new Date(parsear(lecturas[0].texto).generada).toISOString().slice(0,10))+86400000&&hora(ms)==='00:00'?'24:00':hora(ms);
-  const datos = terrenoDia(lecturas, parsear), { codigos, barras, puntos } = datos;
+  const datos = terrenoDia(lecturas, parsear, { refPropia: ids }), { codigos, barras, puntos } = datos;
   let giro = -0.7854, inclinacion = 0.5774, amplitud = 1, zoom = 1, ultima = barras.length - 1, todas = true, activo = -1, arrastre = null, proyecciones = [], viva = true;
   const valores = puntos.flat().filter(Boolean).map((p) => Math.abs(p.altura));
   const maximo = Math.max(0.1, ...valores);
@@ -116,7 +117,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   etiquetaLectura.append(pasosLectura.grupo);
   const etiquetaActivo = crear('label', '', 'Activo '), elegirActivo = crear('select');
   const elegirVacio = crear('option', '', 'Elegir'); elegirVacio.value = -1; elegirActivo.append(elegirVacio);
-  codigos.forEach((c, i) => { const o = crear('option', '', c); o.value = i; elegirActivo.append(o); });
+  codigos.forEach((c, i) => { const o = crear('option', '', nom(c)); o.value = i; elegirActivo.append(o); });
   elegirActivo.selectedIndex = 0;
   const pasosActivo = montarPasos(elegirActivo, 'Activo', (i) => seleccionar(ultima, i - 1), { repetir: true, ciclar: true });
   etiquetaActivo.append(pasosActivo.grupo);
@@ -151,8 +152,8 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     const fecha = barras[ultima] ? `${horaVista(barras[ultima].generada)}` : 'sin lectura';
     const codigo = codigos[activo] || 'Sin activos';
     // El nombre del activo enlaza a su ficha (decisión del usuario, 22-nov-2026).
-    const enlace = crear('a', 'barra-activo-enlace', codigo);
-    enlace.href = '#/a/stock/' + encodeURIComponent(codigo);
+    const enlace = crear('a', 'barra-activo-enlace', nom(codigo));
+    enlace.href = ids ? '#/a/' + codigo.split(':')[0] + '/' + encodeURIComponent(codigo.split(':')[1]) : '#/a/stock/' + encodeURIComponent(codigo);
     detalle.textContent = '';
     detalle.append(enlace, document.createTextNode(p ? (crestas ? ` · ${fecha} · Total ${pct(p.altura)} · Parcial ${pct(p.movimiento)} · Actual ${p.precio} · Inicio ${p.referencia}` : ` · ${fecha} · altura ${pct(p.altura)} · entre lecturas ${pct(p.movimiento)} · precio ${p.precio} · referencia ${p.referencia}`) : ` · ${fecha} · sin cierre diario o sin precio comparable`));
   }
@@ -267,7 +268,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
     if (elegido) {
       if (crestas) { const base = proyectar(px(activo), py(ultima), 0); linea(elegido, base, '#fff1cb', 1); c.beginPath(); c.arc(base.x, base.y, 2.5, 0, Math.PI * 2); c.fillStyle = ORO; c.fill(); }
       c.beginPath(); c.arc(elegido.x, elegido.y, 4, 0, Math.PI * 2); c.fillStyle = '#fff1cb'; c.fill(); c.strokeStyle = '#080604'; c.lineWidth = 1.4; c.stroke();
-      texto({ x: elegido.x + 8, y: elegido.y - 9 }, `${elegido.p.codigo} ${pct(elegido.p.altura)}`, '#fff1cb');
+      texto({ x: elegido.x + 8, y: elegido.y - 9 }, `${etq(elegido.p.codigo)} ${pct(elegido.p.altura)}`, '#fff1cb');
     }
     if (crestas) { const w = (ancho - 20) / ESCALA_ALTURA.length; ESCALA_ALTURA.forEach(([, col, et], k) => { c.fillStyle = col; c.fillRect(10 + k * w, alto - 30, w - 2, 7); c.font = '9px Georgia'; c.fillStyle = '#9aa0ac'; c.textAlign = 'center'; c.fillText(et, 10 + k * w + w / 2 - 1, alto - 8); }); }
     describir();

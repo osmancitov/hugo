@@ -63,12 +63,15 @@ export function unirIndices(a, b) {
 }
 // Alturas desde el primer precio REAL del día, sin depender de velas diarias.
 // Una única toma forma un perfil cero, no un tramo temporal ni otra captura.
-export function terrenoDia(lecturas, parsear) {
+export function terrenoDia(lecturas, parsear, { refPropia = false } = {}) {
   const barras = lecturas.map((l) => parsear(l.texto));
   const codigos = [...new Set(barras.flatMap((b) => [...(b?.activos?.keys() || [])]))].sort();
   const base = barras[0];
   const puntos = barras.map((b, j) => codigos.map((c) => {
-    const a = b?.activos?.get(c), origen = base?.activos?.get(c);
+    const a = b?.activos?.get(c);
+    // refPropia (solo Mercado): el activo que empieza después de la primera lectura del día se mide contra su primera lectura real; antes de ella queda sin dato, nunca en cero.
+    let origen = base?.activos?.get(c);
+    if (refPropia && !(Number(origen?.ultimo) > 0)) origen = barras.find((x) => Number(x?.activos?.get(c)?.ultimo) > 0)?.activos.get(c);
     const precio = Number(a?.ultimo), ref = Number(origen?.ultimo);
     if (!a || !origen || !Number.isFinite(precio) || !Number.isFinite(ref) || precio <= 0 || ref <= 0) return null;
     const anterior = Number(barras[j - 1]?.activos?.get(c)?.ultimo);

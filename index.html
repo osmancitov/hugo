@@ -720,6 +720,33 @@ async function cargarDiaObservatorio(diaElegido = null, mercado = 'stock') {
   if(registro.indice.dias.includes(siguiente))frontera=await cargarRegistroIntradia(siguiente, mercado);
   return {...registro,dia:lecturasConFrontera(registro.dia,frontera?.dia)};
 }
+// Mercado (prototipo): stock y cripto juntos. El texto de cada lectura lleva el de cripto de la misma hora tras un separador; los activos se identifican como 'stock:XXX' o 'cripto:XXX'.
+const SEP_CRIPTO='\n#CRIPTO\n';
+async function cargarDiaMixto(diaElegido=null){
+  const s=await cargarDiaObservatorio(diaElegido,'stock');
+  if(!s)return null;
+  let c=null;
+  try{c=await cargarDiaObservatorio(s.dia.dia,'cripto');}catch(e){c=null;} // el registro de cripto empieza el 26-nov UTC: antes no hay lecturas que unir
+  const hora=(ms)=>Math.floor(Date.parse(ms)/3600000);
+  const porHora=new Map((c&&c.dia.dia===s.dia.dia?c.dia.lecturas:[]).map(l=>[hora(l.generada),l]));
+  const lecturas=s.dia.lecturas.map(l=>{const k=porHora.get(hora(l.generada));return k?{...l,texto:l.texto+SEP_CRIPTO+k.texto}:l;});
+  const conCripto=lecturas.filter(l=>l.texto.includes(SEP_CRIPTO)).length;
+  return {...s,dia:{...s.dia,lecturas},mixto:{conCripto,total:lecturas.length}};
+}
+function parsearFusion(t,ids=null){
+  const [ts,tc]=t.split(SEP_CRIPTO),bs=parsearBarraVisor(ts),bc=tc?parsearBarraVisor(tc):null;
+  if(!bs)return bs;
+  const activos=new Map();
+  for(const [c,a] of bs.activos||[])if(!ids||ids.has('stock:'+c))activos.set('stock:'+c,a);
+  for(const [c,a] of bc?.activos||[])if(!ids||ids.has('cripto:'+c))activos.set('cripto:'+c,a);
+  let suben=0,bajan=0;
+  for(const a of activos.values()){if(a.aperturaN===null||a.aperturaN===undefined)continue;if(a.ultimoN>=a.aperturaN)suben++;else bajan++;}
+  return {...bs,activos,suben,bajan,conDato:suben+bajan,consultados:activos.size};
+}
+function barraMixta(registro,i,ids){
+  const f=registro.dia.lecturas;
+  return contextualizarBarra(parsearFusion(f[i].texto,ids),parsearFusion(f[0].texto,ids),parsearFusion(f[Math.max(0,i-1)].texto,ids));
+}
 function barraContextual(registro,i=registro.dia.lecturas.length-1){
   const fotos=registro.dia.lecturas;
   return contextualizarBarra(parsearBarraVisor(fotos[i].texto),parsearBarraVisor(fotos[0].texto),parsearBarraVisor(fotos[Math.max(0,i-1)].texto));
@@ -1038,24 +1065,36 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   if (en) en.append(ficha, estado, cuerpo); else app.append(volver, ficha, estado, cuerpo);
   let grafica = null, turno = 0, automatico=null, manual=false, refrescando=false, filtro=null, registroActual=null, mercado='stock';
   const soloFiltro=(b)=>filtro&&b?{...b,activos:new Map([...b.activos].filter(([c])=>filtro.codigos.has(c)))}:b;
-  const parsearVista=(t)=>soloFiltro(parsearBarraVisor(t));
+  const parsearVista=en?(t)=>parsearFusion(t,filtro?filtro.codigos:null):(t)=>soloFiltro(parsearBarraVisor(t));
   const limpiezaPrevia = limpiarGrafica;
   limpiarGrafica = () => { limpiezaPrevia();turno++;clearTimeout(automatico);grafica?.desmontar();reloj.desmontar(); };
   async function mostrar(registro) {
     grafica?.desmontar(); cuerpo.replaceChildren(); registroActual=registro;
     const lecturas = registro.dia.lecturas;
     if (filtro) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: filtro.nota }));
+    if (en && registro.mixto) { // cobertura real del día, sin rellenar ni contar los huecos como cero
+      const ids = filtro ? filtro.codigos : null, tiene = lecturas.map((l) => new Set(parsearFusion(l.texto, ids)?.activos.keys() || []));
+      const hh = (j) => new Date(lecturas[j].generada).toISOString().slice(11, 16);
+      const nombres = (l) => l.map((id) => id.split(':')[1]).join(', ');
+      const tarde = new Map(), nunca = [];
+      for (const id of (ids || new Set([...tiene].flatMap((x) => [...x])))) { const j = tiene.findIndex((x) => x.has(id)); if (j < 0) nunca.push(id); else if (j > 0) { const k = hh(j); tarde.set(k, [...(tarde.get(k) || []), id]); } }
+      const partes = [];
+      if (registro.mixto.conCripto < registro.mixto.total) partes.push(registro.mixto.conCripto ? 'Cripto solo tiene lectura en ' + registro.mixto.conCripto + ' de las ' + registro.mixto.total + ' horas de este día.' : 'Este día no tiene lecturas de cripto guardadas (el registro de cripto empieza el 26-nov a las 00:00 UTC).');
+      for (const [k, l] of tarde) partes.push(nombres(l) + ' empiezan a las ' + k + ' UTC (primera lectura guardada); antes no hay dato.');
+      if (nunca.length && registro.mixto.conCripto) partes.push('Sin lectura guardada todavía: ' + nombres(nunca) + '.');
+      if (partes.length) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: partes.join(' ') }));
+    }
     if (lecturas.length === 1) cuerpo.append(Object.assign(document.createElement('p'), { className: 'superficie-nota', textContent: 'Solo hay una lectura guardada para este día. Se muestra su perfil; el terreno temporal necesita al menos dos. No se reconstruyen fotos anteriores.' }));
     const zona = document.createElement('div'), barra = barraCaja || document.createElement('div');
     cuerpo.append(zona); if (!barraCaja) cuerpo.append(barra);
     if (filtro && !filtro.codigos.size) { zona.textContent = 'Ningún activo de este grupo tiene lecturas en la superficie.'; return; }
-    grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), crestas: Boolean(en), alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
-      const b = soloFiltro(barraContextual(registro,i));
+    grafica = montarSuperficie(zona, lecturas, parsearVista, { tituloArriba: Boolean(en), crestas: Boolean(en), ids: Boolean(en), nombreId: nombreIdMercado, alElegirActivo: (c) => puente?.alElegir?.(c), alSeleccionar: (i) => {
+      const b = en ? barraMixta(registro,i,filtro?filtro.codigos:null) : soloFiltro(barraContextual(registro,i));
       barra.replaceChildren(vistaBarra(b, { historica: true, compacta: true, mercado, sinFuente: Boolean(en) }));
-    } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
+    } });    if (puente) { puente.codigosSup = new Set(grafica.datos.codigos); puente.fijarCodigosSup?.(puente.codigosSup); puente.avisoSup?.(puente.selId ? puente.selId() : (puente.inicial?.() ? 'stock:' + puente.inicial() : null)); puente.elegirSup = (c) => grafica?.elegirActivo(c); const c0 = puente.mixto ? puente.selId?.() : puente.inicial?.(); if (c0) { if (grafica.datos.codigos.includes(c0)) grafica.elegirActivo(c0); else puente.alElegir?.(null); } }
   }
   try {
-    const registro = await cargarDiaObservatorio(null, 'stock');
+    const registro = en ? await cargarDiaMixto(null) : await cargarDiaObservatorio(null, 'stock');
     if (!cuerpo.isConnected) return;
     estado.remove();
     if (!registro) { cuerpo.textContent = 'Todavía no hay registro intradiario publicado. La instantánea anterior no contiene un historial temporal.'; return; }
@@ -1083,8 +1122,8 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       try {
         if (en) {
           // Prototipo (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
-          const codigos = new Set(); let fechaFin = ''; const pref = mercado === 'cripto' ? 'cripto:' : 'stock:'; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
-          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (!a.id.startsWith(pref)) continue; if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id.slice(pref.length)); } }
+          const codigos = new Set(); let fechaFin = ''; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
+          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id); } }
           const conteoG = `Premium ${porG.premium.size} · Potentes ${porG.potentes.size} · Constantes ${porG.constantes.size}`;
           const [, mf, df] = fechaFin.split('-').map(Number);
           filtro = { codigos, nota: `${codigos.size} activos VIP · ${conteoG} · ${df} ${MESES_ES[mf - 1]}` }; // audios 1795642038.435379 y 1795642241.641729 (fecha corta, sin año)
@@ -1145,7 +1184,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     };
     if (en && puente) puente.cambiarMercado = cambiarMercado;
     await mostrar(registro);
-    if (en && puente?.selId?.()?.startsWith('cripto:')) { try { await cambiarMercado('cripto'); } catch (e) { console.warn('Cripto: sin lecturas.', e.message); } const c1 = puente.selId().slice(7); if (grafica?.datos.codigos.includes(c1)) grafica.elegirActivo(c1); puente.avisoSup?.(puente.selId()); }
+    if (!puente?.mixto && en && puente?.selId?.()?.startsWith('cripto:')) { try { await cambiarMercado('cripto'); } catch (e) { console.warn('Cripto: sin lecturas.', e.message); } const c1 = puente.selId().slice(7); if (grafica?.datos.codigos.includes(c1)) grafica.elegirActivo(c1); puente.avisoSup?.(puente.selId()); }
     let ultimaVista=registro.indice.ultima;
     const revisar=async()=>{
       if(!cuerpo.isConnected)return;
@@ -1157,7 +1196,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
           const indice=leerIndice(await r.text());
           if(indice.ultima!==ultimaVista){
             cacheIntradia.clear();const este=++turno;
-            const nuevo=await cargarDiaObservatorio(manual?elegirDia.value:null, mercado);
+            const nuevo=en?await cargarDiaMixto(manual?elegirDia.value:null):await cargarDiaObservatorio(manual?elegirDia.value:null, mercado);
             if(este===turno&&cuerpo.isConnected){
               for(const dia of nuevo.indice.dias)if(![...elegirDia.options].some(o=>o.value===dia))elegirDia.append(Object.assign(document.createElement('option'),{value:dia,textContent:fechaLegibleUTC(dia)}));
               elegirDia.value=nuevo.dia.dia;
@@ -2163,6 +2202,7 @@ function trazoConHuecos(puntos){ // puntos: [x,y]|null; null corta la línea
 }
 function fmtCoef(v){return v==null?'—':v.toFixed(2).replace('.',',');}
 const GRUPOS_CAMPANA=[['premium','Premium'],['potentes','Potentes'],['constantes','Constantes'],['rezagados','Rezagados']];
+function nombreIdMercado(id){const e=entradaCampana(id),cod=id.split(':')[1],t=id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock',tt=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);return cod+' · '+tt;}
 function entradaCampana(id){return TODOS.find(e=>e.clase+':'+e.codigo===id)||null;}
 // Un solo rótulo para un activo: el código y, si lo trae el catálogo, su lectura latina entre paréntesis (nombres en caracteres chinos).
 function etiquetaActivo(id){const e=entradaCampana(id),c=e?e.codigo:id.split(':')[1];return c+parentesisLectura(e);}
@@ -2474,10 +2514,10 @@ function vistaUnificada(inicial=null,dias=90){
    bloques.forEach((b,i)=>{const h=guard?guard[i]:(wv<700?Math.round(prop[i]*wv):0);if(h)b.style.minHeight=h+'px';});
    setTimeout(()=>{try{sessionStorage.setItem(clave,JSON.stringify(bloques.map(b=>{b.style.minHeight='';return b.offsetHeight;})));}catch(e){bloques.forEach(b=>{b.style.minHeight='';});}},4500);}
   let sel=inicial,ventana=dias,grupo='todos';
-  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
+  let codigosSupAct=null,mercadoSup='stock',cambiarMercadoF=null;const puente={mixto:true,fijaVentana:true,ventana:()=>dias,relojArriba:cReloj,fijarMercado:(m)=>{mercadoSup=m;},fijarCodigosSup:(c)=>{codigosSupAct=c;},selId:()=>sel,inicial:()=>sel&&sel.startsWith('stock:')?sel.slice(6):null,elegirSup:()=>{},elegirCamp:()=>{},ventana:()=>ventana,alGrupo:(g)=>{grupo=g;if(ventana)puente.alCampana(ventana);},alCampana:(n)=>{const cambio=ventana!==n;ventana=n;cCamp.replaceChildren();if(n)vistaCampana(n,sel,cCamp,puenteCamp);if(cambio&&sel&&puente.repintarFicha){anclarCamp();puente.repintarFicha();}}};
   // Sin lectura horaria (cripto, o una acción fuera de la superficie): se avisa y se puede seguir consultando su ficha y su Campaña.
   const aviso2=Object.assign(document.createElement('p'),{className:'camp-sub',hidden:true});cSup.after(aviso2);
-  const avisoSup=(id)=>{const c=id&&id.startsWith(mercadoSup+':')?id.split(':')[1]:null;const falta=id&&!(c&&codigosSupAct&&codigosSupAct.has(c));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?(mercadoSup==='cripto'?'Cripto: '+n+' no está entre los admitidos con lectura horaria (el registro cubre a los que no quedan Rezagados en alguna campaña), así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.':'Cripto: '+n+' no tiene lecturas horarias todavía: el registro de cripto empieza con el cambio de día (00:00 UTC del 26-nov) y solo cubre a los admitidos en alguna campaña, así que por ahora no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.'):n+' no tiene lecturas horarias, así que no sale en la superficie ni en las barras. Su ficha y su Campaña están abajo.';}};
+  const avisoSup=(id)=>{const falta=Boolean(id)&&!(codigosSupAct&&codigosSupAct.has(id));aviso2.hidden=!falta;if(falta){const n=id.split(':')[1];aviso2.textContent=id.startsWith('cripto:')?'Cripto: '+n+' no tiene lectura horaria guardada todavía en este día (el registro cubre a los admitidos en alguna campaña y cada cierre amplía el universo en la lectura siguiente), así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.':n+' no tiene lecturas horarias, así que no sale en el relieve ni en las barras. Su ficha y su Campaña están abajo.';}};
   puente.avisoSup=avisoSup;
   const FILAS_MATRIZ=[['premium','Premium','#3fb950'],['potentes','Potentes','#e3b341'],['constantes','Constantes','#58a6ff']];
   // Matriz 3×3 (25-nov-2026): columnas 30/60/90 días, filas Premium verde, Potentes amarillo, Constantes azul. Se enciende lo que le corresponde al activo; no incluye Rezagados.
@@ -2504,14 +2544,14 @@ function vistaUnificada(inicial=null,dias=90){
     if(origen==='camp')anclarCamp();
     (async()=>{
       const quiere=id&&id.startsWith('cripto:')?'cripto':'stock';
-      if(id&&quiere!==mercadoSup&&cambiarMercadoF){try{await cambiarMercadoF(quiere);}catch(e){console.warn('Cambio de mercado en la superficie:',e.message);}}
+      if(!puente.mixto&&id&&quiere!==mercadoSup&&cambiarMercadoF){try{await cambiarMercadoF(quiere);}catch(e){console.warn('Cambio de mercado en la superficie:',e.message);}}
       if(sel!==id)return;
-      if(origen!=='sup')puente.elegirSup(id&&id.startsWith(mercadoSup+':')?id.split(':')[1]:null);
+      if(origen!=='sup')puente.elegirSup(id||null);
       if(origen!=='camp')puente.elegirCamp(id);
       avisoSup(id);
     })();
   };
-  const puenteSup={...puente,alElegir:(c)=>elegido(c?mercadoSup+':'+c:null,'sup'),set cambiarMercado(f){cambiarMercadoF=f;},get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
+  const puenteSup={...puente,alElegir:(c)=>elegido(c||null,'sup'),set cambiarMercado(f){cambiarMercadoF=f;},get elegirSup(){return puente.elegirSup;},set elegirSup(f){puente.elegirSup=f;}};
   const puenteCamp={grupo:()=>grupo,alElegir:(id)=>elegido(id,'camp'),set elegirCamp(f){puente.elegirCamp=f;}};
   puente.repintarFicha=pintarFicha;
   vistaSuperficie(cSup,cajaBarras,puenteSup);
