@@ -8,8 +8,8 @@ const { verde: VERDE, rojo: ROJO, gris: GRIS } = COLORES_LECTURA;
 // rojo #b73d40 -> #ff0a10 y verde #25855c -> #00c470 (mismo matiz, saturacion 100%); el gris solo sube un poco su luz.
 const INTENSOS = { [COLORES_LECTURA.rojo]: '#ff0a10', [COLORES_LECTURA.verde]: '#00c470', [COLORES_LECTURA.gris]: '#a5abb5', transparent: 'transparent' };
 const ORO = '#c2a15a';
-// Escala fija de altura desde la partida (% desde la primera lectura del día), igual todos los días: no se ajusta al máximo ni al mínimo de la pantalla.
-export const colorAltura = (a) => { const t = Math.min(1, Math.abs(a) / 15), v = a === 0 ? 0 : Math.round(56 + 199 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; }; // cero negro; desde ±0,5 % ya se ve color (audio 1795665930.632649)
+// Escala de color de la altura: simétrica y relativa (26-nov-2026, audio 1795707987.259809). El tope es el mayor valor absoluto del relieve (positivo o negativo) y marca el brillo máximo en ambos signos; sin dato, 15 % por defecto.
+export const colorAltura = (a, tope = 15) => { const t = Math.min(1, Math.abs(a) / tope), v = a === 0 ? 0 : Math.round(56 + 199 * t), h = (n) => n.toString(16).padStart(2, '0'); return a < 0 ? `#${h(v)}0000` : `#00${h(v)}00`; }; // cero negro; desde ±0,5 % ya se ve color (audio 1795665930.632649)
 export const ESCALA_ALTURA = [[-15, '≤ -15'], [-10, '-10'], [-6, '-6'], [-2.5, '-2,5'], [-.5, '-0,5'], [0, '0'], [.5, '0,5'], [2.5, '2,5'], [6, '6'], [10, '10'], [15, '≥ 15']].map(([v, et]) => [v, colorAltura(v), et]);
 // Degradé continuo: negro solo en 0 exacto; cualquier movimiento arranca en 56/255 (±0,5 % ya se distingue) y llega a (255,0,0)/(0,255,0) en ±15 %; la altura de la línea nunca se recorta.
 
@@ -111,6 +111,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   const maximo = Math.max(0.1, ...valores);
   // Mercado (crestas): el eje vertical va desde el mínimo hasta el máximo de los datos (con el cero incluido y un margen), sin simetría forzada ni el cero al centro.
   const alturas = puntos.flat().filter(Boolean).map((p) => p.altura);
+  const topeColor = Math.max(0.3, ...alturas.map(Math.abs)); // extremo absoluto del relieve: se recalcula con cada lectura nueva
   let vLo = -maximo, vHi = maximo;
   if (crestas && alturas.length) { const lo = Math.min(0, ...alturas), hi = Math.max(0, ...alturas), m = Math.max(0.3, (hi - lo) * 0.06); vLo = lo - m; vHi = hi + m; }
   const zc = (v) => (v - (vHi + vLo) / 2) / ((vHi - vLo) / 2), z0 = zc(0); // altura en % a coordenada vertical [-1, 1]; z0 = plano cero
@@ -228,7 +229,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
           c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b0.x, b0.y); c.lineTo(a0.x, a0.y); c.closePath();
           c.fillStyle = resaltado ? 'rgba(180,190,215,.2)' : `rgba(124,138,165,${alfaTela})`; c.fill();
           const hueco = barras[j].generada - barras[j - 1].generada > 5400000;
-          linea(a, b, resaltado ? (hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS)) : colorAltura(b.p.altura), resaltado ? 3.2 : 1.7);
+          linea(a, b, resaltado ? (hueco ? GRIS : (colorMovimiento(b.p.movimiento) ?? GRIS)) : colorAltura(b.p.altura, topeColor), resaltado ? 3.2 : 1.7);
         }
       }
     } else {
@@ -263,7 +264,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       // Una sola etiqueta de hora: la de la lectura elegida, en la zona del eje del tiempo, separada del punto (26-nov-2026, audio)
       linea(proyectar(1, py(ultima), -1), proyectar(1.03, py(ultima), -1), '#786b4c');
       texto(proyectar(1.04, py(ultima), -1), horaVista(barras[ultima].generada), '#d9cfae');
-      texto({ x: ancho - 10, y: 26 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)} UTC`, '#bbb39e', 'right');
     } else if (ancho < 600 && barras.length) {
       texto({ x: ancho - 10, y: 43 }, `${horaVista(barras[0].generada)} → ${horaVista(barras.at(-1).generada)}`, '#bbb39e', 'right');
     } else for (const j of [...new Set([0, Math.floor((barras.length - 1) / 2), barras.length - 1])]) {
@@ -276,7 +276,6 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
       c.beginPath(); c.arc(elegido.x, elegido.y, 4, 0, Math.PI * 2); c.fillStyle = '#fff1cb'; c.fill(); c.strokeStyle = '#080604'; c.lineWidth = 1.4; c.stroke();
       texto({ x: elegido.x + 8, y: elegido.y - 9 }, `${etq(elegido.p.codigo)} ${pct(elegido.p.altura)}`, '#fff1cb');
     }
-    if (crestas) { const w = (ancho - 20) / ESCALA_ALTURA.length; ESCALA_ALTURA.forEach(([, col, et], k) => { c.fillStyle = col; c.fillRect(10 + k * w, alto - 30, w - 2, 7); c.font = '9px Georgia'; c.fillStyle = '#9aa0ac'; c.textAlign = 'center'; c.fillText(et, 10 + k * w + w / 2 - 1, alto - 8); }); }
     describir();
   }
   let silencioso = false;

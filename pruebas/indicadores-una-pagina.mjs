@@ -65,7 +65,7 @@ test('la ficha del activo no repite el tipo y su línea amarilla queda bajo cód
   assert.ok(!html.includes('tipo-activo'));
   assert.match(html, /\.ficha-unificada \.ficha h2 \{ font-size: 2rem; border-bottom: 1px solid var\(--oro\)/);
 });
-test('la escala de altura de las crestas es fija (no depende del máximo de la pantalla) y satura en ±15 %', async () => {
+test('la escala de altura de las crestas es simétrica y relativa al mayor valor absoluto (por defecto ±15 %)', async () => {
   const { colorAltura, ESCALA_ALTURA } = await import('../visor-superficie.mjs');
   assert.equal(ESCALA_ALTURA.length, 11);
   assert.equal(colorAltura(15.01), colorAltura(80));
@@ -74,6 +74,10 @@ test('la escala de altura de las crestas es fija (no depende del máximo de la p
   assert.equal(colorAltura(0), '#00' + '00' + '00');
   assert.equal(colorAltura(15), '#00ff00');
   assert.equal(colorAltura(-15), '#ff0000');
+  assert.equal(colorAltura(4, 4), '#00ff00');
+  assert.equal(colorAltura(-4, 4), '#ff0000');
+  assert.equal(colorAltura(-2, 4), colorAltura(-2, 4));
+  assert.notEqual(colorAltura(2, 4), colorAltura(2, 15));
 });
 
 test('Mercado: grupo VIP y período fijo de 30 días', () => {
