@@ -1849,7 +1849,7 @@ function graficador(caja, pie, deCaso) {
     }, 'image/png');
   }));
   pie.append(controles);
-  if (cfg.alEntrar && !movimientoReducido() && typeof IntersectionObserver !== 'undefined') { // el trazado espera a que la gráfica entre en pantalla (usuario, audio 26-nov-2026 12:35); solo la usa Balance del día
+  if (cfg.alEntrar !== false && !movimientoReducido() && typeof IntersectionObserver !== 'undefined') { // el trazado espera a que la gráfica entre en pantalla (usuario, audio 26-nov-2026 12:35); solo la usa Balance del día
     traza.cancelar(); dibujarEn(graf.ctx, 1);
     const io = new IntersectionObserver((es) => { if (!es.some((e) => e.isIntersecting)) return; io.disconnect(); if (caja.isConnected) traza.trazar(); }, { threshold: .3 });
     io.observe(caja);
@@ -2306,6 +2306,18 @@ function graficaEspaguetis(caja,s,seleccion,alElegir,limpio=false){
   const ej=document.createElement('div');ej.className='camp-ejes';ej.textContent='Jornadas en horizontal (una por día), puesto en vertical: el 1 arriba.';
   caja.replaceChildren(...(limpio?[svg]:[svg,ej]));
 }
+// Trazado de entrada de las gráficas SVG de líneas: una sola vez, cuando entran en pantalla (1 s, como el resto);
+// con movimiento reducido no anima. Lo comparten Evolución, Potencia y constancia y Variación diaria (usuario, audio 26-nov-2026 12:52).
+function trazadoAlEntrar(caja,svg,selector){
+  if(caja._ioTrazado){caja._ioTrazado.disconnect();caja._ioTrazado=null;}
+  if(caja.dataset.trazado||movimientoReducido()||typeof IntersectionObserver==='undefined')return;
+  const lins=[...svg.querySelectorAll(selector)];
+  for(const l of lins){l.setAttribute('pathLength','1');l.style.strokeDasharray='1';l.style.strokeDashoffset='1';}
+  const io=new IntersectionObserver(es=>{if(!es.some(e=>e.isIntersecting))return;io.disconnect();caja._ioTrazado=null;caja.dataset.trazado='1';
+    for(const l of lins){l.style.transition=`stroke-dashoffset ${DURACION_TRAZADO_MS}ms ease-out`;l.style.strokeDashoffset='0';}
+    setTimeout(()=>{for(const l of lins){l.style.strokeDasharray='';l.style.strokeDashoffset='';l.style.transition='';l.removeAttribute('pathLength');}},DURACION_TRAZADO_MS+80);},{threshold:.3});
+  caja._ioTrazado=io;io.observe(svg);
+}
 function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
   // Mercado (aprobado por el usuario, Slack 1795644099.837059): evolución del indicador Campaña, raíz((P²+C²)/2) de la ventana que termina cada día,
   // solo para los VIP (sin Rezagados) del último cierre de la campaña elegida, en un eje logarítmico común con la referencia 1. Sin relleno: donde falta dato, la línea se corta.
@@ -2334,15 +2346,7 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Evolución'; // título breve por gráfica (26-nov-2026, audio)
   caja.replaceChildren(titE,svg);
-  // Trazado de entrada: una sola vez, cuando la gráfica entra en pantalla (1 s, como el resto). Reelegir un activo no lo repite.
-  if(!caja.dataset.trazado&&!movimientoReducido()&&typeof IntersectionObserver!=='undefined'){
-    const lins=[...svg.querySelectorAll('.camp-lin')];
-    for(const l of lins){l.setAttribute('pathLength','1');l.style.strokeDasharray='1';l.style.strokeDashoffset='1';}
-    const io=new IntersectionObserver(es=>{if(!es.some(e=>e.isIntersecting))return;io.disconnect();caja.dataset.trazado='1';
-      for(const l of lins){l.style.transition=`stroke-dashoffset ${DURACION_TRAZADO_MS}ms ease-out`;l.style.strokeDashoffset='0';}
-      setTimeout(()=>{for(const l of lins){l.style.strokeDasharray='';l.style.strokeDashoffset='';l.style.transition='';l.removeAttribute('pathLength');}},DURACION_TRAZADO_MS+80);},{threshold:.3});
-    io.observe(svg);
-  }
+  trazadoAlEntrar(caja,svg,'.camp-lin'); // una sola vez, al entrar en pantalla; reelegir un activo no lo repite
 }
 function graficaActivosCampana(caja,s,grupos,seleccion=null){
   const W=720,H=360,L=40,R=10,T=14,B=28,N=s.fechas.length;
@@ -2357,6 +2361,7 @@ function graficaActivosCampana(caja,s,grupos,seleccion=null){
   const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia';
   const titA=document.createElement('h3');titA.className='camp-tit';titA.textContent='Potencia y constancia'; // título breve por gráfica (26-nov-2026, audio)
   caja.replaceChildren(titA,svg,ley);
+  trazadoAlEntrar(caja,svg,'.camp-curva');
 }
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
@@ -2430,7 +2435,14 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
     const L=tr.getTotalLength();tr.style.strokeDasharray=L;
     const traza=trazadoAnimado(caja,()=>100,(hasta)=>{const f=hasta===undefined?1:(hasta-1)/99,e=1-(1-f)*(1-f),p=tr.getPointAtLength(L*e);
       bola.setAttribute('cx',p.x);bola.setAttribute('cy',p.y);bola.setAttribute('r',4.5+3*Math.sin(Math.PI*e));tr.style.strokeDashoffset=L*(1-e);});
-    if(campoUltimaBola!==seleccion){campoUltimaBola=seleccion;traza.trazar();}else traza.terminar();
+    if(caja._ioBola){caja._ioBola.disconnect();caja._ioBola=null;}
+    if(campoUltimaBola===seleccion)traza.terminar();
+    else if(movimientoReducido()||typeof IntersectionObserver==='undefined'){campoUltimaBola=seleccion;traza.terminar();}
+    else{ // el batazo espera a que el campo entre en pantalla; elegir en la lista ya no mueve la vista (usuario, audio 26-nov-2026 12:54)
+      traza.cancelar();bola.setAttribute('cx',HX);bola.setAttribute('cy',HY);tr.style.strokeDashoffset=L;
+      const io=new IntersectionObserver(es=>{if(!es.some(e=>e.isIntersecting))return;io.disconnect();caja._ioBola=null;campoUltimaBola=seleccion;if(caja.isConnected)traza.trazar();},{threshold:.3});
+      caja._ioBola=io;io.observe(svg);
+    }
   }}else campoUltimaBola=null;
   const envol=document.createElement('div');envol.className='camp-cuad-envol';
   const sel2=document.createElement('div');sel2.className='camp-cuad-juntos';sel2.hidden=true;
@@ -2546,6 +2558,7 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
   svg.addEventListener('click', (ev) => { const id = ev.target.dataset && ev.target.dataset.id; if (id) alElegir(id); });
   const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = 'Variación diaria'; // sin el período: las fechas de inicio y fin ya se ven en la gráfica (26-nov-2026, audio)
   caja.replaceChildren(tit, svg);
+  trazadoAlEntrar(caja,svg,'.camp-lin');
 }
 // Triple play (audios del usuario 1795665496.261559 y 1795665712.382679): Mercado se pica en tres vistas por
 // grupo —empresas, fondos y cripto— con el mismo diseño; cada vista filtra todas sus gráficas a su grupo.
@@ -2616,7 +2629,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     cargarVariacionCampana(n,u,sv0.fechas,g2).then(d=>{datosVar=d;pintarVar();})
       .catch(()=>{if(cajaV.isConnected)cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de la variación diaria.'}));});
   }
-  const pintarSel=(irA)=>{
+  const pintarSel=()=>{
     const sv=puente?recortarSerie(s,n):s;
     if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir,g2);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
     pintarVar();
@@ -2625,12 +2638,11 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     if(puente){const grupos=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));graficaActivosCampana(cAct,sv,grupos,sel);}
     else {cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,false);}
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
-    if(sel&&irA){const r=cCuad.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)window.scrollTo(0,Math.max(0,scrollY+r.top-12));}
   };
   function elegir(id,desdeLista){
     sel=sel===id?null:id;
     if(puente)puente.alElegir(sel);else history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
-    pintarSel(Boolean(desdeLista)); // desde las gráficas la vista no se mueve; solo desde la lista sube al campo
+    pintarSel(); // la vista no se mueve al elegir, ni desde la lista ni desde las gráficas
   }
   lista.className='camp-lista';
   {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña']]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}

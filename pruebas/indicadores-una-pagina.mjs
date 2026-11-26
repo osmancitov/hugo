@@ -98,7 +98,19 @@ test('Mercado siempre reserva las cuatro barras: la que falta queda marcada «si
 test('Balance del día traza al entrar en pantalla y el Relieve de Mercado abre con zoom máximo (audio 26-nov-2026 12:35)', () => {
   assert.match(html, /alEntrar: Boolean\(limpio && e\.iceberg\)/);
   assert.match(html, /alEntrar: true,\n/);
-  assert.match(html, /cfg\.alEntrar && !movimientoReducido\(\)/);
+  assert.match(html, /cfg\.alEntrar !== false && !movimientoReducido\(\)/);
   assert.match(sup, /zoom = crestas \? 2 : 1/);
   assert.match(sup, /acercar\.value = crestas \? '2' : '1'/);
+});
+test('Toda gráfica con trazado lo muestra al entrar en pantalla: graficador común y las tres de líneas SVG (audio 26-nov-2026 12:52)', () => {
+  assert.match(html, /cfg\.alEntrar !== false && !movimientoReducido\(\)/);
+  assert.match(html, /function trazadoAlEntrar\(caja,svg,selector\)/);
+  assert.equal(html.match(/trazadoAlEntrar\(caja,svg,'\./g)?.length, 3);
+  for (const sel of ['.camp-lin', '.camp-curva']) assert.ok(html.includes(`trazadoAlEntrar(caja,svg,'${sel}')`));
+});
+test('Elegir en la lista no mueve la vista y el batazo de Campaña espera a que el campo entre en pantalla (audio 26-nov-2026 12:54)', () => {
+  assert.ok(!/if\(sel&&irA\)/.test(html));
+  assert.ok(!/window\.scrollTo\(0,Math\.max\(0,scrollY\+r\.top/.test(html));
+  assert.match(html, /caja\._ioBola=io;io\.observe\(svg\)/);
+  assert.match(html, /campoUltimaBola=seleccion;if\(caja\.isConnected\)traza\.trazar\(\)/);
 });
