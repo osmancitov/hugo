@@ -83,4 +83,4 @@ Ruta `#/unificada` (solo los botones 30/60/90) y `#/unificada/(30|60|90)d[/merca
 ## Pruebas
 `node --test pruebas/*.mjs` (unos 75 s, sin red). A 25-nov-2026 pasan las 399. Cualquier prueba roja es nueva.
 
-- **Barras de Mercado**: 24 h, día, 1 hora y 15 min. «1 hora» y «15 min» solo aparecen si hay una lectura real de ese intervalo (unos 60 y 15 min antes); la de 15 min no tiene «Ver tabla».
+- **Barras de Mercado**: 24 h, día, 1 hora y 15 min. «1 hora» y «15 min» solo aparecen si hay una lectura real de ese intervalo (unos 60 y 15 min antes); las dos tienen «Ver tabla». La de 15 min compara con la lectura anterior publicada; la de 1 hora recalcula cada activo contra la lectura publicada de hace 60 min (enlace con `&base=`), nunca contra la de 15 min.

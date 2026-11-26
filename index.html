@@ -927,13 +927,15 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
   // Los sin cierre nuevo y los sin previa quedan fuera de la frontera, anotados.
   // Las tres barras dicen Verdes/Rojos (decisión del usuario, 21-nov-2026: «llamemos verdes
   // y rojos y ya»).
+  // Tabla de las barras de movimiento: contra la lectura anterior usa el detalle guardado; contra otra lectura (1 hora, 15 min) se calcula por activo con las dos lecturas publicadas (`base`).
+  const enlaceMov=(x)=>!sufijo?(x.sinTabla?'':'#/i/iceberg-stock/barra-movimiento'):'#/i/iceberg-stock/barra-movimiento'+sufijo+(x.sinTabla?'&base='+encodeURIComponent(new Date(x.comparadaCon).toISOString()):'');
   const m = b.movimiento;
   if (m) {
     const sec = seccion(
       duracionBarra(m.comparadaCon, b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       m.suben, m.bajan, m.suben + m.bajan,
       '',
-      m.sinTabla ? '' : '#/i/iceberg-stock/barra-movimiento' + sufijo,
+      enlaceMov(m),
       periodoBarra(m.comparadaCon, b.generada, 'horas'), m.iguales ?? 0
     );
     caja.append(sec);
@@ -945,7 +947,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       duracionBarra(m15.comparadaCon, b.generada),
       m15.suben, m15.bajan, m15.suben + m15.bajan,
       '',
-      m15.sinTabla ? '' : '#/i/iceberg-stock/barra-movimiento' + sufijo,
+      enlaceMov(m15),
       periodoBarra(m15.comparadaCon, b.generada, 'horas'), m15.iguales ?? 0
     ));
   }
@@ -1032,6 +1034,14 @@ async function vistaTablaBarra(clave, instante = null) {
       const lectura = registro?.dia.lecturas.find((l) => Date.parse(l.generada) === ms);
       if (!lectura) throw Error('Esa lectura no está publicada.');
       b = barraContextual(registro,registro.dia.lecturas.indexOf(lectura));
+      const baseMs = Date.parse(parametros.get('base') || '');
+      if (clave === 'barra-movimiento' && Number.isFinite(baseMs) && b?.activos) {
+        const lb = registro.dia.lecturas.find((l) => Date.parse(l.generada) === baseMs), pb = lb && parsearBarraVisor(lb.texto);
+        if (!pb?.activos) throw Error('La lectura de comparación no está publicada.');
+        for (const [c, a] of b.activos) { const p = pb.activos.get(c); a.previoN = p ? p.ultimoN : null; a.previo = p ? p.ultimo : 'sin dato'; a.mov = !p ? 'sin_previa' : a.ultimoN > p.ultimoN ? 'sube' : a.ultimoN === p.ultimoN ? 'igual' : 'baja'; }
+        b.movimiento = { ...(b.movimiento || {}), comparadaCon: baseMs };
+        h1.textContent = 'Rojos, grises y verdes contra la lectura de hace ' + duracionBarra(baseMs, b.generada);
+      }
     } else b = await cargarBarra();
   } catch (e) { if (estado.isConnected) estado.textContent = e.message; return; }
   if (!estado.isConnected) return;
