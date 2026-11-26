@@ -18,6 +18,9 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 - **Pinyin**: escritura de los sonidos del chino con letras latinas.
 - **G/P**: razón entre la suma de variaciones positivas y el valor absoluto de la suma de las negativas.
 - **Racha**: días seguidos con la misma dirección, alza o baja.
+- **VIP**: activo con Campaña de 1 o más en la ventana: Premium, Potentes o Constantes. Los de Campaña menor que 1 son Rezagados.
+- **Relieve**: superficie 3D en la que cada activo es una cresta cuya altura es su variación contra la primera lectura del día.
+- **Lectura**: foto de los precios de los VIP tomada en un instante, cada 15 minutos.
 
 
 `index.html` contiene el HTML, el CSS y el script principal. Las vistas de rachas y superficie están en `visor-rachas.mjs` y `visor-superficie.mjs`. Los módulos de `app/modulos/` se importan con `?v=N` en la URL (por ejemplo `visor-rachas.mjs?v=9`): al cambiar un módulo hay que subir N, porque Pages cachea unos 10 minutos y sin eso el navegador sigue con la copia vieja. Un guard de las pruebas exige esa importación versionada.
