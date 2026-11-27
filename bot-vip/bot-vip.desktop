@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Bot VIP
+Comment=Monitor VIP del Observatorio
+Exec=gnome-terminal -- bash -c "/home/user/Documents/hugo/start-bot-vip.sh; echo; echo 'Pulsa Enter para cerrar esta ventana'; read _"
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;
+Keywords=bot;vip;monitor;
