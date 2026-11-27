@@ -6,7 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { vipAdmitidos, construirCanonico } from '../app/modulos/completar-vip.mjs';
+import { vipAdmitidos, construirCanonico, MARGEN_TOMA_MS } from '../app/modulos/completar-vip.mjs';
 import { diaUTC } from '../app/modulos/intradia-datos.mjs';
 
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim();
@@ -14,6 +14,15 @@ const id = ['-c', 'user.name=Osmancito', '-c', 'user.email=osmanvielma@gmail.com
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'registros');
 const i = process.argv.indexOf('--dia');
 const dia = i > 0 ? process.argv[i + 1] : diaUTC(Date.parse(diaUTC(Date.now())) - 1); // el día UTC que acaba de cerrar
+// El despacho de Google llega entre 00:05 y 00:14 UTC, antes de que la vela de 24:00 quede asentada:
+// se espera el margen de toma en vez de fallar. Una espera de más de 30 min delataría un despacho fuera de horario.
+const fin = Date.parse(dia) + 24 * 3600000;
+const espera = fin + MARGEN_TOMA_MS - Date.now();
+if (espera > 30 * 60000) throw Error(`El día ${dia} aún no está cerrado y falta más de media hora; no espero tanto.`);
+if (espera > 0) {
+  console.log(`El día ${dia} se da por cerrado a las ${new Date(fin + MARGEN_TOMA_MS).toISOString().slice(11, 16)} UTC; espero ${(espera / 60000).toFixed(1)} min.`);
+  await new Promise((r) => setTimeout(r, espera + 5000));
+}
 git('fetch', '--quiet', 'origin', 'main');
 git('checkout', '--quiet', '--force', '-B', 'main', 'origin/main');
 const vip = vipAdmitidos(RAIZ);
