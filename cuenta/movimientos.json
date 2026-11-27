@@ -3,6 +3,23 @@
   "year": 2026,
   "records": [
     {
+      "date": "2026-11-27",
+      "label": "27 de noviembre",
+      "asset": "GME",
+      "codigo": "GME",
+      "mercado": "stock",
+      "change": -4.44,
+      "balance": 231.15,
+      "percent": -1.88,
+      "buy": 26.83,
+      "sell": 26.324,
+      "buy_time": "23:55",
+      "buy_date": "2026-11-25",
+      "sell_date": "2026-11-27",
+      "sell_time": "17:57",
+      "balance_confirmed": true
+    },
+    {
       "date": "2026-11-25",
       "label": "25 de noviembre",
       "asset": "SOXS",
@@ -205,8 +222,8 @@
     }
   ],
   "reconciliation": {
-    "date": "2026-11-25",
-    "current_balance": 235.59,
+    "date": "2026-11-27",
+    "current_balance": 231.15,
     "initial_balance": 306.55,
     "status": "Montos, saldos y rendimientos recalculados desde los precios; saldo final confirmado por Osmancito.",
     "method": "Reconstrucción retrospectiva desde el saldo final confirmado: cada operación invierte aproximadamente todo el saldo disponible, de modo que saldo anterior = saldo posterior x compra / venta, redondeado a centavos, y el resultado en USD es la diferencia. Valores aproximados por el polvo que queda al comprar con todo el saldo y por ejecuciones fraccionadas. NVIDIA se estima con los niveles citados (167,35 -> 160,15), que no son un promedio consolidado: faltan cantidades y comisiones de ventas y recompras. CRWD usa 213,45, precio de la orden mayor; las demás ejecuciones fueron 213,44.",

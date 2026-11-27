@@ -6,19 +6,23 @@ Aprender el oficio y construir las herramientas.
 
 ## Rendimiento de la cuenta
 
-## Día: 24 nov → 25 nov
+## Día: 26 nov → 27 nov
 
-240,71 USD → 235,59 USD. Variación: −2,13%.
+235,59 USD → 231,15 USD. Variación: −1,88%.
 
-## Semana: 18 nov → 25 nov
+## Semana: 20 nov → 27 nov
 
-256,00 USD → 235,59 USD. Variación: −7,97%.
+240,78 USD → 231,15 USD. Variación: −4,00%.
 
-## Mes: 25 oct → 25 nov
+## Mes: 27 oct → 27 nov
 
-306,55 USD → 235,59 USD. Variación: −23,15%.
+306,55 USD → 231,15 USD. Variación: −24,60%.
 
 ## Historial de movimientos
+
+## 27 de noviembre: [GME](https://osmancitov.github.io/hugo/#/a/stock/GME)
+
+−4,44 USD. −1,88 %. Saldo: 231,15 USD. Compra: 26,83 USD. Venta: 26,32 USD.
 
 ## 25 de noviembre: [SOXS](https://osmancitov.github.io/hugo/#/a/stock/SOXS)
 
