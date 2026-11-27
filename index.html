@@ -150,7 +150,12 @@ a:hover { text-decoration: underline; }
 .camp-lista .cap { white-space: nowrap; }
 .camp-lista .camp-fila .tipo { width: 5.6em; max-width: none; }
 .camp-lista .camp-fila .cap { width: 4.8em; text-align: right; }
-.camp-lista .camp-fila .sel { width: 5.2em; text-align: right; white-space: nowrap; }
+.camp-lista .camp-fila .sel { width: 5.2em; display: flex; justify-content: flex-end; align-items: center; position: relative; }
+.sel-barra { display: block; width: 3.4em; height: .5em; border-radius: 3px; background: rgba(194,161,90,.18); position: relative; cursor: pointer; padding: .5em 0; background-clip: content-box; touch-action: manipulation; }
+.sel-barra i { position: absolute; left: 0; top: .5em; bottom: .5em; border-radius: 3px; background: var(--oro); }
+.sel-barra:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+.sel-tip { display: none; position: absolute; right: 0; bottom: 100%; z-index: 5; background: #14110a; border: 1px solid rgba(194,161,90,.5); color: var(--texto); font-size: .72rem; line-height: 1.35; padding: .35em .6em; border-radius: 4px; white-space: nowrap; text-align: left; pointer-events: none; }
+.sel:hover .sel-tip, .sel:focus-within .sel-tip, .sel.abierto .sel-tip { display: block; }
 .camp-cab { cursor: default; color: var(--tenue); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid rgba(194,161,90,.25); }
 .camp-cab .tipo, .camp-cab .cap { margin-right: -.06em; }
 .camp-cab span { color: var(--tenue) !important; font-size: .72rem !important; font-weight: 400 !important; }
@@ -2677,7 +2682,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     pintarSel(); // la vista no se mueve al elegir, ni desde la lista ni desde las gráficas
   }
   lista.className='camp-lista';
-  {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña'],...(puente?[['sel','Selección']]:[])]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
+  {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña'],...(puente?[['sel','Selección']]:[])]){const e=document.createElement('span');e.className=k;e.textContent=t;if(k==='sel'){e.title='Barra de 41 (el corte del 75 %, vacía) a 54 de 54 campañas (llena)';e.setAttribute('aria-label','Selección: barra de 41 campañas, el corte del 75 %, a 54 de 54 campañas');}c.append(e);}lista.append(c);}
   for(const a of ordenarCampana(u.clasificados).filter(a=>(!puente||(NUCLEO.ids.has(a.id)&&(!puente.grupo||puente.grupo()==='todos'||a.grupo===puente.grupo())))&&(!g2||grupoMercadoDe(a.id)===g2))){
     const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
     f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
@@ -2687,7 +2692,16 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     f.querySelector('.nom').textContent=e?e.nombre+parentesisLectura(e):'';
     const cp=f.querySelector('.cap');cp.textContent=fmtCoef(campana(a));cp.classList.add('camp-n-'+a.grupo);
     cp.title=(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]+' · Campaña = raíz((P² + C²) / 2)';
-    if(puente){const ap=NUCLEO.ap.get(a.id);f.querySelector('.sel').textContent=Math.round(ap/54*100)+' %';} // Selección: % de las 54 campañas, de 7 a 60 días
+    if(puente){ // Selección: barra de 41 (el corte, vacía) a 54 (llena); el dato exacto sale al pasar, tocar o enfocar
+      const ap=NUCLEO.ap.get(a.id),sel=f.querySelector('.sel'),txt=`${ap} de 54 campañas, de 7 a 60 días · ${Math.round(ap/54*100)} %`;
+      const bar=document.createElement('span');bar.className='sel-barra';bar.tabIndex=0;bar.setAttribute('role','img');bar.setAttribute('aria-label','Selección: '+txt+'. La barra va de 41 (el corte, vacía) a 54 (llena).');
+      const rel=document.createElement('i');rel.style.width=Math.max(0,Math.min(100,(ap-41)/13*100))+'%';bar.append(rel);
+      const tip=document.createElement('span');tip.className='sel-tip';tip.setAttribute('aria-hidden','true');tip.textContent=txt;
+      sel.append(bar,tip);
+      bar.addEventListener('click',(ev)=>{ev.stopPropagation();const ab=sel.classList.contains('abierto');for(const o of lista.querySelectorAll('.sel.abierto'))o.classList.remove('abierto');if(!ab)sel.classList.add('abierto');else bar.blur();});
+      bar.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ev.stopPropagation();bar.click();}else if(ev.key==='Escape')sel.classList.remove('abierto');});
+      bar.addEventListener('blur',()=>sel.classList.remove('abierto'));
+    }
     filas.set(a.id,f);lista.append(f);
   }
   lista.addEventListener('click',ev=>{const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id,true);});

@@ -64,3 +64,12 @@ test('leerNucleo lanza si falta, está vacío o atrasado', () => {
   w('nucleo/stock/actual_nucleo', { ...base, nucleo: ['A'], activos: [{ codigo: 'A', apariciones: 40 }] });
   assert.throws(() => leerNucleo(raiz, 'stock', { ahora: Date.parse('2026-11-27T01:00:00Z') }), /no alcanza/);
 });
+
+test('Selección en Mercado: barra de 41 a 54 con dato exacto accesible, sin porcentaje fijo en la celda', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /\(ap-41\)\/13\*100/);
+  assert.match(html, /bar\.setAttribute\('role','img'\)/);
+  assert.match(html, /bar\.tabIndex=0/);
+  assert.match(html, /\.sel:hover \.sel-tip, \.sel:focus-within \.sel-tip, \.sel\.abierto \.sel-tip/);
+  assert.doesNotMatch(html, /f\.querySelector\('\.sel'\)\.textContent=/);
+});
