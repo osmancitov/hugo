@@ -37,6 +37,12 @@ Reglas fijadas por Osmancito (dueño del Observatorio). La referencia es el mens
 
 ## Forma de trabajar
 - Una sola cosa para todos, modular: se reutiliza el código compartido y no se duplican reglas.
-- Antes de publicar se corre la suite completa; todas deben pasar (419); cualquier prueba roja debe investigarse.
+- Antes de publicar se corre la suite completa; todas deben pasar; cualquier prueba roja debe investigarse.
 - La primera diaria tras un cambio en el cálculo de las categorías se comprueba al día siguiente, sin lanzar una corrida manual como sustituto.
 - No se relajan guards para esconder duplicación.
+
+## VIP núcleo 54 campañas, de 7 a 60 días (27-nov-2026)
+- El VIP de Mercado (acciones, fondos y cripto) deja la unión 30/60/90 y pasa a ser el núcleo: activos con Campaña >= 1 en al menos el 75 % (41) de las 54 campañas de 7 a 60 días que terminan en el último día cerrado. Denominador fijo de 54, sin suavizado y sin conteos 1/1.
+- Ventana sin días a la baja: cuenta como VIP (límite a infinito) y queda anotada en `sin_bajas`. Ventana toda plana: indefinida, no cuenta.
+- Si el núcleo falta, no sirve o tiene 2 o más días de atraso, el cálculo y la página fallan a la vista; no vuelven a la unión.
+- Hueco de ZM de las 00:00 UTC del 27-nov-2026: se completó una vez con la vela de 15 min de Binance (línea técnica `# Origen tecnico` en esa lectura); no hay regla permanente.

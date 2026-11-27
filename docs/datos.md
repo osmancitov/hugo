@@ -49,3 +49,6 @@ Todo lo que publica el Observatorio vive aquí como archivos JSON sin extensión
 - **Observación sobre `serie_carrera-<N>d`**: su encabezado dice "sin las 90 velas ese día" incluso en las ventanas de 30 y 60 días. Es texto heredado; el dato es correcto por ventana.
 - **Cuántos archivos hay**: `velas-24h` es la carpeta grande (miles de archivos mensuales); `categorias` tiene 174 archivos (171 diarios más 3 series) al 25-nov-2026.
 - **Derivados fuera de `registros/`** (generados en Pages, no versionados como historia): `iceberg-colores.json`, `superficie.html`, `cuenta/index.html`.
+
+### `nucleo/<mercado>/`
+`<AAMMDD>_nucleo` y `actual_nucleo` (copia del más reciente): VIP núcleo 54 campañas, de 7 a 60 días, por mercado (`stock`, `cripto`). Campos: `cierre`, `regla`, `nucleo` (códigos) y `activos` (código, apariciones, evaluables, sin_bajas, indefinidas). Lo escribe `.github/nucleo-diario.mjs`; lo lee `app/modulos/nucleo.mjs` (`leerNucleo` lanza si falta o está atrasado).

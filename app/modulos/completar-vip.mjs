@@ -1,12 +1,12 @@
 // Registro VIP horario canónico del día cerrado (relanzamiento aprobado por el usuario el 25-nov-2026, audios 21:03, 21:08, 21:11 y 21:15).
-// Al cierre se toma la unión VIP (admitidos, sin Rezagados) de las campañas 30, 60 y 90, y se reconstruye DESDE CERO el
+// Desde el 27-nov-2026 el universo es el VIP núcleo 54 campañas (7 a 60 días); antes era la unión VIP de las campañas 30, 60 y 90. Al cierre se reconstruye DESDE CERO el
 // día cerrado de esos activos con velas de 1 h de Binance: 97 puntos (cada 15 min, de 00:00 a 24:00 UTC; 25 si ritmo = 60) (el 24:00 es propio de esta versión
 // y no toca el 00:00 del día en curso). Precio = primer precio negociado de H:00:00 UTC; apertura de 24 h = vela de 24 h antes.
 // Sin vela no hay dato (no se rellena). Escribe solo registros/intradia/<mercado>/canonico/<día>.json: nunca los archivos vivos.
 import fs from 'node:fs';
 import path from 'node:path';
 import { leerBarra, formatearBarra } from './barra-movil.mjs';
-import { esVigente } from './vigencia.mjs';
+import { leerNucleo } from './nucleo.mjs';
 import { diaUTC } from './intradia-datos.mjs';
 import { leerCanonico } from './canonico-lectura.mjs';
 import { RITMO_MIN } from './ritmo-vip.mjs';
@@ -17,24 +17,10 @@ export const simbolo = (mercado, c) => `${c}${mercado === 'cripto' ? 'USDT' : 'B
 const iso = (ms) => new Date(ms).toISOString();
 const baseMercado = (mercado) => `intradia/${mercado}`;
 
-// `raiz` es la carpeta registros/. VIP = admitidos (no Rezagados) del último archivo de cada campaña, vigentes en el catálogo.
-export function vipAdmitidos(raiz) {
-  const dir = path.join(raiz, 'categorias');
-  const out = { stock: new Set(), cripto: new Set() };
-  for (const n of [30, 60, 90]) {
-    const f = fs.readdirSync(dir).filter((x) => new RegExp(`^\\d{6}-\\d{6}_carrera-${n}d$`).test(x)).sort().at(-1);
-    if (!f) throw Error(`No hay categorías de la campaña de ${n} días; no invento los VIP.`);
-    const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-    if (!Array.isArray(j.clasificados)) throw Error(`Categorías de ${n} días ilegibles.`);
-    for (const a of j.clasificados) {
-      if (a.grupo === 'rezagados' || typeof a.id !== 'string') continue;
-      const [m, c] = [a.id.slice(0, a.id.indexOf(':')), a.id.slice(a.id.indexOf(':') + 1)];
-      if (out[m]) out[m].add(c);
-    }
-  }
-  const velas = path.join(raiz, 'velas-24h');
-  for (const m of Object.keys(out)) { const vig = esVigente(velas, m); out[m] = [...out[m]].filter((c) => vig(c)).sort(); }
-  return out;
+// `raiz` es la carpeta registros/. Universo de lectura = VIP núcleo 54 campañas, de 7 a 60 días (nucleo.mjs, decisión del
+// dueño del 27-nov-2026), por mercado. Si el núcleo falta, no sirve o está atrasado, LANZA: no hay vuelta a la unión 30/60/90.
+export function vipAdmitidos(raiz, ahora = Date.now()) {
+  return { stock: [...leerNucleo(raiz, 'stock', { ahora }).nucleo].sort(), cripto: [...leerNucleo(raiz, 'cripto', { ahora }).nucleo].sort() };
 }
 
 async function velasK(mercado, c, desde, hasta, fetchImpl, host, ritmo) {

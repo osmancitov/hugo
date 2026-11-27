@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sufijo } from './campana-serie.mjs';
+import { validarNucleo, dirNucleo } from './nucleo.mjs';
 
 const DIA = 86400000;
 const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
@@ -17,7 +18,13 @@ export function construirBalance({ raiz, n, salida = path.join(raiz, 'registros'
   if (!archivos.length) throw Error(`Sin carrera de ${n}d para el balance`);
   const ultima = JSON.parse(fs.readFileSync(path.join(salida, archivos.at(-1)), 'utf8'));
   const fin = Date.parse(ultima.carrera.ventana.fin + 'T00:00:00Z'), ini = fin - (n - 1) * DIA;
-  const cohorte = ultima.clasificados.filter((a) => a.grupo !== 'rezagados');
+  // Cohorte: el VIP núcleo 54 campañas, de 7 a 60 días (27-nov-2026). Sin núcleo no hay balance: lanza, nunca vuelve a los clasificados.
+  const cohorte = [];
+  for (const m of ['stock', 'cripto']) {
+    const f = path.join(raiz, 'registros', dirNucleo('', m), 'actual_nucleo');
+    let j; try { j = validarNucleo(JSON.parse(fs.readFileSync(f, 'utf8')), m); } catch (e) { throw Error(`Sin núcleo de ${m} para el balance: ${e.message}`); }
+    for (const codigo of j.nucleo) cohorte.push({ id: `${m}:${codigo}` });
+  }
   const cat = Object.fromEntries(['stock', 'cripto'].map((m) => [m, JSON.parse(fs.readFileSync(path.join(raiz, 'registros/catalogo', m), 'utf8'))]));
   const dias = new Map(); for (let t = ini; t <= fin; t += DIA) dias.set(t, [0, 0, 0]); // [suben, bajan, iguales]
   const porMercado = { stock: 0, cripto: 0 };
@@ -42,7 +49,7 @@ export function construirBalance({ raiz, n, salida = path.join(raiz, 'registros'
   return {
     balance: {
       ventana: { inicio: iso(ini), fin: iso(fin), cantidad: n, unidad: 'd' },
-      conjunto: `clasificados del cierre del ${iso(fin)} en la campaña de ${n} días, sin Rezagados (Premium, Potentes y Constantes), seguidos hacia atrás los ${n} días calendario cerrados. Se recalcula entera en cada cierre; no es la clasificación de cada día.`,
+      conjunto: `VIP núcleo 54 campañas, de 7 a 60 días, seguidos hacia atrás los ${n} días calendario cerrados. Se recalcula entera en cada cierre; no es la clasificación de cada día.`,
       conteo: 'por día: suben (cierre > apertura), bajan (cierre < apertura) e iguales. Un activo sin vela ese día no cuenta en ninguna columna; el total del día es el número de activos con vela.',
       cohorte: { total: cohorte.length, ...porMercado },
       punto: '[día UTC en ms, suben, bajan, iguales]',

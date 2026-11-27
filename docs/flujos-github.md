@@ -73,3 +73,6 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
 - Repositorio público, Pages con fuente «GitHub Actions», y permiso de escritura del `GITHUB_TOKEN` para Actions. Verificar en Settings (no verificado aquí desde el código).
 - No hay otros secretos en los flujos: usan `GITHUB_TOKEN`.
 - Identidad de commits: la configuración actual de los flujos usa la identidad de git configurada en el flujo (nombre Osmancito y el correo del dueño, que no se publica en estas páginas). La norma vigente del Núcleo (7d8d778) exige autor Osmancito y permite otro committer; no hay que cambiar la configuración por eso.
+
+### Paso del VIP núcleo
+En la puesta al día diaria, «Calcular el VIP núcleo 54 campañas (7 a 60 días)» (`.github/nucleo-diario.mjs`) corre antes de la Campaña y del canónico, y sube `registros/nucleo/` (autor y committer Osmancito). El universo de las lecturas horarias (`vipAdmitidos`, `admitidosCripto`) y el balance salen de ese núcleo.

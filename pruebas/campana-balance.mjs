@@ -18,6 +18,8 @@ function fixture() {
     carrera: { ventana: { fin: '2026-11-03' } },
     clasificados: [{ id: 'stock:AAA', grupo: 'premium' }, { id: 'stock:BBB', grupo: 'constantes' }, { id: 'stock:CCC', grupo: 'rezagados' }],
   }));
+  const nuc = (m, cod) => { const d = path.join(raiz, 'registros/nucleo', m); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'actual_nucleo'), JSON.stringify({ version: 1, mercado: m, cierre: '2026-11-03', regla: { minimo: 41, total: 54 }, nucleo: cod, activos: cod.map((codigo) => ({ codigo, apariciones: 54 })) })); };
+  nuc('stock', ['AAA', 'BBB']); nuc('cripto', []);
   const velas = { AAA: [[1, 2, 2], [2, 1, 1], [1, 1, 3]], BBB: [[2, 1], [1, 2], null] };
   for (const [c, dias] of Object.entries(velas)) {
     const d = path.join(raiz, 'registros/velas-24h/stock', c); fs.mkdirSync(d, { recursive: true });
@@ -26,7 +28,7 @@ function fixture() {
   return { raiz, cat };
 }
 
-test('balance: cohorte sin Rezagados, sin vela no cuenta, iguales aparte', () => {
+test('balance: cohorte = VIP núcleo (no los clasificados), sin vela no cuenta, iguales aparte', () => {
   const { raiz, cat } = fixture();
   const b = construirBalance({ raiz, n: 3, salida: cat });
   assert.equal(b.balance.cohorte.total, 2);
@@ -85,6 +87,6 @@ test('Mercado: el espagueti pasa a evolución de Campaña de los VIP, eje log co
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /function graficaEvolucionCampana\(caja,s,u,seleccion,alElegir,g2=null\)/);
   assert.match(html, /if\(puente\)graficaEvolucionCampana\(cEsp,sv,u,sel,elegir,g2\);else graficaEspaguetis\(cEsp,sv,sel,elegir,false\)/);
-  assert.match(html, /!limpio\|\|a\.grupo!=='rezagados'/);
+  assert.match(html, /!limpio\|\|NUCLEO\.ids\.has\(a\.id\)/);
   assert.match(html, /if\(limpio&&g==='rezagados'\)continue/);
 });

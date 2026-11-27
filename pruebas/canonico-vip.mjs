@@ -36,10 +36,14 @@ const klines = ({ sin = {}, antes = () => {} } = {}) => async (url) => {
   return { ok: true, json: async () => filas };
 };
 
-test('vipAdmitidos: unión 30/60/90, sin Rezagados, solo vigentes, por mercado', () => {
-  const v = vipAdmitidos(fixture());
-  assert.deepEqual(v.stock, ['AAA', 'BBB']); // SLOW es rezagado, GONE no está en el catálogo
-  assert.deepEqual(v.cripto, ['XXX', 'YYY']);
+test('vipAdmitidos: el VIP núcleo 54 campañas por mercado; sin núcleo lanza, sin unión antigua', () => {
+  const raiz = fixture();
+  assert.throws(() => vipAdmitidos(raiz, AHORA), /No hay núcleo/);
+  const reg = (mercado, nucleo) => escribir(path.join(raiz, `nucleo/${mercado}/actual_nucleo`), { version: 1, mercado, cierre: DIA, generado: 'x', regla: { minimo: 41, total: 54 }, nucleo, activos: nucleo.map((codigo) => ({ codigo, apariciones: 54 })) });
+  reg('stock', ['AAA', 'SLOW']); reg('cripto', ['YYY']);
+  const v = vipAdmitidos(raiz, AHORA);
+  assert.deepEqual(v.stock, ['AAA', 'SLOW']); // SLOW es Rezagado a 30 días pero está en el núcleo
+  assert.deepEqual(v.cripto, ['YYY']);
 });
 
 test('construirCanonico: 97 puntos (15 min) 00:00 a 24:00 UTC, todos los VIP, validable', async () => {

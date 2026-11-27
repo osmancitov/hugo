@@ -20,6 +20,8 @@ function arbol() {
   w('categorias/261026-261124_carrera-30d', cl([['cripto:BNB', 'premium'], ['cripto:BTC', 'rezagados'], ['stock:AAPL', 'premium']]));
   w('categorias/261026-261124_carrera-60d', cl([['cripto:BNB', 'constantes'], ['cripto:ETH', 'potentes'], ['cripto:XRP', 'rezagados']]));
   w('categorias/261026-261124_carrera-90d', cl([['cripto:SOL', 'constantes'], ['cripto:牛来', 'premium'], ['cripto:BTC', 'rezagados']]));
+  const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10), nu = ['BNB', 'ETH', 'SOL', '牛来'];
+  w('nucleo/cripto/actual_nucleo', JSON.stringify({ version: 1, mercado: 'cripto', cierre: ayer, generado: 'x', regla: { minimo: 41, total: 54 }, nucleo: nu, activos: nu.map((codigo) => ({ codigo, apariciones: 54 })) }));
   return raiz;
 }
 const t = (symbol, o, l, ot, ct) => ({ symbol, openPrice: String(o), lastPrice: String(l), openTime: ot, closeTime: ct });
@@ -28,7 +30,7 @@ const falso = (visto) => async (url) => {
   return { ok: true, status: 200, text: async () => JSON.stringify(sims.map((s, i) => t(s, 10, i % 2 ? 9 : 11, 1000, 2000))) };
 };
 
-test('admitidos: unión de no rezagados de las tres campañas, sin duplicados ni stocks', () => {
+test('admitidos: el VIP núcleo de cripto, sin la unión antigua', () => {
   assert.deepEqual(admitidosCripto(arbol()), ['BNB', 'ETH', 'SOL', '牛来']);
 });
 

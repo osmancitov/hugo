@@ -150,6 +150,7 @@ a:hover { text-decoration: underline; }
 .camp-lista .cap { white-space: nowrap; }
 .camp-lista .camp-fila .tipo { width: 5.6em; max-width: none; }
 .camp-lista .camp-fila .cap { width: 4.8em; text-align: right; }
+.camp-lista .camp-fila .sel { width: 5.2em; text-align: right; white-space: nowrap; }
 .camp-cab { cursor: default; color: var(--tenue); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid rgba(194,161,90,.25); }
 .camp-cab .tipo, .camp-cab .cap { margin-right: -.06em; }
 .camp-cab span { color: var(--tenue) !important; font-size: .72rem !important; font-weight: 400 !important; }
@@ -1204,13 +1205,13 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
         if (en) {
           // Prototipo (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
           const codigos = new Set(); let fechaFin = ''; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
-          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (porG[a.grupo]) porG[a.grupo].add(a.id); if ((g === 'todos' ? a.grupo !== 'rezagados' : a.grupo === g)) codigos.add(a.id); } }
+          for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (porG[a.grupo]) porG[a.grupo].add(a.id); if (NUCLEO.ids.has(a.id) && (g === 'todos' || a.grupo === g)) codigos.add(a.id); } }
           const g2 = puente?.grupo2?.(); if (g2) for (const id of [...codigos]) if (grupoMercadoDe(id) !== g2) codigos.delete(id); // Triple play: solo el grupo elegido
           filtro = { codigos, nota: null }; // sin el resumen bajo el relieve (audio 1795665712.382679: es redundante)
         } else if (g === 'todos') filtro = null;
         else {
           const n = ventanaVal, { u } = await cargarCampana(n);
-          const codigos = new Set(u.clasificados.filter(a => a.grupo === g && a.id.startsWith('stock:')).map(a => a.id.slice(6)));
+          const codigos = new Set(u.clasificados.filter(a => NUCLEO.ids.has(a.id) && a.grupo === g && a.id.startsWith('stock:')).map(a => a.id.slice(6)));
           const nombre = nombreGrupo(g);
           filtro = { codigos, nota: `${nombre}, ventana de ${n} días, clasificación al cierre del ${fechaLegibleUTC(u.carrera.ventana.fin)}: ${codigos.size} acciones. Solo cambia lo que se dibuja; no se retira ningún activo.` };
         }
@@ -2270,8 +2271,25 @@ async function cargarCampana(n){
   if(campanaDatos[n])return campanaDatos[n];
   const base='registros/categorias/';
   const leer=async n=>{const r=await fetch(base+n,{cache:'no-cache'});if(!r.ok)throw Error('No se pudo leer '+n);return r.json();};
+  await cargarNucleoTodo(); // sin núcleo no hay selección: error visible, nunca la lista anterior
   const s=await leer(`serie_carrera-${n}d`),u=await leer(s.ultimo);
   return campanaDatos[n]={s,u};
+}
+// VIP núcleo 54 campañas, de 7 a 60 días: registros/nucleo/<mercado>/actual_nucleo, calculado en el cierre diario.
+const nucleoCache={};
+async function cargarNucleo(m){
+  if(nucleoCache[m])return nucleoCache[m];
+  const r=await fetch(`registros/nucleo/${m}/actual_nucleo`,{cache:'no-cache'});
+  if(!r.ok)throw Error('No se pudo leer el VIP núcleo de '+m+'.');
+  const j=await r.json();
+  if(!j||!Array.isArray(j.nucleo)||!Array.isArray(j.activos)||!j.nucleo.length)throw Error('El VIP núcleo de '+m+' no sirve.');
+  return nucleoCache[m]={ids:j.nucleo.map(c=>m+':'+c),ap:j.activos.map(a=>[m+':'+a.codigo,a.apariciones])};
+}
+let NUCLEO=null;
+async function cargarNucleoTodo(){
+  if(NUCLEO)return NUCLEO;
+  const [a,b]=await Promise.all([cargarNucleo('stock'),cargarNucleo('cripto')]);
+  return NUCLEO={ids:new Set([...a.ids,...b.ids]),ap:new Map([...a.ap,...b.ap])};
 }
 const SVGNS='http://www.w3.org/2000/svg';
 function svgEl(nombre,attrs={},hijos=[]){const e=document.createElementNS(SVGNS,nombre);for(const k in attrs)e.setAttribute(k,attrs[k]);for(const h of hijos)e.append(h);return e;}
@@ -2332,7 +2350,7 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
   // Mercado (aprobado por el usuario, Slack 1795644099.837059): evolución del indicador Campaña, raíz((P²+C²)/2) de la ventana que termina cada día,
   // solo para los VIP (sin Rezagados) del último cierre de la campaña elegida, en un eje logarítmico común con la referencia 1. Sin relleno: donde falta dato, la línea se corta.
   const W=720,H=420,L=44,R=10,T=10,B=28,N=s.fechas.length;
-  const grupo=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
+  const grupo=Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
   const COL={premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'};
   const camp=p=>Math.sqrt((p[1]*p[1]+p[2]*p[2])/2),lg=v=>Math.log2(Math.max(v,1e-3));
   const ids=Object.keys(grupo).filter(id=>s.activos[id]);
@@ -2406,7 +2424,7 @@ function graficaActivoCampana(caja,s,id,limpio=false){
 // normalizada, dirección = balance entre P y C. La cerca es r = 1. No cambia clasificación ni cortes.
 let campoUltimaBola=null;
 function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
-  const W=560,cl=u.clasificados.filter(a=>(!limpio||a.grupo!=='rezagados')&&(!g2||grupoMercadoDe(a.id)===g2)),rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
+  const W=560,cl=u.clasificados.filter(a=>(!limpio||NUCLEO.ids.has(a.id))&&(!g2||grupoMercadoDe(a.id)===g2)),rr=a=>Math.sqrt((a.potencia**2+a.constancia**2)/2);
   // Escala fiel: el radio visible abarca al activo más lejano (nunca se recorta ni se acerca un punto).
   // Radio híbrido y continuo: lineal de 0 a 0,5 (home sigue siendo el 0) y logarítmico desde 0,5, con la misma
   // pendiente en el empalme. Así 0,5, 1 y 2 quedan a igual distancia unos de otros (no es logaritmo puro).
@@ -2508,7 +2526,7 @@ async function cargarVariacionCampana(n, u, fechas, g2 = null) {
   if (cacheVarEspagueti.has(clave)) return cacheVarEspagueti.get(clave);
   const promesa = (async () => {
     const meses = [...new Set(fechas.map((f) => f.slice(2, 4) + f.slice(5, 7)))].filter((m) => m >= PISO_VISOR);
-    const ids = u.clasificados.filter((a) => a.grupo !== 'rezagados' && (!g2 || grupoMercadoDe(a.id) === g2)).map((a) => a.id);
+    const ids = u.clasificados.filter((a) => NUCLEO.ids.has(a.id) && (!g2 || grupoMercadoDe(a.id) === g2)).map((a) => a.id);
     const series = {};
     await Promise.all(ids.map(async (id) => {
       const e = entradaCampana(id);
@@ -2637,7 +2655,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const pintarVar=()=>{if(puente&&puente.cVar&&datosVar&&puente.cVar.isConnected)graficaVariacionEspagueti(puente.cVar,datosVar,gruposVar,sel,elegir);};
   let gruposVar={};
   if(puente&&puente.cVar){
-    gruposVar=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
+    gruposVar=Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
     const cajaV=puente.cVar,sv0=recortarSerie(s,n);
     cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
     cargarVariacionCampana(n,u,sv0.fechas,g2).then(d=>{datosVar=d;pintarVar();})
@@ -2649,7 +2667,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     pintarVar();
     graficaCampo(cCuad,u,sel,elegir,Boolean(puente),g2);
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}}
-    if(puente){const grupos=Object.fromEntries(u.clasificados.filter(a=>a.grupo!=='rezagados'&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));graficaActivosCampana(cAct,sv,grupos,sel);}
+    if(puente){const grupos=Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));graficaActivosCampana(cAct,sv,grupos,sel);}
     else {cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,false);}
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
   };
@@ -2659,16 +2677,17 @@ async function vistaCampana(n,inicial,en=null,puente=null){
     pintarSel(); // la vista no se mueve al elegir, ni desde la lista ni desde las gráficas
   }
   lista.className='camp-lista';
-  {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña']]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
-  for(const a of ordenarCampana(u.clasificados).filter(a=>(!puente||!puente.grupo||(puente.grupo()==='todos'?a.grupo!=='rezagados':a.grupo===puente.grupo()))&&(!g2||grupoMercadoDe(a.id)===g2))){
+  {const c=document.createElement('div');c.className='activo-fila camp-fila camp-cab';for(const [k,t] of [['cod','Código'],['nom','Nombre'],['tipo','Tipo'],['cap','Campaña'],...(puente?[['sel','Selección']]:[])]){const e=document.createElement('span');e.className=k;e.textContent=t;c.append(e);}lista.append(c);}
+  for(const a of ordenarCampana(u.clasificados).filter(a=>(!puente||(NUCLEO.ids.has(a.id)&&(!puente.grupo||puente.grupo()==='todos'||a.grupo===puente.grupo())))&&(!g2||grupoMercadoDe(a.id)===g2))){
     const e=entradaCampana(a.id),f=document.createElement('div');f.className='activo-fila camp-fila';
     f.dataset.id=a.id;f.tabIndex=0;f.setAttribute('role','button');
-    f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>';
+    f.innerHTML='<span class="cod"></span><span class="nom"></span><span class="tipo"></span><span class="cap"></span>'+(puente?'<span class="sel"></span>':'');
     {const t=a.id.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';f.querySelector('.tipo').textContent=/^fondo ETF/i.test(t)?'Fondo ETF':t.charAt(0).toUpperCase()+t.slice(1);}
     f.querySelector('.cod').textContent=e?e.codigo:a.id.split(':')[1];
     f.querySelector('.nom').textContent=e?e.nombre+parentesisLectura(e):'';
     const cp=f.querySelector('.cap');cp.textContent=fmtCoef(campana(a));cp.classList.add('camp-n-'+a.grupo);
     cp.title=(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]+' · Campaña = raíz((P² + C²) / 2)';
+    if(puente){const ap=NUCLEO.ap.get(a.id);f.querySelector('.sel').textContent=Math.round(ap/54*100)+' %';} // Selección: % de las 54 campañas, de 7 a 60 días
     filas.set(a.id,f);lista.append(f);
   }
   lista.addEventListener('click',ev=>{const f=ev.target.closest('.camp-fila');if(!f)return;elegir(f.dataset.id,true);});

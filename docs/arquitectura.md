@@ -85,3 +85,6 @@ Un visor público estático (GitHub Pages) con los registros de mercado que lo a
 - Si un comentario del código no coincide con `flujos-github.md`, vale `flujos-github.md`, comprobado contra los archivos `.yml`.
 - **Marcas de ingesta locales:** el motor escribe sus marcas de avance en un directorio temporal de la corrida; no suben al repositorio.
 - **Hora del cierre:** `ultimoCerrado(ahora)` resta un margen y retrocede un día; la ingesta falla (y no publica) si el registro llega solo hasta un día anterior al objetivo.
+
+### VIP núcleo
+`app/modulos/nucleo.mjs` calcula y lee el VIP núcleo 54 campañas, de 7 a 60 días (`registros/nucleo/`); `completar-vip.mjs`, `registro-cripto.mjs` y `campana-balance.mjs` lo usan.

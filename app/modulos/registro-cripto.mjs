@@ -1,13 +1,13 @@
 // Registro horario de cripto (decisión del usuario, 25-nov-2026): empieza con el cambio de día
-// del Observatorio (00:00 UTC del 26-nov) y solo lee a los admitidos: los que no quedan
-// Rezagados en alguna de las tres campañas (30, 60 o 90 días), cada activo una sola vez.
+// del Observatorio (00:00 UTC del 26-nov) y desde el 27-nov-2026 solo lee el VIP núcleo 54 campañas (7 a 60 días);
+// antes leía a los admitidos de las campañas 30, 60 y 90.
 // Es independiente del registro de stocks: carpeta, índice, script y commit propios.
 // No toca el cálculo de las cuatro categorías: solo lee lo que el cierre diario ya publicó.
 import { cubeta } from './ritmo-vip.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { leerBarra } from './barra-movil.mjs';
-import { esVigente } from './vigencia.mjs';
+import { leerNucleo } from './nucleo.mjs';
 import { leerDia, leerIndice, unirDias, unirIndices, diaUTC } from './intradia-datos.mjs';
 
 // El registro empieza con el cambio de día del Observatorio (reloj UTC): nada se toma antes.
@@ -23,19 +23,9 @@ const validar = (texto) => {
   return b;
 };
 
-// Último archivo de cada campaña publicado por el cierre diario (nombres AAMMDD-AAMMDD_carrera-Nd).
-export function admitidosCripto(raizRegistros) {
-  const dir = path.join(raizRegistros, 'categorias');
-  const codigos = new Set();
-  for (const n of [30, 60, 90]) {
-    const archivos = fs.readdirSync(dir).filter((f) => new RegExp(`^\\d{6}-\\d{6}_carrera-${n}d$`).test(f)).sort();
-    if (!archivos.length) throw Error(`No hay categorías de la campaña de ${n} días; no invento el universo.`);
-    const j = JSON.parse(fs.readFileSync(path.join(dir, archivos.at(-1)), 'utf8'));
-    if (!Array.isArray(j.clasificados)) throw Error(`Categorías de ${n} días ilegibles.`);
-    for (const a of j.clasificados) if (typeof a.id === 'string' && a.id.startsWith('cripto:') && a.grupo !== 'rezagados') codigos.add(a.id.slice(7));
-  }
-  const vigente = esVigente(path.join(raizRegistros, 'velas-24h'), 'cripto');
-  return [...codigos].filter((c) => vigente(c)).sort();
+// Universo de cripto = VIP núcleo 54 campañas, de 7 a 60 días (nucleo.mjs). Lanza si falta o está atrasado: sin unión antigua.
+export function admitidosCripto(raizRegistros, ahora = Date.now()) {
+  return [...leerNucleo(raizRegistros, 'cripto', { ahora }).nucleo].sort();
 }
 
 const leerOpc = (r) => { try { return fs.readFileSync(r, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
