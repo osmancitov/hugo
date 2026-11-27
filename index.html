@@ -100,6 +100,7 @@ a:hover { text-decoration: underline; }
 .camp-caja { margin: .6rem 0 1rem; }
 .camp-svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--borde); border-radius: 4px; }
 .camp-rej { stroke: var(--borde); stroke-width: 1; }
+.camp-dia { stroke: var(--borde); stroke-width: 1; stroke-opacity: .5; }
 .camp-eje { fill: var(--tenue); font-size: 11px; }
 .camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .12; stroke-width: 1; pointer-events: none; }
 .camp-lin.camp-sel { stroke: #fff3cf; stroke-opacity: 1; stroke-width: 2.6; }
@@ -2274,6 +2275,13 @@ async function cargarCampana(n){
 }
 const SVGNS='http://www.w3.org/2000/svg';
 function svgEl(nombre,attrs={},hijos=[]){const e=document.createElementNS(SVGNS,nombre);for(const k in attrs)e.setAttribute(k,attrs[k]);for(const h of hijos)e.append(h);return e;}
+// Separadores diarios (usuario, Slack 1795742719.841869): una línea vertical muy suave, casi invisible,
+// en cada cambio de jornada, para tener idea de cuánto es un día y poder contar y diferenciar el tramo de
+// un día de otro. Solo en las tres gráficas del final: Potencia y constancia, Evolución y Variación diaria
+// (usuario, Slack 1795742725.253369 y 1795742762.903659). Van antes de las curvas para quedar por debajo.
+function separadoresDia(svg,x,N,T,H,B){
+  for(let i=0;i<N-1;i++){const m=(x(i)+x(i+1))/2;svg.append(svgEl('line',{x1:m.toFixed(1),x2:m.toFixed(1),y1:T,y2:H-B,class:'camp-dia'}));}
+}
 function trazoConHuecos(puntos){ // puntos: [x,y]|null; null corta la línea
   let d='',abierto=false;
   for(const p of puntos){if(!p){abierto=false;continue;}d+=(abierto?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);abierto=true;}
@@ -2336,6 +2344,7 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
   {const t=svgEl('text',{x:L-6,y:y(1)+4,'text-anchor':'end',class:'camp-eje'});t.textContent='1';svg.append(t);}
   svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
   [0,N-1].forEach((i,k)=>{if(k&&i===0)return;const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':k?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);});
+  separadoresDia(svg,x,N,T,H,B);
   const trazo=id=>trazoConHuecos(s.activos[id].map((p,i)=>p?[x(i),y(camp(p))]:null));
   const capa=svgEl('g'),cima=svgEl('g');svg.append(capa,cima);
   for(const id of ids){
@@ -2358,6 +2367,7 @@ function graficaActivosCampana(caja,s,grupos,seleccion=null){
   const x=i=>L+(N>1?i*(W-L-R)/(N-1):(W-L-R)/2), y=v=>T+(hi-Math.log2(Math.max(v,.001)))/(hi-lo)*(H-T-B);
   const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de todos los Activos VIP'});
   for(const v of [.125,.25,.5,1,2,4,8,16]){if(Math.log2(v)<lo||Math.log2(v)>hi)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'camp-uno':'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=v===.125?'⅛':v===.25?'¼':v===.5?'½':String(v);svg.append(t);}
+  separadoresDia(svg,x,N,T,H,B);
   // El activo elegido se dibuja al final (sus dos curvas encima de todas) y las demás más atenuadas, conservando dorado y azul (usuario, Slack 1795740439.524069).
   for(const [id] of [...activos].sort((a,b)=>(a[0]===seleccion)-(b[0]===seleccion))){const serie=s.activos[id]||[],seleccionado=id===seleccion;for(const [k,cls] of [[1,'camp-pot'],[2,'camp-con']])svg.append(svgEl('path',{d:trazoConHuecos(serie.map((p,i)=>p?[x(i),y(p[k])]:null)),class:`camp-curva ${cls}`,opacity:seleccionado?'.95':seleccion?'.12':'.35','stroke-width':seleccionado?'3':seleccion?'1.2':'1.5','data-id':id}));}
   for(const i of [0,N-1]){const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':i?'end':'start',class:'camp-eje'});t.textContent=fechaLegibleUTC(s.fechas[i]);svg.append(t);}
@@ -2545,6 +2555,7 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
     svg.append(t);
   }
   [0, N - 1].forEach((i, k) => { if (k && i === 0) return; const t = svgEl('text', { x: x(i), y: H - 8, 'text-anchor': k ? 'end' : 'start', class: 'camp-eje' }); t.textContent = fechaLegibleUTC(fechas[i]); svg.append(t); });
+  separadoresDia(svg,x,N,T,H,B);
   const COL = { premium: '#6fbf8a', potentes: '#e3b341', constantes: '#7fb2e5' };
   const capa = svgEl('g'), cima = svgEl('g'); svg.append(capa, cima);
   for (const id of Object.keys(series)) {
