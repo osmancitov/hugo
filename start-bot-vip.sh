@@ -1,10 +1,16 @@
 #!/bin/sh
-# Arranca el monitor VIP desde cualquier carpeta:
-#   ~/Documents/hugo/monitor-vip.sh
-# El estado (estado-vip.json) y las referencias quedan siempre aquí, junto al script.
-# Se puede relanzar tras un corte de luz: retoma lo guardado.
+# Bot VIP: abre el monitor. Vale doble clic en Archivos (Ejecutar) o terminal:
+#   ~/Documents/hugo/start-bot-vip.sh
+# Si se abrió sin terminal (doble clic), se reabre él mismo dentro de una.
+# El estado (estado-vip.json) queda siempre aquí, junto al script.
 
-cd "$(dirname "$(readlink -f "$0")")" || exit 1
+SELF="$(readlink -f "$0")"
+
+if [ ! -t 1 ] && command -v gnome-terminal >/dev/null 2>&1; then
+  exec gnome-terminal -- bash -c "\"$SELF\"; echo; echo 'Pulsa Enter para cerrar esta ventana'; read _"
+fi
+
+cd "$(dirname "$SELF")" || exit 1
 
 if pgrep -f "monitor_vip.py" >/dev/null 2>&1; then
   echo "El monitor ya está corriendo en otra terminal; no abro una segunda copia."
