@@ -1,7 +1,7 @@
 #!/bin/sh
 # Instala el icono "Bot VIP" para abrir el monitor con doble clic, sin terminal.
 # Se corre UNA sola vez. Después: Actividades -> "Bot VIP", o doble clic en el
-# icono del escritorio. El icono actualiza el código y abre el monitor él solito.
+# icono del escritorio. El icono abre el monitor él solito, sin terminal.
 
 set -e
 
