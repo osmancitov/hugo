@@ -103,4 +103,4 @@ Los títulos «Activos VIP», «Balance del día» y «Relieve del día» van en
 `node --test pruebas/*.mjs` (unos 75 s, sin red). Cualquier prueba roja debe investigarse.
 
 ### VIP núcleo en Mercado
-Las vistas de Mercado (lista, relieve, barras, balance, evolución, variación) usan el núcleo (`registros/nucleo/<mercado>/actual_nucleo`), no el grupo de la campaña elegida: un Rezagado a 30 días puede estar en el núcleo. La lista conserva el orden por Campaña y añade la columna «Selección» (% de las 54 campañas). Si el núcleo no carga, la página muestra el error.
+Las vistas de Mercado (lista, relieve, barras, balance, evolución, variación) usan el núcleo (`registros/nucleo/<mercado>/actual_nucleo`), no el grupo de la campaña elegida: un Rezagado a 30 días puede estar en el núcleo. La lista (todas las categorías) tiene las columnas Código, Nombre, Av. y Campaña, ordenada por Av. de mayor a menor. Av. = apariciones / 54 por unidad: 1 si es perfecto, si no dos decimales sin el cero de la izquierda (.89). Si el núcleo no carga, la página muestra el error.

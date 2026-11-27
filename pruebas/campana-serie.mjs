@@ -92,7 +92,7 @@ test('Campañas: campo con radio logarítmico solo en r desde 0,1, un color por 
   assert.match(h, /R0=0\.1,rho=r=>Math\.log2\(r\/R0\)/);
   assert.match(h, /camp-g-'\+a\.grupo/);
   assert.match(h, /camp-n-'\+a\.grupo/);
-  assert.match(h, /\['cod','Código'\],\['nom','Nombre'\],\['tipo','Tipo'\],\['cap','Campaña'\]/);
+  assert.match(h, /\['cod','Código'\],\['nom','Nombre'\],\.\.\.\(puente\?\[\['av','Av\.'\]\]:\[\['tipo','Tipo'\]\]\),\['cap','Campaña'\]/);
   assert.doesNotMatch(h, /textContent=`Campaña \$\{fmtCoef\(campana\(a\)\)\}`/);
   assert.doesNotMatch(h, /camp-grupo|createElement\('details'\)/);
   assert.match(h, /tx\('Premium',pol\(RMAX\*\.9,0\)/);

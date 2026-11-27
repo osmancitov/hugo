@@ -65,11 +65,12 @@ test('leerNucleo lanza si falta, está vacío o atrasado', () => {
   assert.throws(() => leerNucleo(raiz, 'stock', { ahora: Date.parse('2026-11-27T01:00:00Z') }), /no alcanza/);
 });
 
-test('Selección en Mercado: barra de 41 a 54 con dato exacto accesible, sin porcentaje fijo en la celda', () => {
+test('Mercado: lista con Código, Nombre, Av. y Campaña; Av. = apariciones/54 por unidad, ordenada de mayor a menor', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /\(ap-41\)\/13\*100/);
-  assert.match(html, /bar\.setAttribute\('role','img'\)/);
-  assert.match(html, /bar\.tabIndex=0/);
-  assert.match(html, /\.sel:hover \.sel-tip, \.sel:focus-within \.sel-tip, \.sel\.abierto \.sel-tip/);
-  assert.doesNotMatch(html, /f\.querySelector\('\.sel'\)\.textContent=/);
+  assert.match(html, /\['cod','Código'\],\['nom','Nombre'\],\.\.\.\(puente\?\[\['av','Av\.'\]\]:\[\['tipo','Tipo'\]\]\),\['cap','Campaña'\]/);
+  assert.match(html, /av\.textContent=ap>=54\?'1':\(ap\/54\)\.toFixed\(2\)\.replace\(\/\^0\/,''\)/);
+  assert.match(html, /NUCLEO\.ap\.get\(y\.id\)-NUCLEO\.ap\.get\(x\.id\)/);
+  assert.doesNotMatch(html, /sel-barra/);
+  const av = (ap) => (ap >= 54 ? '1' : (ap / 54).toFixed(2).replace(/^0/, ''));
+  assert.deepEqual([54, 53, 52, 45, 44].map(av), ['1', '.98', '.96', '.83', '.81']);
 });
