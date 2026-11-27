@@ -57,7 +57,7 @@ test('Mercado: dos pares de flechas azules (activo en horizontal, tiempo en vert
   assert.match(html, /flecha-girada \{ display: inline-block; transform: rotate\(90deg\); \}/);
 });
 test('cada gráfica de Mercado tiene su título breve en el mismo estilo, sin repetir lo que ya muestran sus datos (26-nov-2026)', () => {
-  for (const t of ["'Evolución'", "'Potencia y constancia'", "'Campaña'", "'Variación diaria'", "'Balance del día'", "'Relieve del día'"]) assert.ok(html.includes(t), t);
+  for (const t of ["'Evolución de campaña'", "'Potencia y constancia'", "'Campaña'", "'Variación diaria'", "'Balance del día'", "'Relieve del día'"]) assert.ok(html.includes(t), t);
   assert.ok(!html.includes('Variación diaria · ${N}'));
   assert.ok(!html.includes("'El campo'"));
 });

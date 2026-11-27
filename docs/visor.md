@@ -84,7 +84,7 @@ Es la entrada del visor. Ruta `#/unificada/30d`: muestra tres botones, Empresas,
 9. **Variación diaria**: variación de los VIP en la ventana.
 10. **Ficha del activo**, al final: código y nombre, una línea amarilla debajo, la matriz de categorías (Premium verde, Potentes amarillo, Constantes azul, en columnas de 30, 60 y 90 días; se enciende lo que le corresponde al activo) y los enlaces externos (por ejemplo Stock Analysis, TipRanks, TradingView, Gobierno y Oficial, según el activo). Aparece y desaparece sin empujar el resto de la página. Sin activo elegido no hay ficha.
 
-Los títulos «Activos VIP», «Balance del día» y «Relieve del día» van en blanco y grandes; «Campaña», «Potencia y constancia», «Evolución» y «Variación diaria» van en dorado y pequeños.
+Los títulos «Activos VIP», «Balance del día» y «Relieve del día» van en blanco y grandes; «Campaña», «Potencia y constancia», «Evolución de campaña» y «Variación diaria» van en dorado y pequeños.
 
 - **VIP**: Premium, Potentes y Constantes del último cierre de la Campaña de 30 días, dentro del grupo elegido (empresas, fondos o cripto). Los Rezagados siguen en los registros pero no aparecen en Mercado.
 - **Frontera VIP**: Campaña 1 (raíz((P²+C²)/2) = 1). Un activo es VIP si y solo si su Campaña es 1 o más. Esa línea no separa Premium de Potentes o Constantes: eso lo deciden P y C por separado (`grupoDe` en `campana-carrera.mjs`). Un activo puede tener P ≥ 1 o C ≥ 1 y ser Rezagado si su Campaña es menor que 1. En el campo, la cerca (radio 1) es esa misma frontera.

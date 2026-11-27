@@ -2378,7 +2378,7 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
     const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);
   }
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
-  const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Evolución'; // título breve por gráfica (26-nov-2026, audio)
+  const titE=document.createElement('h3');titE.className='camp-tit';titE.textContent='Evolución de campaña'; // título breve por gráfica (26-nov-2026, audio)
   caja.replaceChildren(titE,svg);
   trazadoAlEntrar(caja,svg,'.camp-lin'); // una sola vez, al entrar en pantalla; reelegir un activo no lo repite
 }
