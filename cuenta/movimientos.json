@@ -13,11 +13,10 @@
       "percent": -1.88,
       "buy": 26.83,
       "sell": 26.324,
-      "buy_time": "23:55",
       "buy_date": "2026-11-25",
       "sell_date": "2026-11-27",
-      "sell_time": "17:57",
-      "balance_confirmed": true
+      "balance_confirmed": true,
+      "time_note": "Horas no indicadas por Osmancito; se conservan solo las fechas. Compra del 25 de noviembre por evidencia del hilo (saldo libre tras SOXS, precio ancla 26,83 ya vigente el 26); venta del 27, día del reporte."
     },
     {
       "date": "2026-11-25",
