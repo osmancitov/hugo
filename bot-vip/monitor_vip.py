@@ -7,8 +7,8 @@
 #
 # Uso típico (desde la carpeta del repo):
 #   python3 bot-vip/monitor_vip.py                    # monitor con el núcleo vigente
-#   python3 bot-vip/monitor_vip.py --esperar-nucleo   # espera a que salga el núcleo de esta noche
-#   python3 bot-vip/monitor_vip.py --intervalo 5 --objetivo 2.5
+#   python3 bot-vip/monitor_vip.py --esperar-nucleo   # lanzarlo ANTES de las 8 p.m.: espera a la lista de esta noche
+#   python3 bot-vip/monitor_vip.py --intervalo 5 --objetivo 2.5 --objetivo-desde cero
 #
 # Mientras corre, escribe comandos y Enter:
 #   c DODO          marcar que compraste DODO (al precio actual)
@@ -80,27 +80,34 @@ def leer_nucleo(mercado):
     return j["cierre"], list(j["nucleo"])
 
 
-def ultimo_cierre_utc():
-    # El núcleo del "cierre D" sale minutos después de las 00:00 UTC del día D+1.
+GRACIA_PUBLICACION_S = 2 * 3600  # ventana tras medianoche UTC en que el núcleo recién salido se acepta igual
+
+
+def cierre_objetivo():
+    """El cierre que publica la próxima medianoche UTC: la fecha UTC de hoy.
+    (La corrida de las ~00:05-00:21 UTC del día D+1 publica el núcleo del cierre D.)"""
     hoy = int(time.time() * 1000) // DIA_MS * DIA_MS
-    return hoy - DIA_MS
-
-
-def cierre_esperado_texto():
-    return datetime.fromtimestamp(ultimo_cierre_utc() / 1000, timezone.utc).strftime("%Y-%m-%d")
+    return datetime.fromtimestamp(hoy / 1000, timezone.utc).strftime("%Y-%m-%d"), hoy
 
 
 def esperar_nucleo(mercados, aviso=print):
-    esperado = cierre_esperado_texto()
+    """Espera el núcleo de la noche: compara la FECHA DE CIERRE del archivo, no su cambio.
+    Si acaba de publicarse (dentro de la gracia), arranca de una con él."""
+    objetivo, hoy = cierre_objetivo()
+    ayer = datetime.fromtimestamp((hoy - DIA_MS) / 1000, timezone.utc).strftime("%Y-%m-%d")
     while True:
-        listos = {}
+        cierres = {}
         for m in mercados:
             cierre, _ = leer_nucleo(m)
-            listos[m] = cierre
-        if all(c == esperado for c in listos.values()):
-            aviso(f"Núcleo del cierre {esperado} publicado. Arrancando.")
+            cierres[m] = cierre
+        if all(c >= objetivo for c in cierres.values()):
+            aviso(f"Núcleo del cierre {objetivo} publicado. Arrancando.")
             return
-        aviso(f"Aún no sale el núcleo de {esperado} (hay: {listos}). Reviso en 60 s...")
+        recien_salido = (time.time() * 1000 - hoy) <= GRACIA_PUBLICACION_S * 1000
+        if recien_salido and all(c == ayer for c in cierres.values()):
+            aviso(f"Núcleo del cierre {ayer} recién publicado; arranco con él.")
+            return
+        aviso(f"Esperando el núcleo del cierre {objetivo} (publicados: {cierres}). Reviso en 60 s...")
         time.sleep(60)
 
 
@@ -127,16 +134,19 @@ def precios(host, simbolos):
 
 
 # ---- Lógica de avisos (pura, probada aparte) ----
-def evaluar(ref, entrada, precio, objetivo_pct):
-    """vs_cero, vs_entrada y aviso de salida para un símbolo."""
+def evaluar(ref, entrada, precio, objetivo_pct, base="compra"):
+    """vs_cero, vs_entrada y aviso de salida para un símbolo.
+    El objetivo se mide desde tu precio de compra (base='compra') o desde el cero (base='cero')."""
     vs_cero = (precio / ref - 1) * 100 if ref else 0.0
     aviso = None
     if entrada is not None:
         vs_entrada = (precio / entrada - 1) * 100
         if precio < ref:
-            aviso = "VENDER: cayó por debajo del cero"
-        elif vs_entrada >= objetivo_pct:
-            aviso = f"VENDER: objetivo +{objetivo_pct:g}% logrado"
+            aviso = "VENDER: bajo el cero"
+        else:
+            vs_base = vs_cero if base == "cero" else vs_entrada
+            if vs_base >= objetivo_pct:
+                aviso = f"VENDER: objetivo +{objetivo_pct:g}% logrado"
     else:
         vs_entrada = None
     return vs_cero, vs_entrada, aviso
@@ -160,9 +170,11 @@ def guardar_estado(est):
 
 
 def pintar(filas, ver_todos, intervalo, objetivo, host, cierres):
+    # objetivo = (porcentaje, base)
     print("\033[2J\033[H", end="")
-    print(f"MONITOR VIP · {ahora_iso()} UTC · cada {intervalo:g} s · objetivo +{objetivo:g}% · {host.split('//')[1]}")
-    print(f"Núcleo: {cierres} · comandos: c COD [precio] = compré · v COD = vendí · t = ver todos · q = salir")
+    print(f"MONITOR VIP {ahora_iso()[11:]} UTC · cada {intervalo:g} s · objetivo +{objetivo[0]:g}% desde {objetivo[1]}")
+    print(f"Núcleo: {cierres} · {host.split('//')[1]}")
+    print("c COD [precio] = compré · v COD = vendí · t = ver todos · q = salir")
     print("-" * 78)
     arriba = [f for f in filas if f["vs_cero"] > 0]
     abajo = [f for f in filas if f["vs_cero"] <= 0]
@@ -171,7 +183,7 @@ def pintar(filas, ver_todos, intervalo, objetivo, host, cierres):
         print("(Nadie sobre el cero todavía. Los que arranquen aparecerán aquí.)")
     for f in mostrar:
         marca = "*" if f["entrada"] is not None else " "
-        fila = (f"{marca} {f['codigo']:<10} {f['precio']:<14.8g} cero {f['ref']:<14.8g} "
+        fila = (f"{marca} {f['codigo']:<9} {f['precio']:<12.8g} cero {f['ref']:<12.8g} "
                 f"{f['vs_cero']:+7.2f}%")
         if f["entrada"] is not None and f["vs_entrada"] is not None:
             fila += f"  mia {f['vs_entrada']:+6.2f}%"
@@ -188,6 +200,8 @@ def main():
     ap = argparse.ArgumentParser(description="Monitor VIP de arranque (solo lectura; tú operas a mano).")
     ap.add_argument("--intervalo", type=float, default=10, help="segundos entre lecturas (defecto 10)")
     ap.add_argument("--objetivo", type=float, default=2.0, help="ganancia %% para avisar venta (defecto 2)")
+    ap.add_argument("--objetivo-desde", choices=["compra", "cero"], default="compra",
+                    help="base del objetivo: tu precio de compra (defecto) o el cero de referencia")
     ap.add_argument("--mercados", default="cripto,stock", help="cripto, stock o cripto,stock (defecto ambos)")
     ap.add_argument("--esperar-nucleo", action="store_true", help="esperar a que se publique el núcleo del último cierre")
     ap.add_argument("--ver-todos", action="store_true", help="mostrar también los que van bajo el cero")
@@ -245,12 +259,12 @@ def main():
                 continue
             ref = refs.get(s)
             entrada = pos.get(s, {}).get("entrada") if s in pos else None
-            vs_cero, vs_entrada, aviso = evaluar(ref, entrada, p, args.objetivo)
+            vs_cero, vs_entrada, aviso = evaluar(ref, entrada, p, args.objetivo, args.objetivo_desde)
             # Aviso de candidato nuevo: cruza el cero hacia arriba y no está comprado.
             if entrada is None and cruzo_cero(vs_anterior.get(s), vs_cero) and avisados.get(s) != "candidato":
-                aviso = "CANDIDATO: arrancó sobre el cero"
+                aviso = "CANDIDATO"
                 avisados[s] = "candidato"
-                registrar(f"{s} candidato sobre el cero a {p:g} ({vs_cero:+.2f}%)")
+                registrar(f"{s} candidato: arrancó sobre el cero a {p:g} ({vs_cero:+.2f}%)")
                 print("\a", end="")
             if aviso and aviso.startswith("VENDER") and avisados.get(s) != aviso:
                 avisados[s] = aviso
@@ -264,7 +278,7 @@ def main():
                           "vs_cero": vs_cero, "vs_entrada": vs_entrada, "entrada": entrada, "aviso": aviso})
 
         filas.sort(key=lambda f: -f["vs_cero"])
-        pintar(filas, ver_todos, args.intervalo, args.objetivo, host,
+        pintar(filas, ver_todos, args.intervalo, (args.objetivo, args.objetivo_desde), host,
                ", ".join(f"{m} {c}" for m, c in cierres.items()))
         guardar_estado({"refs": refs, "pos": pos, "avisados": avisados})
 

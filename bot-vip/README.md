@@ -24,8 +24,10 @@ Para dejarlo listo **antes** de que salga la lista (la diaria la publica entre
 python3 bot-vip/monitor_vip.py --esperar-nucleo
 ```
 
-Él solito espera a que aparezca el núcleo nuevo y arranca. El **cero** de cada
-VIP es su precio en el momento en que arranca el monitor.
+Él solito espera a que se publique el núcleo del cierre de hoy (compara la fecha
+de cierre del archivo, no solo que el archivo cambie) y arranca. Si la lista ya
+salió, lánzalo sin esa opción. El **cero** de cada VIP es su precio en el momento
+en que arranca el monitor.
 
 ## Lo que ves
 
@@ -50,10 +52,14 @@ Avisos de venta (con campana) sobre lo que marcaste como comprado:
 
 - `--intervalo 5` — segundos entre lecturas (defecto 10)
 - `--objetivo 2.5` — % de ganancia para el aviso de venta (defecto 2)
+- `--objetivo-desde cero` — medir el objetivo desde el cero de referencia en vez
+  de desde tu precio de compra (defecto: desde la compra). Elige la base al lanzar:
+  si compraste ya arriba del cero, no es lo mismo +2 % desde tu compra que +2 %
+  desde el cero.
 - `--mercados cripto` — solo cripto, solo `stock`, o ambos (defecto ambos)
 
-Ojo con la comisión (~0,1 % por lado): objetivos por debajo de ~0,3 % se los comen
-las fees de ida y vuelta.
+Las comisiones de cada operación dependen de tu cuenta y del par; míralas en la
+app al ejecutar y tenlas en cuenta al fijar el objetivo.
 
 ## Si se va la luz
 
