@@ -17,3 +17,6 @@ node_modules/
 
 # Monitor: entradas generadas desde index.html al publicar Pages (la lógica vive en app/monitor.mjs).
 /monitor/
+
+# Campaña: entradas generadas desde index.html al publicar Pages.
+/campana/

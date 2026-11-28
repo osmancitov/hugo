@@ -68,6 +68,10 @@ export function generar(raiz, { escribir = true } = {}) {
   const descMonitor = 'Precios en vivo e historial de días cerrados de los activos VIP del Observatorio · solo lectura';
   hacer('monitor/', 'Monitor de VIPs · Observatorio Bursátil', descMonitor);
   for (const g of GRUPOS) hacer(`monitor/${g}/`, `${g[0].toUpperCase() + g.slice(1)} · Monitor de VIPs · Observatorio Bursátil`, descMonitor);
+  // Campaña (30/60/90 días) con direcciones limpias: /campana/, /campana/<n>d/ y /campana/<n>d/<stock|cripto>/<CÓDIGO>/.
+  const descCampana = 'Campañas de 30, 60 y 90 días de los activos del Observatorio';
+  hacer('campana/', 'Campañas · Observatorio Bursátil', descCampana);
+  for (const n of [30, 60, 90]) hacer(`campana/${n}d/`, `${n} días · Campañas · Observatorio Bursátil`, descCampana);
   const nombres = { empresas: 'Empresas', fondos: 'Fondos', cripto: 'Cripto' };
   for (const g of GRUPOS) hacer(`mercado/${g}/`, `${nombres[g]} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
   // Indicadores y tablas de barras del Balance: /mercado/indicador/<código>/ (la consulta ?lectura=… la lee el visor).
@@ -78,6 +82,7 @@ export function generar(raiz, { escribir = true } = {}) {
   for (const [m, cod] of activos(raiz)) {
     if (!CODIGO_VALIDO.test(cod)) { omitidos.push(`${m}:${cod}`); continue; }
     hacer(`mercado/${m}/${cod}/`, `${cod} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
+    for (const n of [30, 60, 90]) hacer(`campana/${n}d/${m}/${cod}/`, `${cod} · ${n} días · Campañas · Observatorio Bursátil`, descCampana);
   }
   if (escribir) {
     fs.mkdirSync(path.join(raiz, 'app'), { recursive: true });

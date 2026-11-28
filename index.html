@@ -406,7 +406,7 @@ const elBuscar = $('#buscar'); // pieza única: se reubica en cada vista, nunca 
 // Lugar de la lista guardado al entrar en un activo, para que «volver» regrese ahí.
 // Direcciones limpias de Mercado: /mercado/, /mercado/<grupo>/ y /mercado/<stock|cripto>/<código>/ (sin #).
 // RAIZ es la carpeta del sitio (con o sin /mercado/ delante). Las demás vistas siguen en #/...
-const RAIZ = location.pathname.replace(/(mercado|monitor)(\/.*)?$/, '').replace(/[^\/]*$/, '');
+const RAIZ = location.pathname.replace(/(mercado|monitor|campana)(\/.*)?$/, '').replace(/[^\/]*$/, '');
 const urlMercado = (grupo, id) => {
   if (!id) return RAIZ + 'mercado/' + (grupo ? grupo + '/' : '');
   const [t, ...c] = id.split(':');
@@ -417,8 +417,10 @@ const indicadorDeRuta = () => { const m = location.pathname.slice(RAIZ.length).m
 const irInicio = () => { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; ruta(); };
 const enMercado = () => location.pathname.startsWith(RAIZ + 'mercado');
 const enMonitor = () => location.pathname.startsWith(RAIZ + 'monitor');
+const enCampana = () => location.pathname.startsWith(RAIZ + 'campana');
+const urlCampana = (n, id) => RAIZ + 'campana/' + (n ? n + 'd/' : '') + (id ? id.split(':')[0] + '/' + encodeURIComponent(id.split(':').slice(1).join(':')) + '/' : '');
 let monSalir = () => {}; // cierra el Monitor (WebSocket y temporizadores) al dejar su ruta
-const lugarActual = () => (enMercado() ? location.pathname + location.search : location.hash);
+const lugarActual = () => (enMercado() || enCampana() ? location.pathname + location.search : location.hash);
 let rutaPrevia = location.pathname;
 let estadoLista = null;
 let origenLista = RAIZ + 'mercado/';
@@ -2853,7 +2855,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   };
   function elegir(id,desdeLista){
     sel=sel===id?null:id;
-    if(puente)puente.alElegir(sel);else history.replaceState(null,'',`#/campana/${n}d`+(sel?'/'+sel.replace(':','/'):''));
+    if(puente)puente.alElegir(sel);else {history.replaceState(null,'',urlCampana(n,sel));rutaPrevia=location.pathname;}
     pintarSel(); // la vista no se mueve al elegir, ni desde la lista ni desde las gráficas
   }
   lista.className='camp-lista';
@@ -3084,7 +3086,7 @@ async function ruta() {
   monSalir();monSalir=()=>{};
   {const enl=document.getElementById('monitor-enlace');enl.classList.remove('actual');enl.removeAttribute('title');enl.href=RAIZ+'monitor/';}
   {const monM=location.pathname.slice(RAIZ.length).match(/^monitor(?:\/(empresas|fondos|cripto))?\/?$/);if(monM){document.querySelector('.mercados').after(document.getElementById('reloj-entrada'));return rutaMonitor(monM[1]||null);}}
-  const indRuta=indicadorDeRuta(),hash=indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
+  const indRuta=indicadorDeRuta(),campM=location.pathname.slice(RAIZ.length).match(/^campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/([^\/]+))?\/?$/),hash=campM?'#/campana'+(campM[1]?'/'+campM[1]+'d':'')+(campM[2]?'/'+campM[2]+'/'+campM[3]:''):indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
@@ -3093,8 +3095,7 @@ async function ruta() {
   const mu=muA||muG, elegirGrupo=Boolean(muG&&!muG[1]); // Mercado sin grupo muestra elección directa; ventana fija a 30 días
   const g2Ruta=mu?(muA?grupoMercadoDe(muA[1]+':'+decodeURIComponent(muA[2])):muG[1]):null;
   if(mu)document.title=(muA?decodeURIComponent(muA[2])+' · ':muG[1]?{empresas:'Empresas',fondos:'Fondos',cripto:'Cripto'}[muG[1]]+' · ':'')+'Mercado · Observatorio Bursátil';else if(document.title.includes('Mercado ·'))document.title='Observatorio Bursátil';
-  const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
-  if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
+  const esBusqueda=hash==='#/buscar',mc=campM?hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/):null,esCampana=Boolean(mc);
   if(m){history.replaceState(null,'',urlMercado(null,m[1]+':'+decodeURIComponent(m[2])));rutaPrevia=location.pathname;return ruta();} // la ficha #/a/… (enlaces de las listas) abre la vista de Mercado del activo
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     history.replaceState(null,'',RAIZ);rutaPrevia=location.pathname;return ruta(); // hash desconocido: portada con dirección limpia
@@ -3115,10 +3116,10 @@ async function ruta() {
   document.querySelector('.mercados').after(relojEntrada);
   relojEntrada.hidden=true; // la hora solo aparece en la página del grupo (reloj de la vista), no en la portada ni en la elección
   if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],urlMercado(g[0]),!elegirGrupo&&g[0]===g2Ruta);}
-  if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
+  if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días',urlCampana(v),mc[1]===String(v));}
   document.getElementById('mercado-enlace').classList.toggle('actual',Boolean(mu)); // Mercado elegido queda encendido en amarillo; su enlace sigue llevando a los grupos
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),RAIZ,Boolean(mu)); // soltar el botón vuelve a la portada con dirección limpia (sin #)
-  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':urlMercado());
+  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?urlCampana():urlMercado());
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
@@ -3162,7 +3163,7 @@ document.querySelector('.tit-link').addEventListener('click', (ev) => {
   elBuscar.value = '';
   elBuscarGlobal.value = '';
   pintarBusquedaGlobal();
-  if (enMercado() || enMonitor() || location.pathname.replace(/index\.html$/, '') !== RAIZ) return; // desde Mercado lo resuelve el manejador de enlaces limpios; fuera de la portada (p. ej. Superficie) el enlace navega solo
+  if (enMercado() || enMonitor() || enCampana() || location.pathname.replace(/index\.html$/, '') !== RAIZ) return; // desde Mercado lo resuelve el manejador de enlaces limpios; fuera de la portada (p. ej. Superficie) el enlace navega solo
   ev.preventDefault(); // el logo lleva a la portada sin # y sin recargar
   if (location.hash) { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; }
   ruta();
@@ -3173,7 +3174,7 @@ document.addEventListener('click', (ev) => { // navegar dentro de Mercado sin re
   const a = ev.target.closest && ev.target.closest('a[href]');
   if (!a || a.target) return;
   const u = new URL(a.href, location.href);
-  if (u.origin !== location.origin || !(u.pathname.startsWith(RAIZ + 'mercado') || u.pathname.startsWith(RAIZ + 'monitor') || (u.pathname === RAIZ && (enMercado() || enMonitor() || location.hash))) || u.hash) return; // también la portada, sin recargar, al soltar el botón Mercado
+  if (u.origin !== location.origin || !(u.pathname.startsWith(RAIZ + 'mercado') || u.pathname.startsWith(RAIZ + 'monitor') || u.pathname.startsWith(RAIZ + 'campana') || (u.pathname === RAIZ && (enMercado() || enMonitor() || enCampana() || location.hash))) || u.hash) return; // también la portada, sin recargar, al soltar el botón Mercado
   ev.preventDefault();
   if (u.pathname + u.search === location.pathname + location.search && !location.hash) return;
   history.pushState(null, '', u.pathname + u.search); rutaPrevia = location.pathname;
