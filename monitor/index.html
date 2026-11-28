@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor VIP — Observatorio Bursátil</title>
+<style>
+  :root {
+    --fondo: #10141a;
+    --panel: #181e27;
+    --borde: #262f3b;
+    --texto: #e8edf3;
+    --tenue: #8b98a8;
+    --verde: #2ecc71;
+    --rojo: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+  }
+  header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--borde);
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .estado { color: var(--tenue); font-size: 13px; line-height: 1.5; }
+  .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--tenue); }
+  .punto.vivo { background: var(--verde); }
+  .punto.caido { background: var(--rojo); }
+  main { max-width: 720px; margin: 0 auto; padding: 8px 12px 40px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--tenue); margin: 22px 4px 6px;
+  }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+  td, th { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--borde); }
+  th { font-size: 12px; color: var(--tenue); font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  .codigo { font-weight: 700; }
+  .nombre { color: var(--tenue); font-size: 12px; }
+  .sube { color: var(--verde); }
+  .baja { color: var(--rojo); }
+  .igual { color: var(--tenue); }
+  .var { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .precio { font-variant-numeric: tabular-nums; }
+  .pie { color: var(--tenue); font-size: 12px; margin-top: 24px; line-height: 1.6; padding: 0 4px; }
+  a { color: #6ab0f3; text-decoration: none; }
+  .aviso { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 16px; color: var(--tenue); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Monitor VIP</h1>
+  <div class="estado">
+    <span id="punto" class="punto"></span><span id="conexion">iniciando…</span><br>
+    Base: primera lectura del día (00:00 UTC) del Observatorio · revisión cada 5 s<br>
+    <span id="reloj"></span>
+  </div>
+</header>
+<main>
+  <div id="aviso" class="aviso" style="display:none"></div>
+  <section id="grupos"></section>
+  <div class="pie">
+    Solo lectura. Precios en vivo de Binance por WebSocket; la referencia del día es la primera lectura
+    que guarda el Observatorio en este repositorio. Sin compras, sin ventas, sin claves.
+    <a href="../">Volver al Observatorio</a>.
+  </div>
+</main>
+<script>
+'use strict';
+
+const RAW = 'https://raw.githubusercontent.com/osmancitov/hugo/main/';
+const HOSTS_WS = ['wss://data-stream.binance.vision/stream', 'wss://stream.binance.com:9443/stream'];
+const REVISION_MS = 5000;
+const RECARGA_MS = 15 * 60 * 1000;
+
+// estado: Map codigo -> {codigo, nombre, grupo, simbolo, base, fuenteBase, precio, ultimoDato}
+const estado = new Map();
+let ws = null, indiceHost = 0, esperaReintento = 2000, temporizadorReintento = null;
+let diaUTC = hoyUTC();
+
+function hoyUTC() { return new Date().toISOString().slice(0, 10); }
+
+function fmtPrecio(n) {
+  if (!Number.isFinite(n)) return '—';
+  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  return n.toLocaleString('en-US', { maximumFractionDigits: 8 });
+}
+
+function fmtVariacion(v) {
+  if (!Number.isFinite(v)) return { texto: '—', clase: 'igual' };
+  const signo = v > 0 ? '+' : '';
+  const clase = v > 0.004 ? 'sube' : v < -0.004 ? 'baja' : 'igual';
+  const flecha = v > 0.004 ? '▲ ' : v < -0.004 ? '▼ ' : '';
+  return { texto: flecha + signo + v.toFixed(2) + ' %', clase };
+}
+
+async function traerJSON(ruta) {
+  const r = await fetch(RAW + ruta + '?v=' + Date.now());
+  if (!r.ok) throw new Error(ruta + ': HTTP ' + r.status);
+  return r.json();
+}
+
+// Lee las líneas "CODIGO ultimo: precio" de una lectura de la barra móvil.
+function preciosDeLectura(texto) {
+  const mapa = new Map();
+  for (const linea of texto.split('\n')) {
+    const m = /^([A-Z0-9]+) ultimo: ([0-9.]+)$/.exec(linea.trim());
+    if (m) mapa.set(m[1], Number(m[2]));
+  }
+  return mapa;
+}
+
+async function cargarTodo() {
+  const [nucStock, nucCripto, catStock, catCripto] = await Promise.all([
+    traerJSON('registros/nucleo/stock/actual_nucleo'),
+    traerJSON('registros/nucleo/cripto/actual_nucleo'),
+    traerJSON('registros/catalogo/stock'),
+    traerJSON('registros/catalogo/cripto'),
+  ]);
+  const infoStock = new Map(catStock.activos.map(a => [a.codigo, a]));
+  const infoCripto = new Map(catCripto.activos.map(a => [a.codigo, a]));
+
+  estado.clear();
+  for (const codigo of nucStock.nucleo) {
+    const info = infoStock.get(codigo) || {};
+    estado.set(codigo, {
+      codigo,
+      nombre: info.nombre || codigo,
+      grupo: info.tipo === 'empresa' ? 'Empresas' : 'Fondos',
+      simbolo: codigo + 'BUSDT',
+      base: null, fuenteBase: null, precio: null, ultimoDato: null,
+    });
+  }
+  for (const codigo of nucCripto.nucleo) {
+    const info = infoCripto.get(codigo) || {};
+    estado.set(codigo, {
+      codigo,
+      nombre: info.nombre || codigo,
+      grupo: 'Cripto',
+      simbolo: codigo + 'USDT',
+      base: null, fuenteBase: null, precio: null, ultimoDato: null,
+    });
+  }
+
+  // Base del día: primera lectura guardada por el Observatorio (00:00 UTC aprox.).
+  // Semilla de precio: última lectura guardada, hasta que llegue el dato en vivo.
+  const aviso = document.getElementById('aviso');
+  aviso.style.display = 'none';
+  for (const mercado of ['stock', 'cripto']) {
+    try {
+      const intra = await traerJSON('registros/intradia/' + mercado + '/' + diaUTC + '.json');
+      const primera = preciosDeLectura(intra.lecturas[0].texto);
+      const ultima = preciosDeLectura(intra.lecturas[intra.lecturas.length - 1].texto);
+      for (const a of estado.values()) {
+        if ((mercado === 'stock') !== a.simbolo.endsWith('BUSDT')) continue;
+        if (primera.has(a.codigo)) { a.base = primera.get(a.codigo); a.fuenteBase = 'observatorio'; }
+        if (ultima.has(a.codigo)) a.precio = ultima.get(a.codigo);
+      }
+    } catch (e) {
+      aviso.style.display = '';
+      aviso.textContent = 'Aún no está la primera lectura de hoy (' + diaUTC + '); la base aparece en cuanto el Observatorio la guarde o llegue la vela del día por el vivo.';
+    }
+  }
+  pintar();
+}
+
+function conectar() {
+  if (ws) { try { ws.close(); } catch (e) {} ws = null; }
+  const flujos = [];
+  for (const a of estado.values()) {
+    const s = a.simbolo.toLowerCase();
+    flujos.push(s + '@miniTicker', s + '@kline_1d');
+  }
+  const host = HOSTS_WS[indiceHost % HOSTS_WS.length];
+  indiceHost++;
+  const url = host + '?streams=' + flujos.join('/');
+  const conexion = document.getElementById('conexion');
+  conexion.textContent = 'conectando…';
+  ws = new WebSocket(url);
+  ws.onopen = () => {
+    esperaReintento = 2000;
+    conexion.textContent = 'en vivo';
+    document.getElementById('punto').className = 'punto vivo';
+  };
+  ws.onmessage = (ev) => {
+    let m;
+    try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const d = m.data;
+    if (!d || !d.s) return;
+    let a = null;
+    for (const x of estado.values()) if (x.simbolo === d.s) { a = x; break; }
+    if (!a) return;
+    if (d.e === '24hrMiniTicker') {
+      a.precio = Number(d.c);
+      a.ultimoDato = Date.now();
+    } else if (d.e === 'kline') {
+      a.precio = Number(d.k.c);
+      a.ultimoDato = Date.now();
+      if (a.base === null) { a.base = Number(d.k.o); a.fuenteBase = 'vela'; }
+      // Si la vela abierta es de un día nuevo, el día UTC cambió: recargar bases.
+      const diaVela = new Date(d.k.t).toISOString().slice(0, 10);
+      if (diaVela !== diaUTC) { diaUTC = diaVela; recargar(); }
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('punto').className = 'punto caido';
+    conexion.textContent = 'reconectando…';
+    clearTimeout(temporizadorReintento);
+    temporizadorReintento = setTimeout(conectar, esperaReintento);
+    esperaReintento = Math.min(esperaReintento * 2, 30000);
+  };
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+
+let recargando = false;
+async function recargar() {
+  if (recargando) return;
+  recargando = true;
+  try { await cargarTodo(); } catch (e) { /* se reintenta en el próximo ciclo */ }
+  recargando = false;
+}
+
+function pintar() {
+  const cont = document.getElementById('grupos');
+  cont.innerHTML = '';
+  for (const grupo of ['Empresas', 'Fondos', 'Cripto']) {
+    const filas = [...estado.values()].filter(a => a.grupo === grupo);
+    if (!filas.length) continue;
+    filas.sort((x, y) => {
+      const vx = Number.isFinite(x.base) && Number.isFinite(x.precio) ? (x.precio / x.base - 1) : -Infinity;
+      const vy = Number.isFinite(y.base) && Number.isFinite(y.precio) ? (y.precio / y.base - 1) : -Infinity;
+      return vy - vx;
+    });
+    const sec = document.createElement('section');
+    const h = document.createElement('h2');
+    h.textContent = grupo + ' (' + filas.length + ')';
+    sec.appendChild(h);
+    const tabla = document.createElement('table');
+    tabla.innerHTML = '<tr><th>Activo</th><th>Precio (USDT)</th><th>Desde 00:00 UTC</th></tr>';
+    for (const a of filas) {
+      const v = Number.isFinite(a.base) && Number.isFinite(a.precio) ? (a.precio / a.base - 1) * 100 : NaN;
+      const f = fmtVariacion(v);
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td><span class="codigo">' + a.codigo + '</span> <span class="nombre">' + a.nombre + '</span></td>'
+        + '<td class="precio">' + fmtPrecio(a.precio) + '</td>'
+        + '<td class="var ' + f.clase + '">' + f.texto + '</td>';
+      tabla.appendChild(tr);
+    }
+    sec.appendChild(tabla);
+    cont.appendChild(sec);
+  }
+  const ahora = new Date();
+  document.getElementById('reloj').textContent =
+    'Revisado ' + ahora.toLocaleTimeString('es-VE') + ' · ' + diaUTC + ' UTC';
+}
+
+(async function iniciar() {
+  try {
+    await cargarTodo();
+  } catch (e) {
+    const aviso = document.getElementById('aviso');
+    aviso.style.display = '';
+    aviso.textContent = 'No pude cargar las listas del Observatorio: ' + e.message;
+    return;
+  }
+  conectar();
+  setInterval(pintar, REVISION_MS);
+  setInterval(recargar, RECARGA_MS);
+  setInterval(() => {
+    if (hoyUTC() !== diaUTC) { diaUTC = hoyUTC(); recargar(); }
+  }, 60000);
+  pintar();
+})();
+</script>
+</body>
+</html>
