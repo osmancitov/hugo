@@ -51,6 +51,14 @@
   .pie { color: var(--tenue); font-size: 12px; margin-top: 24px; line-height: 1.6; padding: 0 4px; }
   a { color: #6ab0f3; text-decoration: none; }
   .aviso { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 16px; color: var(--tenue); font-size: 13px; }
+  .barra-fecha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 4px 0; font-size: 13px; color: var(--tenue); }
+  .barra-fecha input { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px; font: inherit; color-scheme: dark; }
+  .barra-fecha button { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .barra-fecha button[aria-pressed="true"] { border-color: #6ab0f3; color: #6ab0f3; }
+  .hist-nota { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 12px; color: var(--tenue); font-size: 13px; line-height: 1.55; }
+  .hist-nota b { color: var(--texto); font-weight: 600; }
+  .hist-nota + section h2, .var { white-space: nowrap; }
+  .etiqueta { display: inline-block; border: 1px solid var(--borde); border-radius: 4px; padding: 0 6px; font-size: 12px; color: var(--texto); }
 </style>
 </head>
 <body>
@@ -64,6 +72,12 @@
 </header>
 <main>
   <div id="aviso" class="aviso" style="display:none"></div>
+  <div class="barra-fecha">
+    <label for="fecha">Día cerrado</label>
+    <input id="fecha" type="date" min="2026-09-30" aria-label="Elegir un día cerrado del historial">
+    <button id="en-vivo" type="button" aria-pressed="true">En vivo</button>
+  </div>
+  <div id="historia" style="display:none"></div>
   <section id="grupos"></section>
   <div class="pie">
     Solo lectura. Precios en vivo de Binance por WebSocket; la referencia del día es la primera lectura
@@ -254,6 +268,7 @@ async function recargar() {
 }
 
 function pintar() {
+  if (diaHistorial) return; // el historial no se pisa con el repintado en vivo
   const cont = document.getElementById('grupos');
   cont.innerHTML = '';
   for (const grupo of ['Empresas', 'Fondos', 'Cripto']) {
@@ -320,6 +335,131 @@ setInterval(() => {
     try { ws.close(); } catch (e) {}
   }
 }, 5000);
+
+// ---- Historial de días cerrados (registros/historial-monitor) ----
+// Jornada D = lista VIP núcleo calculada al cierre de D-1 + variación de la vela diaria de D (00:00 a 23:59:59 UTC).
+let diaHistorial = null;
+const cacheHist = new Map();
+let catalogosHist = null;
+
+async function mesHistorial(mercado, iso) {
+  const mes = iso.slice(2, 4) + iso.slice(5, 7), k = mercado + mes;
+  if (!cacheHist.has(k)) cacheHist.set(k, traerJSON('registros/historial-monitor/' + mercado + '/' + mes));
+  try { return await cacheHist.get(k); } catch (e) { cacheHist.delete(k); throw e; }
+}
+
+function enlaceFicha(mercado, codigo, texto) {
+  const a = document.createElement('a');
+  a.href = '../mercado/' + mercado + '/' + encodeURIComponent(codigo) + '/';
+  a.textContent = texto;
+  return a;
+}
+
+async function mostrarHistorial(iso) {
+  const caja = document.getElementById('historia');
+  const barraVivo = document.getElementById('en-vivo');
+  diaHistorial = iso;
+  barraVivo.setAttribute('aria-pressed', 'false');
+  document.getElementById('grupos').style.display = 'none';
+  caja.style.display = '';
+  caja.textContent = 'Cargando ' + iso + '…';
+  try {
+    const idx = await traerJSON('registros/historial-monitor/stock/indice');
+    if (iso < idx.desde || iso > idx.hasta) throw new Error('Sin historial para ' + iso + ' (hay del ' + idx.desde + ' al ' + idx.hasta + ').');
+    if (!catalogosHist) {
+      const [cs, cc] = await Promise.all([traerJSON('registros/catalogo/stock'), traerJSON('registros/catalogo/cripto')]);
+      catalogosHist = { stock: new Map(cs.activos.map(a => [a.codigo, a])), cripto: new Map(cc.activos.map(a => [a.codigo, a])) };
+    }
+    const datos = {};
+    for (const m of ['stock', 'cripto']) datos[m] = (await mesHistorial(m, iso)).dias[iso];
+    if (diaHistorial !== iso) return; // el usuario cambió de día mientras cargaba
+    if (!datos.stock || !datos.cripto) throw new Error('No hay jornada guardada para ' + iso + '.');
+    caja.textContent = '';
+    const origenes = new Set([datos.stock.lista.origen, datos.cripto.lista.origen]);
+    const nota = document.createElement('div');
+    nota.className = 'hist-nota';
+    const lineas = [
+      ['Jornada ', iso + ' (UTC)', ', cómo quedó al cierre del día.'],
+      ['Lista: ', 'VIP al cierre del ' + datos.stock.lista.cierre, ', el día anterior a la jornada (no usa datos del propio día).'],
+      ['Procedencia de la lista: ', origenes.size === 1 && origenes.has('guardado') ? 'guardada' : 'reconstruida', origenes.size === 1 && origenes.has('guardado')
+        ? ' (núcleo publicado ese cierre).'
+        : ' hoy con la regla actual de 54 campañas (fijada el 27-nov-2026) y las velas guardadas. Antes no existía esa lista en el Monitor.'],
+      ['Rendimiento: ', 'vela diaria guardada', ', de las 00:00 a las 23:59:59 UTC.'],
+      ['Resultado del día: ', 'acciones y fondos ' + datos.stock.resumen.suben + ' suben, ' + datos.stock.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.stock.resumen.media).texto + ')', '; cripto ' + datos.cripto.resumen.suben + ' suben, ' + datos.cripto.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.cripto.resumen.media).texto + '). Media simple de las variaciones de la lista.'],
+      ['Universo: ', 'activos del catálogo con velas guardadas', '; no es el universo completo de Binance.'],
+    ];
+    for (const [a, b, c] of lineas) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(a));
+      const strong = document.createElement('b'); strong.textContent = b; d.appendChild(strong);
+      d.appendChild(document.createTextNode(c));
+      nota.appendChild(d);
+    }
+    caja.appendChild(nota);
+    const grupos = { Empresas: [], Fondos: [], Cripto: [] };
+    for (const mercado of ['stock', 'cripto']) {
+      for (const [codigo, ap, apertura, cierre, variacion] of datos[mercado].activos) {
+        const info = catalogosHist[mercado].get(codigo) || {};
+        const g = mercado === 'cripto' ? 'Cripto' : info.tipo === 'empresa' ? 'Empresas' : 'Fondos';
+        grupos[g].push({ mercado, codigo, nombre: info.nombre || codigo, ap, cierre, variacion });
+      }
+    }
+    for (const g of ['Empresas', 'Fondos', 'Cripto']) {
+      const filas = grupos[g];
+      if (!filas.length) continue;
+      filas.sort((x, y) => y.variacion - x.variacion);
+      const mercado = g === 'Cripto' ? 'cripto' : 'stock';
+      const sec = document.createElement('section');
+      const h = document.createElement('h2');
+      h.textContent = g + ' (' + filas.length + ')';
+      sec.appendChild(h);
+      const tabla = document.createElement('table');
+      const cab = document.createElement('tr');
+      for (const t of ['Activo', 'Av.', 'Cierre (USDT)', 'Día']) { const th = document.createElement('th'); th.textContent = t; cab.appendChild(th); }
+      tabla.appendChild(cab);
+      for (const f of filas) {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td');
+        const c = enlaceFicha(f.mercado, f.codigo, f.codigo); c.className = 'codigo';
+        td1.appendChild(c);
+        const nm = document.createElement('span'); nm.className = 'nombre'; nm.textContent = ' ' + f.nombre; td1.appendChild(nm);
+        const td2 = document.createElement('td'); td2.textContent = f.ap === 54 ? '1' : f.ap >= 54 ? '1' : ('.' + String(Math.round(f.ap / 54 * 100)).padStart(2, '0'));
+        const td3 = document.createElement('td'); td3.className = 'precio'; td3.textContent = fmtPrecio(f.cierre);
+        const v = fmtVariacion(f.variacion);
+        const td4 = document.createElement('td'); td4.className = 'var ' + v.clase; td4.textContent = v.texto;
+        tr.append(td1, td2, td3, td4); tabla.appendChild(tr);
+      }
+      sec.appendChild(tabla);
+      caja.appendChild(sec);
+    }
+    if (datos.stock.resumen.suben + datos.stock.resumen.bajan + datos.stock.resumen.iguales === 0 && datos.stock.activos.length === 0) {
+      const d = document.createElement('div'); d.className = 'aviso'; d.textContent = 'Sin acciones ni fondos en la lista de ese día.'; caja.appendChild(d);
+    }
+    document.getElementById('reloj').textContent = 'Historial: ' + iso + ' UTC (día cerrado)';
+  } catch (e) {
+    caja.textContent = '';
+    const d = document.createElement('div'); d.className = 'aviso'; d.textContent = e.message; caja.appendChild(d);
+  }
+}
+
+function volverEnVivo() {
+  diaHistorial = null;
+  document.getElementById('en-vivo').setAttribute('aria-pressed', 'true');
+  document.getElementById('fecha').value = '';
+  document.getElementById('historia').style.display = 'none';
+  document.getElementById('grupos').style.display = '';
+  pintar();
+}
+
+(async function iniciarHistorial() {
+  const campo = document.getElementById('fecha');
+  try {
+    const idx = await traerJSON('registros/historial-monitor/stock/indice');
+    campo.min = idx.desde; campo.max = idx.hasta;
+  } catch (e) { campo.disabled = true; campo.title = 'Historial no disponible'; }
+  campo.addEventListener('change', () => { if (campo.value) mostrarHistorial(campo.value); else volverEnVivo(); });
+  document.getElementById('en-vivo').addEventListener('click', volverEnVivo);
+})();
 
 (async function iniciar() {
   try {
