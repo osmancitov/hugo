@@ -67,7 +67,8 @@
   <section id="grupos"></section>
   <div class="pie">
     Solo lectura. Precios en vivo de Binance por WebSocket; la referencia del día es la primera lectura
-    que guarda el Observatorio en este repositorio. Sin compras, sin ventas, sin claves.
+    que guarda el Observatorio en este repositorio (si falta, la apertura de la vela de las 00:00 UTC de Binance).
+    Sin compras, sin ventas, sin claves.
     <a href="../">Volver al Observatorio</a>.
   </div>
 </main>
@@ -166,6 +167,28 @@ async function cargarTodo() {
     } catch (e) {
       aviso.style.display = '';
       aviso.textContent = 'Aún no está la primera lectura de hoy (' + diaUTC + '); la base aparece en cuanto el Observatorio la guarde o llegue la vela del día por el vivo.';
+    }
+  }
+  pintar();
+  rellenarBasesPorVela();
+}
+
+// Para los activos sin base en el registro del Observatorio, intenta la vela diaria de
+// Binance (apertura 00:00 UTC) por REST. Si el navegador no puede leer esa API (CORS o
+// ubicación), no pasa nada: la misma vela llega por el vivo en cuanto haya una operación.
+async function rellenarBasesPorVela() {
+  const HOSTS_REST = ['https://api.binance.com', 'https://data-api.binance.vision'];
+  for (const a of estado.values()) {
+    if (a.base !== null) continue;
+    for (const host of HOSTS_REST) {
+      try {
+        const r = await fetch(host + '/api/v3/klines?symbol=' + a.simbolo + '&interval=1d&limit=1');
+        if (!r.ok) break;
+        const k = await r.json();
+        const apertura = Number(k?.[0]?.[1]);
+        if (Number.isFinite(apertura) && apertura > 0) { a.base = apertura; a.fuenteBase = 'vela'; }
+        break;
+      } catch (e) { /* prueba el siguiente host */ }
     }
   }
   pintar();
