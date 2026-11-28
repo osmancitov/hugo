@@ -2799,8 +2799,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cHor=document.createElement('div'),cHorPC=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
   cEsp.className='camp-caja';cHor.className='camp-caja';cHorPC.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct,cHorPC]:[]),cEsp,...(puente?[cHor]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
-  if(puente){cAct.style.minHeight=Math.ceil((destino.clientWidth||innerWidth)*0.5+36)+'px';cAct.classList.add('camp-vip-series');}
+  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cHor,cHorPC]:[cEsp]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
   // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
@@ -2827,13 +2826,12 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   }
   const pintarSel=()=>{
     const sv=puente?recortarSerie(s,n):s;
-    if(puente)graficaEvolucionCampana(cEsp,sv,u,sel,elegir,g2);else graficaEspaguetis(cEsp,sv,sel,elegir,false);
+    if(!puente)graficaEspaguetis(cEsp,sv,sel,elegir,false); // en Mercado ya no va Evolución de campaña: la sustituyen los Horizontes
     pintarVar();
     pintarHor();
     graficaCampo(cCuad,u,sel,elegir,Boolean(puente),g2);
     if(puente&&sel){const a=u.clasificados.find(q=>q.id===sel),col=a&&({premium:'#6fbf8a',potentes:'#e3b341',constantes:'#7fb2e5'})[a.grupo];if(col){for(const p of cEsp.querySelectorAll('.camp-lin.camp-sel'))p.style.stroke=col;for(const p of cCuad.querySelectorAll('.camp-cuad-pto.camp-sel'))p.style.stroke='#000';}}
-    if(puente){const grupos=Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));graficaActivosCampana(cAct,sv,grupos,sel);}
-    else {cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,false);}
+    if(!puente){cAct.hidden=!sel;if(sel)graficaActivoCampana(cAct,sv,sel,false);}
     for(const [id,a] of filas)a.classList.toggle('resaltado',id===sel);
   };
   function elegir(id,desdeLista){
@@ -2994,7 +2992,13 @@ function vistaMercado(inicial=null,dias=90,grupo2='empresas'){
       mx.setAttribute('aria-label','Categorías del activo por campaña: '+(lit.join(', ')||'ninguna (sin Premium, Potentes ni Constantes)'));
       if(!lit.length)mx.title='Sin Premium, Potentes ni Constantes en 30, 60 o 90 días';
     }).catch(()=>{});
-    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{sinGrafica:true});}};
+    const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{sinGrafica:true});
+    // Activo del catálogo que no es VIP actual: su ficha se abre igual (la lista VIP decide quién aparece, no qué se puede estudiar) y se avisa sin incluirlo en la selección.
+    const avisarNoVIP=(intentos=0)=>{if(sel!==id||!cFicha.isConnected)return;const filas=cLista.querySelectorAll('.activo-fila[data-id]');
+      if(!filas.length){if(intentos<40)setTimeout(()=>avisarNoVIP(intentos+1),250);return;}
+      if([...filas].some(f=>f.dataset.id===id)||cFicha.querySelector('.aviso-no-vip'))return;
+      const n=Object.assign(document.createElement('p'),{className:'camp-sub aviso-no-vip',textContent:r.join(':')+' no está entre los VIP actuales: se muestra su ficha sin incluirlo en la selección.'});cFicha.prepend(n);};
+    avisarNoVIP();}};
   const elegido=(id,origen)=>{
     sel=id;history.replaceState(null,'',urlMercado(grupo2,id));rutaPrevia=location.pathname;document.title=(id?id.split(':').slice(1).join(':'):{empresas:'Empresas',fondos:'Fondos',cripto:'Cripto'}[grupo2])+' · Mercado · Observatorio Bursátil';
     pintarFicha();

@@ -83,10 +83,12 @@ test('Mercado: sin título "Campaña de N días" ni nota "Trazada en vivo" repet
   assert.match(html, /if \(!en\) pie\.append\(nota\)/);
 });
 
-test('Mercado: el espagueti pasa a evolución de Campaña de los VIP, eje log común y referencia 1; campo y leyenda sin Rezagados', () => {
+test('Mercado: Evolución de campaña y Potencia y constancia se retiraron (sustituidas por los Horizontes, 28-nov-2026); campo y leyenda sin Rezagados', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /function graficaEvolucionCampana\(caja,s,u,seleccion,alElegir,g2=null\)/);
-  assert.match(html, /if\(puente\)graficaEvolucionCampana\(cEsp,sv,u,sel,elegir,g2\);else graficaEspaguetis\(cEsp,sv,sel,elegir,false\)/);
+  assert.ok(html.includes('if(!puente)graficaEspaguetis(cEsp,sv,sel,elegir,false);')); // solo las páginas originales de Campaña
+  assert.ok(!html.includes('graficaEvolucionCampana(cEsp,')); // en Mercado ya no se pinta
+  assert.ok(!html.includes('graficaActivosCampana(cAct,'));
   assert.match(html, /!limpio\|\|NUCLEO\.ids\.has\(a\.id\)/);
   assert.match(html, /if\(limpio&&g==='rezagados'\)continue/);
 });

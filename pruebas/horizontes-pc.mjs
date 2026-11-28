@@ -5,7 +5,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('Horizontes de potencia y constancia: un panel bajo Horizontes de campaña con los mismos datos',()=>{
  assert.ok(html.includes('function graficaHorizontesPCCampana('));
  assert.ok(html.includes('graficaHorizontesPCCampana(cHorPC,datosHor,gruposHor,sel,elegir)'));
- assert.ok(html.includes('...(puente?[cAct,cHorPC]:[]),cEsp,...(puente?[cHor]:[])'));
+ assert.ok(html.includes('...(puente?[cHor,cHorPC]:[cEsp])'));
  assert.ok(html.includes('return {fin,perfiles,perfP,perfC};'));
 });
 test('P y C se guardan como en nucleo.mjs y la duración sin bajas no se dibuja',()=>{
