@@ -3060,6 +3060,11 @@ async function rutaMonitor(grupo) {
   document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor de VIPs · Observatorio Bursátil';
   app.replaceChildren();
   const caja=document.createElement('div');app.append(caja);
+  if(!grupo){ // Monitor sin grupo: no muestra activos ni abre fuentes hasta que se elige Empresas, Fondos o Cripto (usuario, Slack 1795899268.190249)
+    const t=document.createElement('h1');t.textContent='Monitor de VIPs';t.style.cssText='font-size:18px;margin:0 0 .5rem';
+    const p=Object.assign(document.createElement('p'),{className:'estado monitor-elegir',textContent:'Elige Empresas, Fondos o Cripto para ver sus activos, en vivo o de un día cerrado.'});
+    caja.append(t,p);return;
+  }
   const mod=await import(RAIZ+'app/monitor.mjs?v=1');
   if(!caja.isConnected)return; // otra ruta tomó la página mientras cargaba el módulo
   const dia=new URLSearchParams(location.search).get('dia');
