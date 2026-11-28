@@ -102,6 +102,8 @@ a:hover { text-decoration: underline; }
 .camp-rej { stroke: var(--borde); stroke-width: 1; }
 .camp-dia { stroke: var(--borde); stroke-width: 1; stroke-opacity: .5; }
 .camp-eje { fill: var(--tenue); font-size: 11px; }
+.camp-marca { fill: var(--tenue); }
+.camp-borde { fill: var(--tenue); font-size: 9px; }
 .camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .12; stroke-width: 1; pointer-events: none; }
 .camp-lin.camp-sel { stroke: #fff3cf; stroke-opacity: 1; stroke-width: 2.6; }
 .camp-hit { fill: none; stroke: transparent; stroke-width: 7; cursor: pointer; }
@@ -2558,13 +2560,23 @@ async function cargarVariacionCampana(n, u, fechas, g2 = null) {
 function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
   const { fechas, series } = datos, N = fechas.length;
   const W = 720, H = 420, L = 44, R = 10, T = 10, B = 28;
-  // Escala fiel y simétrica: el marco abarca al valor más lejano, sin recortar ninguna curva; el cero queda al centro.
+  // Escala simétrica con el cero al centro. Si el valor más lejano triplica el rango donde cae el 95 %
+  // de los puntos (piso ±15), aplastaría a las demás curvas: el marco se queda en ese rango legible y
+  // cada valor que se sale lleva una marca en el borde con su porcentaje real, sin tocar los datos
+  // (usuario, audio 27-nov-2026). Es el trato que ya tenía la radiografía individual: triángulo en el
+  // borde y rótulo con el valor, escalonado para que los rótulos no se monten.
+  const vals = [];
+  for (const id in series) for (const v of series[id]) if (v !== null) vals.push(Math.abs(v));
   let m = 5;
-  for (const id in series) for (const v of series[id]) if (v !== null && Math.abs(v) > m) m = Math.abs(v);
+  for (const v of vals) if (v > m) m = v;
   m = Math.ceil(m / 5) * 5;
+  const p95 = vals.length ? vals.slice().sort((a, b) => a - b)[Math.floor(0.95 * (vals.length - 1))] : 0;
+  const banda = Math.max(15, Math.ceil(p95 / 5) * 5);
+  const acotada = m > 3 * banda;
+  if (acotada) m = banda;
   const x = (i) => L + (N > 1 ? (i * (W - L - R)) / (N - 1) : (W - L - R) / 2);
   const y = (v) => T + ((m - v) / (2 * m)) * (H - T - B);
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'camp-svg', role: 'img', 'aria-label': 'Variación diaria de cada activo de la campaña en cada jornada' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'camp-svg', role: 'img', 'aria-label': 'Variación diaria de cada activo de la campaña en cada jornada' + (acotada ? '; los valores que se salen del rango llevan su porcentaje real en el borde' : '') });
   // Regla cada 5 %, como en el plano de atrás del relieve; el cero va con la línea marcada.
   for (let v = -m; v <= m; v += 5) {
     svg.append(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v === 0 ? 'camp-uno' : 'camp-rej' }));
@@ -2575,7 +2587,10 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
   [0, N - 1].forEach((i, k) => { if (k && i === 0) return; const t = svgEl('text', { x: x(i), y: H - 8, 'text-anchor': k ? 'end' : 'start', class: 'camp-eje' }); t.textContent = fechaLegibleUTC(fechas[i]); svg.append(t); });
   separadoresDia(svg,x,N,T,H,B);
   const COL = { premium: '#6fbf8a', potentes: '#e3b341', constantes: '#7fb2e5' };
-  const capa = svgEl('g'), cima = svgEl('g'); svg.append(capa, cima);
+  const recorte = 'recorte-var-' + (graficaVariacionEspagueti.recorte = (graficaVariacionEspagueti.recorte || 0) + 1);
+  svg.append(svgEl('clipPath', { id: recorte }, [svgEl('rect', { x: L, y: T, width: W - L - R, height: H - T - B })]));
+  const lienzo = svgEl('g', { 'clip-path': `url(#${recorte})` }); // las curvas quedan recortadas al marco, como en la radiografía
+  const capa = svgEl('g'), cima = svgEl('g'); lienzo.append(capa, cima); svg.append(lienzo);
   for (const id of Object.keys(series)) {
     const d = trazoConHuecos(series[id].map((v, i) => (v === null ? null : [x(i), y(v)])));
     if (!d) continue;
@@ -2586,6 +2601,33 @@ function graficaVariacionEspagueti(caja, datos, grupos, seleccion, alElegir) {
     g.append(lin);
     const hit = svgEl('path', { d, class: 'camp-hit', 'data-id': id });
     const ti = svgEl('title'); ti.textContent = etiquetaActivo(id); hit.append(ti); g.append(hit);
+  }
+  if (acotada) {
+    // Marcas de borde: triángulo del color de la curva apuntando hacia el valor y rótulo con el
+    // porcentaje real, en filas hacia adentro con separación mínima para que no se monten.
+    const fuera = [];
+    for (const id of Object.keys(series)) series[id].forEach((v, i) => { if (v !== null && Math.abs(v) > m) fuera.push({ id, i, v }); });
+    fuera.sort((a, b) => a.i - b.i || Math.abs(b.v) - Math.abs(a.v));
+    const marcas = svgEl('g'), filas = { arriba: [], abajo: [] }, MIN_DX = 56, PASO = 13;
+    for (const p of fuera) {
+      const arriba = p.v > 0, ym = arriba ? T : H - B, xi = x(p.i);
+      const tri = arriba
+        ? `${xi.toFixed(1)},${ym - 0.5} ${(xi - 5).toFixed(1)},${ym + 8.5} ${(xi + 5).toFixed(1)},${ym + 8.5}`
+        : `${xi.toFixed(1)},${ym + 0.5} ${(xi - 5).toFixed(1)},${ym - 8.5} ${(xi + 5).toFixed(1)},${ym - 8.5}`;
+      const marca = svgEl('polygon', { points: tri, class: 'camp-marca' });
+      const col = COL[grupos[p.id]];
+      if (col) marca.style.fill = col;
+      marcas.append(marca);
+      const filasB = arriba ? filas.arriba : filas.abajo;
+      let fila = filasB.findIndex((ux) => xi - ux > MIN_DX);
+      if (fila === -1) { fila = filasB.length; filasB.push(-Infinity); }
+      filasB[fila] = xi;
+      const tx = Math.max(L + 26, Math.min(W - R - 26, xi));
+      const t = svgEl('text', { x: tx, y: arriba ? ym + 20 + fila * PASO : ym - 11 - fila * PASO, 'text-anchor': 'middle', class: 'camp-borde' });
+      t.textContent = (arriba ? '+' : '−') + Math.abs(p.v).toFixed(1).replace('.', ',') + ' %';
+      marcas.append(t);
+    }
+    svg.append(marcas);
   }
   svg.addEventListener('click', (ev) => { const id = ev.target.dataset && ev.target.dataset.id; if (id) alElegir(id); });
   const tit = document.createElement('h3'); tit.className = 'camp-tit'; tit.textContent = 'Variación diaria'; // sin el período: las fechas de inicio y fin ya se ven en la gráfica (26-nov-2026, audio)
