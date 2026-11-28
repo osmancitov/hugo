@@ -146,10 +146,8 @@ test('revelado progresivo: entrada limpia, rankings e Indicadores por mercado', 
   assert.match(visor, /<nav class="mercados" aria-label="Mercados">/);
   assert.match(visor, /id="mercado-enlace"/);
   assert.match(visor, /navCat.hidden=true;navV.hidden=true/);
-  assert.match(visor, /botonNav\(navCat,'Empresas'/);
-  assert.match(visor, /botonNav\(navCat,'Fondos'/);
-  assert.match(visor, /botonNav\(navCat,'Indicadores'/);
-  assert.match(visor, /botonNav\(navV,'Indicadores'/);
+  assert.doesNotMatch(visor, /botonNav\(navV,/); // botones #/stock heredados retirados
+  assert.doesNotMatch(visor, /botonNav\(navCat,'Empresas','#\/stock/);
   assert.match(visor, /vistaIndicadoresMercado\(mercado\)/);
   assert.match(visor, /montarRachas\(seccion,TODOS/);
   assert.doesNotMatch(visor, /montarPersistencia/);

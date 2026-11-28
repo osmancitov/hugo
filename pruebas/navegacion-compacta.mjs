@@ -7,7 +7,7 @@ test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>
  assert.match(html,/document\.querySelector\('\.mercados'\)\.after\(relojEntrada\)/);
   assert.match(html,/relojEntrada\.hidden=true;/); // la hora solo aparece en la página del grupo
  assert.match(html,/contraerNavegacion\(navCat,/);
- assert.match(html,/contraerNavegacion\(navV,ranking,/);
+ assert.doesNotMatch(html,/contraerNavegacion\(navV,/); // los botones #/stock heredados se retiraron
  assert.match(html,/a.hidden=!a.classList.contains\('actual'\)&&!\(conservarMercado&&a.id==='mercado-enlace'\)/);
  assert.match(html,/a.href=volver/);
  assert.match(html,/rot.hidden=true/);

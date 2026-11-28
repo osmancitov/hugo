@@ -108,6 +108,7 @@ a:hover { text-decoration: underline; }
 .camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .12; stroke-width: 1; pointer-events: none; }
 .camp-lin.camp-sel { stroke: #fff3cf; stroke-opacity: 1; stroke-width: 2.6; }
 .camp-sinbajas { fill: var(--texto); }
+.camp-k-tri { color: var(--texto); font-size: .7rem; margin-left: .6rem; }
 .camp-hit { fill: none; stroke: transparent; stroke-width: 7; cursor: pointer; }
 .camp-hit:hover { stroke: rgba(255,243,207,.35); }
 .camp-ejes, .camp-ley { color: var(--tenue); font-size: .8rem; margin: .35rem 0 0; }
@@ -344,7 +345,7 @@ document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(loca
 <div id="reloj-entrada" class="superficie-reloj" hidden></div>
 <nav class="mercados" aria-label="Mercados"><a href="mercado/" id="mercado-enlace">Mercado</a><a href="monitor/">Monitor</a><a href="cuenta/">Cimiento</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
-<nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
+<nav class="vistas" aria-label="Vistas del mercado" hidden></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
 <label for="buscar-global">Buscar en todo el catálogo</label>
 <input id="buscar-global" type="search" placeholder="Código o nombre: empresas, fondos y criptos…" autocomplete="off" aria-controls="resultados-global">
@@ -1153,7 +1154,7 @@ async function vistaTablaBarra(clave, instante = null) {
 // en: contenedor cuando la superficie va dentro de la página de Indicadores; barraCaja: donde van las tres barras de la lectura elegida.
 async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
   if (!en) app.replaceChildren();
-  const volver = Object.assign(document.createElement('a'), { className: 'volver', href: '#/stock', textContent: 'volver' });
+  const volver = Object.assign(document.createElement('a'), { className: 'volver', href: urlMercado(), textContent: 'volver' });
   const ficha = Object.assign(document.createElement('div'), { className: 'ficha' });
   const titulo = Object.assign(document.createElement(en ? 'h2' : 'h1'), { textContent: en ? 'Relieve del día' : 'Superficie 3D', ...(en ? { className: 'tit-vip' } : {}) }); // en Mercado: blanco y grande como «Activos VIP» y «Balance diario»; encabeza el resto de la página (26-nov-2026, audio)
   if (en) ficha.classList.add('ficha-relieve');
@@ -2484,7 +2485,7 @@ function graficaHorizontesPCCampana(caja,datos,grupos,seleccion,alElegir){
   svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
   const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent='Horizontes de potencia y constancia';
   const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`Cierre en ${fechaLegibleUTC(fin)}; duración de la campaña de 60 a 7 días.`;
-  const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia';
+  const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia <span class="camp-k-tri">▲</span> Duración sin bajas (valor no finito)';
   caja.replaceChildren(tit,sub,svg,ley);
   trazadoAlEntrar(caja,svg,'.camp-lin');
 }
@@ -3061,18 +3062,9 @@ async function ruta() {
   relojEntrada.hidden=true; // la hora solo aparece en la página del grupo (reloj de la vista), no en la portada ni en la elección
   if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],urlMercado(g[0]),!elegirGrupo&&g[0]===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
-  if(!fuera&&mercado==='stock'){
-    navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
-  }
-  if(!fuera&&((mercado==='stock'&&categoria)||mercado==='cripto')){
-    navV.hidden=false;const base='#/'+mercado+(categoria?'/'+categoria:'');
-    for(const [v,t]of [['capitalizacion','Capitalización'],['variacion','Variación']])botonNav(navV,t,base+'/'+v,ranking===v);
-    if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
-  }
   document.getElementById('mercado-enlace').classList.toggle('actual',Boolean(mu)); // Mercado elegido queda encendido en amarillo; su enlace sigue llevando a los grupos
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),RAIZ,Boolean(mu)); // soltar el botón vuelve a la portada con dirección limpia (sin #)
-  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?urlMercado():'#/stock');
-  contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
+  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':urlMercado());
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');

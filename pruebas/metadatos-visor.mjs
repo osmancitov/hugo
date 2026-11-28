@@ -17,9 +17,9 @@ test('superficie tiene entrada estática con metadatos propios antes de ejecutar
  assert.match(head, /og:title" content="Superficie 3D · Observatorio Bursátil/);
  assert.match(head, /og:image" content="https:\/\/osmancitov.github.io\/hugo\/superficie-og.jpg/);
  assert.match(head, /og:url" content="https:\/\/osmancitov.github.io\/hugo\/superficie.html/);
- assert.match(html, /if \(!location.hash\) history.replaceState/);
+ assert.match(html, /if \(!enMercado\(\)\) history.replaceState\(null, '', urlIndicador\('iceberg-stock\/superficie'/);
+ assert.ok(!html.includes('index.html#/stock')); // sin hashes en la entrada generada
  assert.match(html, /href="\.\/"/);
- assert.match(html, /href: 'index.html#\/stock'/);
  assert.ok(!html.includes('enlaceSuperficie')); // sin enlaces entre las vistas (decisión del usuario, 21-nov-2026)
  assert.doesNotMatch(head, /twitter:/);
  assert.equal((html.match(/function vistaSuperficie\(/g) || []).length, 1);
