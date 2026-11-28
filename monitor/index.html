@@ -58,6 +58,8 @@
   .hist-nota { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 12px; color: var(--tenue); font-size: 13px; line-height: 1.55; }
   .hist-nota b { color: var(--texto); font-weight: 600; }
   .hist-nota + section h2, .var { white-space: nowrap; }
+  td.rango { white-space: nowrap; line-height: 1.2; }
+  td.rango svg { display: block; margin-left: auto; }
   .etiqueta { display: inline-block; border: 1px solid var(--borde); border-radius: 4px; padding: 0 6px; font-size: 12px; color: var(--texto); }
 </style>
 </head>
@@ -83,7 +85,7 @@
   <div class="pie">
     Solo lectura. Precios en vivo de Binance por WebSocket; la referencia del día es la primera lectura
     que guarda el Observatorio en este repositorio (si falta, la apertura de la vela de las 00:00 UTC de Binance).
-    Sin compras, sin ventas, sin claves.
+    Extremos: máximo y mínimo de la vela diaria de Binance (desde 00:00 UTC) frente a la referencia de inicio, que queda fija; solo se amplían. Pueden diferir unos centavos si la referencia es la primera lectura y no la apertura de la vela. Sin compras, sin ventas, sin claves.
     <a href="../">Volver al Observatorio</a>.
   </div>
 </main>
@@ -152,7 +154,7 @@ async function cargarTodo() {
       nombre: info.nombre || codigo,
       grupo: info.tipo === 'empresa' ? 'Empresas' : 'Fondos',
       simbolo: codigo + 'BUSDT',
-      base: null, fuenteBase: null, precio: null, ultimoDato: null,
+      base: null, fuenteBase: null, precio: null, ultimoDato: null, alto: null, bajo: null,
     });
   }
   for (const codigo of nucCripto.nucleo) {
@@ -162,7 +164,7 @@ async function cargarTodo() {
       nombre: info.nombre || codigo,
       grupo: 'Cripto',
       simbolo: codigo + 'USDT',
-      base: null, fuenteBase: null, precio: null, ultimoDato: null,
+      base: null, fuenteBase: null, precio: null, ultimoDato: null, alto: null, bajo: null,
     });
   }
 
@@ -241,9 +243,12 @@ function conectar() {
     if (d.e === '24hrMiniTicker') {
       a.precio = Number(d.c);
       a.ultimoDato = Date.now();
+      ampliarExtremos(a, a.precio, a.precio);
     } else if (d.e === 'kline') {
       a.precio = Number(d.k.c);
       a.ultimoDato = Date.now();
+      // máximo y mínimo de la vela del día (desde 00:00 UTC): Binance los conserva, sobreviven a recargar la página
+      ampliarExtremos(a, Number(d.k.h), Number(d.k.l));
       if (a.base === null) { a.base = Number(d.k.o); a.fuenteBase = 'vela'; }
       // Si la vela abierta es de un día nuevo, el día UTC cambió: recargar bases.
       const diaVela = new Date(d.k.t).toISOString().slice(0, 10);
@@ -268,6 +273,27 @@ async function recargar() {
   recargando = false;
 }
 
+// Extremos del día: solo se amplían (el precio puede retroceder, el extremo no).
+function ampliarExtremos(a, alto, bajo) {
+  if (Number.isFinite(alto) && alto > 0 && (a.alto === null || alto > a.alto)) a.alto = alto;
+  if (Number.isFinite(bajo) && bajo > 0 && (a.bajo === null || bajo < a.bajo)) a.bajo = bajo;
+}
+// Mini vela horizontal: línea central = referencia de inicio (fija); mecha = extremos; punto = precio actual.
+function svgRango(a) {
+  if (!(a.base > 0) || a.alto === null || a.bajo === null) return null;
+  const alto = Math.max(a.alto, a.precio || 0, a.base), bajo = Math.min(a.bajo, a.precio || Infinity, a.base);
+  const up = (alto / a.base - 1) * 100, dn = (bajo / a.base - 1) * 100;
+  const W = 96, m = 4, rango = (up - dn) || 1;
+  const x = v => (m + (v - dn) / rango * (W - 2 * m)).toFixed(1);
+  const x0 = x(0), pr = Number.isFinite(a.precio) ? (a.precio / a.base - 1) * 100 : 0, xp = x(pr);
+  const col = pr >= 0 ? 'var(--verde)' : 'var(--rojo)';
+  return { up, dn, html: '<svg width="' + W + '" height="16" viewBox="0 0 ' + W + ' 16" aria-hidden="true">' +
+    '<line x1="' + x(dn) + '" x2="' + x(up) + '" y1="8" y2="8" stroke="#8a93a0" stroke-width="2"/>' +
+    '<rect x="' + Math.min(x0, xp) + '" y="4" width="' + Math.max(Math.abs(xp - x0), 1) + '" height="8" fill="' + col + '" opacity=".75"/>' +
+    '<line x1="' + x0 + '" x2="' + x0 + '" y1="1" y2="15" stroke="#e6e9ee" stroke-width="1.5"/>' +
+    '<circle cx="' + xp + '" cy="8" r="2.5" fill="' + col + '"/></svg>' };
+}
+
 function pintar() {
   if (diaHistorial) return; // el historial no se pisa con el repintado en vivo
   const cont = document.getElementById('grupos');
@@ -285,7 +311,7 @@ function pintar() {
     h.textContent = grupo + ' (' + filas.length + ')';
     sec.appendChild(h);
     const tabla = document.createElement('table');
-    tabla.innerHTML = '<tr><th>Activo</th><th>Precio (USDT)</th><th>Desde 00:00 UTC</th></tr>';
+    tabla.innerHTML = '<tr><th>Activo</th><th>Precio (USDT)</th><th>Desde 00:00 UTC</th><th>Extremos del día</th></tr>';
     for (const a of filas) {
       const v = Number.isFinite(a.base) && Number.isFinite(a.precio) ? (a.precio / a.base - 1) * 100 : NaN;
       const f = fmtVariacion(v);
@@ -311,7 +337,14 @@ function pintar() {
       const celdaVariacion = document.createElement('td');
       celdaVariacion.className = 'var ' + f.clase;
       celdaVariacion.textContent = f.texto;
-      tr.append(celdaPrecio, celdaVariacion);
+      const celdaRango = document.createElement('td');
+      celdaRango.className = 'rango';
+      const r = svgRango(a);
+      if (r) {
+        celdaRango.innerHTML = r.html + '<div class="nombre"><span class="sube">▲ +' + r.up.toFixed(2) + '%</span> <span class="baja">▼ ' + r.dn.toFixed(2) + '%</span></div>';
+        celdaRango.title = 'Máximo y mínimo del día respecto a la referencia de inicio (línea blanca)';
+      } else celdaRango.textContent = '—';
+      tr.append(celdaPrecio, celdaVariacion, celdaRango);
       tabla.appendChild(tr);
     }
     sec.appendChild(tabla);
