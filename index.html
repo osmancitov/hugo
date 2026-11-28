@@ -2418,6 +2418,7 @@ function graficaHorizontesCampana(caja,datos,grupos,seleccion,alElegir){
   const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Indicador Campaña de los VIP según la duración de la campaña, de 60 a 7 días, todas terminando en el último día cerrado'});
   for(const v of [0.25,0.5,2,4,8]){if(lg(v)<lo||lg(v)>hi)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=fmtCoef(v).replace(/,00$/,'').replace(/,(\d)0$/,',$1');svg.append(t);}
   {const t=svgEl('text',{x:L-6,y:y(1)+4,'text-anchor':'end',class:'camp-eje'});t.textContent='1';svg.append(t);}
+  for(let n=D1;n>=D0;n--){const m=x(n);svg.append(svgEl('line',{x1:m.toFixed(1),x2:m.toFixed(1),y1:T,y2:H-B,class:'camp-dia'}));} // grilla vertical: una línea por duración (60 a 7), como separadoresDia en las otras gráficas
   svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
   for(const n of [60,50,40,30,20,10,7]){const t=svgEl('text',{x:x(n),y:H-8,'text-anchor':n===60?'start':n===7?'end':'middle',class:'camp-eje'});t.textContent=n+' d';svg.append(t);}
   const trazo=id=>{const pts=[];for(let n=D1;n>=D0;n--){const v=perfiles[id][n];pts.push(v==null?null:[x(n),y(v)]);}return trazoConHuecos(pts);};
