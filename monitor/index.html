@@ -65,8 +65,9 @@
 <header>
   <h1>Monitor VIP</h1>
   <div class="estado">
-    <span id="punto" class="punto"></span><span id="conexion">iniciando…</span> · <span id="ultimo">sin datos aún</span><br>
-    Base: primera lectura del día (00:00 UTC) del Observatorio · revisión cada 5 s<br>
+    <span id="estado-vivo"><span id="punto" class="punto"></span><span id="conexion">iniciando…</span> · <span id="ultimo">sin datos aún</span><br>
+    Base: primera lectura del día (00:00 UTC) del Observatorio · revisión cada 5 s<br></span>
+    <span id="estado-historial" style="display:none"><span class="punto"></span>Historial · día cerrado, datos guardados (no en vivo)<br></span>
     <span id="reloj"></span>
   </div>
 </header>
@@ -359,6 +360,8 @@ async function mostrarHistorial(iso) {
   const caja = document.getElementById('historia');
   const barraVivo = document.getElementById('en-vivo');
   diaHistorial = iso;
+  document.getElementById('estado-vivo').style.display = 'none';
+  document.getElementById('estado-historial').style.display = '';
   barraVivo.setAttribute('aria-pressed', 'false');
   document.getElementById('grupos').style.display = 'none';
   caja.style.display = '';
@@ -444,6 +447,8 @@ async function mostrarHistorial(iso) {
 
 function volverEnVivo() {
   diaHistorial = null;
+  document.getElementById('estado-vivo').style.display = '';
+  document.getElementById('estado-historial').style.display = 'none';
   document.getElementById('en-vivo').setAttribute('aria-pressed', 'true');
   document.getElementById('fecha').value = '';
   document.getElementById('historia').style.display = 'none';
