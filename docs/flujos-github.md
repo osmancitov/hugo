@@ -76,3 +76,5 @@ Ningún flujo tiene `schedule`: solo `workflow_dispatch` (y `pages.yml` además 
 
 ### Paso del VIP núcleo
 En la puesta al día diaria, «Calcular el VIP núcleo 54 campañas (7 a 60 días)» (`.github/nucleo-diario.mjs`) corre antes de la Campaña y del canónico, y sube `registros/nucleo/` (autor y committer Osmancito). El universo de las lecturas horarias (`vipAdmitidos`, `admitidosCripto`) y el balance salen de ese núcleo.
+
+En la puesta al día diaria, «Agregar la jornada cerrada al historial del Monitor» (`.github/historial-monitor.mjs`) corre después del núcleo y sube `registros/historial-monitor/` (autor y committer Osmancito); no reescribe jornadas guardadas.

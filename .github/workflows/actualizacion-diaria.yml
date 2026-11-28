@@ -35,6 +35,8 @@ jobs:
         run: node .github/actualizacion-diaria.mjs
       - name: Calcular el VIP núcleo 54 campañas (7 a 60 días)
         run: node .github/nucleo-diario.mjs
+      - name: Agregar la jornada cerrada al historial del Monitor
+        run: node .github/historial-monitor.mjs
       - name: Registrar la carrera 90d de la Campaña
         run: node .github/campana-diaria.mjs
       - name: Reconstruir el día cerrado de los VIP (registro horario canónico)
