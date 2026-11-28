@@ -29,3 +29,9 @@ test('con un grupo elegido, el resumen del día cerrado cuenta solo ese grupo y 
   assert.ok(mod.includes('<h1>Monitor de VIPs</h1>'));
   assert.ok(!mod.includes('Monitor VIP'));
 });
+test('lectura en vivo: Mín / Máx de la jornada desde la vela diaria UTC, contra la misma base de la variación', () => {
+  assert.ok(mod.includes('guardarExtremos(a, Number(d.k.h), Number(d.k.l))')); // máximo y mínimo acumulados desde 00:00 UTC
+  assert.ok(mod.includes('<th>Mín / Máx</th>'));
+  assert.ok(mod.includes('/ a.base - 1) * 100'));
+  assert.ok(!mod.includes('a.altoSesion')); // no se acumula solo desde que se abre la página
+});

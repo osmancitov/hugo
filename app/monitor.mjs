@@ -111,6 +111,13 @@ function fmtPrecio(n) {
   return n.toLocaleString('en-US', { maximumFractionDigits: 8 });
 }
 
+// Máximo y mínimo de la jornada (vela diaria UTC de Binance, acumulados desde las 00:00 UTC, no desde que se abrió la página).
+// Se muestran contra la MISMA base que la variación de la tabla.
+function guardarExtremos(a, alto, bajo) {
+  if (Number.isFinite(alto) && alto > 0) a.alto = alto;
+  if (Number.isFinite(bajo) && bajo > 0) a.bajo = bajo;
+}
+
 function fmtVariacion(v) {
   if (!Number.isFinite(v)) return { texto: '—', clase: 'igual' };
   const signo = v > 0 ? '+' : '';
@@ -196,14 +203,14 @@ async function cargarTodo() {
 async function rellenarBasesPorVela() {
   const HOSTS_REST = ['https://api.binance.com', 'https://data-api.binance.vision'];
   for (const a of estado.values()) {
-    if (a.base !== null) continue;
     for (const host of HOSTS_REST) {
       try {
         const r = await fetch(host + '/api/v3/klines?symbol=' + a.simbolo + '&interval=1d&limit=1');
         if (!r.ok) break;
         const k = await r.json();
         const apertura = Number(k?.[0]?.[1]);
-        if (Number.isFinite(apertura) && apertura > 0) { a.base = apertura; a.fuenteBase = 'vela'; }
+        if (a.base === null && Number.isFinite(apertura) && apertura > 0) { a.base = apertura; a.fuenteBase = 'vela'; }
+        guardarExtremos(a, Number(k?.[0]?.[2]), Number(k?.[0]?.[3])); // máximo y mínimo de la vela del día UTC (desde las 00:00), semilla hasta que llegue el vivo
         break;
       } catch (e) { /* prueba el siguiente host */ }
     }
@@ -246,6 +253,7 @@ function conectar() {
     } else if (d.e === 'kline') {
       a.precio = Number(d.k.c);
       a.ultimoDato = Date.now();
+      guardarExtremos(a, Number(d.k.h), Number(d.k.l)); // la vela diaria UTC trae el máximo y el mínimo acumulados desde las 00:00
       if (a.base === null) { a.base = Number(d.k.o); a.fuenteBase = 'vela'; }
       // Si la vela abierta es de un día nuevo, el día UTC cambió: recargar bases.
       const diaVela = new Date(d.k.t).toISOString().slice(0, 10);
@@ -288,7 +296,7 @@ function pintar() {
     h.textContent = grupo + ' (' + filas.length + ')';
     sec.appendChild(h);
     const tabla = document.createElement('table');
-    tabla.innerHTML = '<tr><th>Activo</th><th>Precio (USDT)</th><th>Desde 00:00 UTC</th></tr>';
+    tabla.innerHTML = '<tr><th>Activo</th><th>Precio (USDT)</th><th>Desde 00:00 UTC</th><th>Mín / Máx</th></tr>';
     for (const a of filas) {
       const v = Number.isFinite(a.base) && Number.isFinite(a.precio) ? (a.precio / a.base - 1) * 100 : NaN;
       const f = fmtVariacion(v);
@@ -314,7 +322,15 @@ function pintar() {
       const celdaVariacion = document.createElement('td');
       celdaVariacion.className = 'var ' + f.clase;
       celdaVariacion.textContent = f.texto;
-      tr.append(celdaPrecio, celdaVariacion);
+      const celdaExtremos = document.createElement('td');
+      celdaExtremos.className = 'var';
+      celdaExtremos.title = 'Mínimo y máximo de la jornada (desde las 00:00 UTC) respecto a la misma base de la variación';
+      if (Number.isFinite(a.base) && Number.isFinite(a.alto) && Number.isFinite(a.bajo)) {
+        const lo = document.createElement('span'); lo.className = 'baja'; lo.textContent = fmtVariacion((Math.min(a.bajo, a.precio ?? a.bajo) / a.base - 1) * 100).texto;
+        const hi = document.createElement('span'); hi.className = 'sube'; hi.textContent = fmtVariacion((Math.max(a.alto, a.precio ?? a.alto) / a.base - 1) * 100).texto;
+        celdaExtremos.append(lo, document.createTextNode(' / '), hi);
+      } else celdaExtremos.textContent = '—';
+      tr.append(celdaPrecio, celdaVariacion, celdaExtremos);
       tabla.appendChild(tr);
     }
     sec.appendChild(tabla);
