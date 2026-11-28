@@ -28,8 +28,8 @@ function leerVelas(raiz, mercado, a, tope) {
     if (!fs.existsSync(p)) continue;
     for (const v of JSON.parse(fs.readFileSync(p, 'utf8'))) {
       if (v[0] > tope) continue;
-      const o = Number(v[1]), c = Number(v[4]);
-      if (o > 0 && c > 0) { rets.set(v[0], (c / o - 1) * 100); velas.set(v[0], [o, c]); }
+      const o = Number(v[1]), c = Number(v[4]), h = Number(v[2]), l = Number(v[3]);
+      if (o > 0 && c > 0) { rets.set(v[0], (c / o - 1) * 100); velas.set(v[0], [o, c, h, l]); }
     }
   }
   return { rets, velas };
@@ -79,14 +79,17 @@ export function calcularJornadas({ raiz, mercado, desde, hasta, omitir = new Set
       const variacion = (v[1] / v[0] - 1) * 100;
       if (variacion > 0) suben++; else if (variacion < 0) bajan++; else iguales++;
       suma += variacion;
-      activos.push([l.codigo, l.apariciones, v[0], v[1], redondo(variacion)]);
+      // Extremos del día respecto a la MISMA apertura de la variación: mínimo ≤ min(0, variación), máximo ≥ max(0, variación).
+      const minimo = v[3] > 0 ? Math.min((v[3] / v[0] - 1) * 100, variacion, 0) : null;
+      const maximo = v[2] > 0 ? Math.max((v[2] / v[0] - 1) * 100, variacion, 0) : null;
+      activos.push([l.codigo, l.apariciones, v[0], v[1], redondo(variacion), minimo === null ? null : redondo(minimo), maximo === null ? null : redondo(maximo)]);
     }
     const n = activos.length;
     dias[iso] = {
       lista: { cierre: cierreIso, origen, total: lista.length },
       rendimiento: { origen: 'velas diarias guardadas', apertura: `${iso}T00:00:00Z`, cierre: `${iso}T23:59:59Z` },
       resumen: { suben, bajan, iguales, sin_vela: sinVela, media: n ? redondo(suma / n) : null },
-      campos: ['codigo', 'apariciones', 'apertura', 'cierre', 'variacion_pct'],
+      campos: ['codigo', 'apariciones', 'apertura', 'cierre', 'variacion_pct', 'minimo_pct', 'maximo_pct'],
       activos,
     };
   }
@@ -106,9 +109,17 @@ export function actualizarHistorial({ raiz, mercado, hasta }) {
   const existentes = new Set();
   for (let d = diaMs(PRIMERA_JORNADA); d <= diaMs(hasta); d += DIA) {
     const iso = isoDia(d);
-    if (leerMes(raiz, mercado, iso).dias[iso]) existentes.add(iso);
+    const ya = leerMes(raiz, mercado, iso).dias[iso];
+    if (ya && ya.campos.includes('maximo_pct')) existentes.add(iso);
   }
   const nuevos = calcularJornadas({ raiz, mercado, desde: PRIMERA_JORNADA, hasta, omitir: existentes });
+  // Días guardados antes de añadir máximo/mínimo: se completan SIN cambiar lista, procedencia ni variación (se comprueba).
+  for (const [iso, dia] of Object.entries(nuevos)) {
+    const ya = leerMes(raiz, mercado, iso).dias[iso];
+    if (!ya) continue;
+    const a = JSON.stringify(ya.activos.map((x) => x.slice(0, 5))), b = JSON.stringify(dia.activos.map((x) => x.slice(0, 5)));
+    if (a !== b || ya.lista.origen !== dia.lista.origen) throw Error(`Completar ${mercado} ${iso} cambiaría lo ya guardado; no escribo.`);
+  }
   const porMes = {};
   for (const [iso, dia] of Object.entries(nuevos)) (porMes[mesDe(iso)] ||= {})[iso] = dia;
   fs.mkdirSync(dirHistorial(raiz, mercado), { recursive: true });

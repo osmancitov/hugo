@@ -387,7 +387,7 @@ async function mostrarHistorial(iso) {
       ['Procedencia de la lista: ', origenes.size === 1 && origenes.has('guardado') ? 'guardada' : 'reconstruida', origenes.size === 1 && origenes.has('guardado')
         ? ' (núcleo publicado ese cierre).'
         : ' hoy con la regla actual de 54 campañas (fijada el 27-nov-2026) y las velas guardadas. Antes no existía esa lista en el Monitor.'],
-      ['Rendimiento: ', 'vela diaria guardada', ', de las 00:00 a las 23:59:59 UTC.'],
+      ['Rendimiento: ', 'vela diaria guardada', ', de las 00:00 a las 23:59:59 UTC. Mín / Máx: el punto más bajo y más alto del día respecto a la misma apertura (sin hora ni orden).'],
       ['Resultado del día: ', 'acciones y fondos ' + datos.stock.resumen.suben + ' suben, ' + datos.stock.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.stock.resumen.media).texto + ')', '; cripto ' + datos.cripto.resumen.suben + ' suben, ' + datos.cripto.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.cripto.resumen.media).texto + '). Media simple de las variaciones de la lista.'],
       ['Universo: ', 'activos del catálogo con velas guardadas', '; no es el universo completo de Binance.'],
     ];
@@ -401,10 +401,10 @@ async function mostrarHistorial(iso) {
     caja.appendChild(nota);
     const grupos = { Empresas: [], Fondos: [], Cripto: [] };
     for (const mercado of ['stock', 'cripto']) {
-      for (const [codigo, ap, apertura, cierre, variacion] of datos[mercado].activos) {
+      for (const [codigo, ap, apertura, cierre, variacion, minimo, maximo] of datos[mercado].activos) {
         const info = catalogosHist[mercado].get(codigo) || {};
         const g = mercado === 'cripto' ? 'Cripto' : info.tipo === 'empresa' ? 'Empresas' : 'Fondos';
-        grupos[g].push({ mercado, codigo, nombre: info.nombre || codigo, ap, cierre, variacion });
+        grupos[g].push({ mercado, codigo, nombre: info.nombre || codigo, ap, cierre, variacion, minimo, maximo });
       }
     }
     for (const g of ['Empresas', 'Fondos', 'Cripto']) {
@@ -418,7 +418,7 @@ async function mostrarHistorial(iso) {
       sec.appendChild(h);
       const tabla = document.createElement('table');
       const cab = document.createElement('tr');
-      for (const t of ['Activo', 'Av.', 'Cierre (USDT)', 'Día']) { const th = document.createElement('th'); th.textContent = t; cab.appendChild(th); }
+      for (const t of ['Activo', 'Av.', 'Cierre (USDT)', 'Día', 'Mín / Máx']) { const th = document.createElement('th'); th.textContent = t; cab.appendChild(th); }
       tabla.appendChild(cab);
       for (const f of filas) {
         const tr = document.createElement('tr');
@@ -430,7 +430,15 @@ async function mostrarHistorial(iso) {
         const td3 = document.createElement('td'); td3.className = 'precio'; td3.textContent = fmtPrecio(f.cierre);
         const v = fmtVariacion(f.variacion);
         const td4 = document.createElement('td'); td4.className = 'var ' + v.clase; td4.textContent = v.texto;
-        tr.append(td1, td2, td3, td4); tabla.appendChild(tr);
+        const td5 = document.createElement('td'); td5.className = 'var';
+        td5.title = 'Mínimo y máximo del día respecto a la misma apertura (00:00 UTC) de la variación';
+        if (f.minimo == null || f.maximo == null) td5.textContent = '—';
+        else {
+          const lo = document.createElement('span'); lo.className = 'baja'; lo.textContent = fmtVariacion(f.minimo).texto;
+          const hi = document.createElement('span'); hi.className = 'sube'; hi.textContent = fmtVariacion(f.maximo).texto;
+          td5.append(lo, document.createTextNode(' / '), hi);
+        }
+        tr.append(td1, td2, td3, td4, td5); tabla.appendChild(tr);
       }
       sec.appendChild(tabla);
       caja.appendChild(sec);
