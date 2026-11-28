@@ -343,7 +343,7 @@ h2.tit-vip { font-size: 1.5rem; margin: 0; }
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash) || /\/mercado\/indicador\//.test(location.pathname);
 </script>
 <div id="reloj-entrada" class="superficie-reloj" hidden></div>
-<nav class="mercados" aria-label="Mercados"><a href="mercado/" id="mercado-enlace">Mercado</a><a href="monitor/">Monitor</a><a href="cuenta/">Cimiento</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="mercado/" id="mercado-enlace">Mercado</a><a href="monitor/" id="monitor-enlace">Monitor</a><a href="cuenta/">Cimiento</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -402,7 +402,7 @@ const elBuscar = $('#buscar'); // pieza única: se reubica en cada vista, nunca 
 // Lugar de la lista guardado al entrar en un activo, para que «volver» regrese ahí.
 // Direcciones limpias de Mercado: /mercado/, /mercado/<grupo>/ y /mercado/<stock|cripto>/<código>/ (sin #).
 // RAIZ es la carpeta del sitio (con o sin /mercado/ delante). Las demás vistas siguen en #/...
-const RAIZ = location.pathname.replace(/mercado(\/.*)?$/, '').replace(/[^\/]*$/, '');
+const RAIZ = location.pathname.replace(/(mercado|monitor)(\/.*)?$/, '').replace(/[^\/]*$/, '');
 const urlMercado = (grupo, id) => {
   if (!id) return RAIZ + 'mercado/' + (grupo ? grupo + '/' : '');
   const [t, ...c] = id.split(':');
@@ -412,6 +412,8 @@ const urlIndicador = (codigo, consulta = '') => RAIZ + 'mercado/indicador/' + co
 const indicadorDeRuta = () => { const m = location.pathname.slice(RAIZ.length).match(/^mercado\/indicador\/(.+?)\/?$/); return m ? m[1].split('/').map(decodeURIComponent).join('/') : null; };
 const irInicio = () => { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; ruta(); };
 const enMercado = () => location.pathname.startsWith(RAIZ + 'mercado');
+const enMonitor = () => location.pathname.startsWith(RAIZ + 'monitor');
+let monSalir = () => {}; // cierra el Monitor (WebSocket y temporizadores) al dejar su ruta
 const lugarActual = () => (enMercado() ? location.pathname + location.search : location.hash);
 let rutaPrevia = location.pathname;
 let estadoLista = null;
@@ -3023,9 +3025,35 @@ function vistaMercado(inicial=null,dias=90,grupo2='empresas'){
     setTimeout(sostenerFicha,16);}
   // Relieve del día entre las barras y la ficha del activo (26-nov-2026, audio): se recorren los activos en la 3D y la información con sus enlaces queda justo debajo.
 }
+const GRUPOS_MONITOR = [['empresas', 'Empresas'], ['fondos', 'Fondos'], ['cripto', 'Cripto']];
+// Monitor en la misma página que Mercado: mismo shell y router, sin recargar. La lógica (en vivo e historial) vive en app/monitor.mjs, que sale de monitor/ sin duplicar reglas ni fuentes.
+async function rutaMonitor(grupo) {
+  const navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
+  document.getElementById('portada-observatorio').hidden=true;document.getElementById('busqueda-global').hidden=true;
+  document.querySelector('.tit-link').href=RAIZ;
+  navMerc.hidden=false;for(const a of navMerc.children)a.hidden=false;
+  navCat.replaceChildren();navV.replaceChildren();navV.hidden=true;navCat.hidden=false;
+  for(const g of GRUPOS_MONITOR)botonNav(navCat,g[1],RAIZ+'monitor/'+g[0]+'/',g[0]===grupo);
+  document.getElementById('mercado-enlace').classList.remove('actual');document.getElementById('mercado-enlace').href=urlMercado();
+  const enl=document.getElementById('monitor-enlace');enl.href=RAIZ+'monitor/';enl.classList.add('actual'); // Monitor elegido queda encendido; soltarlo vuelve a la portada
+  contraerNavegacion(navMerc,true,RAIZ);
+  contraerNavegacion(navCat,grupo,RAIZ+'monitor/');
+  elBuscar.hidden=true;rot.hidden=true;document.getElementById('reloj-entrada').hidden=true;
+  document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor · Observatorio Bursátil';
+  app.replaceChildren();
+  const caja=document.createElement('div');app.append(caja);
+  const mod=await import(RAIZ+'app/monitor.mjs?v=1');
+  if(!caja.isConnected)return; // otra ruta tomó la página mientras cargaba el módulo
+  const dia=new URLSearchParams(location.search).get('dia');
+  mod.entrar(caja,{RAIZ,grupo,dia,alCambiarDia:d=>history.replaceState(null,'',location.pathname+(d?'?dia='+d:''))});
+  monSalir=()=>mod.salir();
+}
 async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
+  monSalir();monSalir=()=>{};
+  {const enl=document.getElementById('monitor-enlace');enl.classList.remove('actual');enl.removeAttribute('title');enl.href=RAIZ+'monitor/';}
+  {const monM=location.pathname.slice(RAIZ.length).match(/^monitor(?:\/(empresas|fondos|cripto))?\/?$/);if(monM){document.querySelector('.mercados').after(document.getElementById('reloj-entrada'));return rutaMonitor(monM[1]||null);}}
   if(location.hash&&enMercado()){history.replaceState(null,'',RAIZ+location.hash);rutaPrevia=location.pathname;} // un enlace con # desde una página de Mercado pasa a su vista
   const indRuta=indicadorDeRuta(),hash=indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
@@ -3108,7 +3136,7 @@ document.querySelector('.tit-link').addEventListener('click', (ev) => {
   elBuscar.value = '';
   elBuscarGlobal.value = '';
   pintarBusquedaGlobal();
-  if (enMercado() || location.pathname.replace(/index\.html$/, '') !== RAIZ) return; // desde Mercado lo resuelve el manejador de enlaces limpios; fuera de la portada (p. ej. Superficie) el enlace navega solo
+  if (enMercado() || enMonitor() || location.pathname.replace(/index\.html$/, '') !== RAIZ) return; // desde Mercado lo resuelve el manejador de enlaces limpios; fuera de la portada (p. ej. Superficie) el enlace navega solo
   ev.preventDefault(); // el logo lleva a la portada sin # y sin recargar
   if (location.hash) { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; }
   ruta();
@@ -3119,7 +3147,7 @@ document.addEventListener('click', (ev) => { // navegar dentro de Mercado sin re
   const a = ev.target.closest && ev.target.closest('a[href]');
   if (!a || a.target) return;
   const u = new URL(a.href, location.href);
-  if (u.origin !== location.origin || !(u.pathname.startsWith(RAIZ + 'mercado') || (u.pathname === RAIZ && (enMercado() || location.hash))) || u.hash) return; // también la portada, sin recargar, al soltar el botón Mercado
+  if (u.origin !== location.origin || !(u.pathname.startsWith(RAIZ + 'mercado') || u.pathname.startsWith(RAIZ + 'monitor') || (u.pathname === RAIZ && (enMercado() || enMonitor() || location.hash))) || u.hash) return; // también la portada, sin recargar, al soltar el botón Mercado
   ev.preventDefault();
   if (u.pathname + u.search === location.pathname + location.search && !location.hash) return;
   history.pushState(null, '', u.pathname + u.search); rutaPrevia = location.pathname;

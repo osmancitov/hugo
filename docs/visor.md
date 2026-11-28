@@ -104,3 +104,4 @@ Los títulos «Activos VIP», «Balance del día» y «Relieve del día» van en
 
 ### VIP núcleo en Mercado
 Las vistas de Mercado (lista, relieve, barras, balance, evolución, variación) usan el núcleo (`registros/nucleo/<mercado>/actual_nucleo`), no el grupo de la campaña elegida: un Rezagado a 30 días puede estar en el núcleo. La lista (todas las categorías) tiene las columnas Código, Nombre, Av. y Campaña, ordenada por Av. de mayor a menor. Av. = apariciones / 54 por unidad: 1 si es perfecto, si no dos decimales sin el cero de la izquierda (.89). Si el núcleo no carga, la página muestra el error.
+- **Monitor en el mismo shell**: `/monitor/` y `/monitor/<empresas|fondos|cripto>/` (historial por `?dia=AAAA-MM-DD`) se abren sin recargar desde el router de `index.html`; la lógica (en vivo y historial) vive en `app/monitor.mjs` (`entrar`/`salir`). `monitor/index.html` ya no se versiona: lo genera `app/generar-rutas-mercado.mjs` al publicar.

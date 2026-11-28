@@ -1,22 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#080604">
-<title>Monitor VIP · Observatorio Bursátil</title>
-<meta name="description" content="Precios en vivo e historial de días cerrados de los activos VIP del Observatorio · solo lectura">
-<meta property="og:title" content="Monitor VIP · Observatorio Bursátil">
-<meta property="og:description" content="Precios en vivo e historial de días cerrados de los activos VIP del Observatorio · solo lectura">
-<meta property="og:image" content="https://osmancitov.github.io/hugo/identidad/tarjeta.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:url" content="https://osmancitov.github.io/hugo/monitor/">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/png" href="../identidad/icono.png">
-<style>
-  :root {
+// Monitor VIP dentro del mismo shell que Mercado (sin recargar): entrar(contenedor, opciones) y salir().
+// Fuentes y reglas son las de siempre (núcleo, catálogo, intradía, historial-monitor y Binance WS); no se duplican en otro lado.
+const CSS = `
+  .monitor-vip {
     --fondo: #10141a;
     --panel: #181e27;
     --borde: #262f3b;
@@ -25,55 +10,53 @@
     --verde: #2ecc71;
     --rojo: #e74c3c;
   }
-  * { box-sizing: border-box; }
-  body {
+  .monitor-vip, .monitor-vip * { box-sizing: border-box; }
+  .monitor-vip {
     margin: 0;
     background: var(--fondo);
     color: var(--texto);
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 15px;
   }
-  header {
+  .monitor-vip .mv-cab {
     padding: 14px 16px 10px;
     border-bottom: 1px solid var(--borde);
   }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  .estado { color: var(--tenue); font-size: 13px; line-height: 1.5; }
-  .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--tenue); }
-  .punto.vivo { background: var(--verde); }
-  .punto.caido { background: var(--rojo); }
-  main { max-width: 720px; margin: 0 auto; padding: 8px 12px 40px; }
-  h2 {
+  .monitor-vip h1 { font-size: 18px; margin: 0 0 4px; }
+  .monitor-vip .estado { text-align: left; font-style: normal; color: var(--tenue); font-size: 13px; line-height: 1.5; }
+  .monitor-vip .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--tenue); }
+  .monitor-vip .punto.vivo { background: var(--verde); }
+  .monitor-vip .punto.caido { background: var(--rojo); }
+  .monitor-vip main { max-width: 720px; margin: 0 auto; padding: 8px 12px 40px; }
+  .monitor-vip h2 {
     font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
     color: var(--tenue); margin: 22px 4px 6px;
   }
-  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
-  td, th { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--borde); }
-  th { font-size: 12px; color: var(--tenue); font-weight: 600; }
-  td:first-child, th:first-child { text-align: left; }
-  tr:last-child td { border-bottom: none; }
-  .codigo { font-weight: 700; }
-  .nombre { color: var(--tenue); font-size: 12px; }
-  .sube { color: var(--verde); }
-  .baja { color: var(--rojo); }
-  .igual { color: var(--tenue); }
-  .var { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .precio { font-variant-numeric: tabular-nums; }
-  .pie { color: var(--tenue); font-size: 12px; margin-top: 24px; line-height: 1.6; padding: 0 4px; }
-  a { color: #6ab0f3; text-decoration: none; }
-  .aviso { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 16px; color: var(--tenue); font-size: 13px; }
-  .barra-fecha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 4px 0; font-size: 13px; color: var(--tenue); }
-  .barra-fecha input { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px; font: inherit; color-scheme: dark; }
-  .barra-fecha button { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
-  .barra-fecha button[aria-pressed="true"] { border-color: #6ab0f3; color: #6ab0f3; }
-  .hist-nota { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 12px; color: var(--tenue); font-size: 13px; line-height: 1.55; }
-  .hist-nota b { color: var(--texto); font-weight: 600; }
-  .hist-nota + section h2, .var { white-space: nowrap; }
-  .etiqueta { display: inline-block; border: 1px solid var(--borde); border-radius: 4px; padding: 0 6px; font-size: 12px; color: var(--texto); }
-</style>
-</head>
-<body>
-<header>
+  .monitor-vip table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+  .monitor-vip td,.monitor-vip th { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--borde); }
+  .monitor-vip th { font-size: 12px; color: var(--tenue); font-weight: 600; }
+  .monitor-vip td:first-child,.monitor-vip th:first-child { text-align: left; }
+  .monitor-vip tr:last-child td { border-bottom: none; }
+  .monitor-vip .codigo { font-weight: 700; }
+  .monitor-vip .nombre { color: var(--tenue); font-size: 12px; }
+  .monitor-vip .sube { color: var(--verde); }
+  .monitor-vip .baja { color: var(--rojo); }
+  .monitor-vip .igual { color: var(--tenue); }
+  .monitor-vip .var { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .monitor-vip .precio { font-variant-numeric: tabular-nums; }
+  .monitor-vip .pie { color: var(--tenue); font-size: 12px; margin-top: 24px; line-height: 1.6; padding: 0 4px; }
+  .monitor-vip a { color: #6ab0f3; text-decoration: none; }
+  .monitor-vip .aviso { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 16px; color: var(--tenue); font-size: 13px; }
+  .monitor-vip .barra-fecha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 4px 0; font-size: 13px; color: var(--tenue); }
+  .monitor-vip .barra-fecha input { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px; font: inherit; color-scheme: dark; }
+  .monitor-vip .barra-fecha button { background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .monitor-vip .barra-fecha button[aria-pressed="true"] { border-color: #6ab0f3; color: #6ab0f3; }
+  .monitor-vip .hist-nota { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-top: 12px; color: var(--tenue); font-size: 13px; line-height: 1.55; }
+  .monitor-vip .hist-nota b { color: var(--texto); font-weight: 600; }
+  .monitor-vip .hist-nota + section h2,.monitor-vip .var { white-space: nowrap; }
+  .monitor-vip .etiqueta { display: inline-block; border: 1px solid var(--borde); border-radius: 4px; padding: 0 6px; font-size: 12px; color: var(--texto); }
+`;
+const HTML = `<header class="mv-cab">
   <h1>Monitor VIP</h1>
   <div class="estado">
     <span id="estado-vivo"><span id="punto" class="punto"></span><span id="conexion">iniciando…</span> · <span id="ultimo">sin datos aún</span><br>
@@ -95,16 +78,23 @@
     Solo lectura. Precios en vivo de Binance por WebSocket; la referencia del día es la primera lectura
     que guarda el Observatorio en este repositorio (si falta, la apertura de la vela de las 00:00 UTC de Binance).
     Sin compras, sin ventas, sin claves.
-    <a href="../">Volver al Observatorio</a>.
+    <a class="mv-volver" href="">Volver al Observatorio</a>.
   </div>
 </main>
-<script>
-'use strict';
+`;
+let contenedor = null, RAIZ = '/', grupoFiltro = null, alCambiarDia = () => {};
+let temporizadores = [], cerrado = true, liberar = () => {}, opcionesDia = null;
+const $ = (id) => contenedor.querySelector('#' + id);
+const temporizar = (f, ms) => { const t = setInterval(f, ms); temporizadores.push(t); return t; };
+const aplazar = (f, ms) => { if (cerrado) return 0;  const t = setTimeout(f, ms); temporizadores.push(t); return t; };
+
 
 const RAW = 'https://raw.githubusercontent.com/osmancitov/hugo/main/';
 const HOSTS_WS = ['wss://data-stream.binance.vision/stream', 'wss://stream.binance.com:9443/stream'];
 const REVISION_MS = 5000;
 const RECARGA_MS = 15 * 60 * 1000;
+function montar() {
+
 
 // estado: Map codigo -> {codigo, nombre, grupo, simbolo, base, fuenteBase, precio, ultimoDato}
 const estado = new Map();
@@ -179,7 +169,7 @@ async function cargarTodo() {
 
   // Base del día: primera lectura guardada por el Observatorio (00:00 UTC aprox.).
   // Semilla de precio: última lectura guardada, hasta que llegue el dato en vivo.
-  const aviso = document.getElementById('aviso');
+  const aviso = $('aviso');
   aviso.style.display = 'none';
   for (const mercado of ['stock', 'cripto']) {
     try {
@@ -222,6 +212,7 @@ async function rellenarBasesPorVela() {
 }
 
 function conectar() {
+  if (cerrado) return;
   if (ws) { try { ws.close(); } catch (e) {} ws = null; }
   const flujos = [];
   for (const a of estado.values()) {
@@ -231,14 +222,14 @@ function conectar() {
   const host = HOSTS_WS[indiceHost % HOSTS_WS.length];
   indiceHost++;
   const url = host + '?streams=' + flujos.join('/');
-  const conexion = document.getElementById('conexion');
+  const conexion = $('conexion');
   conexion.textContent = 'conectando…';
   ws = new WebSocket(url);
   ws.onopen = () => {
     esperaReintento = 2000;
     ultimoMensaje = Date.now();
     conexion.textContent = 'en vivo';
-    document.getElementById('punto').className = 'punto vivo';
+    $('punto').className = 'punto vivo';
   };
   ws.onmessage = (ev) => {
     ultimoMensaje = Date.now();
@@ -262,10 +253,10 @@ function conectar() {
     }
   };
   ws.onclose = () => {
-    document.getElementById('punto').className = 'punto caido';
+    $('punto').className = 'punto caido';
     conexion.textContent = 'reconectando…';
     clearTimeout(temporizadorReintento);
-    temporizadorReintento = setTimeout(conectar, esperaReintento);
+    temporizadorReintento = aplazar(conectar, esperaReintento);
     esperaReintento = Math.min(esperaReintento * 2, 30000);
   };
   ws.onerror = () => { try { ws.close(); } catch (e) {} };
@@ -281,9 +272,10 @@ async function recargar() {
 
 function pintar() {
   if (diaHistorial) return; // el historial no se pisa con el repintado en vivo
-  const cont = document.getElementById('grupos');
+  const cont = $('grupos');
   cont.innerHTML = '';
   for (const grupo of ['Empresas', 'Fondos', 'Cripto']) {
+    if (grupoFiltro && grupo.toLowerCase() !== grupoFiltro) continue;
     const filas = [...estado.values()].filter(a => a.grupo === grupo);
     if (!filas.length) continue;
     filas.sort((x, y) => {
@@ -303,8 +295,8 @@ function pintar() {
       const tr = document.createElement('tr');
       const mercado = a.grupo === 'Cripto' ? 'cripto' : 'stock';
       const destino = mercado === 'cripto'
-        ? '../mercado/cripto/' + encodeURIComponent(a.codigo) + '/'
-        : '../mercado/stock/' + encodeURIComponent(a.codigo) + '/';
+        ? RAIZ + 'mercado/cripto/' + encodeURIComponent(a.codigo) + '/'
+        : RAIZ + 'mercado/stock/' + encodeURIComponent(a.codigo) + '/';
       const enlaceActivo = document.createElement('a');
       enlaceActivo.className = 'codigo';
       enlaceActivo.href = destino;
@@ -329,21 +321,21 @@ function pintar() {
     cont.appendChild(sec);
   }
   const ahora = new Date();
-  document.getElementById('reloj').textContent =
+  $('reloj').textContent =
     'Revisado ' + ahora.toLocaleTimeString('es-VE') + ' · ' + diaUTC + ' UTC';
 }
 
 // Vigilante: un socket colgado no siempre avisa. Si no llega ningún dato en 90 s
 // (hay 60 flujos abiertos; silencio total tan largo es conexión muerta, no mercado quieto),
 // se cierra y la lógica de onclose reconecta. El estado se ve en la cabecera.
-setInterval(() => {
+temporizar(() => {
   const ahora = new Date();
   const segundos = ultimoMensaje ? Math.floor((Date.now() - ultimoMensaje) / 1000) : null;
-  document.getElementById('ultimo').textContent =
+  $('ultimo').textContent =
     segundos === null ? 'sin datos aún' : segundos < 5 ? 'último dato ahora' : 'último dato hace ' + segundos + ' s';
   if (ws && Date.now() - ultimoMensaje > 90000) {
-    document.getElementById('conexion').textContent = 'sin datos; reconectando…';
-    document.getElementById('punto').className = 'punto caido';
+    $('conexion').textContent = 'sin datos; reconectando…';
+    $('punto').className = 'punto caido';
     try { ws.close(); } catch (e) {}
   }
 }, 5000);
@@ -362,19 +354,19 @@ async function mesHistorial(mercado, iso) {
 
 function enlaceFicha(mercado, codigo, texto) {
   const a = document.createElement('a');
-  a.href = '../mercado/' + mercado + '/' + encodeURIComponent(codigo) + '/';
+  a.href = RAIZ + 'mercado/' + mercado + '/' + encodeURIComponent(codigo) + '/';
   a.textContent = texto;
   return a;
 }
 
 async function mostrarHistorial(iso) {
-  const caja = document.getElementById('historia');
-  const barraVivo = document.getElementById('en-vivo');
+  const caja = $('historia');
+  const barraVivo = $('en-vivo');
   diaHistorial = iso;
-  document.getElementById('estado-vivo').style.display = 'none';
-  document.getElementById('estado-historial').style.display = '';
+  $('estado-vivo').style.display = 'none';
+  $('estado-historial').style.display = '';
   barraVivo.setAttribute('aria-pressed', 'false');
-  document.getElementById('grupos').style.display = 'none';
+  $('grupos').style.display = 'none';
   caja.style.display = '';
   caja.textContent = 'Cargando ' + iso + '…';
   try {
@@ -457,7 +449,7 @@ async function mostrarHistorial(iso) {
     if (datos.stock.resumen.suben + datos.stock.resumen.bajan + datos.stock.resumen.iguales === 0 && datos.stock.activos.length === 0) {
       const d = document.createElement('div'); d.className = 'aviso'; d.textContent = 'Sin acciones ni fondos en la lista de ese día.'; caja.appendChild(d);
     }
-    document.getElementById('reloj').textContent = 'Historial: ' + iso + ' UTC (día cerrado)';
+    $('reloj').textContent = 'Historial: ' + iso + ' UTC (día cerrado)';
   } catch (e) {
     caja.textContent = '';
     const d = document.createElement('div'); d.className = 'aviso'; d.textContent = e.message; caja.appendChild(d);
@@ -466,42 +458,61 @@ async function mostrarHistorial(iso) {
 
 function volverEnVivo() {
   diaHistorial = null;
-  document.getElementById('estado-vivo').style.display = '';
-  document.getElementById('estado-historial').style.display = 'none';
-  document.getElementById('en-vivo').setAttribute('aria-pressed', 'true');
-  document.getElementById('fecha').value = '';
-  document.getElementById('historia').style.display = 'none';
-  document.getElementById('grupos').style.display = '';
+  $('estado-vivo').style.display = '';
+  $('estado-historial').style.display = 'none';
+  $('en-vivo').setAttribute('aria-pressed', 'true');
+  $('fecha').value = '';
+  $('historia').style.display = 'none';
+  $('grupos').style.display = '';
   pintar();
 }
 
 (async function iniciarHistorial() {
-  const campo = document.getElementById('fecha');
+  const diaInicial = opcionesDia;
+  const campo = $('fecha');
   try {
     const idx = await traerJSON('registros/historial-monitor/stock/indice');
     campo.min = idx.desde; campo.max = idx.hasta;
   } catch (e) { campo.disabled = true; campo.title = 'Historial no disponible'; }
-  campo.addEventListener('change', () => { if (campo.value) mostrarHistorial(campo.value); else volverEnVivo(); });
-  document.getElementById('en-vivo').addEventListener('click', volverEnVivo);
+  campo.addEventListener('change', () => { if (campo.value) mostrarHistorial(campo.value); else volverEnVivo(); alCambiarDia(campo.value || null); });
+  $('en-vivo').addEventListener('click', () => { volverEnVivo(); alCambiarDia(null); });
+  if (diaInicial) { campo.value = diaInicial; mostrarHistorial(diaInicial); }
 })();
 
 (async function iniciar() {
   try {
     await cargarTodo();
   } catch (e) {
-    const aviso = document.getElementById('aviso');
+    const aviso = $('aviso');
     aviso.style.display = '';
     aviso.textContent = 'No pude cargar las listas del Observatorio: ' + e.message;
     return;
   }
   conectar();
-  setInterval(pintar, REVISION_MS);
-  setInterval(recargar, RECARGA_MS);
-  setInterval(() => {
+  temporizar(pintar, REVISION_MS);
+  temporizar(recargar, RECARGA_MS);
+  temporizar(() => {
     if (hoyUTC() !== diaUTC) { diaUTC = hoyUTC(); recargar(); }
   }, 60000);
   pintar();
 })();
-</script>
-</body>
-</html>
+
+
+  liberar = () => { try { if (ws) { ws.onclose = null; ws.close(); } } catch (e) {} };
+}
+
+export function entrar(cont, opciones = {}) {
+  salir();
+  contenedor = cont; RAIZ = opciones.RAIZ || '/'; grupoFiltro = opciones.grupo || null; opcionesDia = opciones.dia || null;
+  alCambiarDia = opciones.alCambiarDia || (() => {}); cerrado = false;
+  if (!document.getElementById('monitor-vip-css')) { const st = document.createElement('style'); st.id = 'monitor-vip-css'; st.textContent = CSS; document.head.append(st); }
+  cont.classList.add('monitor-vip'); cont.innerHTML = HTML;
+  cont.querySelector('.mv-volver').href = RAIZ;
+  montar();
+}
+export function salir() {
+  cerrado = true; liberar();
+  for (const t of temporizadores) { clearInterval(t); clearTimeout(t); }
+  temporizadores = [];
+  if (contenedor) { contenedor.classList.remove('monitor-vip'); contenedor.replaceChildren(); contenedor = null; }
+}

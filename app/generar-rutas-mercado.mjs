@@ -35,8 +35,10 @@ export function entrada(partes, { base, titulo, descripcion, url, hashCss, hashJ
     .replace('<title>Observatorio Bursátil</title>', `<title>${esc(titulo)}</title>`)
     .replace('<meta property="og:title" content="Observatorio Bursátil">', `<meta property="og:title" content="${esc(titulo)}">`)
     .replace('<meta property="og:description" content="Empresas y fondos · stocks y cripto">', `<meta property="og:description" content="${esc(descripcion)}">`)
+    .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(descripcion)}">`)
     .replace(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${esc(url)}">`)
     .replace('<meta charset="utf-8">', `<meta charset="utf-8">\n<base href="${esc(base)}">`);
+  if (!/name="description"/.test(antes)) antes = antes.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n<meta name="description" content="${esc(descripcion)}">`);
   if (!antes.includes('<base ')) throw new Error('no se pudo poner <base>');
   return antes + `<link rel="stylesheet" href="app/observatorio.css?v=${hashCss}">` + partes.medio +
     `<script type="module" src="app/observatorio.mjs?v=${hashJs}"></script>` + partes.despues;
@@ -62,6 +64,10 @@ export function generar(raiz, { escribir = true } = {}) {
   const paginas = new Map(); // ruta relativa → html
   const hacer = (ruta, titulo, descripcion) => paginas.set(ruta, entrada(partes, { base, titulo, descripcion, url: og + ruta, hashCss, hashJs }));
   hacer('mercado/', 'Mercado · Observatorio Bursátil', 'Empresas, fondos y cripto');
+  // Monitor (mismo shell): /monitor/ y /monitor/<grupo>/; la lógica en vivo e historial va en app/monitor.mjs.
+  const descMonitor = 'Precios en vivo e historial de días cerrados de los activos VIP del Observatorio · solo lectura';
+  hacer('monitor/', 'Monitor VIP · Observatorio Bursátil', descMonitor);
+  for (const g of GRUPOS) hacer(`monitor/${g}/`, `${g[0].toUpperCase() + g.slice(1)} · Monitor VIP · Observatorio Bursátil`, descMonitor);
   const nombres = { empresas: 'Empresas', fondos: 'Fondos', cripto: 'Cripto' };
   for (const g of GRUPOS) hacer(`mercado/${g}/`, `${nombres[g]} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
   // Indicadores y tablas de barras del Balance: /mercado/indicador/<código>/ (la consulta ?lectura=… la lee el visor).
@@ -77,6 +83,7 @@ export function generar(raiz, { escribir = true } = {}) {
     fs.mkdirSync(path.join(raiz, 'app'), { recursive: true });
     fs.writeFileSync(path.join(raiz, 'app/observatorio.css'), partes.css);
     fs.writeFileSync(path.join(raiz, 'app/observatorio.mjs'), js);
+    // app/monitor.mjs es fuente versionada (no derivada).
     for (const [ruta, contenido] of paginas) {
       const f = path.join(raiz, ruta, 'index.html');
       fs.mkdirSync(path.dirname(f), { recursive: true });

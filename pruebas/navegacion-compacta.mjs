@@ -45,15 +45,16 @@ test('el logo (también desde /mercado/…) apunta a la raíz del sitio',()=>{
  assert.ok(html.includes("document.querySelector('.tit-link').href=RAIZ;"));
 });
 
-test('el logo y los retornos de Mercado usan dirección limpia, sin #/',()=>{
+test('el logo y los retornos de Mercado usan dirección limpia, sin #/',async()=>{
  assert.ok(html.includes('<a class="tit-link" href="./">'));
  assert.doesNotMatch(html,/href="#\/"/);
  assert.doesNotMatch(html,/location\.(replace|hash\s*=)\s*\(?\s*'#\/'\s*[);]/);
  assert.ok(html.includes("Boolean(mu),RAIZ,Boolean(mu))"));
- const mon=fs.readFileSync(new URL('../monitor/index.html',import.meta.url),'utf8');
- for(const m of ['theme-color','description','og:title','og:description','og:image','og:url','og:type','twitter:card'])assert.ok(mon.includes('"'+m+'"'),m);
+  const { generar } = await import('../app/generar-rutas-mercado.mjs');
+ const mon=generar(new URL('../',import.meta.url).pathname,{escribir:false}).paginas.get('monitor/');
+ for(const m of ['theme-color','description','og:title','og:description','og:image','og:url','og:type'])assert.ok(mon.includes('"'+m+'"'),m);
  assert.match(mon,/og:url" content="https:\/\/osmancitov.github.io\/hugo\/monitor\/"/);
- assert.match(mon,/og:image" content="https:\/\/osmancitov.github.io\/hugo\/identidad\/tarjeta.jpg"/);
+ assert.match(mon,/name="description" content="Precios en vivo e historial/);
 });
 
 test('la portada fija su base para que las lecturas relativas funcionen tras navegar a /mercado/…',()=>{

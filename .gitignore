@@ -14,3 +14,6 @@ node_modules/
 /app/observatorio.mjs
 
 /iceberg-colores.json
+
+# Monitor: entradas generadas desde index.html al publicar Pages (la lógica vive en app/monitor.mjs).
+/monitor/
