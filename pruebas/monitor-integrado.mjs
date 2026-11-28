@@ -35,3 +35,9 @@ test('lectura en vivo: Mín / Máx de la jornada desde la vela diaria UTC, contr
   assert.ok(mod.includes('/ a.base - 1) * 100'));
   assert.ok(!mod.includes('a.altoSesion')); // no se acumula solo desde que se abre la página
 });
+test('Mercado: un activo del catálogo que no es VIP se dibuja resaltado en Horizontes y Variación diaria con su propia serie', () => {
+  assert.ok(html.includes("cargarHorizontesCampana(u,g2,id)"));
+  assert.ok(html.includes("if (extra && !ids.includes(extra)) ids.push(extra);"));
+  assert.ok(html.includes("gruposVar[id]='fuera';gruposHor[id]='fuera'"));
+  assert.ok(html.includes("if(sel===id){aplicarExtra();pintarVar();pintarHor();}")); // al cambiar de selección vuelve a los datos de solo VIP
+});

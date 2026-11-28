@@ -2402,12 +2402,12 @@ function graficaEvolucionCampana(caja,s,u,seleccion,alElegir,g2=null){
 // Aquí el cierre es siempre el último día cerrado y lo que varía es la duración de la campaña, de 60 a 7 días. Mismo indicador
 // (Campaña = raíz((P²+C²)/2), P y C como en nucleo.mjs, sin suavizado) y misma escala log2 con la referencia 1, solo para los VIP del núcleo.
 const DUR_HOR_MAX=60,DUR_HOR_MIN=7,cacheHorizontes=new Map();
-function cargarHorizontesCampana(u,g2=null){
-  const fin=u.carrera.ventana.fin,clave='hor|'+(g2||'todos')+'|'+fin;
+function cargarHorizontesCampana(u,g2=null,extra=null){
+  const fin=u.carrera.ventana.fin,clave='hor|'+(g2||'todos')+'|'+fin+(extra?'|+'+extra:'');
   if(cacheHorizontes.has(clave))return cacheHorizontes.get(clave);
   const [a,m,d]=fin.split('-').map(Number),t0=Date.UTC(a,m-1,d);
   const fechas=[];for(let k=DUR_HOR_MAX-1;k>=0;k--)fechas.push(new Date(t0-k*86400000).toISOString().slice(0,10)); // 60 días terminando en el último cierre
-  const p=cargarVariacionCampana('hor',u,fechas,g2).then(({series})=>{
+  const p=cargarVariacionCampana('hor',u,fechas,g2,extra).then(({series})=>{
     const perfiles={},perfP={},perfC={};
     for(const id in series){
       const r=series[id],v=[],vp=[],vc=[];let pos=0,neg=0,dp=0,dn=0;
@@ -2635,12 +2635,13 @@ async function cargarRegistrosMes(e, mes) {
   return promesa;
 }
 const cacheVarEspagueti = new Map();
-async function cargarVariacionCampana(n, u, fechas, g2 = null) {
-  const clave = n + '|' + (g2 || 'todos') + '|' + u.carrera.ventana.fin;
+async function cargarVariacionCampana(n, u, fechas, g2 = null, extra = null) {
+  const clave = n + '|' + (g2 || 'todos') + '|' + u.carrera.ventana.fin + (extra ? '|+' + extra : '');
   if (cacheVarEspagueti.has(clave)) return cacheVarEspagueti.get(clave);
   const promesa = (async () => {
     const meses = [...new Set(fechas.map((f) => f.slice(2, 4) + f.slice(5, 7)))].filter((m) => m >= PISO_VISOR);
     const ids = u.clasificados.filter((a) => NUCLEO.ids.has(a.id) && (!g2 || grupoMercadoDe(a.id) === g2)).map((a) => a.id);
+    if (extra && !ids.includes(extra)) ids.push(extra); // activo del catálogo que no es VIP, elegido para estudiarlo: su serie sale del mismo registro
     const series = {};
     await Promise.all(ids.map(async (id) => {
       const e = entradaCampana(id);
@@ -2805,13 +2806,24 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   // Mercado: el espagueti de la variación diaria de los VIP vive en puente.cVar (tras Potencia y Constancia);
   // los datos se traen una vez por campaña y solo se repinta la selección.
   let datosVar=null;
+  // Un activo del catálogo que no es VIP se estudia en las mismas gráficas: su serie se pide aparte (mismo registro) y se dibuja resaltada; los VIP no cambian.
+  let baseVar=null,baseHor=null,extraDatos=null,extraPend=null;
+  const aplicarExtra=()=>{
+    const id=puente&&sel&&!NUCLEO.ids.has(sel)?sel:null;
+    for(const k of Object.keys(gruposVar))if(!NUCLEO.ids.has(k))delete gruposVar[k];
+    for(const k of Object.keys(gruposHor))if(!NUCLEO.ids.has(k))delete gruposHor[k];
+    if(id&&extraDatos&&extraDatos.id===id){datosVar=extraDatos.v;datosHor=extraDatos.h;gruposVar[id]='fuera';gruposHor[id]='fuera';return;}
+    datosVar=baseVar;datosHor=baseHor;
+    if(id&&baseVar&&baseHor&&extraPend!==id){extraPend=id;
+      Promise.all([cargarVariacionCampana(n,u,recortarSerie(s,n).fechas,g2,id),cargarHorizontesCampana(u,g2,id)]).then(([v,h])=>{extraDatos={id,v,h};if(sel===id){aplicarExtra();pintarVar();pintarHor();}}).catch(()=>{extraPend=null;});}
+  };
   const pintarVar=()=>{if(puente&&puente.cVar&&datosVar&&puente.cVar.isConnected)graficaVariacionEspagueti(puente.cVar,datosVar,gruposVar,sel,elegir);};
   let gruposVar={};
   if(puente&&puente.cVar){
     gruposVar=Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo]));
     const cajaV=puente.cVar,sv0=recortarSerie(s,n);
     cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
-    cargarVariacionCampana(n,u,sv0.fechas,g2).then(d=>{datosVar=d;pintarVar();})
+    cargarVariacionCampana(n,u,sv0.fechas,g2).then(d=>{baseVar=d;aplicarExtra();pintarVar();})
       .catch(()=>{if(cajaV.isConnected)cajaV.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de la variación diaria.'}));});
   }
   // Horizontes de campaña: se calcula una vez por cierre y grupo; solo se repinta la selección.
@@ -2821,11 +2833,12 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   if(puente){
     cHor.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
     cHorPC.replaceChildren();
-    cargarHorizontesCampana(u,g2).then(d=>{datosHor=d;pintarHor();})
+    cargarHorizontesCampana(u,g2).then(d=>{baseHor=d;aplicarExtra();pintarHor();})
       .catch(()=>{if(cHor.isConnected)cHor.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de Horizontes de campaña.'}));});
   }
   const pintarSel=()=>{
     const sv=puente?recortarSerie(s,n):s;
+    aplicarExtra();
     if(!puente)graficaEspaguetis(cEsp,sv,sel,elegir,false); // en Mercado ya no va Evolución de campaña: la sustituyen los Horizontes
     pintarVar();
     pintarHor();
