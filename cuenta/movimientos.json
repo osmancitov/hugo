@@ -14,6 +14,7 @@
       "buy": 0.1679,
       "sell": 0.16325,
       "price_decimals": 5,
+      "price_sin_cero_inicial": true,
       "buy_date": "2026-11-27",
       "sell_date": "2026-11-27",
       "balance_confirmed": true,

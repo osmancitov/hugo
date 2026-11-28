@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import {ventanasCerradas,fechaBreve} from './ventanas.mjs';
 const data=JSON.parse(fs.readFileSync(new URL('./movimientos.json',import.meta.url)));
 const num=n=>Math.abs(n).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
-const price=(n,r)=>n.toLocaleString('es-VE',{minimumFractionDigits:r.price_decimals??2,maximumFractionDigits:r.price_decimals??2});
+const price=(n,r)=>{const t=n.toLocaleString('es-VE',{minimumFractionDigits:r.price_decimals??2,maximumFractionDigits:r.price_decimals??2});return r.price_sin_cero_inicial?t.replace(/^0(?=[,.])/,''):t;};
 const activo=r=>r.codigo?`<a href="../#/a/${r.mercado}/${encodeURIComponent(r.codigo)}">${r.codigo}</a>`:r.asset;
 const signed=n=>(n>=0?'+':'−')+num(n);
 const initial=data.records.at(-1).balance;
