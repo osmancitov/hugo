@@ -29,12 +29,12 @@ Referencia técnica de consulta. El porqué de cada pieza está en [construccion
 | Ruta | Vista |
 |---|---|
 | `#/stock/...`, `#/cripto/...` con `empresas` o `fondos` (solo stock) y `capitalizacion`, `variacion` o `indicadores` | Listas por mercado. Los enlaces a `persistencia` llevan a `variacion`. |
-| `#/a/<stock\|cripto>/<código>` | Ruta antigua (26-nov-2026): abre la vista integrada del activo en Mercado (`#/unificada/30d/<grupo>/<mercado>/<código>`) y baja al título de su ficha. La ficha sale del catálogo: no depende de la lista VIP. |
+| `#/a/<stock\|cripto>/<código>` | Ruta antigua (26-nov-2026): abre la vista integrada del activo en Mercado (`/mercado/<mercado>/<código>/`) y baja al título de su ficha. La ficha sale del catálogo: no depende de la lista VIP. |
 | `#/i/iceberg-stock/barra-dia`, `barra-24h`, `barra-movimiento` | Indicadores de barra del iceberg de stocks. |
 | `#/i/iceberg-stock/superficie` | Superficie 3D (solo dibuja stocks). Filtros de grupo y ventana. |
 | `#/campana`, `#/campana/<90\|60\|30>d`, `#/campana/<90\|60\|30>d/<clase>/<código>` | Campaña de la ventana, con el activo elegido. |
 | `#/buscar` | Búsqueda por código, nombre o lectura. |
-| `#/unificada/30d[/<empresas\|fondos\|cripto>[/<mercado>/<código>]]` | Mercado, la página principal (sección siguiente). |
+| `/mercado/`, `/mercado/<empresas\|fondos\|cripto>/`, `/mercado/<stock\|cripto>/<código>/` | Mercado, la página principal (sección siguiente). Direcciones reales sin `#`: se generan al publicar (`app/generar-rutas-mercado.mjs`) a partir de `index.html`. |
 
 Menú principal: Mercado y Cimiento.
 
@@ -70,7 +70,7 @@ Dos activos de cripto tienen nombre en caracteres chinos: `币安人生` y `牛�
 «Observatorio Bursátil» en `<title>`, `og:title`, `<h1>` y el alt del avatar. El visor no usa las palabras «caballo» ni «hipódromo».
 
 ## Mercado (la página principal)
-Es la entrada del visor. Ruta `#/unificada/30d`: muestra tres botones, Empresas, Fondos y Cripto. Elegir uno lleva a `#/unificada/30d/<grupo>`; con un activo elegido, `#/unificada/30d/<grupo>/<stock|cripto>/<código>`. El periodo es siempre 30 días. El menú principal tiene dos entradas: Mercado y Cimiento. Las demás rutas de este documento siguen funcionando por su dirección, pero no están en el menú.
+Es la entrada del visor. Dirección `/mercado/`: muestra tres botones, Empresas, Fondos y Cripto. Elegir uno lleva a `/mercado/<grupo>/`; con un activo elegido, `/mercado/<stock|cripto>/<código>/` (el grupo se deduce del activo). Moverse entre estas vistas no recarga la página (History API); abrir una dirección directo o recargar funciona porque cada una existe como entrada generada con respuesta 200. El periodo es siempre 30 días. El menú principal tiene dos entradas: Mercado y Cimiento. Las demás rutas de este documento siguen funcionando por su dirección, pero no están en el menú.
 
 **Orden de la página**, de arriba abajo:
 1. Botones de grupo, y debajo el reloj: «Hora actual» en amarillo y la hora local de quien mira en blanco.

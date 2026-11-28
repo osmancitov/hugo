@@ -8,17 +8,17 @@ test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>
   assert.match(html,/relojEntrada\.hidden=true;/); // la hora solo aparece en la página del grupo
  assert.match(html,/contraerNavegacion\(navCat,/);
  assert.match(html,/contraerNavegacion\(navV,ranking,/);
- assert.match(html,/a.hidden=!a.classList.contains\('actual'\)&&!\(conservarMercado&&a.id==='mercado-unificada'\)/);
+ assert.match(html,/a.hidden=!a.classList.contains\('actual'\)&&!\(conservarMercado&&a.id==='mercado-enlace'\)/);
  assert.match(html,/a.href=volver/);
  assert.match(html,/rot.hidden=true/);
 });
 test('Mercado abre directamente selección de grupo para la única campaña de 30 días',()=>{
- assert.match(html,/const mu=muA\|\|muG, elegirGrupo=Boolean\(muG&&!mu\[2\]\)/);
- assert.ok(html.includes("if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta);return;}"));
- assert.ok(html.includes("vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta)"));
- assert.ok(html.includes("'#/unificada/30d/'+g[0]"));
- assert.ok(html.includes("'#/unificada/30d/'+g[0],!elegirGrupo&&g[0]===g2Ruta"));
- assert.ok(html.includes("vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta)"));
+ assert.match(html,/const mu=muA\|\|muG, elegirGrupo=Boolean\(muG&&!muG\[1\]\)/);
+ assert.ok(html.includes("if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta);return;}"));
+ assert.ok(html.includes("vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta)"));
+ assert.ok(html.includes("urlMercado(g[0])"));
+ assert.ok(html.includes("urlMercado(g[0]),!elegirGrupo&&g[0]===g2Ruta"));
+ assert.ok(html.includes("vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta)"));
 });
 
 test('capitalización sin explicación eliminada; la vista Promedio ya no existe',()=>{

@@ -42,7 +42,7 @@ test('localizador separado de filtros y rankings, tras la navegación',()=>{
 });
 test('abrir ficha conserva consulta y origen para volver',()=>{
   const abrir = html.slice(html.indexOf("filasGlobal.addEventListener('click'"),html.indexOf('/* ---------- datos'));
-  assert.match(abrir,/origenLista = location.hash \|\| '#\/'/);
+  assert.match(abrir,/origenLista = lugarActual\(\) \|\| '#\/'/);
   assert.match(abrir,/y: window.scrollY/);
   assert.doesNotMatch(abrir,/\.value\s*=/);
 });

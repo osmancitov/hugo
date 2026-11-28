@@ -340,7 +340,7 @@ h2.tit-vip { font-size: 1.5rem; margin: 0; }
 document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
 </script>
 <div id="reloj-entrada" class="superficie-reloj" hidden></div>
-<nav class="mercados" aria-label="Mercados"><a href="#/unificada" id="mercado-unificada">Mercado</a><a href="monitor/">Monitor</a><a href="cuenta/">Cimiento</a></nav>
+<nav class="mercados" aria-label="Mercados"><a href="mercado/" id="mercado-enlace">Mercado</a><a href="monitor/">Monitor</a><a href="cuenta/">Cimiento</a></nav>
 <nav class="mercados categorias" aria-label="Grupos del mercado" hidden></nav>
 <nav class="vistas" aria-label="Vistas del mercado" hidden><a href="#/stock" id="vista-cap">Capitalización</a><a href="#/stock/rachas" id="vista-rachas">Variación</a></nav>
 <section id="busqueda-global" hidden aria-label="Búsqueda global de activos">
@@ -397,18 +397,29 @@ const app = $('#app');
 const elBuscar = $('#buscar'); // pieza única: se reubica en cada vista, nunca se duplica
 
 // Lugar de la lista guardado al entrar en un activo, para que «volver» regrese ahí.
+// Direcciones limpias de Mercado: /mercado/, /mercado/<grupo>/ y /mercado/<stock|cripto>/<código>/ (sin #).
+// RAIZ es la carpeta del sitio (con o sin /mercado/ delante). Las demás vistas siguen en #/...
+const RAIZ = location.pathname.replace(/mercado(\/.*)?$/, '').replace(/[^\/]*$/, '');
+const urlMercado = (grupo, id) => {
+  if (!id) return RAIZ + 'mercado/' + (grupo ? grupo + '/' : '');
+  const [t, ...c] = id.split(':');
+  return RAIZ + 'mercado/' + t + '/' + encodeURIComponent(c.join(':')) + '/';
+};
+const enMercado = () => location.pathname.startsWith(RAIZ + 'mercado');
+const lugarActual = () => (enMercado() ? location.pathname : location.hash);
+let rutaPrevia = location.pathname;
 let estadoLista = null;
 let origenLista = '#/stock';
 let actualizarRachas = () => {};
 app.addEventListener('click', (ev) => {
   const desdeTabla = ev.target.closest('a.barra-activo-enlace');
-  if (desdeTabla) { origenLista = location.hash; estadoLista = null; return; }
+  if (desdeTabla) { origenLista = lugarActual(); estadoLista = null; return; }
   const fila = ev.target.closest('a.activo-fila');
   if (!fila) return;
   const abiertos = [...app.querySelectorAll('.nodo.abierto > .nodo-tit > span:first-child')]
     .map((s) => s.textContent);
   estadoLista = { abiertos, y: window.scrollY };
-  origenLista = location.hash;
+  origenLista = lugarActual();
   // Conserva la búsqueda para volver al mismo resultado, sin mover la vista.
 });
 
@@ -646,7 +657,7 @@ function pintarBusquedaGlobal() {
 elBuscarGlobal.addEventListener('input', pintarBusquedaGlobal);
 filasGlobal.addEventListener('click', ev => {
   if (!ev.target.closest('a.activo-fila')) return;
-  origenLista = location.hash || '#/';
+  origenLista = lugarActual() || '#/';
   estadoLista = { abiertos: [], y: window.scrollY };
 });
 
@@ -2243,7 +2254,7 @@ function botonNav(nav, titulo, href, actual=false) {
 function contraerNavegacion(nav, seleccion, volver, conservarMercado=false) {
   if(!seleccion)return;
   for(const a of [...nav.children]) {
-    a.hidden=!a.classList.contains('actual')&&!(conservarMercado&&a.id==='mercado-unificada');
+    a.hidden=!a.classList.contains('actual')&&!(conservarMercado&&a.id==='mercado-enlace');
     if(a.classList.contains('actual')){a.href=volver;a.title='Cambiar selección';}
   }
 }
@@ -2457,7 +2468,7 @@ function graficaActivosCampana(caja,s,grupos,seleccion=null){
 function graficaActivoCampana(caja,s,id,limpio=false){
   const W=720,H=300,L=40,R=10,T=14,B=28,N=s.fechas.length,serie=s.activos[id]||[];
   const e=entradaCampana(id),cod=e?e.codigo:id.split(':')[1];
-  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href='#/a/'+id.split(':')[0]+'/'+encodeURIComponent(cod);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(id)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
+  const tit=document.createElement('h3');tit.className='camp-tit';const tl=document.createElement('a');tl.className='camp-tit-enlace';tl.href=urlMercado(null,id);tl.title='Ver la página de '+cod;tl.textContent=etiquetaActivo(id)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');tit.append(tl);
   const pts=serie.filter(Boolean).length;
   const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`${pts} de ${N} jornadas`;if(limpio)sub.hidden=true; // en Mercado el texto se quita; la explicación técnica va a la documentación (25-nov-2026)
   // Escala logarítmica: 2 y 1/2 quedan a la misma distancia del 1.
@@ -2553,7 +2564,7 @@ function graficaCampo(caja,u,seleccion,alElegir,limpio=false,g2=null){
   if(seleccion){
     const e=entradaCampana(seleccion),a=cl.find(q=>q.id===seleccion),cod=e?e.codigo:seleccion.split(':')[1];
     const h=document.createElement('h2');h.className='camp-tit camp-cuad-nombre';
-    const l=document.createElement('a');l.className='camp-tit-enlace';l.href='#/a/'+seleccion.split(':')[0]+'/'+encodeURIComponent(cod);l.title='Ver la página de '+cod;l.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');h.append(l);
+    const l=document.createElement('a');l.className='camp-tit-enlace';l.href=urlMercado(null,seleccion);l.title='Ver la página de '+cod;l.textContent=etiquetaActivo(seleccion)+(e&&e.nombre&&e.nombre!==cod?' · '+e.nombre:'');h.append(l);
     const d=document.createElement('p');d.className='camp-sub camp-cuad-dato';
     const tipo=seleccion.startsWith('cripto:')?'Cripto':(e&&e.tipo)||'Stock';
     d.textContent=[limpio?null:(/^fondo ETF/i.test(tipo)?'Fondo ETF':tipo.charAt(0).toUpperCase()+tipo.slice(1)),a?(GRUPOS_CAMPANA.find(g=>g[0]===a.grupo)||[])[1]:null,a?`Campaña ${fmtCoef(rr(a))} · P ${fmtCoef(a.potencia)} · C ${fmtCoef(a.constancia)}`:null].filter(Boolean).join(' · ');
@@ -2941,7 +2952,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
     }).catch(()=>{});
     const [clase,...r]=sel.split(':');vistaActivo(clase,r.join(':'),cFicha,ventana||90,{sinGrafica:true});}};
   const elegido=(id,origen)=>{
-    sel=id;history.replaceState(null,'','#/unificada/'+dias+'d/'+grupo2+(id?'/'+id.replace(':','/'):''));
+    sel=id;history.replaceState(null,'',urlMercado(grupo2,id));rutaPrevia=location.pathname;document.title=(id?id.split(':').slice(1).join(':'):{empresas:'Empresas',fondos:'Fondos',cripto:'Cripto'}[grupo2])+' · Mercado · Observatorio Bursátil';
     pintarFicha();
     // La ficha (con su gráfica de variación) se carga después y cambia de alto; si el usuario eligió desde la lista de Campaña (debajo de la ficha),
     // se mantiene fija en pantalla la zona de Campaña mientras eso ocurre y hasta que el usuario vuelva a mover la página.
@@ -2973,20 +2984,19 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
 async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
-  const hash=location.hash||'#/';
+  if(location.hash&&enMercado()){history.replaceState(null,'',RAIZ+location.hash);rutaPrevia=location.pathname;} // un enlace con # desde una página de Mercado pasa a su vista
+  const hash=enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
-  const muA=hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/(cripto|stock)\/(.+)$/);
-  const muG=muA?null:hash.match(/^#\/unificada(?:\/(90|60|30)d)?(?:\/(empresas|fondos|cripto))?\/?$/);
-  const mu=muA||muG, elegirGrupo=Boolean(muG&&!mu[2]); // Mercado sin grupo muestra elección directa; ventana fija a 30 días
-  const g2Ruta=mu?(mu[2]||(muA?grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])):null)):null;
+  const muA=ph.match(/^mercado\/(cripto|stock)\/([^\/]+)\/?$/);
+  const muG=muA?null:ph.match(/^mercado(?:\/(empresas|fondos|cripto))?\/?$/);
+  const mu=muA||muG, elegirGrupo=Boolean(muG&&!muG[1]); // Mercado sin grupo muestra elección directa; ventana fija a 30 días
+  const g2Ruta=mu?(muA?grupoMercadoDe(muA[1]+':'+decodeURIComponent(muA[2])):muG[1]):null;
+  if(mu)document.title=(muA?decodeURIComponent(muA[2])+' · ':muG[1]?{empresas:'Empresas',fondos:'Fondos',cripto:'Cripto'}[muG[1]]+' · ':'')+'Mercado · Observatorio Bursátil';else if(document.title.includes('Mercado ·'))document.title='Observatorio Bursátil';
   const esBusqueda=hash==='#/buscar',mc=hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/),esCampana=Boolean(mc);
-  if(muA&&(!muA[1]||muA[1]!=='30')){location.replace('#/unificada/30d/'+(muA[2]||grupoMercadoDe(muA[3]+':'+decodeURIComponent(muA[4])))+'/'+muA[3]+'/'+muA[4]);return;} // enlaces antiguos, ventana única de 30 días
-  if(muG&&muG[1]&&muG[1]!=='30'){location.replace('#/unificada/30d'+(muG[2]?'/'+muG[2]:''));return;}
-  if(muG&&!muG[1]&&muG[2]){location.replace('#/unificada/30d/'+muG[2]);return;}
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
-  if(m){location.replace('#/unificada/30d/'+grupoMercadoDe(m[1]+':'+decodeURIComponent(m[2]))+'/'+m[1]+'/'+m[2]);return;} // compatibilidad (26-nov-2026, pedido del dueño): la ficha antigua #/a/… abre la vista integrada del activo, que no depende de la lista VIP
+  if(m){history.replaceState(null,'',urlMercado(null,m[1]+':'+decodeURIComponent(m[2])));rutaPrevia=location.pathname;return ruta();} // la ficha #/a/… (enlaces de las listas) abre la vista de Mercado del activo
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
     if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
@@ -3003,11 +3013,11 @@ async function ruta() {
   document.getElementById('portada-observatorio').hidden=Boolean(m||mi);
   document.getElementById('busqueda-global').hidden=!esBusqueda;
   const fuera=Boolean(m||mi),navMerc=document.querySelector('.mercados'),navCat=document.querySelector('.categorias'),navV=document.querySelector('.vistas'),rot=document.getElementById('rotulo-mercado');
-  document.getElementById('mercado-unificada').href='#/unificada/30d';
+  document.getElementById('mercado-enlace').href=urlMercado();
   navMerc.hidden=fuera;for(const a of navMerc.children)a.hidden=false;navCat.replaceChildren();navV.replaceChildren();navCat.hidden=true;navV.hidden=true;
   document.querySelector('.mercados').after(relojEntrada);
   relojEntrada.hidden=true; // la hora solo aparece en la página del grupo (reloj de la vista), no en la portada ni en la elección
-  if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],'#/unificada/30d/'+g[0],!elegirGrupo&&g[0]===g2Ruta);}
+  if(mu){navCat.hidden=false;for(const g of GRUPOS_MERCADO)botonNav(navCat,g[1],urlMercado(g[0]),!elegirGrupo&&g[0]===g2Ruta);}
   if(esCampana){navCat.hidden=false;for(const v of [30,60,90])botonNav(navCat,v+' días','#/campana/'+v+'d',mc[1]===String(v));}
   if(!fuera&&mercado==='stock'){
     navCat.hidden=false;botonNav(navCat,'Empresas','#/stock/empresas',categoria==='empresas');botonNav(navCat,'Fondos','#/stock/fondos',categoria==='fondos');botonNav(navCat,'Indicadores','#/stock/indicadores',ranking==='indicadores');
@@ -3018,12 +3028,12 @@ async function ruta() {
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/',Boolean(mu));
-  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?'#/unificada':'#/stock');
+  contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?urlMercado():'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
-  if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta);return;}
+  if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}
@@ -3064,6 +3074,18 @@ document.querySelector('.tit-link').addEventListener('click', () => {
   elBuscarGlobal.value = '';
   pintarBusquedaGlobal();
   if (location.hash === '' || location.hash === '#/') ruta();
+});
+window.addEventListener('popstate', () => { if (location.pathname !== rutaPrevia) { rutaPrevia = location.pathname; ruta(); } }); // atrás y adelante entre vistas de Mercado
+document.addEventListener('click', (ev) => { // navegar dentro de Mercado sin recargar el documento
+  if (ev.defaultPrevented || ev.button || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest && ev.target.closest('a[href]');
+  if (!a || a.target) return;
+  const u = new URL(a.href, location.href);
+  if (u.origin !== location.origin || !u.pathname.startsWith(RAIZ + 'mercado') || u.hash) return;
+  ev.preventDefault();
+  if (u.pathname === location.pathname) return;
+  history.pushState(null, '', u.pathname); rutaPrevia = location.pathname;
+  window.scrollTo(0, 0); ruta();
 });
 window.addEventListener('hashchange', ruta);
 ruta();

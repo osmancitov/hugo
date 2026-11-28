@@ -32,6 +32,7 @@ jobs:
           node cuenta/generar.mjs
           node app/generar-colores-iceberg.mjs
           node app/generar-pagina-superficie.mjs
+          node app/generar-rutas-mercado.mjs
       - name: Preparar Pages
         uses: actions/configure-pages@v6
       - name: Empaquetar el sitio estático

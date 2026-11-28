@@ -13,7 +13,7 @@ test('la vista Mercado mantiene el orden de componentes, con el Relieve tras las
 });
 test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
   assert.match(html, /if\(hash==='#\/i\/iceberg-stock\/superficie'\)\{vistaSuperficie\(\);return;\}/);
-  assert.match(html, /\^#\\\/unificada/);
+  assert.match(html, /\^mercado\\\/\(cripto\|stock\)/);
 });
 test('las tres barras van en orden: 24 horas, desde la referencia, contra la lectura anterior', () => {
   const a = html.indexOf("'#/i/iceberg-stock/barra-24h'"), b = html.indexOf("'#/i/iceberg-stock/barra-dia'"), c = html.indexOf("'#/i/iceberg-stock/barra-movimiento'");
@@ -86,10 +86,10 @@ test('la escala de altura de las crestas es simétrica y relativa al mayor valor
 });
 
 test('Mercado: grupo VIP y período fijo de 30 días', () => {
-  assert.ok(html.includes("const muG=muA?null:hash.match(/^#\\/unificada(?:\\/(90|60|30)d)?(?:\\/(empresas|fondos|cripto))?\\/?$/)"));
-  assert.ok(html.includes("'#/unificada/30d/'+g[0]"));
-  assert.ok(html.includes("vistaUnificada(muA?muA[3]+':'+decodeURIComponent(muA[4]):null,30,g2Ruta)"));
-  assert.ok(html.includes("if(muG&&muG[1]&&muG[1]!=='30')"));
+  assert.ok(html.includes("const muG=muA?null:ph.match(/^mercado(?:\\/(empresas|fondos|cripto))?\\/?$/)"));
+  assert.ok(html.includes("urlMercado(g[0])"));
+  assert.ok(html.includes("vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta)"));
+  assert.ok(!html.includes('unificada/30d'));
 });
 test('Mercado siempre reserva las cuatro barras: la que falta queda marcada «sin datos» (26-nov-2026)', () => {
   assert.ok(html.includes("barra-movil-vacia") && html.includes("'sin datos'"));

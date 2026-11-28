@@ -81,7 +81,7 @@ export function pagina(codigo, fuente, items, hoy = new Date()) {
   }).join('\n');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#080604"><title>Noticias de ${esc(codigo)} · Observatorio Bursátil</title>
 <style>*{box-sizing:border-box}html{background:#080604;color:#e8eaed;font-family:Lora,Georgia,serif}body{margin:0 auto;max-width:760px;padding:24px 24px 44px}a{color:#c2a15a;text-decoration:none}a:hover{text-decoration:underline}li,li a{overflow-wrap:anywhere}h1{font-family:Cinzel,Georgia,serif;font-weight:600;font-size:clamp(1.5rem,5vw,2.2rem);margin:22px 0 6px}header{border-bottom:1px solid #c2a15a;padding-bottom:14px}.nota{color:#9aa0ac;font-size:.78rem;line-height:1.6;margin:0 0 26px}ul{list-style:none;padding:0;margin:0}li{padding:16px 0;border-top:1px solid #2a3140;display:flex;flex-direction:column;gap:6px}li time,li span,li small.nf{font-size:.75rem;color:#9aa0ac}li a{font-size:1.02rem;line-height:1.45}li span a.alt{font-size:.75rem}footer{border-top:1px solid #2a3140;padding-top:18px;margin-top:10px;color:#9aa0ac;font-size:.75rem;line-height:1.6}</style></head><body>
-<header><a href="../#/unificada/30d/stock/${esc(codigo)}">← Mercado · ${esc(codigo)}</a></header>
+<header><a href="../mercado/stock/${esc(codigo)}/">← Mercado · ${esc(codigo)}</a></header>
 <h1>Noticias de ${esc(codigo)}</h1>
 <ul>
 ${filas}

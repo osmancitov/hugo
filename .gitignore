@@ -8,4 +8,9 @@ node_modules/
 # Entrada derivada de index.html al publicar Pages.
 /superficie.html
 
+# Direcciones limpias de Mercado: se generan desde index.html al publicar Pages.
+/mercado/
+/app/observatorio.css
+/app/observatorio.mjs
+
 /iceberg-colores.json

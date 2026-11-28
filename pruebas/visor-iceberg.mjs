@@ -144,7 +144,7 @@ test('los rótulos visibles de los icebergs viven en la fuente única de rótulo
 
 test('revelado progresivo: entrada limpia, rankings e Indicadores por mercado', () => {
   assert.match(visor, /<nav class="mercados" aria-label="Mercados">/);
-  assert.match(visor, /id="mercado-unificada"/);
+  assert.match(visor, /id="mercado-enlace"/);
   assert.match(visor, /navCat.hidden=true;navV.hidden=true/);
   assert.match(visor, /botonNav\(navCat,'Empresas'/);
   assert.match(visor, /botonNav\(navCat,'Fondos'/);
