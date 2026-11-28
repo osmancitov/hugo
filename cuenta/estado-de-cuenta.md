@@ -8,17 +8,21 @@ Aprender el oficio y construir las herramientas.
 
 ## Día: 26 nov → 27 nov
 
-235,59 USD → 231,15 USD. Variación: −1,88%.
+235,59 USD → 224,75 USD. Variación: −4,60%.
 
 ## Semana: 20 nov → 27 nov
 
-240,78 USD → 231,15 USD. Variación: −4,00%.
+240,78 USD → 224,75 USD. Variación: −6,66%.
 
 ## Mes: 27 oct → 27 nov
 
-306,55 USD → 231,15 USD. Variación: −24,60%.
+306,55 USD → 224,75 USD. Variación: −26,68%.
 
 ## Historial de movimientos
+
+## 27 de noviembre: [MMT](https://osmancitov.github.io/hugo/#/a/cripto/MMT)
+
+−6,40 USD. −2,77 %. Saldo: 224,75 USD. Compra: 0,16676 USD. Venta: 0,16214 USD.
 
 ## 27 de noviembre: [GME](https://osmancitov.github.io/hugo/#/a/stock/GME)
 

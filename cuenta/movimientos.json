@@ -5,6 +5,23 @@
     {
       "date": "2026-11-27",
       "label": "27 de noviembre",
+      "asset": "MMT",
+      "codigo": "MMT",
+      "mercado": "cripto",
+      "change": -6.4,
+      "balance": 224.75,
+      "percent": -2.77,
+      "buy": 0.16676,
+      "sell": 0.16214,
+      "price_decimals": 5,
+      "buy_date": "2026-11-27",
+      "sell_date": "2026-11-27",
+      "balance_confirmed": true,
+      "time_note": "Horas no indicadas por Osmancito; se conservan solo las fechas. Compra y venta del 27 de noviembre: los precios reportados solo fueron posibles ese día según el registro de precios de MMT en Binance. La venta registrada se calculó para cuadrar con el saldo final confirmado, con la comisión incluida, según el método; Osmancito reportó la venta a 0,1635."
+    },
+    {
+      "date": "2026-11-27",
+      "label": "27 de noviembre",
       "asset": "GME",
       "codigo": "GME",
       "mercado": "stock",
@@ -222,7 +239,7 @@
   ],
   "reconciliation": {
     "date": "2026-11-27",
-    "current_balance": 231.15,
+    "current_balance": 224.75,
     "initial_balance": 306.55,
     "status": "Montos, saldos y rendimientos recalculados desde los precios; saldo final confirmado por Osmancito.",
     "method": "Reconstrucción retrospectiva desde el saldo final confirmado: cada operación invierte aproximadamente todo el saldo disponible, de modo que saldo anterior = saldo posterior x compra / venta, redondeado a centavos, y el resultado en USD es la diferencia. Valores aproximados por el polvo que queda al comprar con todo el saldo y por ejecuciones fraccionadas. NVIDIA se estima con los niveles citados (167,35 -> 160,15), que no son un promedio consolidado: faltan cantidades y comisiones de ventas y recompras. CRWD usa 213,45, precio de la orden mayor; las demás ejecuciones fueron 213,44.",
