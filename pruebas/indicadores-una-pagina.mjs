@@ -105,7 +105,7 @@ test('Balance del día traza al entrar en pantalla y el Relieve de Mercado abre 
 test('Toda gráfica con trazado lo muestra al entrar en pantalla: graficador común y las tres de líneas SVG (audio 26-nov-2026 12:52)', () => {
   assert.match(html, /cfg\.alEntrar && !movimientoReducido\(\)/);
   assert.match(html, /function trazadoAlEntrar\(caja,svg,selector\)/);
-  assert.equal(html.match(/trazadoAlEntrar\(caja,svg,'\./g)?.length, 4); // Evolución, Horizontes, Potencia y constancia y la del activo
+  assert.equal(html.match(/trazadoAlEntrar\(caja,svg,'\./g)?.length, 5); // Evolución, Horizontes, Horizontes P/C, Potencia y constancia y la del activo
   for (const sel of ['.camp-lin', '.camp-curva']) assert.ok(html.includes(`trazadoAlEntrar(caja,svg,'${sel}')`));
 });
 test('Elegir en la lista no mueve la vista y el batazo de Campaña espera a que el campo entre en pantalla (audio 26-nov-2026 12:54)', () => {

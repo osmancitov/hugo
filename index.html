@@ -107,6 +107,7 @@ a:hover { text-decoration: underline; }
 .camp-borde { fill: var(--tenue); font-size: 9px; }
 .camp-lin { fill: none; stroke: var(--tenue); stroke-opacity: .12; stroke-width: 1; pointer-events: none; }
 .camp-lin.camp-sel { stroke: #fff3cf; stroke-opacity: 1; stroke-width: 2.6; }
+.camp-sinbajas { fill: var(--texto); }
 .camp-hit { fill: none; stroke: transparent; stroke-width: 7; cursor: pointer; }
 .camp-hit:hover { stroke: rgba(255,243,207,.35); }
 .camp-ejes, .camp-ley { color: var(--tenue); font-size: .8rem; margin: .35rem 0 0; }
@@ -2404,21 +2405,22 @@ function cargarHorizontesCampana(u,g2=null){
   const [a,m,d]=fin.split('-').map(Number),t0=Date.UTC(a,m-1,d);
   const fechas=[];for(let k=DUR_HOR_MAX-1;k>=0;k--)fechas.push(new Date(t0-k*86400000).toISOString().slice(0,10)); // 60 días terminando en el último cierre
   const p=cargarVariacionCampana('hor',u,fechas,g2).then(({series})=>{
-    const perfiles={};
+    const perfiles={},perfP={},perfC={};
     for(const id in series){
-      const r=series[id],v=[];let pos=0,neg=0,dp=0,dn=0;
+      const r=series[id],v=[],vp=[],vc=[];let pos=0,neg=0,dp=0,dn=0;
       for(let n=1;n<=DUR_HOR_MAX;n++){
         const x=r[fechas.length-n];
         if(x===null||x===undefined)break; // sin la vela de ese día no hay campaña completa de esa duración ni de las mayores
         if(x>0){pos+=x;dp++;}else if(x<0){neg+=x;dn++;}
         if(n<DUR_HOR_MIN)continue;
+        if(dn){vp[n]=pos/Math.abs(neg);vc[n]=dp/dn;} // sin bajas (dn=0): P y C sin límite, no se dibujan (hueco)
         let c=null; // null = todo plano (0/0), indefinida
         if(!dn){if(dp)c=Infinity;}else{const P=pos/Math.abs(neg),C=dp/dn;c=Math.sqrt((P*P+C*C)/2);}
         v[n]=c;
       }
-      perfiles[id]=v;
+      perfiles[id]=v;perfP[id]=vp;perfC[id]=vc;
     }
-    return {fin,perfiles};
+    return {fin,perfiles,perfP,perfC};
   });
   cacheHorizontes.set(clave,p);return p;
 }
@@ -2450,6 +2452,40 @@ function graficaHorizontesCampana(caja,datos,grupos,seleccion,alElegir){
   const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent='Horizontes de campaña';
   const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`Cierre en ${fechaLegibleUTC(fin)}; duración de la campaña de 60 a 7 días.`;
   caja.replaceChildren(tit,sub,svg);
+  trazadoAlEntrar(caja,svg,'.camp-lin');
+}
+function graficaHorizontesPCCampana(caja,datos,grupos,seleccion,alElegir){
+  const {fin,perfP,perfC,perfiles}=datos,W=720,H=420,L=44,R=10,T=10,B=28,D0=DUR_HOR_MIN,D1=DUR_HOR_MAX;
+  const lg=v=>Math.log2(Math.max(v,1e-3));
+  const ids=Object.keys(perfP).filter(id=>grupos[id]);
+  let lo=-1,hi=1;for(const id of ids)for(const A of [perfP[id],perfC[id]])for(const v of A)if(v!=null&&isFinite(v)){const q=lg(v);lo=Math.min(lo,q);hi=Math.max(hi,q);}
+  lo-=.06;hi+=.06;
+  const x=n=>L+(D1-n)*(W-L-R)/(D1-D0),y=v=>T+(hi-Math.min(hi,lg(v)))/(hi-lo)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,class:'camp-svg',role:'img','aria-label':'Potencia y constancia de los VIP según la duración de la campaña, de 60 a 7 días, todas terminando en el último día cerrado'});
+  for(const v of [0.25,0.5,2,4,8]){if(lg(v)<lo||lg(v)>hi)continue;svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'camp-rej'}));const t=svgEl('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'camp-eje'});t.textContent=fmtCoef(v).replace(/,00$/,'').replace(/,(\d)0$/,',$1');svg.append(t);}
+  {const t=svgEl('text',{x:L-6,y:y(1)+4,'text-anchor':'end',class:'camp-eje'});t.textContent='1';svg.append(t);}
+  for(let n=D1;n>=D0;n--){const m=x(n);svg.append(svgEl('line',{x1:m.toFixed(1),x2:m.toFixed(1),y1:T,y2:H-B,class:'camp-dia'}));} // grilla vertical: una línea por duración (60 a 7), como separadoresDia en las otras gráficas
+  svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(1),y2:y(1),class:'camp-uno'}));
+  for(const n of [60,50,40,30,20,10,7]){const t=svgEl('text',{x:x(n),y:H-8,'text-anchor':n===60?'start':n===7?'end':'middle',class:'camp-eje'});t.textContent=n+' d';svg.append(t);}
+  const trazo=A=>{const pts=[];for(let n=D1;n>=D0;n--){const v=A[n];pts.push(v==null||!isFinite(v)?null:[x(n),y(v)]);}return trazoConHuecos(pts);};
+  const capa=svgEl('g'),cima=svgEl('g');svg.append(capa,cima);
+  for(const id of ids){
+    const sel=id===seleccion,g=sel?cima:capa;
+    for(const [A,cls,col] of [[perfP[id],'camp-pot','var(--oro)'],[perfC[id],'camp-con','#7fb2e5']]){
+      const d=trazo(A),lin=svgEl('path',{d,class:'camp-lin '+cls+(sel?' camp-sel':''),'data-id':id});
+      lin.style.stroke=col;lin.style.strokeOpacity=sel?'1':'.12';lin.style.strokeWidth=sel?'2.6':'1'; // las ajenas muy atenuadas; la elegida en oro y azul
+      g.append(lin);
+      const hit=svgEl('path',{d,class:'camp-hit','data-id':id});const ti=svgEl('title');ti.textContent=etiquetaActivo(id);hit.append(ti);g.append(hit);
+    }
+  }
+  if(seleccion&&perfiles[seleccion])for(let n=D1;n>=D0;n--){ // duración sin bajas de la elegida: triángulo arriba, no hay punto posible
+    if(perfiles[seleccion][n]===Infinity){const px=x(n);svg.append(svgEl('path',{d:`M${px-4} ${T+8}L${px+4} ${T+8}L${px} ${T+1}Z`,class:'camp-sinbajas'}));}
+  }
+  svg.addEventListener('click',ev=>{const id=ev.target.dataset&&ev.target.dataset.id;if(id)alElegir(id);});
+  const tit=document.createElement('h3');tit.className='camp-tit';tit.textContent='Horizontes de potencia y constancia';
+  const sub=document.createElement('p');sub.className='camp-sub';sub.textContent=`Cierre en ${fechaLegibleUTC(fin)}; duración de la campaña de 60 a 7 días.`;
+  const ley=document.createElement('div');ley.className='camp-ley';ley.innerHTML='<span class="camp-k camp-pot"></span> Potencia <span class="camp-k camp-con"></span> Constancia';
+  caja.replaceChildren(tit,sub,svg,ley);
   trazadoAlEntrar(caja,svg,'.camp-lin');
 }
 function graficaActivosCampana(caja,s,grupos,seleccion=null){
@@ -2758,9 +2794,9 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   const t=document.createElement('h2');t.className='camp-tit';t.textContent=`Campaña de ${n} días`;
   const sub=document.createElement('p');sub.className='camp-sub';
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
-  const cEsp=document.createElement('div'),cHor=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
-  cEsp.className='camp-caja';cHor.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct]:[]),cEsp,...(puente?[cHor]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
+  const cEsp=document.createElement('div'),cHor=document.createElement('div'),cHorPC=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
+  cEsp.className='camp-caja';cHor.className='camp-caja';cHorPC.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
+  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct]:[]),cEsp,...(puente?[cHor,cHorPC]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
   if(puente){cAct.style.minHeight=Math.ceil((destino.clientWidth||innerWidth)*0.5+36)+'px';cAct.classList.add('camp-vip-series');}
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
@@ -2779,9 +2815,10 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   // Horizontes de campaña: se calcula una vez por cierre y grupo; solo se repinta la selección.
   let datosHor=null;
   const gruposHor=puente?Object.fromEntries(u.clasificados.filter(a=>NUCLEO.ids.has(a.id)&&(!g2||grupoMercadoDe(a.id)===g2)).map(a=>[a.id,a.grupo])):{};
-  const pintarHor=()=>{if(puente&&datosHor&&cHor.isConnected)graficaHorizontesCampana(cHor,datosHor,gruposHor,sel,elegir);};
+  const pintarHor=()=>{if(puente&&datosHor&&cHor.isConnected){graficaHorizontesCampana(cHor,datosHor,gruposHor,sel,elegir);graficaHorizontesPCCampana(cHorPC,datosHor,gruposHor,sel,elegir);}};
   if(puente){
     cHor.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo los registros…'}));
+    cHorPC.replaceChildren();
     cargarHorizontesCampana(u,g2).then(d=>{datosHor=d;pintarHor();})
       .catch(()=>{if(cHor.isConnected)cHor.replaceChildren(Object.assign(document.createElement('p'),{className:'estado',textContent:'No pude traer los registros de Horizontes de campaña.'}));});
   }
