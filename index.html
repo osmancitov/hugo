@@ -2799,7 +2799,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   sub.textContent=`Último día cerrado: ${fechaLegibleUTC(u.carrera.ventana.fin)} (ventana de ${n} días).`;
   const cEsp=document.createElement('div'),cHor=document.createElement('div'),cHorPC=document.createElement('div'),cAct=document.createElement('div'),cCuad=document.createElement('div'),lista=puente&&puente.listaEn?puente.listaEn:document.createElement('div');
   cEsp.className='camp-caja';cHor.className='camp-caja';cHorPC.className='camp-caja';cAct.className='camp-caja';cCuad.className='camp-caja';
-  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct]:[]),cEsp,...(puente?[cHor,cHorPC]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
+  raiz.append(...(puente?[]:[t,sub]),cCuad,...(puente?[cAct,cHorPC]:[]),cEsp,...(puente?[cHor]:[]),...(puente&&puente.cVar?[puente.cVar]:[]),...(puente&&puente.listaEn?[]:[lista]));destino.replaceChildren(raiz); // Mercado: gráfica VIP Potencia/Constancia junto al campo, en bloque reservado (pedido 1795668506.350929)
   if(puente){cAct.style.minHeight=Math.ceil((destino.clientWidth||innerWidth)*0.5+36)+'px';cAct.classList.add('camp-vip-series');}
   let sel=inicial&&s.activos[inicial]?inicial:null;
   const filas=new Map();
