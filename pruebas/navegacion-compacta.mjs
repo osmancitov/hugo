@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('selecciones contraen los niveles y se puede volver al nivel anterior',()=>{
- assert.match(html,/contraerNavegacion\(navMerc,mercado\|\|esBusqueda\|\|esCampana\|\|Boolean\(mu\),'#\/',Boolean\(mu\)\)/);
+ assert.match(html,/contraerNavegacion\(navMerc,mercado\|\|esBusqueda\|\|esCampana\|\|Boolean\(mu\),RAIZ,Boolean\(mu\)\)/);
  assert.match(html,/document\.querySelector\('\.mercados'\)\.after\(relojEntrada\)/);
   assert.match(html,/relojEntrada\.hidden=true;/); // la hora solo aparece en la página del grupo
  assert.match(html,/contraerNavegacion\(navCat,/);
@@ -40,3 +40,18 @@ test('menú de entrada: Mercado, Monitor y Cimiento; sin botones de Stocks, Crip
  for(const id of ['mercado-stock','mercado-cripto','mercado-buscar','mercado-campana'])assert.doesNotMatch(m,new RegExp(id));
 });
 assert.match(html,/getElementById\('mercado-enlace'\)\.classList\.toggle\('actual',Boolean\(mu\)\)/);
+
+test('el logo (también desde /mercado/…) apunta a la raíz del sitio',()=>{
+ assert.ok(html.includes("document.querySelector('.tit-link').href=RAIZ;"));
+});
+
+test('el logo y los retornos de Mercado usan dirección limpia, sin #/',()=>{
+ assert.ok(html.includes('<a class="tit-link" href="./">'));
+ assert.doesNotMatch(html,/href="#\/"/);
+ assert.doesNotMatch(html,/location\.(replace|hash\s*=)\s*\(?\s*'#\/'\s*[);]/);
+ assert.ok(html.includes("Boolean(mu),RAIZ,Boolean(mu))"));
+ const mon=fs.readFileSync(new URL('../monitor/index.html',import.meta.url),'utf8');
+ for(const m of ['theme-color','description','og:title','og:description','og:image','og:url','og:type','twitter:card'])assert.ok(mon.includes('"'+m+'"'),m);
+ assert.match(mon,/og:url" content="https:\/\/osmancitov.github.io\/hugo\/monitor\/"/);
+ assert.match(mon,/og:image" content="https:\/\/osmancitov.github.io\/hugo\/identidad\/tarjeta.jpg"/);
+});

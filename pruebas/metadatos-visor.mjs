@@ -18,7 +18,7 @@ test('superficie tiene entrada estática con metadatos propios antes de ejecutar
  assert.match(head, /og:image" content="https:\/\/osmancitov.github.io\/hugo\/superficie-og.jpg/);
  assert.match(head, /og:url" content="https:\/\/osmancitov.github.io\/hugo\/superficie.html/);
  assert.match(html, /if \(!location.hash\) history.replaceState/);
- assert.match(html, /href="index.html#\/"/);
+ assert.match(html, /href="\.\/"/);
  assert.match(html, /href: 'index.html#\/stock'/);
  assert.ok(!html.includes('enlaceSuperficie')); // sin enlaces entre las vistas (decisión del usuario, 21-nov-2026)
  assert.doesNotMatch(head, /twitter:/);

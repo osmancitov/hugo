@@ -9,7 +9,6 @@ export function paginaSuperficie(html) {
     .replace('https://osmancitov.github.io/hugo/identidad/tarjeta.jpg', 'https://osmancitov.github.io/hugo/superficie-og.jpg')
     .replace('property="og:url" content="https://osmancitov.github.io/hugo/"', 'property="og:url" content="https://osmancitov.github.io/hugo/superficie.html"')
     .replace('<meta property="og:type" content="website">', '<meta property="og:type" content="website">\n<meta property="og:image:width" content="1280">\n<meta property="og:image:height" content="640">\n<meta property="og:image:type" content="image/jpeg">\n<meta property="og:image:alt" content="Paisaje fantástico de pliegues rojos y verdes, inspirado en la Superficie 3D de Hugo.">')
-    .replace('href="#/"', 'href="index.html#/"')
     .replace("href: '#/stock'", "href: 'index.html#/stock'")
     .replace("window.addEventListener('hashchange', ruta);\nruta();", "window.addEventListener('hashchange', ruta);\nif (!location.hash) history.replaceState(null, '', location.pathname + location.search + '#/i/iceberg-stock/superficie');\nruta();");
 }
