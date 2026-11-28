@@ -18,7 +18,7 @@
       "buy_date": "2026-11-27",
       "sell_date": "2026-11-27",
       "balance_confirmed": true,
-      "time_note": "Horas no indicadas por Osmancito; se conservan solo las fechas. Compra y venta del 27 de noviembre, fecha confirmada por Osmancito como anoche. La venta registrada se calculó para cuadrar con el saldo final confirmado, con la comisión incluida, según el método; Osmancito reportó la venta a 0,1635."
+      "time_note": "Horas no indicadas por Osmancito; se conservan solo las fechas. Compra y venta del 27 de noviembre, fecha confirmada por Osmancito como anoche. La venta registrada se calculó para cuadrar con el saldo final confirmado, con la comisión incluida, según el método; Osmancito reportó la venta de forma aproximada, a 0,1635."
     },
     {
       "date": "2026-11-27",
