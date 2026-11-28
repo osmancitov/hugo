@@ -41,6 +41,7 @@ const CSS = `
   .monitor-vip .nombre { color: var(--tenue); font-size: 12px; }
   .monitor-vip .sube { color: var(--verde); }
   .monitor-vip .baja { color: var(--rojo); }
+  .monitor-vip .ext { display: inline-block; min-width: 9ch; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .monitor-vip .igual { color: var(--tenue); }
   .monitor-vip .var { font-variant-numeric: tabular-nums; font-weight: 600; }
   .monitor-vip .precio { font-variant-numeric: tabular-nums; }
@@ -118,6 +119,12 @@ function guardarExtremos(a, alto, bajo) {
   if (Number.isFinite(bajo) && bajo > 0) a.bajo = bajo;
 }
 
+// Mín / Máx: el cero se presenta como no pérdida (▲ +0.00 %), con el mismo ancho que los demás; solo cambia la presentación, no el cálculo.
+function extremo(v, clase) {
+  const s = document.createElement('span'); s.className = 'ext ' + (clase || '');
+  if (Number.isFinite(v) && Math.abs(v) <= 0.004) { s.className = 'ext sube'; s.textContent = '▲ +0.00 %'; return s; }
+  s.className = 'ext ' + (clase || ''); s.textContent = fmtVariacion(v).texto; return s;
+}
 function fmtVariacion(v) {
   if (!Number.isFinite(v)) return { texto: '—', clase: 'igual' };
   const signo = v > 0 ? '+' : '';
@@ -326,8 +333,8 @@ function pintar() {
       celdaExtremos.className = 'var';
       celdaExtremos.title = 'Mínimo y máximo de la jornada (desde las 00:00 UTC) respecto a la misma base de la variación';
       if (Number.isFinite(a.base) && Number.isFinite(a.alto) && Number.isFinite(a.bajo)) {
-        const lo = document.createElement('span'); lo.className = 'baja'; lo.textContent = fmtVariacion((Math.min(a.bajo, a.precio ?? a.bajo) / a.base - 1) * 100).texto;
-        const hi = document.createElement('span'); hi.className = 'sube'; hi.textContent = fmtVariacion((Math.max(a.alto, a.precio ?? a.alto) / a.base - 1) * 100).texto;
+        const lo = extremo((Math.min(a.bajo, a.precio ?? a.bajo) / a.base - 1) * 100, 'baja');
+        const hi = extremo((Math.max(a.alto, a.precio ?? a.alto) / a.base - 1) * 100, 'sube');
         celdaExtremos.append(lo, document.createTextNode(' / '), hi);
       } else celdaExtremos.textContent = '—';
       tr.append(celdaPrecio, celdaVariacion, celdaExtremos);
@@ -460,8 +467,8 @@ async function mostrarHistorial(iso) {
         td5.title = 'Mínimo y máximo del día respecto a la misma apertura (00:00 UTC) de la variación';
         if (f.minimo == null || f.maximo == null) td5.textContent = '—';
         else {
-          const lo = document.createElement('span'); lo.className = 'baja'; lo.textContent = fmtVariacion(f.minimo).texto;
-          const hi = document.createElement('span'); hi.className = 'sube'; hi.textContent = fmtVariacion(f.maximo).texto;
+          const lo = extremo(f.minimo, 'baja');
+          const hi = extremo(f.maximo, 'sube');
           td5.append(lo, document.createTextNode(' / '), hi);
         }
         tr.append(td1, td2, td3, td4, td5); tabla.appendChild(tr);

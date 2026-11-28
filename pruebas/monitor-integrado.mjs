@@ -51,3 +51,8 @@ test('sin compatibilidad con enlaces antiguos: ni redirecciones de rachas/persis
   assert.ok(!html.includes("hash==='#/cripto/rachas'"));
   assert.ok(!html.includes("replaceState(null,'',RAIZ+location.hash)"));
 });
+test('Mín / Máx: cero con presentación de no pérdida y ancho fijo por valor (alineación)', () => {
+  assert.ok(mod.includes("s.textContent = '▲ +0.00 %'"));
+  assert.ok(mod.includes('.monitor-vip .ext { display: inline-block; min-width: 9ch; text-align: right;'));
+  assert.ok(mod.includes("extremo(f.minimo, 'baja')") && mod.includes("extremo(f.maximo, 'sube')"));
+});
