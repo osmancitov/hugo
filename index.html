@@ -409,7 +409,7 @@ const enMercado = () => location.pathname.startsWith(RAIZ + 'mercado');
 const lugarActual = () => (enMercado() ? location.pathname : location.hash);
 let rutaPrevia = location.pathname;
 let estadoLista = null;
-let origenLista = '#/stock';
+let origenLista = RAIZ + 'mercado/';
 let actualizarRachas = () => {};
 app.addEventListener('click', (ev) => {
   const desdeTabla = ev.target.closest('a.barra-activo-enlace');
@@ -527,7 +527,7 @@ function fmtCap(v) {
 function filaActivo(e, conCap) {
   const a = document.createElement('a');
   a.className = 'activo-fila';
-  a.href = e.indicador ? '#/i/' + (e.codigo==='iceberg-stock/superficie'?e.codigo:encodeURIComponent(e.codigo)) : '#/a/' + e.clase + '/' + encodeURIComponent(e.codigo);
+  a.href = e.indicador ? '#/i/' + (e.codigo==='iceberg-stock/superficie'?e.codigo:encodeURIComponent(e.codigo)) : urlMercado(null, e.clase + ':' + e.codigo);
   // Indicadores: una sola pieza de título (decisión del usuario, 19-nov-2026); sin código técnico a la vista.
   if (e.indicador) { a.innerHTML = '<span class="cod"></span>'; a.querySelector('.cod').textContent = e.nombre; return a; }
   const lectura = parentesisLectura(e);
@@ -615,7 +615,7 @@ function vistaArbol(q, mercado) {
     return;
   }
   for (const e of hall) {
-    const fila = app.querySelector(`a.activo-fila[href="${e.indicador ? '#/i/' : '#/a/' + e.clase + '/'}${encodeURIComponent(e.codigo)}"]`);
+    const fila = app.querySelector(`a.activo-fila[href="${e.indicador ? '#/i/' + encodeURIComponent(e.codigo) : urlMercado(null, e.clase + ':' + e.codigo)}"]`);
     if (!fila) continue;
     fila.classList.add('resaltado');
     for (let n = fila.closest('.nodo'); n; n = n.parentElement.closest('.nodo')) n.classList.add('abierto');
@@ -1124,7 +1124,7 @@ async function vistaTablaBarra(clave, instante = null) {
     const tdA = document.createElement('td'); tdA.className = 'col-activo';
     const enlaceActivo = document.createElement('a');
     enlaceActivo.className = 'barra-activo-enlace';
-    enlaceActivo.href = '#/a/' + mercadoTabla + '/' + encodeURIComponent(f.codigo);
+    enlaceActivo.href = urlMercado(null, mercadoTabla + ':' + f.codigo);
     enlaceActivo.textContent = f.codigo;
     tdA.append(enlaceActivo);
     const tdR = document.createElement('td'); tdR.textContent = precioTabla(f.ref); tdR.title = f.ref;

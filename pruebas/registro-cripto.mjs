@@ -71,7 +71,7 @@ test('el registro de cripto empieza el 26-nov 00:00 UTC y la corrida anterior no
 test('las tablas de las barras de cripto enlazan a cripto y leen su registro', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(html.includes("&mercado=cripto"));
-  assert.ok(html.includes("'#/a/' + mercadoTabla + '/'"));
+  assert.ok(html.includes("urlMercado(null, mercadoTabla + ':' + f.codigo)"));
   assert.ok(html.includes('cargarDiaObservatorio(parametros.get(\'dia\')??diaUTC(ms), mercadoTabla)'));
 });
 

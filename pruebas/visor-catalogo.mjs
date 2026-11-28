@@ -44,7 +44,7 @@ test('volver conserva búsqueda sin autoenfoque ni desplazamiento a coincidencia
  assert.doesNotMatch(src,/scrollIntoView/);
 });
 test('tablas de barras enlazan al histórico de stock existente y conservan origen', () => {
- assert.match(src,/enlaceActivo.href = '#\/a\/' \+ mercadoTabla \+ '\/' \+ encodeURIComponent\(f.codigo\)/);
+ assert.match(src,/enlaceActivo.href = urlMercado\(null, mercadoTabla \+ ':' \+ f.codigo\)/);
  assert.match(src,/desdeTabla\) \{ origenLista = lugarActual\(\)/);
  assert.match(src,/tdA.append\(enlaceActivo\)/);
 });
