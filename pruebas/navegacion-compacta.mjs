@@ -24,7 +24,7 @@ test('Mercado abre directamente selección de grupo para la única campaña de 3
 test('capitalización sin explicación eliminada; la vista Promedio ya no existe',()=>{
  assert.doesNotMatch(html,/Capitalización del token y, en su caso/);
  assert.doesNotMatch(html,/montarPersistencia|visor-persistencia|persistencia:'Promedio'/);
- assert.match(html,/location.replace\(hash.replace\('\/persistencia','\/variacion'\)\)/);
+ assert.doesNotMatch(html,/location.replace\(hash.replace\('\/persistencia'/); // enlaces antiguos de Promedio: sin redirección (usuario rechazó conservar enlaces viejos)
 });
 
 test('Variación sin párrafo introductorio eliminado',()=>{

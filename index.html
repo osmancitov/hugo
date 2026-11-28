@@ -3077,7 +3077,6 @@ async function ruta() {
   monSalir();monSalir=()=>{};
   {const enl=document.getElementById('monitor-enlace');enl.classList.remove('actual');enl.removeAttribute('title');enl.href=RAIZ+'monitor/';}
   {const monM=location.pathname.slice(RAIZ.length).match(/^monitor(?:\/(empresas|fondos|cripto))?\/?$/);if(monM){document.querySelector('.mercados').after(document.getElementById('reloj-entrada'));return rutaMonitor(monM[1]||null);}}
-  if(location.hash&&enMercado()){history.replaceState(null,'',RAIZ+location.hash);rutaPrevia=location.pathname;} // un enlace con # desde una página de Mercado pasa a su vista
   const indRuta=indicadorDeRuta(),hash=indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
@@ -3091,9 +3090,6 @@ async function ruta() {
   if(mc&&!mc[1]&&mc[2]){location.replace('#/campana/90d/'+mc[2]+'/'+mc[3]);return;} // enlaces antiguos sin ventana
   if(m){history.replaceState(null,'',urlMercado(null,m[1]+':'+decodeURIComponent(m[2])));rutaPrevia=location.pathname;return ruta();} // la ficha #/a/… (enlaces de las listas) abre la vista de Mercado del activo
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
-    if(/^#\/(stock\/(empresas|fondos)|cripto)\/persistencia$/.test(hash)){location.replace(hash.replace('/persistencia','/variacion'));return;} // la vista Promedio se retiró (25-nov-2026): los enlaces antiguos llegan a Variación
-    if(hash==='#/stock/rachas'){location.replace('#/stock/empresas/variacion');return;}
-    if(hash==='#/cripto/rachas'){location.replace('#/cripto/variacion');return;}
     history.replaceState(null,'',RAIZ);rutaPrevia=location.pathname;return ruta(); // hash desconocido: portada con dirección limpia
   }
   const mercado=r?.[1]||null,categoria=r?.[2]||null,ranking=r?.[3]||null;

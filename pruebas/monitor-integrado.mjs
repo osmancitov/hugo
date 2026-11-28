@@ -46,3 +46,8 @@ test('Monitor sin grupo no muestra activos ni abre fuentes: espera la elección 
   assert.ok(html.includes('monitor-elegir'));
   assert.ok(html.indexOf('monitor-elegir') < html.indexOf("import(RAIZ+'app/monitor.mjs?v=1')")); // antes de cargar el módulo
 });
+test('sin compatibilidad con enlaces antiguos: ni redirecciones de rachas/persistencia ni conversión de # dentro de Mercado', () => {
+  assert.ok(!html.includes("hash==='#/stock/rachas'"));
+  assert.ok(!html.includes("hash==='#/cripto/rachas'"));
+  assert.ok(!html.includes("replaceState(null,'',RAIZ+location.hash)"));
+});
