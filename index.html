@@ -3087,7 +3087,7 @@ async function ruta() {
   {const enl=document.getElementById('monitor-enlace');enl.classList.remove('actual');enl.removeAttribute('title');enl.href=RAIZ+'monitor/';}
   {const monM=location.pathname.slice(RAIZ.length).match(/^monitor(?:\/(empresas|fondos|cripto))?\/?$/);if(monM){document.querySelector('.mercados').after(document.getElementById('reloj-entrada'));return rutaMonitor(monM[1]||null);}}
   const indRuta=indicadorDeRuta(),campM=location.pathname.slice(RAIZ.length).match(/^campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/([^\/]+))?\/?$/),hash=campM?'#/campana'+(campM[1]?'/'+campM[1]+'d':'')+(campM[2]?'/'+campM[2]+'/'+campM[3]:''):indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
-  const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
+  const m=null,mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
   const muA=ph.match(/^mercado\/(cripto|stock)\/([^\/]+)\/?$/);
@@ -3096,7 +3096,6 @@ async function ruta() {
   const g2Ruta=mu?(muA?grupoMercadoDe(muA[1]+':'+decodeURIComponent(muA[2])):muG[1]):null;
   if(mu)document.title=(muA?decodeURIComponent(muA[2])+' · ':muG[1]?{empresas:'Empresas',fondos:'Fondos',cripto:'Cripto'}[muG[1]]+' · ':'')+'Mercado · Observatorio Bursátil';else if(document.title.includes('Mercado ·'))document.title='Observatorio Bursátil';
   const esBusqueda=hash==='#/buscar',mc=campM?hash.match(/^#\/campana(?:\/(90|60|30)d)?(?:\/(cripto|stock)\/(.+))?$/):null,esCampana=Boolean(mc);
-  if(m){history.replaceState(null,'',urlMercado(null,m[1]+':'+decodeURIComponent(m[2])));rutaPrevia=location.pathname;return ruta();} // la ficha #/a/… (enlaces de las listas) abre la vista de Mercado del activo
   if(!m&&!mi&&!r&&!esBusqueda&&!mu&&!esCampana&&hash!=='#/') {
     history.replaceState(null,'',RAIZ);rutaPrevia=location.pathname;return ruta(); // hash desconocido: portada con dirección limpia
   }
