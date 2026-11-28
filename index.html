@@ -338,7 +338,7 @@ h2.tit-vip { font-size: 1.5rem; margin: 0; }
 <script>
 // La portada se decide antes del primer pintado para que los botones no salten:
 // solo las fichas (#/a/… y #/i/…) la ocultan; el enrutador confirma después.
-document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash);
+document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(location.hash) || /\/mercado\/indicador\//.test(location.pathname);
 </script>
 <div id="reloj-entrada" class="superficie-reloj" hidden></div>
 <nav class="mercados" aria-label="Mercados"><a href="mercado/" id="mercado-enlace">Mercado</a><a href="monitor/">Monitor</a><a href="cuenta/">Cimiento</a></nav>
@@ -406,8 +406,11 @@ const urlMercado = (grupo, id) => {
   const [t, ...c] = id.split(':');
   return RAIZ + 'mercado/' + t + '/' + encodeURIComponent(c.join(':')) + '/';
 };
+const urlIndicador = (codigo, consulta = '') => RAIZ + 'mercado/indicador/' + codigo.split('/').map(encodeURIComponent).join('/') + '/' + consulta;
+const indicadorDeRuta = () => { const m = location.pathname.slice(RAIZ.length).match(/^mercado\/indicador\/(.+?)\/?$/); return m ? m[1].split('/').map(decodeURIComponent).join('/') : null; };
+const irInicio = () => { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; ruta(); };
 const enMercado = () => location.pathname.startsWith(RAIZ + 'mercado');
-const lugarActual = () => (enMercado() ? location.pathname : location.hash);
+const lugarActual = () => (enMercado() ? location.pathname + location.search : location.hash);
 let rutaPrevia = location.pathname;
 let estadoLista = null;
 let origenLista = RAIZ + 'mercado/';
@@ -528,7 +531,7 @@ function fmtCap(v) {
 function filaActivo(e, conCap) {
   const a = document.createElement('a');
   a.className = 'activo-fila';
-  a.href = e.indicador ? '#/i/' + (e.codigo==='iceberg-stock/superficie'?e.codigo:encodeURIComponent(e.codigo)) : urlMercado(null, e.clase + ':' + e.codigo);
+  a.href = e.indicador ? urlIndicador(e.codigo) : urlMercado(null, e.clase + ':' + e.codigo);
   // Indicadores: una sola pieza de título (decisión del usuario, 19-nov-2026); sin código técnico a la vista.
   if (e.indicador) { a.innerHTML = '<span class="cod"></span>'; a.querySelector('.cod').textContent = e.nombre; return a; }
   const lectura = parentesisLectura(e);
@@ -616,7 +619,7 @@ function vistaArbol(q, mercado) {
     return;
   }
   for (const e of hall) {
-    const fila = app.querySelector(`a.activo-fila[href="${e.indicador ? '#/i/' + encodeURIComponent(e.codigo) : urlMercado(null, e.clase + ':' + e.codigo)}"]`);
+    const fila = app.querySelector(`a.activo-fila[href="${e.indicador ? urlIndicador(e.codigo) : urlMercado(null, e.clase + ':' + e.codigo)}"]`);
     if (!fila) continue;
     fila.classList.add('resaltado');
     for (let n = fila.closest('.nodo'); n; n = n.parentElement.closest('.nodo')) n.classList.add('abierto');
@@ -952,7 +955,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
     '24 horas',
     b.suben, b.bajan, b.conDato,
     '',
-    '#/i/iceberg-stock/barra-24h' + sufijo,
+    urlIndicador('iceberg-stock/barra-24h') + sufijo,
     periodoBarra(b.inicio, b.fin, '24 h por activo'), iguales24h
   ));
   // Primera barra (decisión del usuario, 21-nov-2026): precio actual contra el cierre de la
@@ -964,7 +967,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
       duracionBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada).replace(/\b(\d+) h\b/g, (_, n) => `${n} ${n === '1' ? 'hora' : 'horas'}`),
       d.suben, d.bajan, d.suben + d.bajan,
       '',
-      '#/i/iceberg-stock/barra-dia' + sufijo,
+      urlIndicador('iceberg-stock/barra-dia') + sufijo,
       periodoBarra(d.base ?? (Date.parse(d.ref + 'T00:00:00Z') + 86400000), b.generada, 'dia'), d.iguales
     ));
   } else if (sinFuente) caja.append(vacia('Desde el inicio del día', 'aún sin lectura suficiente'));
@@ -977,7 +980,7 @@ function vistaBarra(b, { historica = false, compacta = false, mercado = 'stock',
   // Las tres barras dicen Verdes/Rojos (decisión del usuario, 21-nov-2026: «llamemos verdes
   // y rojos y ya»).
   // Tabla de las barras de movimiento: contra la lectura anterior usa el detalle guardado; contra otra lectura (1 hora, 15 min) se calcula por activo con las dos lecturas publicadas (`base`).
-  const enlaceMov=(x)=>!sufijo?(x.sinTabla?'':'#/i/iceberg-stock/barra-movimiento'):'#/i/iceberg-stock/barra-movimiento'+sufijo+(x.sinTabla?'&base='+encodeURIComponent(new Date(x.comparadaCon).toISOString()):'');
+  const enlaceMov=(x)=>!sufijo?(x.sinTabla?'':urlIndicador('iceberg-stock/barra-movimiento')):urlIndicador('iceberg-stock/barra-movimiento')+sufijo+(x.sinTabla?'&base='+encodeURIComponent(new Date(x.comparadaCon).toISOString()):'');
   const m = b.movimiento;
   if (m) {
     const sec = seccion(
@@ -1060,10 +1063,10 @@ const pctTabla = (ultimo, ref) => {
 };
 async function vistaTablaBarra(clave, instante = null) {
   const def = BARRAS_TABLA[clave];
-  if (!def) { location.hash = ''; return; }
+  if (!def) { irInicio(); return; }
   app.innerHTML = '';
   const volver = document.createElement('a');
-  volver.className = 'volver'; volver.href = '#/i/iceberg-stock/superficie'; volver.textContent = 'volver';
+  volver.className = 'volver'; volver.href = urlIndicador('iceberg-stock/superficie'); volver.textContent = 'volver';
   const ficha = document.createElement('div');
   ficha.className = 'ficha';
   const h1 = document.createElement('h1');
@@ -1629,7 +1632,7 @@ function graficoIcebergVertical(ctx, puntos, e, alto, hasta) {
 
 function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias = null) {
   const e = INDICADORES.find((x) => x.codigo === codigo);
-  if (!e) { location.hash = ''; return; }
+  if (!e) { irInicio(); return; }
   if (!en) app.innerHTML = '';
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = origenLista; volver.textContent = 'volver';
@@ -2141,7 +2144,7 @@ let limpiarGrafica = () => {};
 /* ---------- vista de activo ---------- */
 function vistaActivo(clase, codigo, en = null, dias = 90, extra = {}) {
   const e = TODOS.find((x) => x.clase === clase && x.codigo === codigo);
-  if (!e) { if (!en) location.hash = ''; return; }
+  if (!e) { if (!en) irInicio(); return; }
   if (!en) app.innerHTML = '';
   const volver = document.createElement('a');
   volver.className = 'volver'; volver.href = origenLista; volver.textContent = 'volver';
@@ -2986,7 +2989,7 @@ async function ruta() {
   await rotulosListos;
   limpiarGrafica();limpiarGrafica=()=>{};
   if(location.hash&&enMercado()){history.replaceState(null,'',RAIZ+location.hash);rutaPrevia=location.pathname;} // un enlace con # desde una página de Mercado pasa a su vista
-  const hash=enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
+  const indRuta=indicadorDeRuta(),hash=indRuta?'#/i/'+indRuta.split('/').map(encodeURIComponent).join('/')+location.search:enMercado()?'#/':(location.hash||'#/'),ph=location.pathname.slice(RAIZ.length);
   const m=hash.match(/^#\/a\/(cripto|stock)\/(.+)$/),mi=hash.match(/^#\/i\/(.+)$/);
   const tb=hash.match(/^#\/i\/iceberg-stock\/(barra-dia|barra-24h|barra-movimiento)(?:\?lectura=(.+))?$/);
   const r=hash.match(/^#\/(stock|cripto)(?:\/(empresas|fondos))?(?:\/(capitalizacion|variacion|indicadores))?$/);
@@ -3061,7 +3064,7 @@ async function ruta() {
 }
 elBuscar.addEventListener('input', () => {
   estadoLista = null;
-  if (/^#\/(a|i)\//.test(location.hash)) {
+  if (indicadorDeRuta() || /^#\/(a|i)\//.test(location.hash)) {
     // Buscar desde una vista vuelve al catálogo como localizador; vaciar la casilla no saca de la vista.
     if (elBuscar.value.trim()) { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; ruta(); }
     return;
@@ -3081,7 +3084,7 @@ document.querySelector('.tit-link').addEventListener('click', (ev) => {
   if (location.hash) { history.pushState(null, '', RAIZ); rutaPrevia = location.pathname; }
   ruta();
 });
-window.addEventListener('popstate', () => { if (location.pathname !== rutaPrevia) { rutaPrevia = location.pathname; ruta(); } }); // atrás y adelante entre vistas de Mercado
+window.addEventListener('popstate', () => { if (location.pathname !== rutaPrevia || indicadorDeRuta()) { rutaPrevia = location.pathname; ruta(); } }); // atrás y adelante entre vistas de Mercado
 document.addEventListener('click', (ev) => { // navegar dentro de Mercado sin recargar el documento
   if (ev.defaultPrevented || ev.button || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
   const a = ev.target.closest && ev.target.closest('a[href]');
@@ -3089,8 +3092,8 @@ document.addEventListener('click', (ev) => { // navegar dentro de Mercado sin re
   const u = new URL(a.href, location.href);
   if (u.origin !== location.origin || !(u.pathname.startsWith(RAIZ + 'mercado') || (u.pathname === RAIZ && (enMercado() || location.hash))) || u.hash) return; // también la portada, sin recargar, al soltar el botón Mercado
   ev.preventDefault();
-  if (u.pathname === location.pathname && !location.hash) return;
-  history.pushState(null, '', u.pathname); rutaPrevia = location.pathname;
+  if (u.pathname + u.search === location.pathname + location.search && !location.hash) return;
+  history.pushState(null, '', u.pathname + u.search); rutaPrevia = location.pathname;
   window.scrollTo(0, 0); ruta();
 });
 window.addEventListener('hashchange', ruta);

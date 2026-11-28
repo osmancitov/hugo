@@ -394,7 +394,7 @@ test('barras comunes separan igualdad gris de subidas verdes sin cambiar datos g
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const codigo=html.slice(html.indexOf('function vistaBarra('),html.indexOf('// Las tablas de las tres barras'));
  const crear=()=>({style:{},hijos:[],setAttribute(){},append(...xs){this.hijos.push(...xs);}});
- const vista=vm.runInNewContext(codigo+';vistaBarra',{document:{createElement:crear,createTextNode:t=>({textContent:t})},COLORES_LECTURA,separarConteos,cifrasConteos,RED_S:'rojo',GREEN_S:'verde',duracionBarra:()=> '1 h',periodoBarra:()=> 'periodo'});
+ const vista=vm.runInNewContext(codigo+';vistaBarra',{document:{createElement:crear,createTextNode:t=>({textContent:t})},COLORES_LECTURA,separarConteos,cifrasConteos,RED_S:'rojo',GREEN_S:'verde',duracionBarra:()=> '1 h',periodoBarra:()=> 'periodo',urlIndicador:(c,q='')=>'/i/'+c+'/'+q});
  const b={generada:1000,inicio:0,fin:1000,suben:2,bajan:1,conDato:3,activos:new Map([['A',{aperturaN:10,ultimoN:10}],['B',{aperturaN:10,ultimoN:11}],['C',{aperturaN:10,ultimoN:9}]]),dia:{ref:'2026-11-20',suben:2,bajan:1,iguales:1},movimiento:{comparadaCon:0,suben:2,bajan:1,iguales:1}};
  const antes=JSON.stringify({...b,activos:[...b.activos]});
  for(const compacta of [true,false]){

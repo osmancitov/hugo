@@ -16,7 +16,7 @@ test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la C
   assert.match(html, /\^mercado\\\/\(cripto\|stock\)/);
 });
 test('las tres barras van en orden: 24 horas, desde la referencia, contra la lectura anterior', () => {
-  const a = html.indexOf("'#/i/iceberg-stock/barra-24h'"), b = html.indexOf("'#/i/iceberg-stock/barra-dia'"), c = html.indexOf("'#/i/iceberg-stock/barra-movimiento'");
+  const a = html.indexOf("urlIndicador('iceberg-stock/barra-24h'"), b = html.indexOf("urlIndicador('iceberg-stock/barra-dia'"), c = html.indexOf("urlIndicador('iceberg-stock/barra-movimiento'");
   assert.ok(a > 0 && a < b && b < c);
 });
 test('el activo elegido se refleja entre superficie, Campaña y ficha', () => {

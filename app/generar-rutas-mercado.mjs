@@ -64,6 +64,10 @@ export function generar(raiz, { escribir = true } = {}) {
   hacer('mercado/', 'Mercado · Observatorio Bursátil', 'Empresas, fondos y cripto');
   const nombres = { empresas: 'Empresas', fondos: 'Fondos', cripto: 'Cripto' };
   for (const g of GRUPOS) hacer(`mercado/${g}/`, `${nombres[g]} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
+  // Indicadores y tablas de barras del Balance: /mercado/indicador/<código>/ (la consulta ?lectura=… la lee el visor).
+  const indicadores = new Set(['iceberg-stock/superficie', 'iceberg-stock/barra-24h', 'iceberg-stock/barra-dia', 'iceberg-stock/barra-movimiento']);
+  for (const m of html.matchAll(/codigo: '([^']+)'[^\n]*indicador: true/g)) indicadores.add(m[1]);
+  for (const cod of indicadores) hacer(`mercado/indicador/${cod}/`, `${cod.split('/').pop()} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
   const omitidos = [];
   for (const [m, cod] of activos(raiz)) {
     if (!CODIGO_VALIDO.test(cod)) { omitidos.push(`${m}:${cod}`); continue; }
