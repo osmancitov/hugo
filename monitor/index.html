@@ -57,7 +57,7 @@
 <header>
   <h1>Monitor VIP</h1>
   <div class="estado">
-    <span id="punto" class="punto"></span><span id="conexion">iniciando…</span><br>
+    <span id="punto" class="punto"></span><span id="conexion">iniciando…</span> · <span id="ultimo">sin datos aún</span><br>
     Base: primera lectura del día (00:00 UTC) del Observatorio · revisión cada 5 s<br>
     <span id="reloj"></span>
   </div>
@@ -83,6 +83,7 @@ const RECARGA_MS = 15 * 60 * 1000;
 // estado: Map codigo -> {codigo, nombre, grupo, simbolo, base, fuenteBase, precio, ultimoDato}
 const estado = new Map();
 let ws = null, indiceHost = 0, esperaReintento = 2000, temporizadorReintento = null;
+let ultimoMensaje = 0;
 let diaUTC = hoyUTC();
 
 function hoyUTC() { return new Date().toISOString().slice(0, 10); }
@@ -209,10 +210,12 @@ function conectar() {
   ws = new WebSocket(url);
   ws.onopen = () => {
     esperaReintento = 2000;
+    ultimoMensaje = Date.now();
     conexion.textContent = 'en vivo';
     document.getElementById('punto').className = 'punto vivo';
   };
   ws.onmessage = (ev) => {
+    ultimoMensaje = Date.now();
     let m;
     try { m = JSON.parse(ev.data); } catch (e) { return; }
     const d = m.data;
@@ -283,6 +286,21 @@ function pintar() {
   document.getElementById('reloj').textContent =
     'Revisado ' + ahora.toLocaleTimeString('es-VE') + ' · ' + diaUTC + ' UTC';
 }
+
+// Vigilante: un socket colgado no siempre avisa. Si no llega ningún dato en 90 s
+// (hay 60 flujos abiertos; silencio total tan largo es conexión muerta, no mercado quieto),
+// se cierra y la lógica de onclose reconecta. El estado se ve en la cabecera.
+setInterval(() => {
+  const ahora = new Date();
+  const segundos = ultimoMensaje ? Math.floor((Date.now() - ultimoMensaje) / 1000) : null;
+  document.getElementById('ultimo').textContent =
+    segundos === null ? 'sin datos aún' : segundos < 5 ? 'último dato ahora' : 'último dato hace ' + segundos + ' s';
+  if (ws && Date.now() - ultimoMensaje > 90000) {
+    document.getElementById('conexion').textContent = 'sin datos; reconectando…';
+    document.getElementById('punto').className = 'punto caido';
+    try { ws.close(); } catch (e) {}
+  }
+}, 5000);
 
 (async function iniciar() {
   try {
