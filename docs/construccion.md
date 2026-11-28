@@ -360,7 +360,7 @@ Cada paso intermedio que falla se anota y no detiene a los demás ni a las velas
 
 **El problema.** El iceberg y las velas son diarios. Se quiere ver también cómo se mueven los activos que importan **durante** el día.
 
-**Qué se lee.** Solo los VIP: la unión de las campañas de 30, 60 y 90 días del último cierre, en stocks y en cripto (el 25-nov-2026 eran 27 stocks y 78 cripto). Las velas diarias de todos los activos siguen completas; esta lectura es aparte.
+**Qué se lee.** Solo los VIP: el núcleo del último cierre (54 campañas de duración variable, de 7 a 60 días), en stocks y en cripto. Entre el 25 y el 27-nov-2026 se leía la unión de las campañas de 30, 60 y 90 días (27 stocks y 78 cripto el 25-nov). Las velas diarias de todos los activos siguen completas; esta lectura es aparte.
 
 **Cuándo.** Cada 15 minutos. El flujo lo despacha el reloj de Google unos 5 minutos antes de cada cuarto de hora, y cada lectura guarda su instante real de consulta, agrupado por intervalo de 15 minutos (`cubeta`, `app/modulos/ritmo-vip.mjs`). Si el repositorio ya cubre el intervalo, la corrida no toma otra.
 

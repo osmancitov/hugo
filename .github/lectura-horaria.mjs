@@ -84,7 +84,7 @@ const inicialTexto = primeraLecturaDelDia(RAIZ, instante);
 const previaLocal = ultimaLecturaLocal(RAIZ);
 const anteriorTexto = previaLocal !== null && diaUTC(leerBarra(previaLocal).generada) === diaUTC(instante) ? previaLocal : null;
 const r = await generarBarra({ dirVelas: DIR_VELAS, host, fetchImpl: fetchPausa, anteriorTexto, inicialTexto, ahora: instante, universo: vipAdmitidos(RAIZ).stock });
-// Desde el relanzamiento VIP (25-nov-2026) la lectura horaria de stocks cubre solo los VIP de la unión 30/60/90 del último cierre.
+// Desde el relanzamiento VIP (25-nov-2026) la lectura horaria de stocks cubre solo los VIP del núcleo (54 campañas de 7 a 60 días) del último cierre; entre el 25 y el 27-nov-2026 era la unión 30/60/90.
 const reg = guardarLectura(RAIZ, r.texto);
 console.log(`Lectura ${new Date(r.generada).toISOString()} guardada localmente: ${reg.lecturas} lectura(s) del día.`);
 

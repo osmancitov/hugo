@@ -1,5 +1,5 @@
 // Paso diario del registro VIP horario: tras la campaña (que deja las categorías del cierre en main), reconstruye
-// desde cero el día UTC recién cerrado de la unión VIP 30/60/90 (stock y cripto) con velas de 1 h, 25 puntos
+// desde cero el día UTC recién cerrado de los VIP del núcleo (stock y cripto; antes del 27-nov-2026, la unión VIP 30/60/90) con velas de 1 h, 25 puntos
 // (00:00 a 24:00). Escribe SOLO registros/intradia/<mercado>/canonico/<día>.json: nunca toca los archivos vivos de la
 // lectura horaria, así que no hay archivo compartido con ella. Idempotente (si ya existe y es válido no hace nada).
 // Uso: node .github/canonico-diario.mjs [--dia AAAA-MM-DD]

@@ -337,7 +337,7 @@ export function montarSuperficie(contenedor, lecturas, parsear, { alSeleccionar 
   canvas.onpointercancel = (e) => { dedos.delete(e.pointerId); pellizco = null; arrastre = null; };
   const observador = new ResizeObserver(dibujar); observador.observe(caja);
   dibujar(); alSeleccionar(ultima);
-  // Elegir el activo desde fuera (otra vista de la página unificada), sin avisar de vuelta.
+  // Elegir el activo desde fuera (otra vista de la página de Mercado), sin avisar de vuelta.
   const elegirDesdeFuera = (codigo) => { silencioso = true; try { seleccionar(ultima, codigo ? codigos.indexOf(codigo) : -1); } finally { silencioso = false; } };
   return { datos, elegirActivo: elegirDesdeFuera, desmontar() { viva = false; pasosActivo.desmontar(); pasosLectura.desmontar(); observador.disconnect(); canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = null; } };
 }

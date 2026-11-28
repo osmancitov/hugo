@@ -1,8 +1,9 @@
-// Balance diario de Mercado (25-nov-2026, decisión del usuario, audio 1795640982.456729): el conjunto son los
-// clasificados (sin Rezagados) del ÚLTIMO cierre de cada campaña (30, 60 o 90 días). Se siguen hacia atrás durante
-// los n días calendario cerrados de esa campaña y se recalcula toda la historia cada cierre; no es la clasificación
-// de cada día. Por día: cuántos suben (cierre > apertura), quedan iguales y bajan. Un activo sin vela ese día no
-// cuenta como igual ni como baja: queda fuera de ese día y el denominador (suma del día) lo refleja.
+// Balance diario de Mercado (25-nov-2026, decisión del usuario, audio 1795640982.456729). Desde el 27-nov-2026 el
+// conjunto es el VIP núcleo (54 campañas de duración variable, de 7 a 60 días); antes eran los clasificados (sin
+// Rezagados) del último cierre de cada campaña. Se sigue ese conjunto hacia atrás durante los n días calendario
+// cerrados de la ventana n (30, 60 o 90) y se recalcula toda la historia cada cierre; no es la clasificación de cada
+// día. Por día: cuántos suben (cierre > apertura), quedan iguales y bajan. Un activo sin vela ese día no cuenta como
+// igual ni como baja: queda fuera de ese día y el denominador (suma del día) lo refleja.
 // Solo lee las carreras y las velas diarias ya guardadas; no escribe registros crudos.
 import fs from 'node:fs';
 import path from 'node:path';

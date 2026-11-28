@@ -1,5 +1,5 @@
-// node --test pruebas/canonico-vip.mjs. Relanzamiento del registro VIP horario (25-nov-2026): unión VIP 30/60/90 sin
-// Rezagados, canónico del día cerrado de 25 puntos (00:00 a 24:00 UTC) desde cero, que no toca nunca los archivos vivos,
+// node --test pruebas/canonico-vip.mjs. Registro VIP horario (relanzado el 25-nov-2026; desde el 27-nov-2026 el universo es el VIP núcleo, antes la unión VIP 30/60/90),
+// sin Rezagados, canónico del día cerrado de 25 puntos (00:00 a 24:00 UTC) desde cero, que no toca nunca los archivos vivos,
 // es idempotente, no rellena lo que no tiene vela, y no choca con la lectura horaria (carrera diaria/horaria).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
