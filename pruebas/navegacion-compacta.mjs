@@ -33,9 +33,9 @@ test('Variación sin párrafo introductorio eliminado',()=>{
  assert.match(src,/contenedor.append\(controles,estado,fuente,reglas,cuerpo\)/);
 });
 
-test('menú de entrada: Mercado primero y Cimiento después; sin botones de Stocks, Cripto, Buscar ni Campaña',()=>{
+test('menú de entrada: Mercado, Monitor y Cimiento; sin botones de Stocks, Cripto, Buscar ni Campaña',()=>{
  const m=html.match(/<nav class="mercados" aria-label="Mercados">(.*?)<\/nav>/)?.[1];
  assert.ok(m, 'menú principal presente');
- assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Mercado','Cimiento']);
+ assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Mercado','Monitor','Cimiento']);
  for(const id of ['mercado-stock','mercado-cripto','mercado-buscar','mercado-campana'])assert.doesNotMatch(m,new RegExp(id));
 });

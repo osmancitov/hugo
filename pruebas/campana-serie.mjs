@@ -72,7 +72,7 @@ test('60d y 30d: nombres, primera carrera y serie topada a 90 puntos', async () 
 });
 test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(h, /tl\.href='#\/a\/'\+id\.split\(':'\)\[0\]\+'\/'\+encodeURIComponent\(cod\)/);
+  assert.match(h, /tl\.href=urlMercado\(null,id\)/);
   assert.doesNotMatch(h, /camp-det/);
   assert.match(h, /\^fondo ETF\/i\.test\(t\)\?'Fondo ETF'/);
   assert.match(h, /startsWith\('cripto:'\)\?'Cripto'/);
@@ -82,7 +82,7 @@ test('Campañas: título enlazado a la ficha y columna Tipo sin Detalles', () =>
 test('Campañas: el campo de béisbol va bajo espaguetis y curvas, con selección compartida', () => {
   const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /function graficaCampo\(caja,u,seleccion,alElegir,limpio=false,g2=null\)/);
-  assert.match(h, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\),cCuad,\.\.\.\(puente\?\[cAct\]:\[\]\),cEsp,\.\.\.\(puente&&puente\.cVar\?\[puente\.cVar\]:\[\]\),\.\.\.\(puente&&puente\.listaEn\?\[\]:\[lista\]\)\)/);
+  assert.match(h, /raiz\.append\(\.\.\.\(puente\?\[\]:\[t,sub\]\),cCuad,\.\.\.\(puente\?\[cAct\]:\[\]\),cEsp,\.\.\.\(puente\?\[cHor\]:\[\]\),\.\.\.\(puente&&puente\.cVar\?\[puente\.cVar\]:\[\]\),\.\.\.\(puente&&puente\.listaEn\?\[\]:\[lista\]\)\)/);
   assert.match(h, /graficaCampo\(cCuad,u,sel,elegir,Boolean\(puente\),g2\)/);
   assert.doesNotMatch(h, /graficaCuadrantes/);
 });
