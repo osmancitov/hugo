@@ -47,7 +47,7 @@ export function estadoBolsa(ahora = Date.now()) {
     if (k === 0) hoy = s;
     if (!s.abre) continue;
     if (k === 0 && ahora >= s.abre && ahora < s.cierra) return { abierta: true, cierra: s.cierra, anticipado: s.anticipado };
-    if (s.abre > ahora) return { abierta: false, abre: s.abre, motivoHoy: k === 0 ? hoy : { motivo: hoy.motivo, nombre: hoy.nombre }, hoy, cierraHoyYa: k === 0 };
+    if (s.abre > ahora) return { abierta: false, abre: s.abre, cierra: s.cierra, anticipado: s.anticipado, motivoHoy: k === 0 ? hoy : { motivo: hoy.motivo, nombre: hoy.nombre }, hoy, cierraHoyYa: k === 0 };
   }
   return { sinCalendario: true };
 }
@@ -58,5 +58,5 @@ export function textoBolsa(e) {
   let por = 'fuera de horario';
   if (h.motivo === 'fin de semana') por = 'fin de semana: no hay sesión regular los sábados ni los domingos';
   else if (h.motivo === 'feriado') por = 'feriado: ' + h.nombre;
-  return 'Bolsa de Nueva York: cerrada (' + por + ') · abre ' + horaUTC4(e.abre) + ' (UTC-4).';
+  return 'Bolsa de Nueva York: cerrada (' + por + ') · abre ' + horaUTC4(e.abre) + ' y cierra ' + horaUTC4(e.cierra) + ' (UTC-4)' + (e.anticipado ? ' (cierre anticipado)' : '') + '.';
 }
