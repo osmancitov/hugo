@@ -274,9 +274,28 @@ function pintar() {
       const v = Number.isFinite(a.base) && Number.isFinite(a.precio) ? (a.precio / a.base - 1) * 100 : NaN;
       const f = fmtVariacion(v);
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td><span class="codigo">' + a.codigo + '</span> <span class="nombre">' + a.nombre + '</span></td>'
-        + '<td class="precio">' + fmtPrecio(a.precio) + '</td>'
-        + '<td class="var ' + f.clase + '">' + f.texto + '</td>';
+      const mercado = a.grupo === 'Cripto' ? 'cripto' : 'stock';
+      const destino = mercado === 'cripto'
+        ? '../mercado/cripto/' + encodeURIComponent(a.codigo) + '/'
+        : '../mercado/stock/' + encodeURIComponent(a.codigo) + '/';
+      const enlaceActivo = document.createElement('a');
+      enlaceActivo.className = 'codigo';
+      enlaceActivo.href = destino;
+      enlaceActivo.textContent = a.codigo;
+      const celdaActivo = document.createElement('td');
+      celdaActivo.append(enlaceActivo, document.createTextNode(' '));
+      const nombreActivo = document.createElement('span');
+      nombreActivo.className = 'nombre';
+      nombreActivo.textContent = a.nombre;
+      celdaActivo.appendChild(nombreActivo);
+      tr.appendChild(celdaActivo);
+      const celdaPrecio = document.createElement('td');
+      celdaPrecio.className = 'precio';
+      celdaPrecio.textContent = fmtPrecio(a.precio);
+      const celdaVariacion = document.createElement('td');
+      celdaVariacion.className = 'var ' + f.clase;
+      celdaVariacion.textContent = f.texto;
+      tr.append(celdaPrecio, celdaVariacion);
       tabla.appendChild(tr);
     }
     sec.appendChild(tabla);
