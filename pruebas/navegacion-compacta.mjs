@@ -55,3 +55,7 @@ test('el logo y los retornos de Mercado usan dirección limpia, sin #/',()=>{
  assert.match(mon,/og:url" content="https:\/\/osmancitov.github.io\/hugo\/monitor\/"/);
  assert.match(mon,/og:image" content="https:\/\/osmancitov.github.io\/hugo\/identidad\/tarjeta.jpg"/);
 });
+
+test('la portada fija su base para que las lecturas relativas funcionen tras navegar a /mercado/…',()=>{
+ assert.ok(html.includes("document.createElement('base');b.href=location.origin+location.pathname.replace(/[^\\/]*$/,'')"));
+});
