@@ -1,4 +1,4 @@
-// Monitor VIP dentro del mismo shell que Mercado (sin recargar): entrar(contenedor, opciones) y salir().
+// Monitor de VIPs dentro del mismo shell que Mercado (sin recargar): entrar(contenedor, opciones) y salir().
 // Fuentes y reglas son las de siempre (núcleo, catálogo, intradía, historial-monitor y Binance WS); no se duplican en otro lado.
 const CSS = `
   .monitor-vip {
@@ -57,7 +57,7 @@ const CSS = `
   .monitor-vip .etiqueta { display: inline-block; border: 1px solid var(--borde); border-radius: 4px; padding: 0 6px; font-size: 12px; color: var(--texto); }
 `;
 const HTML = `<header class="mv-cab">
-  <h1>Monitor VIP</h1>
+  <h1>Monitor de VIPs</h1>
   <div class="estado">
     <span id="estado-vivo"><span id="punto" class="punto"></span><span id="conexion">iniciando…</span> · <span id="ultimo">sin datos aún</span><br>
     Base: primera lectura del día (00:00 UTC) del Observatorio · revisión cada 5 s<br></span>
@@ -382,6 +382,20 @@ async function mostrarHistorial(iso) {
     if (!datos.stock || !datos.cripto) throw new Error('No hay jornada guardada para ' + iso + '.');
     caja.textContent = '';
     const origenes = new Set([datos.stock.lista.origen, datos.cripto.lista.origen]);
+    const grupos = { Empresas: [], Fondos: [], Cripto: [] };
+    for (const mercado of ['stock', 'cripto']) {
+      for (const [codigo, ap, apertura, cierre, variacion, minimo, maximo] of datos[mercado].activos) {
+        const info = catalogosHist[mercado].get(codigo) || {};
+        const g = mercado === 'cripto' ? 'Cripto' : info.tipo === 'empresa' ? 'Empresas' : 'Fondos';
+        grupos[g].push({ mercado, codigo, nombre: info.nombre || codigo, ap, cierre, variacion, minimo, maximo });
+      }
+    }
+    const resultadoGrupo = () => { // con un grupo elegido, el resumen cuenta solo ese grupo (no los ajenos)
+      const nombre = grupoFiltro[0].toUpperCase() + grupoFiltro.slice(1);
+      const v = grupos[nombre].map(f => f.variacion).filter(Number.isFinite);
+      const media = v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN;
+      return ['Resultado del día: ', nombre.toLowerCase() + ' ' + v.filter(x => x > 0.004).length + ' suben, ' + v.filter(x => x < -0.004).length + ' bajan (media ' + fmtVariacion(media).texto + ')', '. Media simple de las variaciones de la lista de este grupo.'];
+    };
     const nota = document.createElement('div');
     nota.className = 'hist-nota';
     const lineas = [
@@ -391,7 +405,7 @@ async function mostrarHistorial(iso) {
         ? ' (núcleo publicado ese cierre).'
         : ' hoy con la regla actual de 54 campañas (fijada el 27-nov-2026) y las velas guardadas. Antes no existía esa lista en el Monitor.'],
       ['Rendimiento: ', 'vela diaria guardada', ', de las 00:00 a las 23:59:59 UTC. Mín / Máx: el punto más bajo y más alto del día respecto a la misma apertura (sin hora ni orden).'],
-      ['Resultado del día: ', 'acciones y fondos ' + datos.stock.resumen.suben + ' suben, ' + datos.stock.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.stock.resumen.media).texto + ')', '; cripto ' + datos.cripto.resumen.suben + ' suben, ' + datos.cripto.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.cripto.resumen.media).texto + '). Media simple de las variaciones de la lista.'],
+      grupoFiltro ? resultadoGrupo() : ['Resultado del día: ', 'acciones y fondos ' + datos.stock.resumen.suben + ' suben, ' + datos.stock.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.stock.resumen.media).texto + ')', '; cripto ' + datos.cripto.resumen.suben + ' suben, ' + datos.cripto.resumen.bajan + ' bajan (media ' + fmtVariacion(datos.cripto.resumen.media).texto + '). Media simple de las variaciones de la lista.'],
       ['Universo: ', 'activos del catálogo con velas guardadas', '; no es el universo completo de Binance.'],
     ];
     for (const [a, b, c] of lineas) {
@@ -402,14 +416,6 @@ async function mostrarHistorial(iso) {
       nota.appendChild(d);
     }
     caja.appendChild(nota);
-    const grupos = { Empresas: [], Fondos: [], Cripto: [] };
-    for (const mercado of ['stock', 'cripto']) {
-      for (const [codigo, ap, apertura, cierre, variacion, minimo, maximo] of datos[mercado].activos) {
-        const info = catalogosHist[mercado].get(codigo) || {};
-        const g = mercado === 'cripto' ? 'Cripto' : info.tipo === 'empresa' ? 'Empresas' : 'Fondos';
-        grupos[g].push({ mercado, codigo, nombre: info.nombre || codigo, ap, cierre, variacion, minimo, maximo });
-      }
-    }
     for (const g of ['Empresas', 'Fondos', 'Cripto']) {
       if (grupoFiltro && g.toLowerCase() !== grupoFiltro) continue;
       const filas = grupos[g];

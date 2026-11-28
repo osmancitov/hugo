@@ -3040,7 +3040,7 @@ async function rutaMonitor(grupo) {
   contraerNavegacion(navCat,grupo,RAIZ+'monitor/'+location.search);
   const enlazarGrupos=()=>{for(const a of navCat.children)a.href=RAIZ+'monitor/'+(a.classList.contains('actual')?'':a.dataset.g+'/')+location.search;};
   elBuscar.hidden=true;rot.hidden=true;document.getElementById('reloj-entrada').hidden=true;
-  document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor · Observatorio Bursátil';
+  document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor de VIPs · Observatorio Bursátil';
   app.replaceChildren();
   const caja=document.createElement('div');app.append(caja);
   const mod=await import(RAIZ+'app/monitor.mjs?v=1');

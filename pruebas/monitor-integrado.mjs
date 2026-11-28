@@ -24,3 +24,8 @@ test('el filtro de grupo vale también para el día cerrado y se conserva con el
   assert.ok(html.includes("RAIZ+'monitor/'+g[0]+'/'+location.search"));
   assert.ok(html.includes('enlazarGrupos()'));
 });
+test('con un grupo elegido, el resumen del día cerrado cuenta solo ese grupo y el título es Monitor de VIPs', () => {
+  assert.ok(mod.includes('grupoFiltro ? resultadoGrupo()'));
+  assert.ok(mod.includes('<h1>Monitor de VIPs</h1>'));
+  assert.ok(!mod.includes('Monitor VIP'));
+});

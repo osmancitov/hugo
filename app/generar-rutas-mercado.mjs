@@ -66,8 +66,8 @@ export function generar(raiz, { escribir = true } = {}) {
   hacer('mercado/', 'Mercado · Observatorio Bursátil', 'Empresas, fondos y cripto');
   // Monitor (mismo shell): /monitor/ y /monitor/<grupo>/; la lógica en vivo e historial va en app/monitor.mjs.
   const descMonitor = 'Precios en vivo e historial de días cerrados de los activos VIP del Observatorio · solo lectura';
-  hacer('monitor/', 'Monitor VIP · Observatorio Bursátil', descMonitor);
-  for (const g of GRUPOS) hacer(`monitor/${g}/`, `${g[0].toUpperCase() + g.slice(1)} · Monitor VIP · Observatorio Bursátil`, descMonitor);
+  hacer('monitor/', 'Monitor de VIPs · Observatorio Bursátil', descMonitor);
+  for (const g of GRUPOS) hacer(`monitor/${g}/`, `${g[0].toUpperCase() + g.slice(1)} · Monitor de VIPs · Observatorio Bursátil`, descMonitor);
   const nombres = { empresas: 'Empresas', fondos: 'Fondos', cripto: 'Cripto' };
   for (const g of GRUPOS) hacer(`mercado/${g}/`, `${nombres[g]} · Mercado · Observatorio Bursátil`, 'Empresas, fondos y cripto');
   // Indicadores y tablas de barras del Balance: /mercado/indicador/<código>/ (la consulta ?lectura=… la lee el visor).
