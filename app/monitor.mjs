@@ -127,9 +127,11 @@ function extremo(v, clase) {
 }
 function fmtVariacion(v) {
   if (!Number.isFinite(v)) return { texto: '—', clase: 'igual' };
+  // El cero se presenta como no pérdida (▲ +0.00 %, verde) en toda la tabla; solo presentación, los conteos y cálculos usan el valor tal cual.
+  if (Math.abs(v) <= 0.004) return { texto: '▲ +0.00 %', clase: 'sube' };
   const signo = v > 0 ? '+' : '';
-  const clase = v > 0.004 ? 'sube' : v < -0.004 ? 'baja' : 'igual';
-  const flecha = v > 0.004 ? '▲ ' : v < -0.004 ? '▼ ' : '';
+  const clase = v > 0 ? 'sube' : 'baja';
+  const flecha = v > 0 ? '▲ ' : '▼ ';
   return { texto: flecha + signo + v.toFixed(2) + ' %', clase };
 }
 

@@ -56,3 +56,12 @@ test('Mín / Máx: cero con presentación de no pérdida y ancho fijo por valor 
   assert.ok(mod.includes('.monitor-vip .ext { display: inline-block; min-width: 9ch; text-align: right;'));
   assert.ok(mod.includes("extremo(f.minimo, 'baja')") && mod.includes("extremo(f.maximo, 'sube')"));
 });
+test('variación actual: el cero se presenta igual que en Mín / Máx (▲ +0.00 %, verde), sin cambiar los demás formatos', () => {
+  const src = mod.slice(mod.indexOf('function fmtVariacion(v) {'), mod.indexOf('async function traerJSON'));
+  const f = new Function(src + '; return fmtVariacion;')();
+  assert.deepEqual(f(0), { texto: '▲ +0.00 %', clase: 'sube' });
+  assert.deepEqual(f(-0.002), { texto: '▲ +0.00 %', clase: 'sube' });
+  assert.deepEqual(f(0.04), { texto: '▲ +0.04 %', clase: 'sube' });
+  assert.deepEqual(f(-1.14), { texto: '▼ -1.14 %', clase: 'baja' });
+  assert.deepEqual(f(NaN), { texto: '—', clase: 'igual' });
+});
