@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { estadoBolsa, textoBolsa, horaUTC4 } from '../app/modulos/bolsa-nyse.mjs';
+import { estadoBolsa, textoBolsa, textoCorto, horaUTC4 } from '../app/modulos/bolsa-nyse.mjs';
 const t = (s) => textoBolsa(estadoBolsa(Date.parse(s)));
 test('sábado: cerrada por fin de semana, abre el lunes 10:30 UTC-4 (invierno)', () => {
   assert.match(t('2026-11-28T21:00:00Z'), /fin de semana.*sábados ni los domingos.*abre lunes 30 nov, 10:30 a\. m\. y cierra lunes 30 nov, 5:00 p\. m\./);
@@ -20,4 +20,11 @@ test('feriado y cierre anticipado', () => {
 test('fuera de 2026 a 2028 no afirma nada', () => {
   assert.match(t('2029-01-02T15:00:00Z'), /sin calendario cargado/);
   assert.equal(horaUTC4(Date.parse('2026-11-30T14:30:00Z')), 'lunes 30 nov, 10:30 a. m.');
+});
+test('texto corto junto al reloj', () => {
+  const c = (s) => textoCorto(estadoBolsa(Date.parse(s)));
+  assert.equal(c('2026-11-28T21:00:00Z'), 'Bolsa cerrada · lun 30: 10:30 a. m.–5:00 p. m. (UTC-4)');
+  assert.equal(c('2026-11-30T16:00:00Z'), 'Bolsa abierta · cierra 5:00 p. m. (UTC-4)');
+  assert.equal(c('2026-11-26T15:00:00Z'), 'Bolsa cerrada · vie 27: 10:30 a. m.–2:00 p. m. (UTC-4) · cierre anticipado');
+  assert.equal(c('2029-01-02T15:00:00Z'), 'Bolsa: sin calendario cargado');
 });

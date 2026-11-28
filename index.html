@@ -327,15 +327,15 @@ h2.tit-vip { font-size: 1.5rem; margin: 0; }
 .superficie-titulo .barra-activo-enlace { font-family: 'Cinzel', 'Lora', serif; font-size: 1.5rem; font-weight: 600; margin-right: .5rem; }
 .superficie-detalle { color: var(--texto); font-size: .85rem; line-height: 1.6; padding: .7rem 0; border-top: 1px solid var(--borde); min-height: 3.8rem; }
 .superficie-leyenda, .superficie-nota { color: var(--tenue); font-size: .78rem; line-height: 1.6; margin: .5rem 0; }
-.bolsa-estado { margin: .35rem 0 .7rem; font-size: .82rem; color: var(--tenue); }
-.bolsa-estado a { color: inherit; text-decoration: underline; }
+.bolsa-estado { font-size: .82rem; color: var(--tenue); text-decoration: none; order: 2; white-space: nowrap; }
+.mercado-reloj { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem 1.2rem; }
+.monitor-vip .bolsa-estado { display: block; }
 </style>
 </head>
 <body>
 <header class="cabecera">
 <a class="tit-link" href="./"><img class="avatar" src="identidad/avatar.png" alt="Observatorio Bursátil" width="44" height="44"><h1>Observatorio Bursátil</h1></a>
 </header>
-<p id="bolsa-estado" class="bolsa-estado" role="status"></p>
 <section id="portada-observatorio" aria-label="Observatorio Bursátil" hidden>
 <img src="identidad/portada.jpg" alt="Observatorio astronómico dorado bajo un cielo de estrellas y pequeñas velas rojas y verdes." width="1440" height="810" fetchpriority="high">
 <div class="portada-titulo" aria-hidden="true">Observatorio<br><span>Bursátil</span></div>
@@ -366,7 +366,7 @@ document.getElementById('portada-observatorio').hidden = /^#\/(a|i)\//.test(loca
 <script type="module">
 import { parentesisLectura } from './app/modulos/lectura-latina.mjs?v=1';
 import { listaStocks } from './app/modulos/navegacion-observatorio.mjs';
-import { estadoBolsa, textoBolsa } from './app/modulos/bolsa-nyse.mjs';
+import { estadoBolsa, textoBolsa, textoCorto } from './app/modulos/bolsa-nyse.mjs';
 import { ordenarCampana, campana } from './app/modulos/campana-orden.mjs';
 import { fechaLegibleUTC } from './app/modulos/fechas-visor.mjs';
 import { COLORES_LECTURA, LEYENDA_LECTURA, claseMovimiento, separarConteos, cifrasConteos, separarSerieIceberg } from './app/modulos/colores-lectura.mjs?v=2';
@@ -2970,7 +2970,7 @@ function vistaMercado(inicial=null,dias=90,grupo2='empresas'){
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=(clase+' mercado-bloque').trim();app.appendChild(x);return x;};
   // El reloj de entrada está entre la portada y los botones; aquí se reserva el reloj UTC compacto de Mercado.
-  const cReloj=sec('mercado-reloj');
+  const cReloj=sec('mercado-reloj');ponerBolsa(cReloj);
   // Triple play: Miedo y codicia del mercado del grupo (Bolsa para empresas y fondos, Cripto para cripto),
   // luego la lista de los VIP del grupo y su balance; después barras, ficha, Campaña y, al final, Relieve del día.
   // Miedo y codicia se retiró de Mercado (26-nov-2026, audio): es un ánimo general y aquí se analiza un candidato VIP. La función y sus registros se conservan.
@@ -3047,8 +3047,10 @@ function vistaMercado(inicial=null,dias=90,grupo2='empresas'){
   // Relieve del día entre las barras y la ficha del activo (26-nov-2026, audio): se recorren los activos en la 3D y la información con sus enlaces queda justo debajo.
 }
 // Estado de la bolsa de Nueva York (próxima apertura y cierre, hora fija de Caracas); no toca ningún cálculo ni selección.
-const pintarBolsa=()=>{const el=typeof document.getElementById==='function'?document.getElementById('bolsa-estado'):null;if(!el)return;const l=Object.assign(document.createElement('a'),{href:'https://www.nyse.com/trade/hours-calendars',textContent:'calendario oficial de NYSE',target:'_blank',rel:'noopener'});
-  el.replaceChildren(document.createTextNode(textoBolsa(estadoBolsa())+' Sesión regular: 9:30 a. m. a 4:00 p. m. de Nueva York, de lunes a viernes; fuente: '),l,document.createTextNode('.'));};
+const bolsaEl=typeof document.createElement==='function'?document.createElement('a'):null;
+if(bolsaEl){bolsaEl.className='bolsa-estado';bolsaEl.id='bolsa-estado';bolsaEl.href='https://www.nyse.com/trade/hours-calendars';bolsaEl.target='_blank';bolsaEl.rel='noopener';bolsaEl.role='status';}
+const pintarBolsa=()=>{if(!bolsaEl||typeof estadoBolsa!=='function')return;const e=estadoBolsa();bolsaEl.textContent=textoCorto(e);bolsaEl.title=textoBolsa(e)+' Sesión regular: 9:30 a. m. a 4:00 p. m. de Nueva York, de lunes a viernes. Fuente: calendario oficial de NYSE.';};
+const ponerBolsa=(donde)=>{if(bolsaEl&&donde)donde.append(bolsaEl);}; // junto al reloj de Mercado y de Monitor; sin vista cargada no hay indicador
 pintarBolsa();if(typeof setInterval==='function')setInterval(pintarBolsa,30000);
 const GRUPOS_MONITOR = [['empresas', 'Empresas'], ['fondos', 'Fondos'], ['cripto', 'Cripto']];
 // Monitor en la misma página que Mercado: mismo shell y router, sin recargar. La lógica (en vivo e historial) vive en app/monitor.mjs, que sale de monitor/ sin duplicar reglas ni fuentes.
@@ -3068,15 +3070,12 @@ async function rutaMonitor(grupo) {
   document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor de VIPs · Observatorio Bursátil';
   app.replaceChildren();
   const caja=document.createElement('div');app.append(caja);
-  if(!grupo){ // Monitor sin grupo: no muestra activos ni abre fuentes hasta que se elige Empresas, Fondos o Cripto (usuario, Slack 1795899268.190249)
-    const t=document.createElement('h1');t.textContent='Monitor de VIPs';t.style.cssText='font-size:18px;margin:0 0 .5rem';
-    const p=Object.assign(document.createElement('p'),{className:'estado monitor-elegir',textContent:'Elige Empresas, Fondos o Cripto para ver sus activos, en vivo o de un día cerrado.'});
-    caja.append(t,p);return;
-  }
+  if(!grupo)return; // Monitor sin grupo: ningún contenido (ni título ni aviso) y ninguna fuente abierta hasta elegir Empresas, Fondos o Cripto (usuario, Slack 1795899268.190249 y 1795900945.638709)
   const mod=await import(RAIZ+'app/monitor.mjs?v=1');
   if(!caja.isConnected)return; // otra ruta tomó la página mientras cargaba el módulo
   const dia=new URLSearchParams(location.search).get('dia');
   mod.entrar(caja,{RAIZ,grupo,dia,alCambiarDia:d=>{history.replaceState(null,'',location.pathname+(d?'?dia='+d:''));enlazarGrupos();}});
+  ponerBolsa(caja.querySelector('.estado'));
   monSalir=()=>mod.salir();
 }
 async function ruta() {

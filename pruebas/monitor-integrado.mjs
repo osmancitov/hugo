@@ -42,9 +42,9 @@ test('Mercado: un activo del catálogo que no es VIP se dibuja resaltado en Hori
   assert.ok(html.includes("if(sel===id){aplicarExtra();pintarVar();pintarHor();}")); // al cambiar de selección vuelve a los datos de solo VIP
 });
 test('Monitor sin grupo no muestra activos ni abre fuentes: espera la elección de Empresas, Fondos o Cripto', () => {
-  assert.ok(html.includes("if(!grupo){ // Monitor sin grupo"));
-  assert.ok(html.includes('monitor-elegir'));
-  assert.ok(html.indexOf('monitor-elegir') < html.indexOf("import(RAIZ+'app/monitor.mjs?v=1')")); // antes de cargar el módulo
+  assert.ok(html.includes("if(!grupo)return; // Monitor sin grupo"));
+  assert.ok(!html.includes('monitor-elegir')); // sin título ni aviso: debajo de los botones no hay contenido
+  assert.ok(html.indexOf('if(!grupo)return;') < html.indexOf("import(RAIZ+'app/monitor.mjs?v=1')")); // antes de cargar el módulo
 });
 test('sin compatibilidad con enlaces antiguos: ni redirecciones de rachas/persistencia ni conversión de # dentro de Mercado', () => {
   assert.ok(!html.includes("hash==='#/stock/rachas'"));

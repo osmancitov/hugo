@@ -60,3 +60,12 @@ export function textoBolsa(e) {
   else if (h.motivo === 'feriado') por = 'feriado: ' + h.nombre;
   return 'Bolsa de Nueva York: cerrada (' + por + ') · abre ' + horaUTC4(e.abre) + ' y cierra ' + horaUTC4(e.cierra) + ' (UTC-4)' + (e.anticipado ? ' (cierre anticipado)' : '') + '.';
 }
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+function horaCorta(t) { const f = new Date(t - 4 * 3600000), h = f.getUTCHours(), mi = f.getUTCMinutes(); return (h % 12 || 12) + ':' + dos(mi) + (h < 12 ? ' a. m.' : ' p. m.'); }
+// Texto breve junto al reloj: «Bolsa cerrada · lun 30: 10:30 a. m.–5:00 p. m. (UTC-4)» o «Bolsa abierta · cierra 5:00 p. m. (UTC-4)».
+export function textoCorto(e) {
+  if (e.sinCalendario) return 'Bolsa: sin calendario cargado';
+  const dia = (t) => DIAS_CORTOS[new Date(t - 4 * 3600000).getUTCDay()] + ' ' + new Date(t - 4 * 3600000).getUTCDate();
+  if (e.abierta) return 'Bolsa abierta · cierra ' + horaCorta(e.cierra) + ' (UTC-4)' + (e.anticipado ? ' · cierre anticipado' : '');
+  return 'Bolsa cerrada · ' + dia(e.abre) + ': ' + horaCorta(e.abre) + '–' + horaCorta(e.cierra) + ' (UTC-4)' + (e.anticipado ? ' · cierre anticipado' : '');
+}
