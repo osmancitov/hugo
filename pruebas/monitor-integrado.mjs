@@ -18,3 +18,9 @@ test('el módulo conserva las fuentes y reglas del Monitor (en vivo e historial)
   assert.ok(mod.includes('if (cerrado) return;')); // sin reconexión tras salir
   assert.ok(!fs.existsSync(new URL('../monitor/index.html', import.meta.url)) || !fs.readFileSync(new URL('../monitor/index.html', import.meta.url), 'utf8').includes('const REVISION_MS'));
 });
+test('el filtro de grupo vale también para el día cerrado y se conserva con el día', () => {
+  assert.ok(mod.includes("if (grupoFiltro && grupo.toLowerCase() !== grupoFiltro) continue;")); // en vivo
+  assert.ok(mod.includes("if (grupoFiltro && g.toLowerCase() !== grupoFiltro) continue;")); // día cerrado
+  assert.ok(html.includes("RAIZ+'monitor/'+g[0]+'/'+location.search"));
+  assert.ok(html.includes('enlazarGrupos()'));
+});

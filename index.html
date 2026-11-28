@@ -3033,11 +3033,12 @@ async function rutaMonitor(grupo) {
   document.querySelector('.tit-link').href=RAIZ;
   navMerc.hidden=false;for(const a of navMerc.children)a.hidden=false;
   navCat.replaceChildren();navV.replaceChildren();navV.hidden=true;navCat.hidden=false;
-  for(const g of GRUPOS_MONITOR)botonNav(navCat,g[1],RAIZ+'monitor/'+g[0]+'/',g[0]===grupo);
+  for(const g of GRUPOS_MONITOR)botonNav(navCat,g[1],RAIZ+'monitor/'+g[0]+'/'+location.search,g[0]===grupo).dataset.g=g[0]; // el día cerrado elegido se conserva al cambiar de grupo
   document.getElementById('mercado-enlace').classList.remove('actual');document.getElementById('mercado-enlace').href=urlMercado();
   const enl=document.getElementById('monitor-enlace');enl.href=RAIZ+'monitor/';enl.classList.add('actual'); // Monitor elegido queda encendido; soltarlo vuelve a la portada
   contraerNavegacion(navMerc,true,RAIZ);
-  contraerNavegacion(navCat,grupo,RAIZ+'monitor/');
+  contraerNavegacion(navCat,grupo,RAIZ+'monitor/'+location.search);
+  const enlazarGrupos=()=>{for(const a of navCat.children)a.href=RAIZ+'monitor/'+(a.classList.contains('actual')?'':a.dataset.g+'/')+location.search;};
   elBuscar.hidden=true;rot.hidden=true;document.getElementById('reloj-entrada').hidden=true;
   document.title=(grupo?GRUPOS_MONITOR.find(g=>g[0]===grupo)[1]+' · ':'')+'Monitor · Observatorio Bursátil';
   app.replaceChildren();
@@ -3045,7 +3046,7 @@ async function rutaMonitor(grupo) {
   const mod=await import(RAIZ+'app/monitor.mjs?v=1');
   if(!caja.isConnected)return; // otra ruta tomó la página mientras cargaba el módulo
   const dia=new URLSearchParams(location.search).get('dia');
-  mod.entrar(caja,{RAIZ,grupo,dia,alCambiarDia:d=>history.replaceState(null,'',location.pathname+(d?'?dia='+d:''))});
+  mod.entrar(caja,{RAIZ,grupo,dia,alCambiarDia:d=>{history.replaceState(null,'',location.pathname+(d?'?dia='+d:''));enlazarGrupos();}});
   monSalir=()=>mod.salir();
 }
 async function ruta() {

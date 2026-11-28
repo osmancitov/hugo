@@ -411,6 +411,7 @@ async function mostrarHistorial(iso) {
       }
     }
     for (const g of ['Empresas', 'Fondos', 'Cripto']) {
+      if (grupoFiltro && g.toLowerCase() !== grupoFiltro) continue;
       const filas = grupos[g];
       if (!filas.length) continue;
       filas.sort((x, y) => y.variacion - x.variacion);
