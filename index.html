@@ -310,13 +310,13 @@ a.tit-link:hover { text-decoration: none; }
 .superficie-pasos button.hundido { background: var(--borde); color: var(--texto); box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
 .superficie-pasos button:disabled { opacity: .35; cursor: default; }
 .camp-lista.solo-lectura .camp-fila { cursor: default; }
-.ficha-unificada .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.ficha-mercado .ficha h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
 h2.tit-vip { font-size: 1.5rem; margin: 0; }
 .ficha.ficha-balance { border-bottom: 0; padding-bottom: 0; }
-.ficha-unificada .ficha { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
-.ficha-unificada .ficha h2 { font-size: 2rem; border-bottom: 1px solid var(--oro); padding-bottom: .5rem; margin-bottom: .2rem; }
-.ficha-unificada { padding-bottom: 1.5rem; }
-.ficha-unificada .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--tenue); font-weight: 400; }
+.ficha-mercado .ficha { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
+.ficha-mercado .ficha h2 { font-size: 2rem; border-bottom: 1px solid var(--oro); padding-bottom: .5rem; margin-bottom: .2rem; }
+.ficha-mercado { padding-bottom: 1.5rem; }
+.ficha-mercado .ficha h2 .nom { font-family: 'Lora', serif; font-size: 1.1rem; color: var(--tenue); font-weight: 400; }
 .superficie-detalle.superficie-titulo { border-top: 0; border-bottom: 1px solid var(--borde); }
 .superficie-detalle.superficie-titulo { min-height: 2.7rem; padding: .25rem 0; }
 .ficha-relieve { padding-bottom: 0; margin-bottom: 0; }
@@ -762,7 +762,7 @@ async function cargarDiaObservatorio(diaElegido = null, mercado = 'stock') {
   if(registro.indice.dias.includes(siguiente))frontera=await cargarRegistroIntradia(siguiente, mercado);
   return {...registro,dia:lecturasConFrontera(registro.dia,frontera?.dia)};
 }
-// Mercado (prototipo): stock y cripto juntos. El texto de cada lectura lleva el de cripto de la misma hora tras un separador; los activos se identifican como 'stock:XXX' o 'cripto:XXX'.
+// Mercado: stock y cripto juntos. El texto de cada lectura lleva el de cripto de la misma hora tras un separador; los activos se identifican como 'stock:XXX' o 'cripto:XXX'.
 const SEP_CRIPTO='\n#CRIPTO\n';
 // Registro VIP canónico del día cerrado: 25 puntos (00:00 a 24:00 UTC) reconstruidos desde cero con velas de 1 h. Convive con
 // el registro vivo, que no se toca; si el canónico existe para un día cerrado, Mercado lo usa. Sin él, usa el vivo.
@@ -1205,7 +1205,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     for (const dia of registro.indice.dias) elegirDia.append(Object.assign(document.createElement('option'), { value: dia, textContent: fechaLegibleUTC(dia) }));
     elegirDia.value = registro.dia.dia; etiqueta.append(elegirDia);
     const recargar = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Actualizar' });
-    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); if (en) vistaUnificada(puente?.inicial?.() ? 'stock:' + puente.inicial() : null, puente?.ventana?.() ?? 90); else vistaSuperficie(); };
+    recargar.onclick = () => { limpiarGrafica?.(); cacheIntradia.clear(); if (en) vistaMercado(puente?.inicial?.() ? 'stock:' + puente.inicial() : null, puente?.ventana?.() ?? 90); else vistaSuperficie(); };
     // Subgrupo de la campaña: dos selectores (grupo y ventana). Solo filtra lo que se dibuja.
     const etGrupo = Object.assign(document.createElement('label'), { textContent: 'Grupo ' });
     const elegirGrupo = document.createElement('select');
@@ -1222,7 +1222,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
       const este = ++turno;
       try {
         if (en) {
-          // Prototipo (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
+          // Mercado (25-nov-2026, decisión del usuario, audio 1795640578.832199): la 3D y las barras muestran los admitidos (sin Rezagados) de la campaña del período elegido arriba, no la unión de las tres.
           const codigos = new Set(); let fechaFin = ''; const porG = { premium: new Set(), potentes: new Set(), constantes: new Set() };
           for (const n of [Number(puente?.ventana?.()) || 90]) { const { u } = await cargarCampana(n); fechaFin = u.carrera.ventana.fin; for (const a of u.clasificados) { if (porG[a.grupo]) porG[a.grupo].add(a.id); if (NUCLEO.ids.has(a.id) && (g === 'todos' || a.grupo === g)) codigos.add(a.id); } }
           const g2 = puente?.grupo2?.(); if (g2) for (const id of [...codigos]) if (grupoMercadoDe(id) !== g2) codigos.delete(id); // Triple play: solo el grupo elegido
@@ -1240,7 +1240,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
     elegirGrupo.onchange = () => { grupoVal = elegirGrupo.value; aplicarFiltro(); };
     elegirVentana.onchange = () => { ventanaVal = Number(elegirVentana.value); aplicarFiltro(); };
     if (en) {
-      // Vista unificada: botones en lugar de desplegables y ninguna Campaña elegida de antemano (25-nov-2026).
+      // Vista de Mercado: botones en lugar de desplegables y ninguna Campaña elegida de antemano (25-nov-2026).
       const grupo = (titulo, opciones, valor, alElegir) => {
         const et = Object.assign(document.createElement('label'), { textContent: titulo + ' ' });
         const caja = Object.assign(document.createElement('span'), { className: 'superficie-pasos' });
@@ -1270,7 +1270,7 @@ async function vistaSuperficie(en = null, barraCaja = null, puente = null) {
         if (este === turno && cuerpo.isConnected) await mostrar(r);
       } catch (e) { if (este === turno && cuerpo.isConnected) { grafica?.desmontar(); cuerpo.textContent = e.message; } }
     };
-    // Cripto en el prototipo: si hay registro de cripto publicado, la superficie y las barras pasan a leerlo al elegir un cripto.
+    // Cripto en Mercado: si hay registro de cripto publicado, la superficie y las barras pasan a leerlo al elegir un cripto.
     const cambiarMercado = async (m) => {
       if (m === mercado) return true;
       const r = await cargarDiaObservatorio(null, m);
@@ -1687,7 +1687,7 @@ function vistaIndicador(codigo, en = null, rotulo = null, limpio = false, ndias 
       sinDescarga: limpio,
       alEntrar: Boolean(limpio && e.iceberg), // Balance del día: traza al entrar en pantalla
     });
-    if (limpio) { // prototipo unificada (25-nov-2026): sin descarga; solo el conjunto y su denominador, visibles
+    if (limpio) { // Mercado (25-nov-2026): sin descarga; solo el conjunto y su denominador, visibles
       if (ndias && e.iceberg && !bal) { // Mercado: sin el párrafo explicativo del conjunto bajo el Balance diario (usuario, Slack 1795662379.778449); solo queda el aviso de que aún no hay balance
         const nota = Object.assign(document.createElement('p'), { className: 'camp-sub' });
         nota.textContent = 'Todavía no hay balance del conjunto clasificado para este período: se calcula en el próximo cierre diario. Mientras tanto se muestra el conteo anterior de las 113 acciones.';
@@ -2864,7 +2864,7 @@ async function vistaCampana(n,inicial,en=null,puente=null){
   if(puente)puente.elegirCamp=(id)=>{sel=id&&s.activos[id]?id:null;pintarSel(false);};
   pintarSel(false);
 }
-// Vista unificada, página de prueba (25-nov-2026, audio del usuario): los indicadores de stocks, la
+// Vista de Mercado (25-nov-2026, audio del usuario): los indicadores de stocks, la
 // superficie 3D, la ficha del activo y la Campaña de 30 días en una sola página, con un activo elegido
 // que se refleja en todas las vistas. No sustituye ninguna página actual.
 // Fear & Greed de Bolsa y de Cripto en una sola gráfica (25-nov-2026): dos curvas distinguibles por color.
@@ -2948,7 +2948,7 @@ function vistaFearGreedJunto(en, ndias = 90, solo = null) {
     graficador(caja, pie, { total: () => dias.length, geometria: () => ({ ancho: ANCHO_FG(), alto: ALTO_FG() }), dibujar: (ctx, geo, hasta) => graficoFearGreedJunto(ctx, { ...geo, vertical: false, ancho: ANCHO_FG(), alto: ALTO_FG(), ph: undefined }, hasta, S), codigo: 'fear-greed-' + (solo || 'junto'), fecha: () => uf, sinDescarga: true });
   }).catch((err) => { estado.textContent = 'No pude traer los registros de este indicador (' + err.message + ').'; });
 }
-function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
+function vistaMercado(inicial=null,dias=90,grupo2='empresas'){
   limpiarGrafica?.();limpiarGrafica=()=>{};
   app.replaceChildren();
   const sec=(clase='')=>{const x=document.createElement('section');x.className=(clase+' mercado-bloque').trim();app.appendChild(x);return x;};
@@ -2962,7 +2962,7 @@ function vistaUnificada(inicial=null,dias=90,grupo2='empresas'){
   vistaBalanceGrupo(sec(),dias,grupo2);
   const cajaBarras=sec('barras-indicadores');cajaBarras.append(Object.assign(document.createElement('p'),{className:'estado',textContent:'Trayendo las barras…'}));
   // El reloj de entrada se inicializa una sola vez, fuera de esta vista.
-  const cSup=sec(),cCamp=sec('mercado-camp'),cFicha=sec('ficha-unificada'); // la ficha del activo va al final de la página (26-nov-2026, audio): aparece y desaparece sin empujar nada, y el relieve y Campaña quedan juntos
+  const cSup=sec(),cCamp=sec('mercado-camp'),cFicha=sec('ficha-mercado'); // la ficha del activo va al final de la página (26-nov-2026, audio): aparece y desaparece sin empujar nada, y el relieve y Campaña quedan juntos
   // Reserva de altura: los bloques de arriba se rellenan después de pintar y empujaban el Relieve (737 px en móvil, medido 25-nov-2026). Se reserva la última altura
   // medida (o, la primera vez en pantalla angosta, una proporción medida del ancho) y se libera cuando el bloque ya cargó. Solo afecta a Mercado.
   {const wv=Math.round(app.clientWidth||innerWidth),clave='mercado-alturas-'+wv,guard=(()=>{try{return JSON.parse(sessionStorage.getItem(clave)||'null');}catch(e){return null;}})();
@@ -3068,7 +3068,7 @@ async function ruta() {
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;
   const nombres={stock:'Stocks',cripto:'Criptos',empresas:'Empresas',fondos:'Fondos',capitalizacion:'Capitalización',variacion:'Variación',indicadores:'Indicadores'};
   rot.textContent=[mercado,categoria,ranking].filter(Boolean).map(x=>nombres[x]).join(' · ');
-  if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta);return;}
+  if(mu){if(elegirGrupo){app.replaceChildren();return;}vistaMercado(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta);return;}
   if(hash==='#/i/iceberg-stock/superficie'){vistaSuperficie();return;}
   if(tb){vistaTablaBarra(tb[1],tb[2]);return;}
   if(mi){vistaIndicador(decodeURIComponent(mi[1]));return;}

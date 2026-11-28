@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sup = fs.readFileSync(new URL('../visor-superficie.mjs', import.meta.url), 'utf8');
-const unif = () => html.slice(html.indexOf('function vistaUnificada'), html.indexOf('async function ruta()'));
+const unif = () => html.slice(html.indexOf('function vistaMercado'), html.indexOf('async function ruta()'));
 test('la vista Mercado mantiene el orden de componentes, con el Relieve tras las barras y la ficha del activo al final (26-nov-2026)', () => {
   const f = unif();
-  const orden = ["cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', "cCamp=sec('mercado-camp')", "cFicha=sec('ficha-unificada')"].map((t) => f.indexOf(t));
+  const orden = ["cLista=sec('mercado-lista')", "tituloVIP=Object.assign", 'vistaBalanceGrupo(sec()', 'cajaBarras=sec', 'cSup=sec()', "cCamp=sec('mercado-camp')", "cFicha=sec('ficha-mercado')"].map((t) => f.indexOf(t));
   assert.ok(orden.every((i) => i >= 0), String(orden));
   assert.deepEqual([...orden].sort((a, b) => a - b), orden);
   assert.ok(!f.includes('app.append(cSup,aviso2)'));
 });
-test('la vista unificada no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
+test('la vista de Mercado no sustituye páginas: la superficie, el Iceberg y la Campaña conservan sus rutas', () => {
   assert.match(html, /if\(hash==='#\/i\/iceberg-stock\/superficie'\)\{vistaSuperficie\(\);return;\}/);
   assert.match(html, /\^mercado\\\/\(cripto\|stock\)/);
 });
@@ -24,7 +24,7 @@ test('el activo elegido se refleja entre superficie, Campaña y ficha', () => {
   assert.match(f, /puente\.elegirSup\(/); assert.match(f, /puente\.elegirCamp\(/); assert.match(f, /pintarFicha\(\)/);
   assert.match(sup, /elegirActivo: elegirDesdeFuera/);
 });
-test('en la vista unificada no hay título del activo junto a la superficie: el punto elegido se identifica dentro de la gráfica (26-nov-2026)', () => {
+test('en la vista de Mercado no hay título del activo junto a la superficie: el punto elegido se identifica dentro de la gráfica (26-nov-2026)', () => {
   assert.match(sup, /tituloArriba \? \[controles, canvas\] : \[controles, canvas, detalle\]/);
 });
 
@@ -37,11 +37,11 @@ test('la superficie elige acciones; la Campaña también puede elegir cripto (si
 
 test('la función Fear & Greed conserva Bolsa y Cripto identificados, pero Mercado ya no la muestra', () => {
   const f = unif();
-  const j = html.slice(html.indexOf('function vistaFearGreedJunto'), html.indexOf('function vistaUnificada'));
+  const j = html.slice(html.indexOf('function vistaFearGreedJunto'), html.indexOf('function vistaMercado'));
   assert.ok(j.includes("cargarIndicador('feargreedchart-bolsa')") && j.includes("cargarIndicador('alternative-fear-greed')") && j.includes("'Bolsa'") && j.includes("'Cripto'"));
   assert.ok(!f.includes('vistaFearGreedJunto(sec()')); // retirado de Mercado (26-nov-2026)
 });
-test('las crestas 3D solo se activan en la vista unificada; la superficie original conserva su dibujo', () => {
+test('las crestas 3D solo se activan en la vista de Mercado; la superficie original conserva su dibujo', () => {
   assert.match(sup, /crestas = false/);
   assert.equal(html.match(/crestas: Boolean\(en\)/g)?.length, 1);
   assert.match(sup, /if \(crestas\) \{/);
@@ -63,7 +63,7 @@ test('cada gráfica de Mercado tiene su título breve en el mismo estilo, sin re
 });
 test('la ficha del activo no repite el tipo y su línea amarilla queda bajo código y nombre (26-nov-2026)', () => {
   assert.ok(!html.includes('tipo-activo'));
-  assert.match(html, /\.ficha-unificada \.ficha h2 \{ font-size: 2rem; border-bottom: 1px solid var\(--oro\)/);
+  assert.match(html, /\.ficha-mercado \.ficha h2 \{ font-size: 2rem; border-bottom: 1px solid var\(--oro\)/);
 });
 test('la escala de altura de las crestas es simétrica y relativa al mayor valor absoluto (por defecto ±15 %)', async () => {
   const { colorAltura, ESCALA_ALTURA } = await import('../visor-superficie.mjs');
@@ -88,7 +88,7 @@ test('la escala de altura de las crestas es simétrica y relativa al mayor valor
 test('Mercado: grupo VIP y período fijo de 30 días', () => {
   assert.ok(html.includes("const muG=muA?null:ph.match(/^mercado(?:\\/(empresas|fondos|cripto))?\\/?$/)"));
   assert.ok(html.includes("urlMercado(g[0])"));
-  assert.ok(html.includes("vistaUnificada(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta)"));
+  assert.ok(html.includes("vistaMercado(muA?muA[1]+':'+decodeURIComponent(muA[2]):null,30,g2Ruta)"));
   assert.ok(!html.includes('unificada/30d'));
 });
 test('Mercado siempre reserva las cuatro barras: la que falta queda marcada «sin datos» (26-nov-2026)', () => {
