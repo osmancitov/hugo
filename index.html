@@ -3028,6 +3028,7 @@ async function ruta() {
     if(mercado==='cripto')botonNav(navV,'Indicadores','#/cripto/indicadores',ranking==='indicadores');
   }
   contraerNavegacion(navMerc,mercado||esBusqueda||esCampana||Boolean(mu),'#/',Boolean(mu));
+  document.getElementById('mercado-enlace').classList.toggle('actual',Boolean(mu)); // Mercado elegido queda encendido en amarillo; su enlace sigue llevando a los grupos
   contraerNavegacion(navCat,esCampana?mc[1]:mu?g2Ruta:(categoria||(mercado==='stock'&&ranking==='indicadores')),esCampana?'#/campana':mu?urlMercado():'#/stock');
   contraerNavegacion(navV,ranking,'#/'+mercado+(categoria?'/'+categoria:''));
   elBuscar.hidden=fuera||!ranking||ranking==='indicadores'||ranking==='variacion';rot.hidden=true;

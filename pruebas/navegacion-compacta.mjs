@@ -39,3 +39,4 @@ test('menú de entrada: Mercado, Monitor y Cimiento; sin botones de Stocks, Crip
  assert.deepEqual([...m.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(x=>x[1]), ['Mercado','Monitor','Cimiento']);
  for(const id of ['mercado-stock','mercado-cripto','mercado-buscar','mercado-campana'])assert.doesNotMatch(m,new RegExp(id));
 });
+assert.match(html,/getElementById\('mercado-enlace'\)\.classList\.toggle\('actual',Boolean\(mu\)\)/);
